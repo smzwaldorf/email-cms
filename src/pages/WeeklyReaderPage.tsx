@@ -32,22 +32,28 @@ export function WeeklyReaderPage() {
 
   const [isLoadingNavigation, setIsLoadingNavigation] = useState(false)
 
-  // 初始化導航狀態
+  // 初始化導航狀態 - 當文章列表加載時或週份改變時
   useEffect(() => {
     if (articles.length > 0) {
-      const firstArticle = articles[0]
-      navigation.setCurrentWeek(weekNumber)
-      navigation.setCurrentArticle(firstArticle.id, 1)
-      navigation.setArticleList(articles)
+      // 檢查是否需要初始化：週份改變或文章清單為空
+      const weekChanged = navigation.navigationState.currentWeekNumber !== weekNumber
+      const needsInit = navigation.navigationState.articleList.length === 0 || weekChanged
 
-      // 更新下一篇
-      if (articles.length > 1) {
-        navigation.setNextArticleId(articles[1].id)
-      } else {
-        navigation.setNextArticleId(undefined)
+      if (needsInit) {
+        const firstArticle = articles[0]
+        navigation.setCurrentWeek(weekNumber)
+        navigation.setCurrentArticle(firstArticle.id, 1)
+        navigation.setArticleList(articles)
+
+        // 更新下一篇
+        if (articles.length > 1) {
+          navigation.setNextArticleId(articles[1].id)
+        } else {
+          navigation.setNextArticleId(undefined)
+        }
       }
     }
-  }, [weekNumber, articles, navigation])
+  }, [articles, weekNumber])
 
   // 處理上一篇導航
   const handlePrevious = async () => {
