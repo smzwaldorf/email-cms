@@ -75,7 +75,7 @@
 
 ### 實際應用截圖
 
-![Email Newsletter CMS - Weekly Reader](./screenshot.jpg)
+![Email Newsletter CMS - Weekly Reader](screenshot.jpg)
 
 *週報閱讀器實際界面 - 展示左側文章清單、中央文章內容及導航功能*
 
