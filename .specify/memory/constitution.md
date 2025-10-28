@@ -1,50 +1,137 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+同步衝擊報告 (Sync Impact Report)
+版本變更: 無 → 1.0.0 (新建憲法)
+新增原則：五項核心原則
+修改範本：已更新 (spec-template.md, plan-template.md, tasks-template.md, checklist-template.md)
+-->
 
-## Core Principles
+# Email CMS 專案憲法
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+## 核心原則
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### I. 高品質第一 (Quality First)
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+高品質是所有開發工作的基礎。每一行程式碼都必須經過深思熟慮，並符合專業標準。我們不接受妥協品質來加快速度的做法。
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+**非協商規則:**
+- 所有新功能必須包含完整的單元測試和整合測試
+- 程式碼審查必須驗證測試覆蓋率達到 80% 以上
+- 重構和改進應優先於功能堆積
+- 技術債務必須在每個發版週期中被明確追蹤和解決
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+**理由:** 品質的提升需要時間投入，但長期來看能大幅降低維護成本和缺陷率，提高系統可靠性。
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+---
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### II. 可測試性設計 (Testability by Design)
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+每項功能必須從設計階段就考慮測試。可測試性是系統設計的一級考量，不是事後補充。
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+**非協商規則:**
+- 功能需求必須包含具體的驗收測試場景 (Given-When-Then 格式)
+- 代碼必須支援單元測試、整合測試和端對端測試
+- 外部依賴必須可注入或模擬 (Mock/Stub)
+- 測試必須可獨立運行，不依賴其他測試或外部服務
 
-## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
+**理由:** 可測試的設計使得我們能夠快速驗證功能正確性，降低迴歸風險，提升開發速度和信心。
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+---
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+### III. MVP 優先，拒絕過度設計 (MVP-First, No Over-Design)
+
+始終優先構建最小可行產品 (MVP)，交付實際價值而非過度設計的架構。功能應該逐步進化，而非一次性設計完美系統。
+
+**非協商規則:**
+- 每項功能必須定義清楚的 MVP 邊界和核心價值
+- 使用者故事必須獨立可測試和可部署
+- 禁止在缺乏明確需求的情況下預先設計抽象層
+- 如果功能需求模糊，優先釐清需求而非開發
+- 避免為「未來可能的功能」添加複雜度
+
+**理由:** 過度設計會增加複雜性、延長開發時間、增加維護成本。MVP 方法能夠快速收集反饋並迭代改進。
+
+---
+
+### IV. 中文優先，清晰溝通 (Chinese First, Clear Communication)
+
+所有項目文件、程式碼註釋、提交訊息和文檔必須使用正體中文，確保團隊溝通清晰無誤。
+
+**非協商規則:**
+- 專案文件、規格書、計畫文件全部使用正體中文撰寫
+- 程式碼變數名稱應使用英文，但關鍵業務邏輯的註釋使用中文
+- Git 提交訊息必須使用正體中文，清楚描述變更原因
+- 技術討論和設計決策必須有中文文檔記錄
+
+**理由:** 使用熟悉的語言能夠提升溝通效率，減少誤解，強化團隊理解一致性。
+
+---
+
+### V. 簡潔和務實 (Simplicity and Pragmatism)
+
+選擇最簡單能解決問題的方案。複雜度必須被明確正當化。遵循 YAGNI (You Aren't Gonna Need It) 原則。
+
+**非協商規則:**
+- 技術方案必須能用一句話解釋其核心概念
+- 新增依賴、框架或工具需要明確的業務或技術理由
+- 代碼應優先於文件（代碼是唯一真實來源），避免文件和代碼不同步
+- 架構決策應記錄其權衡取捨 (tradeoffs)
+
+**理由:** 簡潔的系統更容易理解、維護和擴展。複雜往往帶來隱藏成本和脆弱性。
+
+---
+
+## 開發工作流
+
+### 需求和規格
+
+- 所有新功能必須先進行完整的規格文件 (spec.md)，包含使用者故事、驗收測試場景和邊界情況
+- 規格必須經過團隊評審，確保清晰且可達成
+- 需求模糊的功能必須在開發前澄清，禁止「邊開發邊理解需求」
+
+### 測試驅動開發 (TDD)
+
+- 測試優先：先定義預期行為（測試失敗），再實現功能（測試通過）
+- 測試應涵蓋：正常路徑、邊界情況、錯誤處理
+- 整合測試應驗證模組間的協作和契約一致性
+
+### 程式碼審查和質量
+
+- 所有變更必須通過同行程式碼審查
+- 審查應檢驗：功能正確性、測試覆蓋率、符合憲法原則、代碼可讀性
+- 低於品質標準的 PR 應被要求改進或拒絕
+
+### 部署和發版
+
+- MVP 功能應盡早部署，收集真實反饋
+- 每個發版必須附帶完整的測試驗收記錄
+- 技術債務應在發版說明中清楚標註
+
+---
+
+## 治理
+
+### 憲法的地位
+
+本憲法是本專案的最高指導文件。所有決策、流程和實踐必須遵從本憲法的原則。在衝突時，憲法優先於其他指南、習慣或一時方便。
+
+### 修正和更新
+
+- 憲法修正必須有明確的理由和討論
+- 重大修正應獲得團隊同意
+- 所有修正應記錄版本變更和修改日期
+
+### 版本控制
+
+- 版本格式：MAJOR.MINOR.PATCH (語義化版本)
+- **MAJOR**: 原則移除、根本性重定義、向後不兼容的治理變更
+- **MINOR**: 新增原則或擴展現有指導
+- **PATCH**: 釐清措辭、修正錯誤、非語義性改進
+
+### 遵從性檢查
+
+- 新規格必須參考相關原則
+- 計畫文件應指出如何滿足各項原則
+- 工作項目應標籤化原則關聯 (例如: `quality`, `testable`, `mvp-focused`)
+- 發版前應進行最終遵從性檢查
+
+**版本**: 1.0.0 | **制定日**: 2025-10-28 | **最後修訂**: 2025-10-28
