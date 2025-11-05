@@ -132,12 +132,12 @@ export function WeeklyReaderPage() {
 
   if (weeklyError) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-50">
+      <div className="flex items-center justify-center h-screen bg-waldorf-cream-100">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+          <h1 className="text-2xl font-bold text-waldorf-clay-800 mb-2">
             週報載入失敗
           </h1>
-          <p className="text-gray-600">{weeklyError.message}</p>
+          <p className="text-waldorf-clay-600">{weeklyError.message}</p>
         </div>
       </div>
     )
@@ -149,7 +149,7 @@ export function WeeklyReaderPage() {
     navigation.navigationState.totalArticlesInWeek
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-waldorf-cream-100">
       {/* 左側邊導航按鈕 */}
       <SideButton
         direction="left"
@@ -159,7 +159,7 @@ export function WeeklyReaderPage() {
       />
 
       {/* 文章列表面板 */}
-      <div className="w-72 bg-white border-r border-gray-200 flex flex-col">
+      <div className="w-72 bg-waldorf-cream-50 border-r border-waldorf-cream-200 flex flex-col">
         <ArticleListView
           weekNumber={weekNumber}
           articles={articles}

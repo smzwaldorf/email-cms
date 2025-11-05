@@ -26,8 +26,8 @@ export function ArticleListView({
     return (
       <div className="flex items-center justify-center p-8">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
-          <p className="text-gray-600">載入中...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-waldorf-sage-500 mx-auto mb-2"></div>
+          <p className="text-waldorf-clay-700">載入中...</p>
         </div>
       </div>
     )
@@ -36,7 +36,7 @@ export function ArticleListView({
   if (articles.length === 0) {
     return (
       <div className="flex items-center justify-center p-8">
-        <p className="text-gray-500">本週無文章</p>
+        <p className="text-waldorf-clay-600">本週無文章</p>
       </div>
     )
   }
@@ -44,11 +44,11 @@ export function ArticleListView({
   return (
     <div className="h-full flex flex-col">
       {/* 週報頭部 */}
-      <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-        <h2 className="text-lg font-semibold text-gray-900">
+      <div className="px-4 py-3 border-b border-waldorf-cream-200 bg-waldorf-cream-100">
+        <h2 className="text-lg font-semibold text-waldorf-clay-800">
           {formatWeekNumber(weekNumber)}
         </h2>
-        <p className="text-sm text-gray-600">共 {articles.length} 篇文章</p>
+        <p className="text-sm text-waldorf-clay-600">共 {articles.length} 篇文章</p>
       </div>
 
       {/* 文章清單 */}
