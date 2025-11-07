@@ -16,6 +16,16 @@ description: "電子報閱讀 CMS Web App 工作項目清單"
 - **[Story]**: 該任務屬於的使用者故事（US1, US2, US3, US4）
 - **檔案路徑**: 所有任務必須包含確切的檔案路徑
 
+## 測試驅動開發 (TDD) 規則
+
+**強制要求**: 所有任務必須遵循測試優先紀律：
+1. **先寫測試**: 測試必須失敗（red phase）
+2. **驗證失敗**: 在 CI 中確認測試失敗
+3. **實現功能**: 實現使測試通過（green phase）
+4. **重構**: 優化代碼（refactor phase）
+
+此順序不可違反。未通過此紀律的代碼不應合併。
+
 ## 路徑規範
 
 - **Web SPA**: `src/`, `tests/` 在儲存庫根目錄
@@ -90,10 +100,12 @@ description: "電子報閱讀 CMS Web App 工作項目清單"
 - [ ] T027 [US1] 實現 navigationService.ts 中的導航邏輯（上一篇、下一篇、邊界檢查） src/services/navigationService.ts
 - [ ] T028 [US1] 在 useNavigation hook 中實現導航狀態管理 src/hooks/useNavigation.ts（處理 prev/next/boundary）
 - [ ] T029 [P] [US1] 在 useArticleContent hook 中實現文章內容加載和 Markdown 渲染 src/hooks/useArticleContent.ts
+- [ ] T029a [P] [US1] 在 useArticleContent hook 中新增 loading 狀態管理（返回 {content, loading, error}） src/hooks/useArticleContent.ts
 - [ ] T030 [US1] 建立 ReaderPage.tsx 頁面元件整合所有 US1 元件 src/pages/ReaderPage.tsx
 - [ ] T031 [US1] 配置 React Router 路由 `/newsletter/:weekNumber` 和 `/` 指向 ReaderPage src/App.tsx
 - [ ] T032 [US1] 在 loadingSpinner 顯示時隱藏舊文章內容（per 澄清 Q3）src/components/ArticleContent.tsx
 - [ ] T033 [US1] 新增文章邊界檢查和錯誤邊界處理 src/components/ErrorBoundary.tsx 和 ReaderPage.tsx
+- [ ] T033a [US1] 實現刪除文章偵測：當文章在編輯中被刪除時，讀者訪問該連結應觸發 ErrorBoundary 並顯示「文章已移除」訊息 src/hooks/useArticleContent.ts 和 src/components/ErrorPage.tsx
 
 **檢查點**: 使用者故事 1 已完全實現且獨立可測試
 - ✅ 讀者可查看週報清單
@@ -101,12 +113,15 @@ description: "電子報閱讀 CMS Web App 工作項目清單"
 - ✅ 位置指示器清晰顯示當前位置
 - ✅ 邊界按鈕正確禁用
 - ✅ 所有測試通過（單元 + 整合）
+- ✅ 刪除文章錯誤處理完整
 
 ---
 
 ## Phase 4: 使用者故事 2 - 通過直接連結訪問特定文章 (優先級: P1)
 
 **目標**: 讀者能通過深度連結直接訪問特定文章，位置指示器清楚
+
+**⚠️ 依賴**: 此 Phase 依賴 Phase 1 (T006: React Router setup) 和 Phase 3 (T031: 路由配置)
 
 **獨立測試**:
 - 訪問 URL `/newsletter/2025-w42/article/article-001` 並驗證正確文章顯示
@@ -395,14 +410,20 @@ T064 (ArticleEditor) 可並行
 
 | 指標 | 數值 |
 |------|------|
-| **總任務數** | 83 |
+| **總任務數** | 85（原 83 + 2 新增澄清任務） |
 | **Phase 1 (Setup)** | 8 |
 | **Phase 2 (Foundational)** | 8 |
-| **Phase 3 (US1)** | 17（測試 5 + 實現 12） |
+| **Phase 3 (US1)** | 19（測試 5 + 實現 12 + 2 澄清任務） |
 | **Phase 4 (US2)** | 12（測試 4 + 實現 8） |
 | **Phase 5 (US3)** | 11（測試 4 + 實現 7） |
 | **Phase 6 (US4)** | 12（測試 4 + 實現 8） |
 | **Phase 7 (Polish)** | 11 |
-| **預估工時** | ~32-40 小時（單開發者）|
+| **澄清任務** | 2（T029a: loading state, T033a: deleted article handling） |
+| **預估工時** | ~34-42 小時（單開發者）|
 | **並行機會** | 3-4 個同時進行的任務 |
 | **MVP 範圍** | Phase 1-3（可獨立部署）|
+
+### 新增澄清任務說明
+
+- **T029a**: 源自分析 T2 - 確保 useArticleContent hook 返回 loading 狀態以支援 T032 (LoadingSpinner 功能)
+- **T033a**: 源自分析 U1 - 明確處理已刪除文章的邊界情況，由 ErrorBoundary 和 ErrorPage 協作處理
