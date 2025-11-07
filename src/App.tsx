@@ -1,6 +1,8 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { NavigationProvider } from '@/context/NavigationContext'
 import { WeeklyReaderPage } from '@/pages/WeeklyReaderPage'
+import { ErrorPage } from '@/pages/ErrorPage'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import '@/styles/globals.css'
 
 // Placeholder pages
@@ -27,15 +29,18 @@ const EditorPage = () => (
 
 export default function App() {
   return (
-    <NavigationProvider>
-      <Router>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/week/:weekNumber" element={<WeeklyReaderPage />} />
-          <Route path="/article/:articleId" element={<WeeklyReaderPage />} />
-          <Route path="/editor" element={<EditorPage />} />
-        </Routes>
-      </Router>
-    </NavigationProvider>
+    <ErrorBoundary>
+      <NavigationProvider>
+        <Router>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/week/:weekNumber" element={<WeeklyReaderPage />} />
+            <Route path="/article/:articleId" element={<WeeklyReaderPage />} />
+            <Route path="/editor" element={<EditorPage />} />
+            <Route path="/error" element={<ErrorPage />} />
+          </Routes>
+        </Router>
+      </NavigationProvider>
+    </ErrorBoundary>
   )
 }
