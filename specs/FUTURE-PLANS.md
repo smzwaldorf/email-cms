@@ -1,142 +1,142 @@
-# Email Newsletter CMS - Future Plans
+# Email Newsletter CMS - 未來開發計畫
 
-**Status**: ✅ Planning Complete | 📋 Ready for Implementation
-**Last Updated**: 2025-11-15
-
----
-
-## Quick Overview
-
-This document outlines the planned expansion of the Email Newsletter CMS from a basic viewer into a full-featured content management and email delivery system for schools.
-
-**Current State**: Basic newsletter viewer (read-only)
-**Future State**: Full CMS with personalized email delivery
+**狀態**: ✅ 規劃完成 | 📋 準備實作
+**最後更新**: 2025-11-15
 
 ---
 
-## Core Features to Build
+## 快速概覽
 
-### 📧 Email Newsletter Features
+本文件概述 Email Newsletter CMS 從基本閱讀器擴展為完整內容管理與電子報發送系統的規劃。
 
-| Feature | Priority | SpecKit Expansion Needed |
-|---------|----------|-------------------------|
-| **Class-based Content Blocks** | P1 | ✅ Yes - Separate feature spec |
-| **Template Copying (Weekly)** | P2 | ✅ Yes - Editor workflow spec |
-| **Open & Click Rate Analytics** | P2 | ✅ Yes - Analytics integration spec |
-| **Multi-child Email Consolidation** | P1 | ✅ Yes - Complex personalization spec |
-| **Unified Brand with Dynamic Content** | P2 | ⚠️ Part of personalization spec |
-
-### 🎨 CMS Features
-
-| Feature | Priority | SpecKit Expansion Needed |
-|---------|----------|-------------------------|
-| **Weekly Article Display with Quote** | P1 | ⏭️ Skip - Already implemented |
-| **Create/Edit Articles** | P1 | ✅ Yes - Editor feature spec |
-| **Article Ordering** | P2 | ⚠️ Part of editor spec |
-| **Class-based Permissions** | P1 | ✅ Yes - Auth & permissions spec |
-| **Individual Article URLs** | P1 | ⏭️ Skip - Already implemented |
-| **Weekly Series URLs** | P1 | ⏭️ Skip - Already implemented |
-| **Multi-class Parent View** | P1 | ✅ Yes - Personalization spec |
-| **Article Navigation** | P2 | ⏭️ Skip - Already implemented |
-| **Rich Text with Images** | P1 | ✅ Yes - Rich editor spec |
-| **Multimedia (Audio/Video)** | P2 | ⚠️ Part of rich editor spec |
-| **Teacher Editing Rights** | P2 | ⚠️ Part of permissions spec |
-| **Integrated Analytics Dashboard** | P3 | ⚠️ Part of analytics spec |
+**現況**: 基本週報閱讀器（唯讀）
+**目標**: 具個人化郵件發送功能的完整 CMS
 
 ---
 
-## Recommended SpecKit Expansions
+## 核心功能開發清單
 
-### 1. **Authentication & Permissions System** (P1)
-- User roles: Admin, Teacher, Parent
-- Class-based content access control
-- Teacher editing rights for their classes
-- Parent multi-child association
+### 📧 電子報功能
 
-### 2. **Rich Content Editor** (P1)
-- WYSIWYG editor integration
-- Image upload & optimization
-- YouTube video embedding
-- Audio file support
-- Article ordering/reordering
+| 功能 | 優先級 | 是否需要 SpecKit 展開 |
+|------|--------|----------------------|
+| **班級對應內容區塊** | P1 | ✅ 是 - 需獨立功能規格 |
+| **每週複製模板** | P2 | ✅ 是 - 需編輯工作流規格 |
+| **開信率與點擊率統計** | P2 | ✅ 是 - 需分析整合規格 |
+| **多子女郵件合併** | P1 | ✅ 是 - 需複雜個人化規格 |
+| **統一品牌與動態內容** | P2 | ⚠️ 屬於個人化規格的一部分 |
 
-### 3. **Personalized Email System** (P1)
-- Class-based content blocks
-- Multi-child email consolidation
-- Template-based email generation
-- Unique tracking URLs per recipient
+### 🎨 CMS 功能
 
-### 4. **Analytics & Reporting** (P2)
-- Email open rate tracking
-- Link click tracking
-- Dashboard with visualizations
-- Export reports (CSV/Excel)
-
-### 5. **Template Management** (P2)
-- Weekly newsletter templates
-- Copy/modify workflow
-- Fixed content sections ("Weekly Quote")
+| 功能 | 優先級 | 是否需要 SpecKit 展開 |
+|------|--------|----------------------|
+| **按週顯示文章含善話** | P1 | ⏭️ 略過 - 已實作 |
+| **新增/編輯文章** | P1 | ✅ 是 - 需編輯器功能規格 |
+| **文章排序** | P2 | ⚠️ 屬於編輯器規格的一部分 |
+| **班級權限控制** | P1 | ✅ 是 - 需驗證與權限規格 |
+| **文章獨立 URL** | P1 | ⏭️ 略過 - 已實作 |
+| **週報系列 URL** | P1 | ⏭️ 略過 - 已實作 |
+| **多班級家長檢視** | P1 | ✅ 是 - 需個人化規格 |
+| **文章導航** | P2 | ⏭️ 略過 - 已實作 |
+| **圖文編輯器** | P1 | ✅ 是 - 需富文本編輯器規格 |
+| **多媒體支援（影音）** | P2 | ⚠️ 屬於富文本編輯器規格的一部分 |
+| **老師編輯權限** | P2 | ⚠️ 屬於權限規格的一部分 |
+| **整合統計儀表板** | P3 | ⚠️ 屬於分析規格的一部分 |
 
 ---
 
-## Implementation Phases
+## 建議的 SpecKit 展開項目
+
+### 1. **驗證與權限系統** (P1)
+- 用戶角色：管理員、老師、家長
+- 基於班級的內容訪問控制
+- 老師對所屬班級的編輯權限
+- 家長與多個孩子的關聯
+
+### 2. **富文本內容編輯器** (P1)
+- 所見即所得編輯器整合
+- 圖片上傳與優化
+- YouTube 影片嵌入
+- 音訊檔案支援
+- 文章排序/重新排序
+
+### 3. **個人化郵件系統** (P1)
+- 基於班級的內容區塊
+- 多子女郵件合併
+- 基於模板的郵件生成
+- 每位收件人的唯一追蹤 URL
+
+### 4. **分析與報表** (P2)
+- 郵件開信率追蹤
+- 連結點擊率追蹤
+- 視覺化儀表板
+- 匯出報表（CSV/Excel）
+
+### 5. **模板管理** (P2)
+- 週報模板系統
+- 複製/修改工作流
+- 固定內容區域（「每週一句善話」）
+
+---
+
+## 實作階段規劃
 
 ```
-Phase 1 (MVP): Auth + Editor + Basic Permissions
-└─> 6-8 weeks
+階段 1（MVP）：驗證 + 編輯器 + 基本權限
+└─> 6-8 週
 
-Phase 2: Email Integration + Personalization
-└─> 4-6 weeks
+階段 2：郵件整合 + 個人化
+└─> 4-6 週
 
-Phase 3: Rich Media + Advanced Editing
-└─> 3-4 weeks
+階段 3：富媒體 + 進階編輯
+└─> 3-4 週
 
-Phase 4: Analytics & Reporting
-└─> 3-4 weeks
+階段 4：分析與報表
+└─> 3-4 週
 
-Phase 5: Optimization & Polish
-└─> Ongoing
-```
-
----
-
-## Key Technical Decisions
-
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| Editor Type | WYSIWYG (TipTap) | Teachers need visual editing |
-| Email Service | SendGrid/Mailchimp | Built-in tracking & templates |
-| Database | PostgreSQL | Complex relational data |
-| Auth | Firebase/Auth0 | Quick integration |
-| Media Storage | Cloudinary/S3 | CDN + optimization |
-
----
-
-## Data Model Highlights
-
-```
-User (Admin/Teacher/Parent)
-  ↓
-Child (Student)
-  ↓
-Class (小熊班, 小兔班...)
-  ↓
-Newsletter (Weekly)
-  ↓
-Article (with permissions)
-  ↓
-MediaAttachment (images/audio/video)
+階段 5：優化與潤飾
+└─> 持續進行
 ```
 
 ---
 
-## Next Steps
+## 關鍵技術決策
 
-1. **Choose Priority Features**: Which P1 features to build first?
-2. **Expand with SpecKit**: Use `/speckit.specify` for each major feature
-3. **Design Phase**: Use `/speckit.plan` for technical architecture
-4. **Implementation**: Use `/speckit.tasks` + `/speckit.implement`
+| 決策項目 | 選擇方案 | 理由 |
+|---------|---------|------|
+| 編輯器類型 | 所見即所得（TipTap） | 老師需要視覺化編輯 |
+| 郵件服務 | SendGrid/Mailchimp | 內建追蹤與模板功能 |
+| 資料庫 | PostgreSQL | 複雜的關聯式資料 |
+| 身份驗證 | Firebase/Auth0 | 快速整合 |
+| 媒體儲存 | Cloudinary/S3 | CDN + 優化 |
 
 ---
 
-**Full Detailed Spec**: See `specs/email-newsletter-cms-future-plans.md` for complete user stories and acceptance criteria.
+## 資料模型重點
+
+```
+User（用戶：管理員/老師/家長）
+  ↓
+Child（學生）
+  ↓
+Class（班級：小熊班、小兔班...）
+  ↓
+Newsletter（週報）
+  ↓
+Article（文章含權限控制）
+  ↓
+MediaAttachment（媒體附件：圖片/音訊/影片）
+```
+
+---
+
+## 下一步行動
+
+1. **選擇優先功能**：決定要先開發哪些 P1 功能？
+2. **使用 SpecKit 展開**：對每個主要功能使用 `/speckit.specify`
+3. **設計階段**：使用 `/speckit.plan` 進行技術架構設計
+4. **實作階段**：使用 `/speckit.tasks` + `/speckit.implement`
+
+---
+
+**完整詳細規格**：請參閱 `specs/email-newsletter-cms-future-plans.md` 以了解完整的 User Stories 和驗收標準。
