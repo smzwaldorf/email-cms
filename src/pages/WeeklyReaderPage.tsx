@@ -158,8 +158,8 @@ export function WeeklyReaderPage() {
         label="上一篇"
       />
 
-      {/* 文章列表面板 */}
-      <div className="w-72 bg-waldorf-cream-50 border-r border-waldorf-cream-200 flex flex-col">
+      {/* 文章列表面板 - 在行動裝置上隱藏 */}
+      <div className="hidden md:flex w-72 bg-waldorf-cream-50 border-r border-waldorf-cream-200 flex-col">
         <ArticleListView
           weekNumber={weekNumber}
           articles={articles}
