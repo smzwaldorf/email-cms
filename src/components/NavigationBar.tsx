@@ -21,7 +21,7 @@ export function NavigationBar({
   const canGoNext = navigationState.currentArticleOrder < navigationState.totalArticlesInWeek
 
   return (
-    <div className="border-t border-gray-200 bg-white px-6 py-4">
+    <div className="border-t border-waldorf-cream-200 bg-waldorf-cream-50 px-6 py-4">
       <div className="flex items-center justify-between">
         {/* 上一篇按鈕 */}
         <button
@@ -31,8 +31,8 @@ export function NavigationBar({
             px-4 py-2 rounded-lg font-medium transition-colors
             ${
               canGoPrevious
-                ? 'bg-gray-100 text-gray-900 hover:bg-gray-200 active:bg-gray-300'
-                : 'bg-gray-50 text-gray-400 cursor-not-allowed'
+                ? 'bg-waldorf-peach-100 text-waldorf-clay-800 hover:bg-waldorf-peach-200 active:bg-waldorf-peach-300'
+                : 'bg-waldorf-cream-100 text-waldorf-clay-400 cursor-not-allowed'
             }
           `}
         >
@@ -41,7 +41,7 @@ export function NavigationBar({
 
         {/* 位置指示 */}
         <div className="text-center">
-          <p className="text-sm font-medium text-gray-900">
+          <p className="text-sm font-medium text-waldorf-clay-800">
             {getPositionText(navigationState)}
           </p>
           <div className="mt-2 flex gap-1 justify-center">
@@ -53,8 +53,8 @@ export function NavigationBar({
                     h-2 w-2 rounded-full transition-colors
                     ${
                       index + 1 === navigationState.currentArticleOrder
-                        ? 'bg-blue-500'
-                        : 'bg-gray-300'
+                        ? 'bg-waldorf-sage-500'
+                        : 'bg-waldorf-cream-300'
                     }
                   `}
                 />
@@ -71,8 +71,8 @@ export function NavigationBar({
             px-4 py-2 rounded-lg font-medium transition-colors
             ${
               canGoNext
-                ? 'bg-gray-100 text-gray-900 hover:bg-gray-200 active:bg-gray-300'
-                : 'bg-gray-50 text-gray-400 cursor-not-allowed'
+                ? 'bg-waldorf-peach-100 text-waldorf-clay-800 hover:bg-waldorf-peach-200 active:bg-waldorf-peach-300'
+                : 'bg-waldorf-cream-100 text-waldorf-clay-400 cursor-not-allowed'
             }
           `}
         >

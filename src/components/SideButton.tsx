@@ -32,8 +32,8 @@ export function SideButton({
         }
         ${
           disabled
-            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-            : 'bg-blue-500 text-white hover:bg-blue-600 shadow-lg'
+            ? 'bg-waldorf-cream-200 text-waldorf-clay-400 cursor-not-allowed'
+            : 'bg-waldorf-sage-500 text-white hover:bg-waldorf-sage-600 shadow-lg'
         }
       `}
       title={label}
