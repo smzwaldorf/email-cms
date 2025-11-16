@@ -242,27 +242,27 @@ description: "電子報閱讀 CMS Web App 工作項目清單"
 
 ### 成功標準測量（關鍵任務）
 
-- [ ] T074 測量文章切換時間：建立性能基準測試，記錄 SC-001（< 2 秒）和 US3（< 1 秒）的實際數值 tests/performance/baseline.test.ts
-- [ ] T075 建立錯誤監控：實現錯誤日誌和報告服務，以驗證 SC-007（99.5% 直接連結成功率） src/services/errorReporting.ts
-- [ ] T076 設置使用者反饋收集：集成簡單的匿名使用者滿意度調查（驗證 SC-003 - 85% 導航清晰度滿意度） src/services/analytics.ts
-- [ ] T077 文章重新排列效能測試：驗證 SC-004（編輯者能在 5 分鐘內重新排列 50 篇文章） tests/performance/editorPerformance.test.ts
+- [x] T074 測量文章切換時間：建立性能基準測試，記錄 SC-001（< 2 秒）和 US3（< 1 秒）的實際數值 tests/performance/baseline.test.ts
+- [x] T075 建立錯誤監控：實現錯誤日誌和報告服務，以驗證 SC-007（99.5% 直接連結成功率） src/services/errorReporting.ts
+- [x] T076 設置使用者反饋收集：集成簡單的匿名使用者滿意度調查（驗證 SC-003 - 85% 導航清晰度滿意度） src/services/analytics.ts
+- [x] T077 文章重新排列效能測試：驗證 SC-004（編輯者能在 5 分鐘內重新排列 50 篇文章） tests/performance/editorPerformance.test.ts
 
 ### 代碼優化與重構
 
-- [ ] T078 [P] 程式碼重構和組件提取（移除重複代碼）
-- [ ] T079 [P] 效能優化：圖片懶加載和代碼分割 src/pages/*.tsx
-- [ ] T080 [P] 無障礙性檢查（ARIA 標籤、鍵盤導航） src/components/*.tsx
-- [ ] T081 [P] 響應式設計測試（行動、平板、桌面） src/styles/globals.css
-- [ ] T082 增加整合測試覆蓋率至 80%+ tests/integration/
-- [ ] T083 [P] SEO 優化（Meta 標籤、Open Graph）src/pages/ReaderPage.tsx
-- [ ] T084 [P] 錯誤日誌記錄集成（利用 T075） src/services/errorReporting.ts
+- [x] T078 [P] 程式碼重構和組件提取（移除重複代碼）
+- [x] T079 [P] 效能優化：圖片懶加載和代碼分割 src/pages/*.tsx
+- [x] T080 [P] 無障礙性檢查（ARIA 標籤、鍵盤導航） src/components/*.tsx
+- [x] T081 [P] 響應式設計測試（行動、平板、桌面） src/styles/globals.css
+- [x] T082 增加整合測試覆蓋率至 80%+ tests/integration/
+- [x] T083 [P] SEO 優化（Meta 標籤、Open Graph）src/pages/ReaderPage.tsx
+- [x] T084 [P] 錯誤日誌記錄集成（利用 T075） src/services/errorReporting.ts
 
 ### 文檔與驗證
 
-- [ ] T085 文檔更新：README.md, CONTRIBUTING.md, API.md
+- [x] T085 文檔更新：README.md, CONTRIBUTING.md, API.md
 - [ ] T086 運行 quickstart.md 驗證（新開發者能快速上手）
-- [ ] T087 最終程式碼審查和品質檢查（測試覆蓋 80%+, Linting 無錯誤）
-- [ ] T088 成功標準驗證報告：驗證所有 SC-001 至 SC-007 是否達成
+- [x] T087 最終程式碼審查和品質檢查（測試覆蓋 80%+, Linting 無錯誤）
+- [x] T088 成功標準驗證報告：驗證所有 SC-001 至 SC-007 是否達成
 
 ---
 
