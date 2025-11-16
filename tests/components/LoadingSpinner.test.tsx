@@ -71,6 +71,7 @@ describe('LoadingSpinner', () => {
     const { container } = render(<LoadingSpinner />)
 
     const svg = container.querySelector('svg')
-    expect(svg?.className).toContain('text-blue-500')
+    const className = svg?.className.baseVal || svg?.className || ''
+    expect(className.toString()).toContain('text-blue-500')
   })
 })

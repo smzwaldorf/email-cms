@@ -89,7 +89,8 @@ describe('ArticleCard', () => {
     )
 
     const card = container.firstChild
-    expect(card).toHaveClass('bg-blue-50')
+    expect(card).toHaveClass('bg-waldorf-sage-50')
+    expect(card).toHaveClass('border-waldorf-sage-500')
   })
 
   it('should have default style when isSelected is false', () => {
@@ -103,6 +104,7 @@ describe('ArticleCard', () => {
     )
 
     const card = container.firstChild
-    expect(card).toHaveClass('bg-white')
+    expect(card).toHaveClass('bg-waldorf-cream-50')
+    expect(card).toHaveClass('border-waldorf-cream-200')
   })
 })

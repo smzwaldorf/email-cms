@@ -72,7 +72,7 @@ describe('ErrorPage', () => {
 
     const homeButton = screen.getByText('返回首頁')
     expect(homeButton).toBeInTheDocument()
-    expect(homeButton).toHaveAttribute('href')
+    expect(homeButton.tagName).toBe('BUTTON')
   })
 
   it('應該有返回上一頁按鈕', () => {
