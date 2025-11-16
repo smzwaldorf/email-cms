@@ -4,9 +4,6 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
-import { BrowserRouter } from 'react-router-dom'
-import { EditorPage } from '@/pages/EditorPage'
 import * as mockApi from '@/services/mockApi'
 
 // Mock the API

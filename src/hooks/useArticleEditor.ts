@@ -4,7 +4,6 @@
  */
 
 import { useState, useCallback } from 'react'
-import { Article } from '@/types'
 
 interface UseArticleEditorState {
   editingArticleId: string | null

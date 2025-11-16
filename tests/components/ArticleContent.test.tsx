@@ -4,8 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
-import { memo } from 'react'
+import { render } from '@testing-library/react'
 import { ArticleContent } from '@/components/ArticleContent'
 
 // Mock useMarkdownConverter hook
@@ -121,7 +120,7 @@ describe('ArticleContent Component', () => {
 
   describe('Styling and Layout', () => {
     it('should have article structure', () => {
-      const { container } = render(<ArticleContent {...defaultProps} />)
+      render(<ArticleContent {...defaultProps} />)
 
       const article = container.querySelector('article')
       expect(article).toBeInTheDocument()
@@ -130,7 +129,7 @@ describe('ArticleContent Component', () => {
     })
 
     it('should have header section with border', () => {
-      const { container } = render(<ArticleContent {...defaultProps} />)
+      render(<ArticleContent {...defaultProps} />)
 
       const header = container.querySelector('div.border-b')
       expect(header).toBeInTheDocument()
@@ -138,14 +137,14 @@ describe('ArticleContent Component', () => {
     })
 
     it('should have scrollable content area', () => {
-      const { container } = render(<ArticleContent {...defaultProps} />)
+      render(<ArticleContent {...defaultProps} />)
 
       const contentArea = container.querySelector('div.overflow-y-auto')
       expect(contentArea).toBeInTheDocument()
     })
 
     it('should apply prose styling to content', () => {
-      const { container } = render(<ArticleContent {...defaultProps} />)
+      render(<ArticleContent {...defaultProps} />)
 
       const proseDiv = container.querySelector('div.prose')
       expect(proseDiv).toBeInTheDocument()
@@ -207,28 +206,28 @@ describe('ArticleContent Component', () => {
     })
 
     it('should render proper article tag for semantic markup', () => {
-      const { container } = render(<ArticleContent {...defaultProps} />)
+      render(<ArticleContent {...defaultProps} />)
 
       const article = container.querySelector('article')
       expect(article).toBeInTheDocument()
     })
 
     it('should have good text contrast with appropriate color classes', () => {
-      const { container } = render(<ArticleContent {...defaultProps} />)
+      render(<ArticleContent {...defaultProps} />)
 
       const title = screen.getByRole('heading', { level: 1 })
       expect(title?.className).toContain('text-waldorf-clay-800')
     })
 
     it('should have readable font sizes', () => {
-      const { container } = render(<ArticleContent {...defaultProps} />)
+      render(<ArticleContent {...defaultProps} />)
 
       const title = screen.getByRole('heading', { level: 1 })
       expect(title?.className).toContain('text-2xl')
     })
 
     it('should have proper line height for readability', () => {
-      const { container } = render(<ArticleContent {...defaultProps} />)
+      render(<ArticleContent {...defaultProps} />)
 
       const proseDiv = container.querySelector('div.prose')
       expect(proseDiv?.className).toContain('leading-relaxed')

@@ -4,8 +4,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { ArticleListView } from '@/components/ArticleListView'
 import { Article } from '@/types'
 
@@ -208,7 +207,7 @@ describe('ArticleList Component', () => {
         id: `article-${i}`,
         title: `Article ${i + 1}`,
         order: i + 1,
-      })) as any
+      })) as Article[]
 
       const mockOnSelect = vi.fn()
       const startTime = performance.now()
