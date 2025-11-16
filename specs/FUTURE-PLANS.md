@@ -3,8 +3,7 @@
 **狀態**: ✅ 規劃完成 | 📋 準備實作
 **最後更新**: 2025-11-15
 
-> 📖 **詳細說明**：請參閱 [`FUTURE-PLANS-DETAILS.md`](./FUTURE-PLANS-DETAILS.md)
-> 📋 **完整 User Stories**：請參閱 [`email-newsletter-cms-future-plans.md`](./email-newsletter-cms-future-plans.md)
+> 📖 **詳細說明與 User Stories**：請參閱 [`FUTURE-PLANS-DETAILS.md`](./FUTURE-PLANS-DETAILS.md)
 
 ---
 
@@ -162,6 +161,5 @@
 
 | 文件 | 用途 |
 |------|------|
-| [`FUTURE-PLANS-DETAILS.md`](./FUTURE-PLANS-DETAILS.md) | 詳細技術說明與決策 |
-| [`email-newsletter-cms-future-plans.md`](./email-newsletter-cms-future-plans.md) | 完整 User Stories 與驗收標準 |
+| [`FUTURE-PLANS-DETAILS.md`](./FUTURE-PLANS-DETAILS.md) | 詳細技術說明、User Stories 與決策記錄 |
 | [`001-newsletter-viewer/spec.md`](./001-newsletter-viewer/spec.md) | 已實作的週報閱讀器規格 |
