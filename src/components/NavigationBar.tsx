@@ -3,8 +3,18 @@
  * 提供文章導航功能（前後切換）和位置指示
  *
  * 鍵盤快捷鍵支援 (T052):
- * - 左箭頭鍵：上一篇文章
- * - 右箭頭鍵：下一篇文章
+ * 上一篇文章:
+ *   - 左箭頭鍵 (ArrowLeft)
+ *   - p 鍵
+ *   - k 鍵
+ *
+ * 下一篇文章:
+ *   - 右箭頭鍵 (ArrowRight)
+ *   - n 鍵
+ *   - j 鍵
+ *
+ * 編輯當前文章:
+ *   - e 鍵
  */
 
 import { useEffect } from 'react'
@@ -15,12 +25,14 @@ interface NavigationBarProps {
   navigationState: NavigationState
   onPrevious: () => void
   onNext: () => void
+  onEdit?: () => void
 }
 
 export function NavigationBar({
   navigationState,
   onPrevious,
   onNext,
+  onEdit,
 }: NavigationBarProps) {
   const canGoPrevious = navigationState.currentArticleOrder > 1
   const canGoNext = navigationState.currentArticleOrder < navigationState.totalArticlesInWeek
@@ -28,15 +40,22 @@ export function NavigationBar({
   // Handle keyboard shortcuts (T052: 鍵盤快捷鍵支援)
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // 左箭頭鍵：上一篇文章
-      if (event.key === 'ArrowLeft' && canGoPrevious) {
+      const key = event.key.toLowerCase()
+
+      // 上一篇文章: ArrowLeft, p, k
+      if ((event.key === 'ArrowLeft' || key === 'p' || key === 'k') && canGoPrevious) {
         event.preventDefault()
         onPrevious()
       }
-      // 右箭頭鍵：下一篇文章
-      else if (event.key === 'ArrowRight' && canGoNext) {
+      // 下一篇文章: ArrowRight, n, j
+      else if ((event.key === 'ArrowRight' || key === 'n' || key === 'j') && canGoNext) {
         event.preventDefault()
         onNext()
+      }
+      // 編輯當前文章: e
+      else if (key === 'e' && onEdit) {
+        event.preventDefault()
+        onEdit()
       }
     }
 
@@ -45,7 +64,7 @@ export function NavigationBar({
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [canGoPrevious, canGoNext, onPrevious, onNext])
+  }, [canGoPrevious, canGoNext, onPrevious, onNext, onEdit])
 
   return (
     <div className="border-t border-waldorf-cream-200 bg-waldorf-cream-50 px-6 py-4">

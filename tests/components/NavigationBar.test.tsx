@@ -327,5 +327,210 @@ describe('NavigationBar', () => {
       expect(handleNext).toHaveBeenCalledTimes(2)
       expect(handlePrevious).toHaveBeenCalledTimes(1)
     })
+
+    // Extended keyboard shortcuts (vi-style navigation)
+    it('should navigate to previous article with p key', async () => {
+      const handlePrevious = vi.fn()
+      const handleNext = vi.fn()
+
+      render(
+        <NavigationBar
+          navigationState={mockNavState}
+          onPrevious={handlePrevious}
+          onNext={handleNext}
+        />
+      )
+
+      fireEvent.keyDown(window, { key: 'p' })
+
+      expect(handlePrevious).toHaveBeenCalledOnce()
+      expect(handleNext).not.toHaveBeenCalled()
+    })
+
+    it('should navigate to previous article with k key', async () => {
+      const handlePrevious = vi.fn()
+      const handleNext = vi.fn()
+
+      render(
+        <NavigationBar
+          navigationState={mockNavState}
+          onPrevious={handlePrevious}
+          onNext={handleNext}
+        />
+      )
+
+      fireEvent.keyDown(window, { key: 'k' })
+
+      expect(handlePrevious).toHaveBeenCalledOnce()
+      expect(handleNext).not.toHaveBeenCalled()
+    })
+
+    it('should navigate to next article with n key', async () => {
+      const handlePrevious = vi.fn()
+      const handleNext = vi.fn()
+
+      render(
+        <NavigationBar
+          navigationState={mockNavState}
+          onPrevious={handlePrevious}
+          onNext={handleNext}
+        />
+      )
+
+      fireEvent.keyDown(window, { key: 'n' })
+
+      expect(handleNext).toHaveBeenCalledOnce()
+      expect(handlePrevious).not.toHaveBeenCalled()
+    })
+
+    it('should navigate to next article with j key', async () => {
+      const handlePrevious = vi.fn()
+      const handleNext = vi.fn()
+
+      render(
+        <NavigationBar
+          navigationState={mockNavState}
+          onPrevious={handlePrevious}
+          onNext={handleNext}
+        />
+      )
+
+      fireEvent.keyDown(window, { key: 'j' })
+
+      expect(handleNext).toHaveBeenCalledOnce()
+      expect(handlePrevious).not.toHaveBeenCalled()
+    })
+
+    it('should call onEdit when e key is pressed', async () => {
+      const handlePrevious = vi.fn()
+      const handleNext = vi.fn()
+      const handleEdit = vi.fn()
+
+      render(
+        <NavigationBar
+          navigationState={mockNavState}
+          onPrevious={handlePrevious}
+          onNext={handleNext}
+          onEdit={handleEdit}
+        />
+      )
+
+      fireEvent.keyDown(window, { key: 'e' })
+
+      expect(handleEdit).toHaveBeenCalledOnce()
+      expect(handlePrevious).not.toHaveBeenCalled()
+      expect(handleNext).not.toHaveBeenCalled()
+    })
+
+    it('should not call onEdit when e key is pressed and onEdit is not provided', async () => {
+      const handlePrevious = vi.fn()
+      const handleNext = vi.fn()
+
+      render(
+        <NavigationBar
+          navigationState={mockNavState}
+          onPrevious={handlePrevious}
+          onNext={handleNext}
+        />
+      )
+
+      fireEvent.keyDown(window, { key: 'e' })
+
+      expect(handlePrevious).not.toHaveBeenCalled()
+      expect(handleNext).not.toHaveBeenCalled()
+    })
+
+    it('should prevent default for p key navigation', async () => {
+      const handlePrevious = vi.fn()
+      const handleNext = vi.fn()
+
+      render(
+        <NavigationBar
+          navigationState={mockNavState}
+          onPrevious={handlePrevious}
+          onNext={handleNext}
+        />
+      )
+
+      const event = new KeyboardEvent('keydown', { key: 'p' })
+      const preventDefaultSpy = vi.spyOn(event, 'preventDefault')
+
+      window.dispatchEvent(event)
+
+      expect(preventDefaultSpy).toHaveBeenCalled()
+    })
+
+    it('should prevent default for e key (edit)', async () => {
+      const handlePrevious = vi.fn()
+      const handleNext = vi.fn()
+      const handleEdit = vi.fn()
+
+      render(
+        <NavigationBar
+          navigationState={mockNavState}
+          onPrevious={handlePrevious}
+          onNext={handleNext}
+          onEdit={handleEdit}
+        />
+      )
+
+      const event = new KeyboardEvent('keydown', { key: 'e' })
+      const preventDefaultSpy = vi.spyOn(event, 'preventDefault')
+
+      window.dispatchEvent(event)
+
+      expect(preventDefaultSpy).toHaveBeenCalled()
+    })
+
+    it('should support case-insensitive keyboard shortcuts', async () => {
+      const handlePrevious = vi.fn()
+      const handleNext = vi.fn()
+
+      render(
+        <NavigationBar
+          navigationState={mockNavState}
+          onPrevious={handlePrevious}
+          onNext={handleNext}
+        />
+      )
+
+      // Test uppercase P
+      fireEvent.keyDown(window, { key: 'P' })
+      expect(handlePrevious).toHaveBeenCalledOnce()
+
+      handlePrevious.mockClear()
+
+      // Test uppercase N
+      fireEvent.keyDown(window, { key: 'N' })
+      expect(handleNext).toHaveBeenCalledOnce()
+    })
+
+    it('should handle mixed keyboard shortcuts', async () => {
+      const handlePrevious = vi.fn()
+      const handleNext = vi.fn()
+
+      const middleArticleState: NavigationState = {
+        ...mockNavState,
+        currentArticleOrder: 3,
+      }
+
+      render(
+        <NavigationBar
+          navigationState={middleArticleState}
+          onPrevious={handlePrevious}
+          onNext={handleNext}
+        />
+      )
+
+      // Use different shortcuts
+      fireEvent.keyDown(window, { key: 'ArrowRight' }) // Next via arrow
+      fireEvent.keyDown(window, { key: 'n' }) // Next via n
+      fireEvent.keyDown(window, { key: 'j' }) // Next via j
+      fireEvent.keyDown(window, { key: 'p' }) // Prev via p
+      fireEvent.keyDown(window, { key: 'ArrowLeft' }) // Prev via arrow
+
+      expect(handleNext).toHaveBeenCalledTimes(3)
+      expect(handlePrevious).toHaveBeenCalledTimes(2)
+    })
   })
 })
