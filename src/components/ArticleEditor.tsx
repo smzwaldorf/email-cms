@@ -1,9 +1,12 @@
 /**
  * 組件 - 文章編輯器
- * 提供文章編輯功能的表單介面
+ * 提供文章編輯功能的表單介面，使用富文本編輯器
  */
 
 import { useState, useEffect } from 'react'
+import MDEditor from '@uiw/react-md-editor'
+import '@uiw/react-md-editor/markdown-editor.css'
+import '@uiw/react-markdown-preview/markdown.css'
 import { Article } from '@/types'
 
 interface ArticleEditorProps {
@@ -58,6 +61,13 @@ export function ArticleEditor({
     setFormData((prev) => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
+    }))
+  }
+
+  const handleContentChange = (value?: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      content: value || '',
     }))
   }
 
@@ -139,24 +149,30 @@ export function ArticleEditor({
             />
           </div>
 
-          {/* 內容 */}
+          {/* 內容 - 富文本編輯器 */}
           <div>
             <label
-              htmlFor="content"
-              className="block text-sm font-medium text-waldorf-clay-700 mb-1"
+              className="block text-sm font-medium text-waldorf-clay-700 mb-2"
             >
-              內容（Markdown 格式）<span className="text-waldorf-rose-500">*</span>
+              內容 <span className="text-waldorf-rose-500">*</span>
             </label>
-            <textarea
-              id="content"
-              name="content"
-              value={formData.content}
-              onChange={handleChange}
-              required
-              rows={20}
-              className="w-full px-3 py-2 border border-waldorf-cream-300 rounded-md focus:outline-none focus:ring-2 focus:ring-waldorf-sage-500 focus:border-transparent font-mono text-sm resize-y"
-              placeholder="輸入 Markdown 格式的文章內容"
-            />
+            <div className="border border-waldorf-cream-300 rounded-md overflow-hidden" data-color-mode="light">
+              <MDEditor
+                value={formData.content}
+                onChange={handleContentChange}
+                height={500}
+                preview="live"
+                hideToolbar={false}
+                enableScroll={true}
+                visibleDragbar={true}
+                textareaProps={{
+                  placeholder: '輸入文章內容，支援 Markdown 格式...',
+                }}
+              />
+            </div>
+            <p className="text-xs text-waldorf-clay-500 mt-1">
+              使用富文本編輯器編輯內容，內容將以 Markdown 格式儲存
+            </p>
           </div>
 
           {/* 發布狀態 */}
