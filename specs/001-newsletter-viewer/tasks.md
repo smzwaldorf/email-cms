@@ -37,14 +37,14 @@ description: "電子報閱讀 CMS Web App 工作項目清單"
 
 **目的**: 專案初始化和基本結構建立
 
-- [ ] T001 根據實現計畫建立專案結構（src/pages, src/components, src/services 等）
-- [ ] T002 初始化 Vite + React 18 + TypeScript 項目及其所有依賴
-- [ ] T003 [P] 配置 Tailwind CSS v3 和 PostCSS
-- [ ] T004 [P] 配置 Vitest 和 React Testing Library
-- [ ] T005 [P] 設置 ESLint 和 Prettier 代碼風格工具
-- [ ] T006 配置 React Router v6 基本路由結構在 src/App.tsx
-- [ ] T007 [P] 建立 TypeScript 類型定義檔案 src/types/index.ts（Article, NewsletterWeek, NavigationState）
-- [ ] T008 [P] 建立工具函式檔案 src/utils/urlUtils.ts 和 src/utils/formatters.ts
+- [x] T001 根據實現計畫建立專案結構（src/pages, src/components, src/services 等）
+- [x] T002 初始化 Vite + React 18 + TypeScript 項目及其所有依賴
+- [x] T003 [P] 配置 Tailwind CSS v3 和 PostCSS
+- [x] T004 [P] 配置 Vitest 和 React Testing Library
+- [x] T005 [P] 設置 ESLint 和 Prettier 代碼風格工具
+- [x] T006 配置 React Router v6 基本路由結構在 src/App.tsx
+- [x] T007 [P] 建立 TypeScript 類型定義檔案 src/types/index.ts（Article, NewsletterWeek, NavigationState）
+- [x] T008 [P] 建立工具函式檔案 src/utils/urlUtils.ts 和 src/utils/formatters.ts
 
 **檢查點**: 專案架構完成，可開始 Phase 2
 
@@ -56,14 +56,15 @@ description: "電子報閱讀 CMS Web App 工作項目清單"
 
 **⚠️ 關鍵**: 此 Phase 必須完成，使用者故事才能開始
 
-- [ ] T009 [P] 建立空 Mock API 服務檔案 src/services/newsApi.ts（用於測試）
-- [ ] T010 [P] 建立 Markdown 轉 HTML 服務 src/services/markdownService.ts（使用 remark + rehype）
-- [ ] T011 建立 React Context 設置檔案 src/context/NewsletterContext.tsx（全局狀態管理容器）
-- [ ] T012 [P] 建立共用 UI 元件：LoadingSpinner.tsx 和 ErrorBoundary.tsx 在 src/components/
-- [ ] T013 [P] 建立 useNewsletter 自訂 hook 在 src/hooks/useNewsletter.ts（資料管理）
-- [ ] T014 [P] 建立 useNavigation 自訂 hook 在 src/hooks/useNavigation.ts（導航狀態管理）
-- [ ] T015 建立 API 調用工具和 Mock 資料生成器 src/services/mockData.ts
-- [ ] T016 [P] 配置 Vitest 全局設置和測試工具函式 vitest.config.ts 和 tests/setup.ts
+- [x] T009 [P] 建立空 Mock API 服務檔案 src/services/newsApi.ts（用於測試）
+- [x] T010 [P] 建立 Markdown 轉 HTML 服務 src/services/markdownService.ts（使用 remark + rehype）
+- [x] T011 建立 React Context 設置檔案 src/context/NewsletterContext.tsx（全局狀態管理容器）
+- [x] T012 [P] 建立共用 UI 元件：LoadingSpinner.tsx 和 ErrorBoundary.tsx 在 src/components/
+- [x] T013 [P] 建立 useNewsletter 自訂 hook 在 src/hooks/useNewsletter.ts（資料管理）
+- [x] T014 [P] 建立 useNavigation 自訂 hook 在 src/hooks/useNavigation.ts（導航狀態管理）
+- [x] T015 建立 API 調用工具和 Mock 資料生成器 src/services/mockData.ts
+- [x] T016 [P] 配置 Vitest 全局設置和測試工具函式 vitest.config.ts 和 tests/setup.ts
+- [x] T017 驗證資料模型：建立或更新 data-model.md，確保 Article, NewsletterWeek, NavigationState 類型定義與 spec.md 對應
 
 **檢查點**: 基礎設施就緒，可開始使用者故事實現
 
@@ -84,28 +85,28 @@ description: "電子報閱讀 CMS Web App 工作項目清單"
 
 > **注意**: 先寫測試，確保測試失敗，再實現功能
 
-- [ ] T017 [P] [US1] NavigationBar 元件的單元測試 tests/components/NavigationBar.test.tsx
-- [ ] T018 [P] [US1] ArticleContent 元件的單元測試 tests/components/ArticleContent.test.tsx
-- [ ] T019 [P] [US1] PositionIndicator 元件的單元測試 tests/components/PositionIndicator.test.tsx
-- [ ] T020 [US1] useNavigation hook 的單元測試 tests/hooks/useNavigation.test.ts
-- [ ] T021 [US1] 使用者故事 1 的整合測試（選擇週份 → 顯示第一篇 → 導航） tests/integration/userStory1.test.tsx
+- [x] T018 [P] [US1] NavigationBar 元件的單元測試 tests/components/NavigationBar.test.tsx
+- [x] T019 [P] [US1] ArticleContent 元件的單元測試 tests/components/ArticleContent.test.tsx
+- [x] T020 [P] [US1] PositionIndicator 元件的單元測試 tests/components/PositionIndicator.test.tsx
+- [x] T021 [US1] useNavigation hook 的單元測試 tests/hooks/useNavigation.test.ts
+- [x] T022 [US1] 使用者故事 1 的整合測試（選擇週份 → 顯示第一篇 → 導航） tests/integration/userStory1.test.tsx
 
 ### US1 的實現
 
-- [ ] T022 [P] [US1] 建立 ArticleContent.tsx 元件在 src/components/（顯示單篇文章內容）
-- [ ] T023 [P] [US1] 建立 NavigationBar.tsx 元件在 src/components/（頂部工具列，上一篇/下一篇按鈕）
-- [ ] T024 [P] [US1] 建立 PositionIndicator.tsx 元件在 src/components/（位置指示器）
-- [ ] T025 [P] [US1] 建立 SideButton.tsx 元件在 src/components/（邊緣導航按鈕 - 左右）
-- [ ] T026 [P] [US1] 建立 ArticleList.tsx 元件在 src/components/（週內文章清單側邊欄）
-- [ ] T027 [US1] 實現 navigationService.ts 中的導航邏輯（上一篇、下一篇、邊界檢查） src/services/navigationService.ts
-- [ ] T028 [US1] 在 useNavigation hook 中實現導航狀態管理 src/hooks/useNavigation.ts（處理 prev/next/boundary）
-- [ ] T029 [P] [US1] 在 useArticleContent hook 中實現文章內容加載和 Markdown 渲染 src/hooks/useArticleContent.ts
-- [ ] T029a [P] [US1] 在 useArticleContent hook 中新增 loading 狀態管理（返回 {content, loading, error}） src/hooks/useArticleContent.ts
-- [ ] T030 [US1] 建立 ReaderPage.tsx 頁面元件整合所有 US1 元件 src/pages/ReaderPage.tsx
-- [ ] T031 [US1] 配置 React Router 路由 `/newsletter/:weekNumber` 和 `/` 指向 ReaderPage src/App.tsx
-- [ ] T032 [US1] 在 loadingSpinner 顯示時隱藏舊文章內容（per 澄清 Q3）src/components/ArticleContent.tsx
-- [ ] T033 [US1] 新增文章邊界檢查和錯誤邊界處理 src/components/ErrorBoundary.tsx 和 ReaderPage.tsx
-- [ ] T033a [US1] 實現刪除文章偵測：當文章在編輯中被刪除時，讀者訪問該連結應觸發 ErrorBoundary 並顯示「文章已移除」訊息 src/hooks/useArticleContent.ts 和 src/components/ErrorPage.tsx
+- [x] T023 [P] [US1] 建立 ArticleContent.tsx 元件在 src/components/（顯示單篇文章內容）
+- [x] T024 [P] [US1] 建立 NavigationBar.tsx 元件在 src/components/（頂部工具列，上一篇/下一篇按鈕）
+- [x] T025 [P] [US1] 建立 PositionIndicator.tsx 元件在 src/components/（位置指示器）
+- [x] T026 [P] [US1] 建立 SideButton.tsx 元件在 src/components/（邊緣導航按鈕 - 左右）
+- [x] T027 [P] [US1] 建立 ArticleList.tsx 元件在 src/components/（週內文章清單側邊欄）
+- [x] T028 [US1] 實現 navigationService.ts 中的導航邏輯（上一篇、下一篇、邊界檢查） src/services/navigationService.ts
+- [x] T029 [US1] 在 useNavigation hook 中實現導航狀態管理 src/hooks/useNavigation.ts（處理 prev/next/boundary）
+- [x] T030 [P] [US1] 在 useArticleContent hook 中實現文章內容加載和 Markdown 渲染 src/hooks/useArticleContent.ts
+- [x] T030a [P] [US1] 在 useArticleContent hook 中新增 loading 狀態管理（返回 {content, loading, error}） src/hooks/useArticleContent.ts
+- [x] T031 [US1] 建立 ReaderPage.tsx 頁面元件整合所有 US1 元件 src/pages/ReaderPage.tsx
+- [x] T032 [US1] 配置 React Router 路由 `/newsletter/:weekNumber` 和 `/` 指向 ReaderPage src/App.tsx
+- [x] T033 [US1] 在 loadingSpinner 顯示時隱藏舊文章內容（per 澄清 Q3）src/components/ArticleContent.tsx
+- [x] T034 [US1] 新增文章邊界檢查和錯誤邊界處理 src/components/ErrorBoundary.tsx 和 ReaderPage.tsx
+- [x] T034a [US1] 實現刪除文章偵測：當文章在編輯中被刪除時，讀者訪問該連結應觸發 ErrorBoundary 並顯示「文章已移除」訊息 src/hooks/useArticleContent.ts 和 src/components/ErrorPage.tsx
 
 **檢查點**: 使用者故事 1 已完全實現且獨立可測試
 - ✅ 讀者可查看週報清單
@@ -132,21 +133,21 @@ description: "電子報閱讀 CMS Web App 工作項目清單"
 
 ### US2 的單元和元件測試
 
-- [ ] T034 [P] [US2] ErrorPage 元件的單元測試 tests/components/ErrorPage.test.tsx
-- [ ] T035 [US2] URL 參數解析的單元測試（weekNumber, articleId） tests/utils/urlUtils.test.ts
-- [ ] T036 [US2] 使用者故事 2 的整合測試（深度連結訪問） tests/integration/userStory2.test.tsx
-- [ ] T037 [US2] 錯誤場景整合測試（文章不存在、周份不存在） tests/integration/errorScenarios.test.tsx
+- [x] T035 [P] [US2] ErrorPage 元件的單元測試 tests/components/ErrorPage.test.tsx
+- [x] T036 [US2] URL 參數解析的單元測試（weekNumber, articleId） tests/utils/urlUtils.test.ts
+- [x] T037 [US2] 使用者故事 2 的整合測試（深度連結訪問） tests/integration/userStory2.test.tsx
+- [x] T038 [US2] 錯誤場景整合測試（文章不存在、周份不存在） tests/integration/errorScenarios.test.tsx
 
 ### US2 的實現
 
-- [ ] T038 [P] [US2] 建立 ErrorPage.tsx 頁面元件 src/pages/ErrorPage.tsx（404, 文章已刪除等錯誤）
-- [ ] T039 [US2] 在 urlUtils.ts 中實現 URL 參數解析函式（weekNumber, articleId） src/utils/urlUtils.ts
-- [ ] T040 [US2] 在 useArticleContent hook 中實現深度連結初始化邏輯 src/hooks/useArticleContent.ts
-- [ ] T041 [US2] 在 useNavigation hook 中實現位置計算邏輯（根據 articleId 計算 order） src/hooks/useNavigation.ts
-- [ ] T042 [P] [US2] 在 ReaderPage 中實現深度連結路由支援 src/pages/ReaderPage.tsx
-- [ ] T043 [US2] 在 NewsletterContext 中新增錯誤狀態管理 src/context/NewsletterContext.tsx
-- [ ] T044 [US2] 配置 React Router 深度連結路由 `/newsletter/:weekNumber/article/:articleId` src/App.tsx
-- [ ] T045 [US2] 實現文章 URL 生成函式（在 ArticleList 和導航中使用） src/utils/urlUtils.ts
+- [x] T039 [P] [US2] 建立 ErrorPage.tsx 頁面元件 src/pages/ErrorPage.tsx（404, 文章已刪除等錯誤）
+- [x] T040 [US2] 在 urlUtils.ts 中實現 URL 參數解析函式（weekNumber, articleId） src/utils/urlUtils.ts
+- [x] T041 [US2] 在 useArticleContent hook 中實現深度連結初始化邏輯 src/hooks/useArticleContent.ts
+- [x] T042 [US2] 在 useNavigation hook 中實現位置計算邏輯（根據 articleId 計算 order） src/hooks/useNavigation.ts
+- [x] T043 [P] [US2] 在 ReaderPage 中實現深度連結路由支援 src/pages/ReaderPage.tsx
+- [x] T044 [US2] 在 NewsletterContext 中新增錯誤狀態管理 src/context/NewsletterContext.tsx
+- [x] T045 [US2] 配置 React Router 深度連結路由 `/newsletter/:weekNumber/article/:articleId` src/App.tsx
+- [x] T046 [US2] 實現文章 URL 生成函式（在 ArticleList 和導航中使用） src/utils/urlUtils.ts
 
 **檢查點**: 使用者故事 2 已完全實現
 - ✅ 深度連結正確導航至指定文章
@@ -169,20 +170,20 @@ description: "電子報閱讀 CMS Web App 工作項目清單"
 
 ### US3 的單元和元件測試
 
-- [ ] T046 [P] [US3] SideButton 邊緣按鈕的單元測試 tests/components/SideButton.test.tsx
-- [ ] T047 [P] [US3] ArticleList 的單元測試 tests/components/ArticleList.test.tsx
-- [ ] T048 [US3] 文章切換效能測試（驗證 < 1 秒） tests/integration/performanceTest.test.tsx
-- [ ] T049 [US3] 快速導航整合測試 tests/integration/userStory3.test.tsx
+- [ ] T047 [P] [US3] SideButton 邊緣按鈕的單元測試 tests/components/SideButton.test.tsx
+- [ ] T048 [P] [US3] ArticleList 的單元測試 tests/components/ArticleList.test.tsx
+- [ ] T049 [US3] 文章切換效能測試（驗證 < 1 秒） tests/integration/performanceTest.test.tsx
+- [ ] T050 [US3] 快速導航整合測試 tests/integration/userStory3.test.tsx
 
 ### US3 的實現
 
-- [ ] T050 [P] [US3] 優化 ArticleContent 元件的渲染效能 src/components/ArticleContent.tsx（memo 或 useMemo）
-- [ ] T051 [P] [US3] 在 NavigationBar 中新增鍵盤快捷鍵支援（左右箭頭鍵） src/components/NavigationBar.tsx
-- [ ] T052 [US3] 在 ArticleList 中實現點擊項目快速切換 src/components/ArticleList.tsx
-- [ ] T053 [US3] 在 SideButton 中實現快速點擊響應和視覺反饋 src/components/SideButton.tsx
-- [ ] T054 [US3] 優化 useNavigation hook 的導航性能 src/hooks/useNavigation.ts（避免不必要的渲染）
-- [ ] T055 [US3] 在 LoadingSpinner 中優化動畫性能 src/components/LoadingSpinner.tsx
-- [ ] T056 [US3] 測量和記錄文章切換的實際時間以達到 < 1 秒目標
+- [ ] T051 [P] [US3] 優化 ArticleContent 元件的渲染效能 src/components/ArticleContent.tsx（memo 或 useMemo）
+- [ ] T052 [P] [US3] 在 NavigationBar 中新增鍵盤快捷鍵支援（左右箭頭鍵） src/components/NavigationBar.tsx
+- [ ] T053 [US3] 在 ArticleList 中實現點擊項目快速切換 src/components/ArticleList.tsx
+- [ ] T054 [US3] 在 SideButton 中實現快速點擊響應和視覺反饋 src/components/SideButton.tsx
+- [ ] T055 [US3] 優化 useNavigation hook 的導航性能 src/hooks/useNavigation.ts（避免不必要的渲染）
+- [ ] T056 [US3] 在 LoadingSpinner 中優化動畫性能 src/components/LoadingSpinner.tsx
+- [ ] T057 [US3] 測量和記錄文章切換的實際時間以達到 < 1 秒目標
 
 **檢查點**: 使用者故事 3 已完全實現
 - ✅ 所有導航方法無延遲
@@ -206,25 +207,25 @@ description: "電子報閱讀 CMS Web App 工作項目清單"
 
 ### US4 的單元和元件測試
 
-- [ ] T057 [P] [US4] EditorPage 頁面的單元測試 tests/pages/EditorPage.test.tsx
-- [ ] T058 [P] [US4] ArticleOrderManager 元件的單元測試 tests/components/ArticleOrderManager.test.tsx
-- [ ] T059 [P] [US4] 拖拽功能的單元測試 tests/components/DragDropArticle.test.tsx
-- [ ] T060 [US4] 編輯工作流整合測試（新增 → 排序 → 刪除 → 保存） tests/integration/userStory4.test.tsx
+- [ ] T058 [P] [US4] EditorPage 頁面的單元測試 tests/pages/EditorPage.test.tsx
+- [ ] T059 [P] [US4] ArticleOrderManager 元件的單元測試 tests/components/ArticleOrderManager.test.tsx
+- [ ] T060 [P] [US4] 拖拽功能的單元測試 tests/components/DragDropArticle.test.tsx
+- [ ] T061 [US4] 編輯工作流整合測試（新增 → 排序 → 刪除 → 保存） tests/integration/userStory4.test.tsx
 
 ### US4 的實現
 
-- [ ] T061 [P] [US4] 建立 EditorPage.tsx 頁面元件 src/pages/EditorPage.tsx
-- [ ] T062 [P] [US4] 建立 ArticleOrderManager.tsx 元件（拖拽和排序 UI） src/components/ArticleOrderManager.tsx
-- [ ] T063 [P] [US4] 建立 DragDropArticle.tsx 可拖拽的文章項目 src/components/DragDropArticle.tsx
-- [ ] T064 [P] [US4] 建立 ArticleEditor.tsx 編輯單篇文章的表單 src/components/ArticleEditor.tsx
-- [ ] T065 [US4] 建立 useArticleEditor 自訂 hook（編輯狀態管理） src/hooks/useArticleEditor.ts
-- [ ] T066 [US4] 在 newsApi.ts 中實現 PUT /newsletters/{weekNumber}/articles（順序更新） src/services/newsApi.ts
-- [ ] T067 [US4] 在 newsApi.ts 中實現 POST /newsletters/{weekNumber}/articles（新增文章） src/services/newsApi.ts
-- [ ] T068 [US4] 在 newsApi.ts 中實現 DELETE /articles/{articleId}（刪除文章） src/services/newsApi.ts
-- [ ] T069 [US4] 配置 React Router 編輯頁面路由 `/editor/:weekNumber` src/App.tsx
-- [ ] T070 [US4] 實現編輯權限檢查（假設後端驗證） src/services/authService.ts
-- [ ] T071 [US4] 新增編輯模式確認對話框（刪除確認） src/components/ConfirmDialog.tsx
-- [ ] T072 [US4] 在編輯後自動刷新讀者頁面（更新 Context） src/context/NewsletterContext.tsx
+- [ ] T062 [P] [US4] 建立 EditorPage.tsx 頁面元件 src/pages/EditorPage.tsx
+- [ ] T063 [P] [US4] 建立 ArticleOrderManager.tsx 元件（拖拽和排序 UI） src/components/ArticleOrderManager.tsx
+- [ ] T064 [P] [US4] 建立 DragDropArticle.tsx 可拖拽的文章項目 src/components/DragDropArticle.tsx
+- [ ] T065 [P] [US4] 建立 ArticleEditor.tsx 編輯單篇文章的表單 src/components/ArticleEditor.tsx
+- [ ] T066 [US4] 建立 useArticleEditor 自訂 hook（編輯狀態管理） src/hooks/useArticleEditor.ts
+- [ ] T067 [US4] 在 newsApi.ts 中實現 PUT /newsletters/{weekNumber}/articles（順序更新） src/services/newsApi.ts
+- [ ] T068 [US4] 在 newsApi.ts 中實現 POST /newsletters/{weekNumber}/articles（新增文章） src/services/newsApi.ts
+- [ ] T069 [US4] 在 newsApi.ts 中實現 DELETE /articles/{articleId}（刪除文章） src/services/newsApi.ts
+- [ ] T070 [US4] 配置 React Router 編輯頁面路由 `/editor/:weekNumber` src/App.tsx
+- [ ] T071 [US4] 實現編輯權限檢查（假設後端驗證） src/services/authService.ts
+- [ ] T072 [US4] 新增編輯模式確認對話框（刪除確認） src/components/ConfirmDialog.tsx
+- [ ] T073 [US4] 在編輯後自動刷新讀者頁面（更新 Context） src/context/NewsletterContext.tsx
 
 **檢查點**: 使用者故事 4 已完全實現
 - ✅ 編輯者可進入編輯模式
@@ -239,17 +240,29 @@ description: "電子報閱讀 CMS Web App 工作項目清單"
 
 **目的**: 改進、優化和跨故事的功能完善
 
-- [ ] T073 [P] 程式碼重構和組件提取（移除重複代碼）
-- [ ] T074 [P] 效能優化：圖片懶加載和代碼分割 src/pages/*.tsx
-- [ ] T075 [P] 無障礙性檢查（ARIA 標籤、鍵盤導航） src/components/*.tsx
-- [ ] T076 [P] 響應式設計測試（行動、平板、桌面） src/styles/globals.css
-- [ ] T077 增加整合測試覆蓋率至 80%+ tests/integration/
-- [ ] T078 [P] SEO 優化（Meta 標籤、Open Graph）src/pages/ReaderPage.tsx
-- [ ] T079 [P] 錯誤日誌和監控集成 src/services/errorReporting.ts
-- [ ] T080 [P] 國際化準備（支援 i18n） src/i18n/（如果需要）
-- [ ] T081 文檔更新：README.md, CONTRIBUTING.md, API.md
-- [ ] T082 運行 quickstart.md 驗證（新開發者能快速上手）
-- [ ] T083 最終程式碼審查和品質檢查（測試覆蓋 80%+, Linting 無錯誤）
+### 成功標準測量（關鍵任務）
+
+- [ ] T074 測量文章切換時間：建立性能基準測試，記錄 SC-001（< 2 秒）和 US3（< 1 秒）的實際數值 tests/performance/baseline.test.ts
+- [ ] T075 建立錯誤監控：實現錯誤日誌和報告服務，以驗證 SC-007（99.5% 直接連結成功率） src/services/errorReporting.ts
+- [ ] T076 設置使用者反饋收集：集成簡單的匿名使用者滿意度調查（驗證 SC-003 - 85% 導航清晰度滿意度） src/services/analytics.ts
+- [ ] T077 文章重新排列效能測試：驗證 SC-004（編輯者能在 5 分鐘內重新排列 50 篇文章） tests/performance/editorPerformance.test.ts
+
+### 代碼優化與重構
+
+- [ ] T078 [P] 程式碼重構和組件提取（移除重複代碼）
+- [ ] T079 [P] 效能優化：圖片懶加載和代碼分割 src/pages/*.tsx
+- [ ] T080 [P] 無障礙性檢查（ARIA 標籤、鍵盤導航） src/components/*.tsx
+- [ ] T081 [P] 響應式設計測試（行動、平板、桌面） src/styles/globals.css
+- [ ] T082 增加整合測試覆蓋率至 80%+ tests/integration/
+- [ ] T083 [P] SEO 優化（Meta 標籤、Open Graph）src/pages/ReaderPage.tsx
+- [ ] T084 [P] 錯誤日誌記錄集成（利用 T075） src/services/errorReporting.ts
+
+### 文檔與驗證
+
+- [ ] T085 文檔更新：README.md, CONTRIBUTING.md, API.md
+- [ ] T086 運行 quickstart.md 驗證（新開發者能快速上手）
+- [ ] T087 最終程式碼審查和品質檢查（測試覆蓋 80%+, Linting 無錯誤）
+- [ ] T088 成功標準驗證報告：驗證所有 SC-001 至 SC-007 是否達成
 
 ---
 
@@ -410,20 +423,36 @@ T064 (ArticleEditor) 可並行
 
 | 指標 | 數值 |
 |------|------|
-| **總任務數** | 85（原 83 + 2 新增澄清任務） |
+| **總任務數** | 88（含 4 個成功標準測量任務 + 2 個澄清任務） |
 | **Phase 1 (Setup)** | 8 |
-| **Phase 2 (Foundational)** | 8 |
+| **Phase 2 (Foundational)** | 9（含 T017 資料模型驗證） |
 | **Phase 3 (US1)** | 19（測試 5 + 實現 12 + 2 澄清任務） |
 | **Phase 4 (US2)** | 12（測試 4 + 實現 8） |
 | **Phase 5 (US3)** | 11（測試 4 + 實現 7） |
 | **Phase 6 (US4)** | 12（測試 4 + 實現 8） |
-| **Phase 7 (Polish)** | 11 |
-| **澄清任務** | 2（T029a: loading state, T033a: deleted article handling） |
-| **預估工時** | ~34-42 小時（單開發者）|
+| **Phase 7 (Polish)** | 17（成功標準測量 4 + 代碼優化 7 + 文檔 3） |
+| **澄清任務** | 2（T030a: loading state, T034a: deleted article handling） |
+| **預估工時** | ~40-50 小時（單開發者）|
 | **並行機會** | 3-4 個同時進行的任務 |
 | **MVP 範圍** | Phase 1-3（可獨立部署）|
 
-### 新增澄清任務說明
+### 新增任務說明
 
-- **T029a**: 源自分析 T2 - 確保 useArticleContent hook 返回 loading 狀態以支援 T032 (LoadingSpinner 功能)
-- **T033a**: 源自分析 U1 - 明確處理已刪除文章的邊界情況，由 ErrorBoundary 和 ErrorPage 協作處理
+#### 分析結果修正
+- **T017**: 驗證資料模型 - 源自分析項目 A5（資料實體映射）
+- **T030a**: useArticleContent loading 狀態 - 源自分析項目（支持 T033 LoadingSpinner）
+- **T034a**: 刪除文章處理 - 源自分析項目（ErrorBoundary + ErrorPage 協作）
+
+#### 成功標準測量（關鍵）
+- **T074-T077**: 新增 4 個性能測量和驗證任務 - 源自分析項目 A7（SC-001 至 SC-007 測量基礎設施缺失）
+  - T074: SC-001/US3 文章切換性能基準
+  - T075: SC-007 直接連結成功率監控
+  - T076: SC-003 使用者滿意度調查
+  - T077: SC-004 編輯器效能驗證
+
+### 關鍵改進項
+
+1. **資料模型驗證**: T017 確保類型定義與需求對齐
+2. **性能測量**: 4 個新任務為成功標準提供量化驗證
+3. **錯誤監控**: 整合錯誤報告以支援 SC-007 驗證
+4. **使用者反饋**: 新增簡單調查工具驗證導航清晰度（SC-003）
