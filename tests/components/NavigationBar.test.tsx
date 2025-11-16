@@ -2,13 +2,28 @@
  * 測試 - 導航欄組件
  */
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { BrowserRouter } from 'react-router-dom'
 import { NavigationBar } from '@/components/NavigationBar'
 import { NavigationState } from '@/types'
 
+// Mock useNavigate
+const mockNavigate = vi.fn()
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom')
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  }
+})
+
 describe('NavigationBar', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   const mockNavState: NavigationState = {
     currentWeekNumber: '2025-W43',
     currentArticleId: 'article-002',
@@ -401,28 +416,7 @@ describe('NavigationBar', () => {
       expect(handlePrevious).not.toHaveBeenCalled()
     })
 
-    it('should call onEdit when e key is pressed', async () => {
-      const handlePrevious = vi.fn()
-      const handleNext = vi.fn()
-      const handleEdit = vi.fn()
-
-      render(
-        <NavigationBar
-          navigationState={mockNavState}
-          onPrevious={handlePrevious}
-          onNext={handleNext}
-          onEdit={handleEdit}
-        />
-      )
-
-      fireEvent.keyDown(window, { key: 'e' })
-
-      expect(handleEdit).toHaveBeenCalledOnce()
-      expect(handlePrevious).not.toHaveBeenCalled()
-      expect(handleNext).not.toHaveBeenCalled()
-    })
-
-    it('should not call onEdit when e key is pressed and onEdit is not provided', async () => {
+    it('should navigate to editor when e key is pressed', async () => {
       const handlePrevious = vi.fn()
       const handleNext = vi.fn()
 
@@ -436,6 +430,7 @@ describe('NavigationBar', () => {
 
       fireEvent.keyDown(window, { key: 'e' })
 
+      expect(mockNavigate).toHaveBeenCalledWith('/editor/2025-W43/article-002')
       expect(handlePrevious).not.toHaveBeenCalled()
       expect(handleNext).not.toHaveBeenCalled()
     })
@@ -463,14 +458,12 @@ describe('NavigationBar', () => {
     it('should prevent default for e key (edit)', async () => {
       const handlePrevious = vi.fn()
       const handleNext = vi.fn()
-      const handleEdit = vi.fn()
 
       render(
         <NavigationBar
           navigationState={mockNavState}
           onPrevious={handlePrevious}
           onNext={handleNext}
-          onEdit={handleEdit}
         />
       )
 
@@ -480,6 +473,7 @@ describe('NavigationBar', () => {
       window.dispatchEvent(event)
 
       expect(preventDefaultSpy).toHaveBeenCalled()
+      expect(mockNavigate).toHaveBeenCalledWith('/editor/2025-W43/article-002')
     })
 
     it('should support case-insensitive keyboard shortcuts', async () => {

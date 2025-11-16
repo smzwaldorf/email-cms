@@ -18,6 +18,7 @@
  */
 
 import { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { getPositionText } from '@/types'
 import { NavigationState } from '@/types'
 
@@ -25,15 +26,14 @@ interface NavigationBarProps {
   navigationState: NavigationState
   onPrevious: () => void
   onNext: () => void
-  onEdit?: () => void
 }
 
 export function NavigationBar({
   navigationState,
   onPrevious,
   onNext,
-  onEdit,
 }: NavigationBarProps) {
+  const navigate = useNavigate()
   const canGoPrevious = navigationState.currentArticleOrder > 1
   const canGoNext = navigationState.currentArticleOrder < navigationState.totalArticlesInWeek
 
@@ -52,10 +52,12 @@ export function NavigationBar({
         event.preventDefault()
         onNext()
       }
-      // 編輯當前文章: e
-      else if (key === 'e' && onEdit) {
+      // 編輯當前文章: e - Navigate to editor
+      else if (key === 'e') {
         event.preventDefault()
-        onEdit()
+        // Navigate to editor page: /editor/{weekNumber}/{articleId}
+        const editPath = `/editor/${navigationState.currentWeekNumber}/${navigationState.currentArticleId}`
+        navigate(editPath)
       }
     }
 
@@ -64,7 +66,7 @@ export function NavigationBar({
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [canGoPrevious, canGoNext, onPrevious, onNext, onEdit])
+  }, [canGoPrevious, canGoNext, onPrevious, onNext, navigationState, navigate])
 
   return (
     <div className="border-t border-waldorf-cream-200 bg-waldorf-cream-50 px-6 py-4">
