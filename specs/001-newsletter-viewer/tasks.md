@@ -170,8 +170,8 @@ description: "電子報閱讀 CMS Web App 工作項目清單"
 
 ### US3 的單元和元件測試
 
-- [ ] T047 [P] [US3] SideButton 邊緣按鈕的單元測試 tests/components/SideButton.test.tsx
-- [ ] T048 [P] [US3] ArticleList 的單元測試 tests/components/ArticleList.test.tsx
+- [x] T047 [P] [US3] SideButton 邊緣按鈕的單元測試 tests/components/SideButton.test.tsx
+- [x] T048 [P] [US3] ArticleList 的單元測試 tests/components/ArticleList.test.tsx
 - [ ] T049 [US3] 文章切換效能測試（驗證 < 1 秒） tests/integration/performanceTest.test.tsx
 - [ ] T050 [US3] 快速導航整合測試 tests/integration/userStory3.test.tsx
 
