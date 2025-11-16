@@ -1,8 +1,9 @@
 /**
  * 自定義 Hook - 取得文章內容
+ * 優化：使用 useCallback 避免不必要的函數重新建立
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Article } from '@/types'
 import { fetchArticle } from '@/services/mockApi'
 
@@ -18,7 +19,7 @@ export function useFetchArticle(articleId: string): UseFetchArticleResult {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
 
-  const refetch = async () => {
+  const refetch = useCallback(async () => {
     setIsLoading(true)
     setError(null)
     try {
@@ -33,11 +34,11 @@ export function useFetchArticle(articleId: string): UseFetchArticleResult {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [articleId])
 
   useEffect(() => {
     refetch()
-  }, [articleId])
+  }, [refetch])
 
   return { article, isLoading, error, refetch }
 }

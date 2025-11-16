@@ -179,10 +179,10 @@ description: "電子報閱讀 CMS Web App 工作項目清單"
 
 - [x] T051 [P] [US3] 優化 ArticleContent 元件的渲染效能 src/components/ArticleContent.tsx（memo 或 useMemo）
 - [x] T052 [P] [US3] 在 NavigationBar 中新增鍵盤快捷鍵支援（左右箭頭鍵） src/components/NavigationBar.tsx
-- [ ] T053 [US3] 在 ArticleList 中實現點擊項目快速切換 src/components/ArticleList.tsx
-- [ ] T054 [US3] 在 SideButton 中實現快速點擊響應和視覺反饋 src/components/SideButton.tsx
-- [ ] T055 [US3] 優化 useNavigation hook 的導航性能 src/hooks/useNavigation.ts（避免不必要的渲染）
-- [ ] T056 [US3] 在 LoadingSpinner 中優化動畫性能 src/components/LoadingSpinner.tsx
+- [x] T053 [US3] 在 ArticleList 中實現點擊項目快速切換 src/components/ArticleList.tsx
+- [x] T054 [US3] 在 SideButton 中實現快速點擊響應和視覺反饋 src/components/SideButton.tsx
+- [x] T055 [US3] 優化 useNavigation hook 的導航性能 src/hooks/useNavigation.ts（避免不必要的渲染）
+- [x] T056 [US3] 在 LoadingSpinner 中優化動畫性能 src/components/LoadingSpinner.tsx
 - [ ] T057 [US3] 測量和記錄文章切換的實際時間以達到 < 1 秒目標
 
 **檢查點**: 使用者故事 3 已完全實現

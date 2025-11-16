@@ -3,6 +3,7 @@
  * 顯示某週的所有文章清單
  */
 
+import { memo, useCallback } from 'react'
 import { Article } from '@/types'
 import { ArticleCard } from './ArticleCard'
 import { formatWeekNumber } from '@/utils/formatters'
@@ -15,13 +16,20 @@ interface ArticleListViewProps {
   isLoading?: boolean
 }
 
-export function ArticleListView({
+export const ArticleListView = memo(function ArticleListView({
   weekNumber,
   articles,
   selectedArticleId,
   onSelectArticle,
   isLoading = false,
 }: ArticleListViewProps) {
+  // Memoize the select handler to prevent unnecessary re-renders
+  const handleSelectArticle = useCallback(
+    (articleId: string) => {
+      onSelectArticle(articleId)
+    },
+    [onSelectArticle]
+  )
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -59,11 +67,11 @@ export function ArticleListView({
               key={article.id}
               article={article}
               isSelected={article.id === selectedArticleId}
-              onClick={() => onSelectArticle(article.id)}
+              onClick={() => handleSelectArticle(article.id)}
             />
           ))}
         </div>
       </div>
     </div>
   )
-}
+})

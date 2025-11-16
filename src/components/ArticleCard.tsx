@@ -3,6 +3,7 @@
  * 顯示文章摘要信息
  */
 
+import { memo, useCallback } from 'react'
 import { Article } from '@/types'
 import { truncateText, formatDate } from '@/utils/formatters'
 
@@ -12,10 +13,14 @@ interface ArticleCardProps {
   onClick: () => void
 }
 
-export function ArticleCard({ article, isSelected, onClick }: ArticleCardProps) {
+export const ArticleCard = memo(function ArticleCard({ article, isSelected, onClick }: ArticleCardProps) {
+  // Memoize onClick to prevent unnecessary re-renders
+  const handleClick = useCallback(() => {
+    onClick()
+  }, [onClick])
   return (
     <div
-      onClick={onClick}
+      onClick={handleClick}
       className={`
         p-4 rounded-lg border cursor-pointer transition-all
         ${
@@ -47,4 +52,4 @@ export function ArticleCard({ article, isSelected, onClick }: ArticleCardProps) 
       </div>
     </div>
   )
-}
+})

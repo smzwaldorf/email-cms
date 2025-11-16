@@ -1,7 +1,10 @@
 /**
  * 元件 - 載入旋轉圖標
  * 在文章或週報加載時顯示視覺回饋
+ * 優化：使用 will-change 和 transform-gpu 提升性能
  */
+
+import { memo } from 'react'
 
 export interface LoadingSpinnerProps {
   size?: 'sm' | 'md' | 'lg'
@@ -15,20 +18,25 @@ const sizeClasses = {
   lg: 'w-16 h-16',
 }
 
-export function LoadingSpinner({
+export const LoadingSpinner = memo(function LoadingSpinner({
   size = 'md',
   message,
   fullScreen = false,
 }: LoadingSpinnerProps) {
   const spinner = (
     <div className="flex flex-col items-center justify-center gap-4">
-      {/* 旋轉圖標 */}
-      <div className={`${sizeClasses[size]} animate-spin`}>
+      {/* 旋轉圖標 - 使用 will-change 優化性能 */}
+      <div className={`${sizeClasses[size]} will-change-transform`} style={{ perspective: '1000px' }}>
         <svg
-          className="w-full h-full text-blue-500"
+          className="w-full h-full text-blue-500 animate-spin"
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
           viewBox="0 0 24 24"
+          style={{
+            // GPU acceleration for smoother animation
+            transform: 'translateZ(0)',
+            backfaceVisibility: 'hidden',
+          }}
         >
           <circle
             className="opacity-25"
@@ -53,7 +61,7 @@ export function LoadingSpinner({
 
   if (fullScreen) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-white bg-opacity-90 z-50">
+      <div className="fixed inset-0 flex items-center justify-center bg-white bg-opacity-90 z-50 will-change-transform">
         {spinner}
       </div>
     )
@@ -64,4 +72,4 @@ export function LoadingSpinner({
       {spinner}
     </div>
   )
-}
+})

@@ -75,6 +75,8 @@ Uses **React Context API** (lightweight, no Redux needed):
 
 ## Testing
 
+- When running `npm test`, and needs timeout, always use `timeout 20`
+
 ### Test Structure
 - **Unit tests**: `tests/unit/` (TypeScript utilities)
 - **Component tests**: `tests/components/` (React Testing Library)
