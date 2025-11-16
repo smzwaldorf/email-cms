@@ -3,10 +3,12 @@
  * 提供文章編輯功能的表單介面，使用富文本編輯器
  */
 
-import { useState, useEffect } from 'react'
-import MDEditor from '@uiw/react-md-editor'
-import '@uiw/react-md-editor/markdown-editor.css'
-import '@uiw/react-markdown-preview/markdown.css'
+import { useState, useEffect, useRef } from 'react'
+import MediumEditor from 'medium-editor'
+import 'medium-editor/dist/css/medium-editor.css'
+import 'medium-editor/dist/css/themes/default.css'
+// @ts-ignore - medium-editor-markdown doesn't have types
+import MeMarkdown from 'medium-editor-markdown'
 import { Article } from '@/types'
 
 interface ArticleEditorProps {
@@ -30,6 +32,64 @@ export function ArticleEditor({
     isPublished: article.isPublished,
   })
 
+  const editorRef = useRef<HTMLDivElement>(null)
+  const mediumEditorRef = useRef<MediumEditor.MediumEditor | null>(null)
+  const meMarkdownRef = useRef<any>(null)
+
+  // Initialize medium-editor with markdown support
+  useEffect(() => {
+    if (!editorRef.current) return
+
+    // Create MediumEditor instance
+    mediumEditorRef.current = new MediumEditor(editorRef.current, {
+      toolbar: {
+        buttons: ['bold', 'italic', 'underline', 'anchor', 'h2', 'h3', 'quote', 'unorderedlist', 'orderedlist'],
+      },
+      placeholder: {
+        text: '輸入文章內容，支援 Markdown 格式...',
+        hideOnClick: true,
+      },
+    })
+
+    // Add markdown extension
+    meMarkdownRef.current = new MeMarkdown(
+      (markdown: string) => {
+        setFormData((prev) => ({
+          ...prev,
+          content: markdown,
+        }))
+      },
+      {
+        toMarkdownOptions: {
+          converters: [
+            {
+              filter: 'div',
+              replacement: (content: string) => content + '\n\n',
+            },
+          ],
+        },
+      }
+    )
+
+    mediumEditorRef.current.subscribe('editableInput', () => {
+      if (meMarkdownRef.current) {
+        meMarkdownRef.current.update()
+      }
+    })
+
+    // Set initial content
+    if (editorRef.current && article.content) {
+      editorRef.current.innerHTML = article.content
+    }
+
+    // Cleanup
+    return () => {
+      if (mediumEditorRef.current) {
+        mediumEditorRef.current.destroy()
+      }
+    }
+  }, [])
+
   // 當文章改變時更新表單
   useEffect(() => {
     setFormData({
@@ -39,6 +99,11 @@ export function ArticleEditor({
       content: article.content,
       isPublished: article.isPublished,
     })
+
+    // Update editor content
+    if (editorRef.current && article.content) {
+      editorRef.current.innerHTML = article.content
+    }
   }, [article.id])
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -61,13 +126,6 @@ export function ArticleEditor({
     setFormData((prev) => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
-    }))
-  }
-
-  const handleContentChange = (value?: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      content: value || '',
     }))
   }
 
@@ -149,29 +207,20 @@ export function ArticleEditor({
             />
           </div>
 
-          {/* 內容 - 富文本編輯器 */}
+          {/* 內容 - Medium Editor with Markdown */}
           <div>
             <label
               className="block text-sm font-medium text-waldorf-clay-700 mb-2"
             >
               內容 <span className="text-waldorf-rose-500">*</span>
             </label>
-            <div className="border border-waldorf-cream-300 rounded-md overflow-hidden" data-color-mode="light">
-              <MDEditor
-                value={formData.content}
-                onChange={handleContentChange}
-                height={500}
-                preview="live"
-                hideToolbar={false}
-                enableScroll={true}
-                visibleDragbar={true}
-                textareaProps={{
-                  placeholder: '輸入文章內容，支援 Markdown 格式...',
-                }}
-              />
-            </div>
+            <div
+              ref={editorRef}
+              className="border border-waldorf-cream-300 rounded-md p-4 min-h-[500px] focus:outline-none focus:ring-2 focus:ring-waldorf-sage-500 focus:border-transparent bg-white overflow-y-auto"
+              style={{ maxHeight: '600px' }}
+            />
             <p className="text-xs text-waldorf-clay-500 mt-1">
-              使用富文本編輯器編輯內容，內容將以 Markdown 格式儲存
+              使用 Medium Editor 編輯內容，內容將以 Markdown 格式儲存
             </p>
           </div>
 
