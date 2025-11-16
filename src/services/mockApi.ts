@@ -221,8 +221,8 @@ export async function fetchPreviousArticleId(
 /**
  * 更新文章
  */
-export async function updateArticle(articleId: string, updates: Partial<Article>): Promise<boolean> {
-  return new Promise((resolve) => {
+export async function updateArticle(articleId: string, updates: Partial<Article>): Promise<Article> {
+  return new Promise((resolve, reject) => {
     setTimeout(() => {
       if (mockArticles[articleId]) {
         mockArticles[articleId] = {
@@ -230,9 +230,9 @@ export async function updateArticle(articleId: string, updates: Partial<Article>
           ...updates,
           updatedAt: new Date().toISOString(),
         }
-        resolve(true)
+        resolve(mockArticles[articleId])
       } else {
-        resolve(false)
+        reject(new Error('Article not found'))
       }
     }, 300)
   })
@@ -255,6 +255,87 @@ export async function reorderArticles(
       } else {
         resolve(false)
       }
+    }, 300)
+  })
+}
+
+/**
+ * 刪除文章
+ */
+export async function deleteArticle(articleId: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      if (mockArticles[articleId]) {
+        // 從週報的 articleIds 中移除
+        Object.values(mockNewsletters).forEach((newsletter) => {
+          const index = newsletter.articleIds.indexOf(articleId)
+          if (index > -1) {
+            newsletter.articleIds.splice(index, 1)
+            newsletter.totalArticles = newsletter.articleIds.length
+            newsletter.updatedAt = new Date().toISOString()
+          }
+        })
+
+        // 刪除文章
+        delete mockArticles[articleId]
+        resolve(true)
+      } else {
+        resolve(false)
+      }
+    }, 300)
+  })
+}
+
+/**
+ * 創建新文章
+ */
+export async function createArticle(article: Article): Promise<Article> {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      const newArticle: Article = {
+        ...article,
+        id: `article-${Date.now()}`,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        publicUrl: `/article/${article.id || 'new'}`,
+      }
+
+      mockArticles[newArticle.id] = newArticle
+
+      // 添加到週報
+      const newsletter = mockNewsletters[article.weekNumber]
+      if (newsletter) {
+        newsletter.articleIds.push(newArticle.id)
+        newsletter.totalArticles = newsletter.articleIds.length
+        newsletter.updatedAt = new Date().toISOString()
+        resolve(newArticle)
+      } else {
+        reject(new Error('Week not found'))
+      }
+    }, 300)
+  })
+}
+
+/**
+ * 取得週報及其文章
+ */
+export async function fetchWeeklyNewsletter(weekNumber: string): Promise<NewsletterWeek & { articles: Article[] }> {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      const newsletter = mockNewsletters[weekNumber]
+      if (!newsletter) {
+        reject(new Error('Week not found'))
+        return
+      }
+
+      const articles = newsletter.articleIds
+        .map((id) => mockArticles[id])
+        .filter((article): article is Article => article !== undefined)
+
+      resolve({
+        ...newsletter,
+        articles,
+      })
     }, 300)
   })
 }
