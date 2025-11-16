@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { NavigationProvider } from '@/context/NavigationContext'
 import { WeeklyReaderPage } from '@/pages/WeeklyReaderPage'
 import { ErrorPage } from '@/pages/ErrorPage'
+import { EditorPage } from '@/pages/EditorPage'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import '@/styles/globals.css'
 
@@ -21,12 +22,6 @@ const HomePage = () => (
   </div>
 )
 
-const EditorPage = () => (
-  <div className="flex items-center justify-center h-screen bg-gray-50">
-    <p className="text-gray-600">編輯功能 - 待實現</p>
-  </div>
-)
-
 export default function App() {
   return (
     <ErrorBoundary>
@@ -36,7 +31,8 @@ export default function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/week/:weekNumber" element={<WeeklyReaderPage />} />
             <Route path="/article/:articleId" element={<WeeklyReaderPage />} />
-            <Route path="/editor" element={<EditorPage />} />
+            <Route path="/newsletter/:weekNumber" element={<WeeklyReaderPage />} />
+            <Route path="/editor/:weekNumber" element={<EditorPage />} />
             <Route path="/error" element={<ErrorPage />} />
           </Routes>
         </Router>

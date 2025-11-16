@@ -8,11 +8,13 @@ import { useParams } from 'react-router-dom'
 import { useNavigation } from '@/context/NavigationContext'
 import { useFetchWeekly } from '@/hooks/useFetchWeekly'
 import { useFetchArticle } from '@/hooks/useFetchArticle'
-import { fetchNextArticleId, fetchPreviousArticleId } from '@/services/mockApi'
+import { fetchNextArticleId, fetchPreviousArticleId, updateArticle } from '@/services/mockApi'
 import { ArticleListView } from '@/components/ArticleListView'
 import { ArticleContent } from '@/components/ArticleContent'
+import { ArticleEditor } from '@/components/ArticleEditor'
 import { NavigationBar } from '@/components/NavigationBar'
 import { SideButton } from '@/components/SideButton'
+import { Article } from '@/types'
 
 export function WeeklyReaderPage() {
   const { weekNumber: paramWeekNumber } = useParams<{ weekNumber: string }>()
@@ -34,6 +36,8 @@ export function WeeklyReaderPage() {
   const touchStartX = useRef<number | null>(null)
   const [dragOffset, setDragOffset] = useState(0)
   const [isAnimating, setIsAnimating] = useState(false)
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   // 初始化導航狀態 - 當文章列表加載時或週份改變時
   useEffect(() => {
@@ -131,6 +135,36 @@ export function WeeklyReaderPage() {
         navigation.setNextArticleId(undefined)
       }
     }
+    // 切換文章時退出編輯模式
+    setIsEditMode(false)
+  }
+
+  // 處理儲存文章
+  const handleSaveArticle = async (updates: Partial<Article>) => {
+    if (!article) return
+
+    setIsSaving(true)
+    try {
+      const success = await updateArticle(article.id, updates)
+      if (success) {
+        // 更新成功，退出編輯模式並刷新文章
+        setIsEditMode(false)
+        // 觸發重新獲取文章資料
+        window.location.reload()
+      } else {
+        alert('儲存失敗，請稍後再試')
+      }
+    } catch (error) {
+      console.error('Save error:', error)
+      alert('儲存時發生錯誤')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  // 處理取消編輯
+  const handleCancelEdit = () => {
+    setIsEditMode(false)
   }
 
   // 處理觸摸開始 - 記錄起始位置並開始拖曳
@@ -194,12 +228,6 @@ export function WeeklyReaderPage() {
     navigation.navigationState.currentArticleOrder <
     navigation.navigationState.totalArticlesInWeek
 
-  // 計算當前文章的頁面索引
-  const currentArticleIndex = Math.max(
-    0,
-    navigation.navigationState.currentArticleOrder - 1
-  )
-
   return (
     <div className="relative h-screen overflow-hidden bg-waldorf-cream-100">
       {/* 桌面版：側邊欄 + 內容區 */}
@@ -225,14 +253,36 @@ export function WeeklyReaderPage() {
 
         {/* 文章內容面板 */}
         <div className="flex-1 flex flex-col">
-          <ArticleContent
-            title={article?.title || ''}
-            author={article?.author}
-            content={article?.content || ''}
-            createdAt={article?.createdAt}
-            viewCount={article?.viewCount}
-            isLoading={isLoadingArticle || isLoadingNavigation}
-          />
+          {/* 編輯按鈕 */}
+          {!isEditMode && article && (
+            <div className="px-6 py-2 bg-waldorf-cream-50 border-b border-waldorf-cream-200 flex justify-end">
+              <button
+                onClick={() => setIsEditMode(true)}
+                className="px-4 py-2 text-sm bg-waldorf-sage-600 text-white rounded-md hover:bg-waldorf-sage-700 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-500 transition-colors"
+              >
+                編輯文章
+              </button>
+            </div>
+          )}
+
+          {/* 文章內容或編輯器 */}
+          {isEditMode && article ? (
+            <ArticleEditor
+              article={article}
+              onSave={handleSaveArticle}
+              onCancel={handleCancelEdit}
+              isSaving={isSaving}
+            />
+          ) : (
+            <ArticleContent
+              title={article?.title || ''}
+              author={article?.author}
+              content={article?.content || ''}
+              createdAt={article?.createdAt}
+              viewCount={article?.viewCount}
+              isLoading={isLoadingArticle || isLoadingNavigation}
+            />
+          )}
 
           {/* 底部導航欄 */}
           <NavigationBar
@@ -258,6 +308,18 @@ export function WeeklyReaderPage() {
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
+        {/* 編輯按鈕 - 行動版 */}
+        {!isEditMode && article && (
+          <div className="px-4 py-2 bg-waldorf-cream-50 border-b border-waldorf-cream-200 flex justify-end">
+            <button
+              onClick={() => setIsEditMode(true)}
+              className="px-4 py-2 text-sm bg-waldorf-sage-600 text-white rounded-md hover:bg-waldorf-sage-700 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-500 transition-colors"
+            >
+              編輯
+            </button>
+          </div>
+        )}
+
         {/* 頁面容器 */}
         <div
           className={`flex-1 overflow-hidden relative ${
@@ -267,14 +329,24 @@ export function WeeklyReaderPage() {
             transform: `translateX(${dragOffset}px)`,
           }}
         >
-          <ArticleContent
-            title={article?.title || ''}
-            author={article?.author}
-            content={article?.content || ''}
-            createdAt={article?.createdAt}
-            viewCount={article?.viewCount}
-            isLoading={isLoadingArticle || isLoadingNavigation}
-          />
+          {/* 文章內容或編輯器 */}
+          {isEditMode && article ? (
+            <ArticleEditor
+              article={article}
+              onSave={handleSaveArticle}
+              onCancel={handleCancelEdit}
+              isSaving={isSaving}
+            />
+          ) : (
+            <ArticleContent
+              title={article?.title || ''}
+              author={article?.author}
+              content={article?.content || ''}
+              createdAt={article?.createdAt}
+              viewCount={article?.viewCount}
+              isLoading={isLoadingArticle || isLoadingNavigation}
+            />
+          )}
         </div>
 
         {/* 底部導航欄 */}
@@ -285,22 +357,26 @@ export function WeeklyReaderPage() {
         />
 
         {/* 邊緣導航按鈕 - 行動版 */}
-        <div className="absolute top-1/2 left-4 -translate-y-1/2">
-          <SideButton
-            direction="left"
-            onClick={handlePrevious}
-            disabled={!canGoPrevious || isLoadingNavigation}
-            label="上一篇"
-          />
-        </div>
-        <div className="absolute top-1/2 right-4 -translate-y-1/2">
-          <SideButton
-            direction="right"
-            onClick={handleNext}
-            disabled={!canGoNext || isLoadingNavigation}
-            label="下一篇"
-          />
-        </div>
+        {!isEditMode && (
+          <>
+            <div className="absolute top-1/2 left-4 -translate-y-1/2">
+              <SideButton
+                direction="left"
+                onClick={handlePrevious}
+                disabled={!canGoPrevious || isLoadingNavigation}
+                label="上一篇"
+              />
+            </div>
+            <div className="absolute top-1/2 right-4 -translate-y-1/2">
+              <SideButton
+                direction="right"
+                onClick={handleNext}
+                disabled={!canGoNext || isLoadingNavigation}
+                label="下一篇"
+              />
+            </div>
+          </>
+        )}
       </div>
     </div>
   )
