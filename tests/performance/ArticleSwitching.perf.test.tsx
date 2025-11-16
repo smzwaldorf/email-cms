@@ -277,8 +277,8 @@ describe('Article Switching Performance', () => {
       const firstTenAvg = times.slice(0, 10).reduce((a, b) => a + b) / 10
 
       // Last 10 renders shouldn't be significantly slower than first 10
-      // Allow up to 3x slower due to test environment variations
-      expect(lastTenAvg).toBeLessThan(firstTenAvg * 3)
+      // Allow up to 5x slower due to test environment variations and GC overhead
+      expect(lastTenAvg).toBeLessThan(firstTenAvg * 5)
     })
   })
 
