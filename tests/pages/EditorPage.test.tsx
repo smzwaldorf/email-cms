@@ -85,7 +85,7 @@ describe('EditorPage', () => {
   })
 
   it('should support article deletion', () => {
-    vi.mocked(mockApi.deleteArticle).mockResolvedValue(undefined)
+    vi.mocked(mockApi.deleteArticle).mockResolvedValue(false)
 
     expect(mockApi.deleteArticle).toBeDefined()
   })

@@ -3,7 +3,7 @@
  * 測試文章快速導航的完整工作流程
  */
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { useState } from 'react'
 import { Article } from '@/types'
@@ -99,11 +99,11 @@ function QuickNavigationContainer({
 describe('Quick Navigation Integration', () => {
   describe('Side Button Navigation', () => {
     it('should enable/disable navigation buttons based on position', () => {
-      const { container } = render(
+      render(
         <QuickNavigationContainer initialArticleId="article-1" />
       )
 
-      const buttons = container.querySelectorAll('button')
+      const buttons = document.querySelectorAll('button')
 
       // Find left and right buttons
       const leftButton = Array.from(buttons).find(
@@ -119,11 +119,11 @@ describe('Quick Navigation Integration', () => {
     })
 
     it('should disable both buttons at last article', () => {
-      const { container } = render(
+      render(
         <QuickNavigationContainer initialArticleId="article-5" />
       )
 
-      const buttons = container.querySelectorAll('button')
+      const buttons = document.querySelectorAll('button')
 
       // At last article: both buttons may have constraints
       // Just verify buttons exist
@@ -151,19 +151,19 @@ describe('Quick Navigation Integration', () => {
     })
 
     it('should highlight current article in list', () => {
-      const { container } = render(
+      render(
         <QuickNavigationContainer initialArticleId="article-3" />
       )
 
       // The selected article should have distinct styling
-      const articles = container.querySelectorAll('[class*="rounded-lg"]')
+      const articles = document.querySelectorAll('[class*="rounded-lg"]')
       expect(articles.length).toBeGreaterThan(0)
     })
   })
 
   describe('Navigation Workflow', () => {
     it('should support navigating through articles via list clicks', () => {
-      const { container } = render(
+      render(
         <QuickNavigationContainer initialArticleId="article-1" />
       )
 
@@ -239,7 +239,7 @@ describe('Quick Navigation Integration', () => {
 
   describe('Quick Navigation State Management', () => {
     it('should maintain consistent state between list and buttons', () => {
-      const { container } = render(
+      render(
         <QuickNavigationContainer initialArticleId="article-3" />
       )
 
@@ -264,7 +264,7 @@ describe('Quick Navigation Integration', () => {
     })
 
     it('should handle rapid navigation without losing sync', () => {
-      const { container } = render(
+      render(
         <QuickNavigationContainer initialArticleId="article-1" />
       )
 
@@ -343,7 +343,7 @@ describe('Quick Navigation Integration', () => {
     })
 
     it('should show hover states on interactive elements', () => {
-      const { container } = render(
+      render(
         <QuickNavigationContainer initialArticleId="article-1" />
       )
 
@@ -360,7 +360,7 @@ describe('Quick Navigation Integration', () => {
     it('should handle navigation transitions smoothly', () => {
       const startTime = performance.now()
 
-      const { container } = render(
+      render(
         <QuickNavigationContainer initialArticleId="article-1" />
       )
 

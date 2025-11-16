@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { useState } from 'react'
 import { Article } from '@/types'
 import { SideButton } from '@/components/SideButton'
@@ -335,7 +335,7 @@ describe('User Story 3 - Quick Navigation', () => {
 
   describe('US3-Scenario-5: Multi-Method Navigation Consistency', () => {
     it('should maintain consistent state across navigation methods', () => {
-      const { container } = render(
+      render(
         <QuickNavigationContainer initialArticleId="article-1" />
       )
 
@@ -455,7 +455,7 @@ describe('User Story 3 - Quick Navigation', () => {
 
   describe('Keyboard Navigation Accessibility', () => {
     it('should support button focus and keyboard interaction', () => {
-      const { container } = render(
+      render(
         <QuickNavigationContainer initialArticleId="article-2" />
       )
 
@@ -489,7 +489,7 @@ describe('User Story 3 - Quick Navigation', () => {
 
   describe('Visual Feedback & State Indication', () => {
     it('should highlight current article in list', () => {
-      const { container } = render(
+      render(
         <QuickNavigationContainer initialArticleId="article-3" />
       )
 
@@ -506,7 +506,7 @@ describe('User Story 3 - Quick Navigation', () => {
     })
 
     it('should show disabled state on navigation buttons at boundaries', () => {
-      const { container } = render(
+      render(
         <QuickNavigationContainer initialArticleId="article-1" />
       )
 

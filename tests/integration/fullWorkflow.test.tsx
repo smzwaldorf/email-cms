@@ -126,7 +126,7 @@ describe('Full Application Workflow', () => {
         ...mockArticles[0],
         title: 'Updated Title',
       })
-      vi.mocked(mockApi.deleteArticle).mockResolvedValue(undefined)
+      vi.mocked(mockApi.deleteArticle).mockResolvedValue(false)
       vi.mocked(mockApi.reorderArticles).mockResolvedValue(true)
 
       expect(mockApi.createArticle).toBeDefined()
@@ -150,14 +150,14 @@ describe('Full Application Workflow', () => {
 
       vi.mocked(mockApi.updateArticle).mockResolvedValue(updatedArticle)
 
-      const result = await mockApi.updateArticle('2025-W43', 'article-001', updatedArticle)
+      const result = await mockApi.updateArticle('article-001', updatedArticle)
       expect(result.title).toBe('Updated Title')
     })
 
     it('should delete articles', async () => {
-      vi.mocked(mockApi.deleteArticle).mockResolvedValue(undefined)
+      vi.mocked(mockApi.deleteArticle).mockResolvedValue(false)
 
-      await mockApi.deleteArticle('2025-W43', 'article-001')
+      await mockApi.deleteArticle('article-001')
       expect(mockApi.deleteArticle).toHaveBeenCalled()
     })
   })
@@ -251,9 +251,9 @@ describe('Full Application Workflow', () => {
 
     it('should handle rapid consecutive requests', () => {
       const requests = [
-        mockApi.fetchWeeklyNewsletter(),
-        mockApi.fetchWeeklyNewsletter(),
-        mockApi.fetchWeeklyNewsletter(),
+        mockApi.fetchWeeklyNewsletter('2025-W43'),
+        mockApi.fetchWeeklyNewsletter('2025-W43'),
+        mockApi.fetchWeeklyNewsletter('2025-W43'),
       ]
       expect(requests.length).toBe(3)
     })
