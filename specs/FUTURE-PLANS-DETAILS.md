@@ -4,6 +4,7 @@
 **版本**: 2.0
 
 > 📋 **進度追蹤**：請參閱 [`FUTURE-PLANS.md`](./FUTURE-PLANS.md)
+> 📝 **原始需求**：請參閱 [`requirements.md`](./requirements.md)
 
 ---
 

@@ -4,6 +4,7 @@
 **最後更新**: 2025-11-15
 
 > 📖 **詳細說明與 User Stories**：請參閱 [`FUTURE-PLANS-DETAILS.md`](./FUTURE-PLANS-DETAILS.md)
+> 📝 **原始需求**：請參閱 [`requirements.md`](./requirements.md)
 
 ---
 
@@ -161,5 +162,6 @@
 
 | 文件 | 用途 |
 |------|------|
+| [`requirements.md`](./requirements.md) | 原始需求記錄與追溯矩陣 |
 | [`FUTURE-PLANS-DETAILS.md`](./FUTURE-PLANS-DETAILS.md) | 詳細技術說明、User Stories 與決策記錄 |
 | [`001-newsletter-viewer/spec.md`](./001-newsletter-viewer/spec.md) | 已實作的週報閱讀器規格 |
