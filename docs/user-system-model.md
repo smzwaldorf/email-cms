@@ -27,7 +27,6 @@ This document outlines the complete user system model for the Email CMS applicat
 interface User {
   id: string;                    // UUID
   email: string;                 // Unique, required for login
-  passwordHash: string;          // Hashed password (bcrypt/argon2)
   role: UserRole;                // Single role per user
   firstName: string;
   lastName: string;
@@ -52,8 +51,10 @@ enum UserRole {
 **Notes:**
 - Each user has exactly ONE role
 - Email is the primary login identifier
-- Password is hashed using bcrypt or argon2
+- **Passwordless authentication** - see [Authentication & Authorization](./authentication-authorization.md)
+- Supports Google OAuth and Email Magic Links
 - `isActive` allows for account deactivation without deletion
+- `emailVerified` is set to true after first successful login
 
 ### 1.2 Family Model
 
@@ -328,7 +329,7 @@ enum ArticleType {
 - `email` must be UNIQUE
 - `email` must be valid email format
 - `role` must be one of UserRole enum
-- `passwordHash` must not be null
+- No password stored (passwordless authentication - see [authentication-authorization.md](./authentication-authorization.md))
 
 **Family Table:**
 - No special constraints (all fields optional except id)
@@ -585,11 +586,10 @@ async function getAccessibleClassIds(user: User): Promise<string[]> {
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- User table
+-- User table (passwordless - see authentication-authorization.md)
 CREATE TABLE users (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   email VARCHAR(255) UNIQUE NOT NULL,
-  password_hash VARCHAR(255) NOT NULL,
   role VARCHAR(50) NOT NULL CHECK (role IN ('ADMIN', 'CLASS_TEACHER', 'PARENT', 'STUDENT')),
   first_name VARCHAR(100) NOT NULL,
   last_name VARCHAR(100) NOT NULL,
@@ -799,15 +799,15 @@ CREATE TRIGGER update_newsletter_weeks_updated_at BEFORE UPDATE ON newsletter_we
 ### 4.2 Sample Data
 
 ```sql
--- Insert sample admin user
-INSERT INTO users (email, password_hash, role, first_name, last_name, display_name, is_active, email_verified)
+-- Insert sample admin user (passwordless auth)
+INSERT INTO users (email, role, first_name, last_name, display_name, is_active, email_verified)
 VALUES
-  ('admin@school.com', '$2b$10$...', 'ADMIN', 'Admin', 'User', 'School Admin', true, true);
+  ('admin@school.com', 'ADMIN', 'Admin', 'User', 'School Admin', true, true);
 
 -- Insert sample teacher
-INSERT INTO users (email, password_hash, role, first_name, last_name, display_name, is_active, email_verified)
+INSERT INTO users (email, role, first_name, last_name, display_name, is_active, email_verified)
 VALUES
-  ('teacher1@school.com', '$2b$10$...', 'CLASS_TEACHER', '王', '老師', '王老師', true, true);
+  ('teacher1@school.com', 'CLASS_TEACHER', '王', '老師', '王老師', true, true);
 
 -- Insert sample classes
 -- Class from 2024 (甲辰 year), currently in Grade 1
@@ -822,16 +822,16 @@ VALUES
 --   ('辛丑乙', 4, 2021, (SELECT id FROM users WHERE email = 'teacher2@school.com'), true);
 
 -- Insert sample student users
-INSERT INTO users (email, password_hash, role, first_name, last_name, is_active, email_verified)
+INSERT INTO users (email, role, first_name, last_name, is_active, email_verified)
 VALUES
-  ('student1@school.com', '$2b$10$...', 'STUDENT', '小明', '陳', true, true),
-  ('student2@school.com', '$2b$10$...', 'STUDENT', '小華', '林', true, true);
+  ('student1@school.com', 'STUDENT', '小明', '陳', true, true),
+  ('student2@school.com', 'STUDENT', '小華', '林', true, true);
 
 -- Insert sample parent users
-INSERT INTO users (email, password_hash, role, first_name, last_name, is_active, email_verified)
+INSERT INTO users (email, role, first_name, last_name, is_active, email_verified)
 VALUES
-  ('parent1@example.com', '$2b$10$...', 'PARENT', '大明', '陳', true, true),
-  ('parent2@example.com', '$2b$10$...', 'PARENT', '美玲', '陳', true, true);
+  ('parent1@example.com', 'PARENT', '大明', '陳', true, true),
+  ('parent2@example.com', 'PARENT', '美玲', '陳', true, true);
 
 -- Create a family
 INSERT INTO families (family_name, address, primary_contact_email, primary_contact_phone)
@@ -929,18 +929,35 @@ VALUES
 
 ### 5.1 Authentication Endpoints
 
+**Note:** For detailed authentication implementation, see [authentication-authorization.md](./authentication-authorization.md)
+
 ```typescript
-POST   /api/auth/login
-  Body: { email: string, password: string }
-  Returns: { token: string, user: User }
+// Google OAuth
+POST   /api/auth/google
+  Body: { redirectUri: string }
+  Returns: { authUrl: string }
+
+GET    /api/auth/google/callback
+  Query: ?code=xxx
+  Returns: { accessToken: string, refreshToken: string, user: User }
+
+// Email Magic Link (Passwordless)
+POST   /api/auth/magic-link
+  Body: { email: string }
+  Returns: { success: true }
+
+GET    /api/auth/verify
+  Query: ?token=xxx
+  Returns: { accessToken: string, refreshToken: string, user: User }
+
+// Token Management
+POST   /api/auth/refresh
+  Body: { refreshToken: string }
+  Returns: { accessToken: string, refreshToken: string }
 
 POST   /api/auth/logout
   Headers: { Authorization: Bearer <token> }
   Returns: { success: boolean }
-
-POST   /api/auth/refresh
-  Body: { refreshToken: string }
-  Returns: { token: string }
 
 GET    /api/auth/me
   Headers: { Authorization: Bearer <token> }
@@ -961,8 +978,9 @@ GET    /api/users/:id
 
 POST   /api/users
   Permissions: ADMIN only
-  Body: { email, password, role, firstName, lastName, ... }
+  Body: { email, role, firstName, lastName, sendMagicLink?, ... }
   Returns: { user: User }
+  Note: No password - user receives magic link to activate account
 
 PATCH  /api/users/:id
   Permissions: ADMIN or self (limited fields)
@@ -1515,17 +1533,18 @@ export function canViewClassStudents(user: User | null, classId: string): boolea
 
 ## 9. Security Considerations
 
-### 9.1 Password Security
-- Use bcrypt or argon2 for password hashing
-- Minimum password strength requirements
-- Password reset functionality with secure tokens
-- Rate limiting on login attempts
+### 9.1 Authentication Security
+**Note:** See [authentication-authorization.md](./authentication-authorization.md) for complete details
 
-### 9.2 Authentication Security
-- JWT tokens with expiration
-- Refresh token rotation
-- Secure token storage (httpOnly cookies or secure localStorage)
-- CSRF protection
+- **Passwordless authentication** - no passwords stored
+- Google OAuth 2.0 integration
+- Email magic links (15-minute expiration)
+- Rate limiting on authentication endpoints (5 requests per 15 minutes)
+
+- JWT access tokens (15-minute expiration)
+- Refresh tokens (30-day expiration with rotation)
+- Tokens stored in httpOnly cookies or memory
+- CSRF protection for state-changing operations
 
 ### 9.3 Authorization Security
 - Always verify permissions on the backend
@@ -1548,6 +1567,14 @@ export function canViewClassStudents(user: User | null, classId: string): boolea
 ---
 
 ## Document Change Log
+
+### Version 2.2 (2025-11-16)
+**Passwordless Authentication** - Updated to passwordless system:
+- **Removed**: `passwordHash` field from User model
+- **Authentication**: Created separate [authentication-authorization.md](./authentication-authorization.md) document
+- **Methods**: Google OAuth 2.0 and Email Magic Links (no passwords stored)
+- **Security**: JWT tokens with refresh token rotation
+- **Updated**: All SQL samples to remove password fields
 
 ### Version 2.1 (2025-11-16)
 **Chinese Zodiac Class Naming** - Updated class naming convention:
@@ -1573,7 +1600,7 @@ Initial design with basic user roles and direct parent-student relationships.
 
 ---
 
-**Document Version:** 2.1
+**Document Version:** 2.2
 **Last Updated:** 2025-11-16
 **Author:** Claude (AI Assistant)
 **Status:** Revised - Ready for Implementation
