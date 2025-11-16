@@ -1,9 +1,8 @@
 /**
  * 組件 - 文章內容
- * 顯示完整的文章內容，包括 Markdown 渲染
+ * 顯示完整的文章內容，使用 HTML 渲染
  */
 
-import { useMarkdownConverter } from '@/hooks/useMarkdownConverter'
 import { formatDate, formatViewCount } from '@/utils/formatters'
 
 interface ArticleContentProps {
@@ -23,9 +22,7 @@ export function ArticleContent({
   viewCount,
   isLoading = false,
 }: ArticleContentProps) {
-  const { html, isConverting } = useMarkdownConverter(content)
-
-  if (isLoading || isConverting) {
+  if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="text-center">
@@ -54,7 +51,7 @@ export function ArticleContent({
       <div className="flex-1 overflow-y-auto px-6 py-4 bg-white">
         <div
           className="prose prose-sm max-w-none text-waldorf-clay-700 leading-relaxed"
-          dangerouslySetInnerHTML={{ __html: html }}
+          dangerouslySetInnerHTML={{ __html: content }}
         />
       </div>
     </article>

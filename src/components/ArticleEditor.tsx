@@ -4,9 +4,7 @@
  */
 
 import { useState, useEffect } from 'react'
-import MDEditor from '@uiw/react-md-editor'
-import '@uiw/react-md-editor/markdown-editor.css'
-import '@uiw/react-markdown-preview/markdown.css'
+import { MediumEditor } from './MediumEditor'
 import { Article } from '@/types'
 
 interface ArticleEditorProps {
@@ -64,10 +62,10 @@ export function ArticleEditor({
     }))
   }
 
-  const handleContentChange = (value?: string) => {
+  const handleContentChange = (value: string) => {
     setFormData((prev) => ({
       ...prev,
-      content: value || '',
+      content: value,
     }))
   }
 
@@ -156,22 +154,14 @@ export function ArticleEditor({
             >
               內容 <span className="text-waldorf-rose-500">*</span>
             </label>
-            <div className="border border-waldorf-cream-300 rounded-md overflow-hidden" data-color-mode="light">
-              <MDEditor
-                value={formData.content}
-                onChange={handleContentChange}
-                height={500}
-                preview="live"
-                hideToolbar={false}
-                enableScroll={true}
-                visibleDragbar={true}
-                textareaProps={{
-                  placeholder: '輸入文章內容，支援 Markdown 格式...',
-                }}
-              />
-            </div>
+            <MediumEditor
+              text={formData.content}
+              onChange={handleContentChange}
+              placeholder="輸入文章內容..."
+              className="border border-waldorf-cream-300 rounded-md"
+            />
             <p className="text-xs text-waldorf-clay-500 mt-1">
-              使用富文本編輯器編輯內容，內容將以 Markdown 格式儲存
+              使用 Medium 風格富文本編輯器編輯內容，內容將以 HTML 格式儲存
             </p>
           </div>
 
