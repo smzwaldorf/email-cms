@@ -1,0 +1,51 @@
+{
+  "name": "email-cms-newsletter-viewer",
+  "version": "1.0.0",
+  "description": "電子報閱讀 CMS Web App - 允許讀者查看和瀏覽每週電子報內容",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "coverage": "vitest --coverage",
+    "lint": "eslint src tests --ext .ts,.tsx",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"tests/**/*.{ts,tsx}\""
+  },
+  "dependencies": {
+    "@uiw/react-md-editor": "^4.0.8",
+    "clsx": "^2.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.20.0",
+    "rehype-sanitize": "^5.0.0",
+    "remark": "^15.0.0",
+    "remark-html": "^15.0.0"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.1.0",
+    "@testing-library/react": "^14.0.0",
+    "@testing-library/user-event": "^14.5.0",
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "@vitejs/plugin-react": "^4.2.0",
+    "@vitest/coverage-v8": "^1.0.0",
+    "@vitest/ui": "^1.0.0",
+    "autoprefixer": "^10.4.0",
+    "eslint": "^8.55.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "jsdom": "^23.0.0",
+    "postcss": "^8.4.0",
+    "prettier": "^3.1.0",
+    "tailwindcss": "^3.3.0",
+    "terser": "^5.44.0",
+    "typescript": "^5.3.0",
+    "vite": "^5.0.0",
+    "vitest": "^1.0.0"
+  }
+}
