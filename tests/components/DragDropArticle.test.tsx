@@ -31,14 +31,25 @@ describe('DragDropArticle', () => {
   it('should render article component', () => {
     const mockOnSelect = vi.fn()
     const mockOnDragStart = vi.fn()
+    const mockOnDragEnd = vi.fn()
+    const mockOnDelete = vi.fn()
+    const mockOnMoveUp = vi.fn()
+    const mockOnMoveDown = vi.fn()
 
     render(
       <DragDropArticle
         article={mockArticle}
         isSelected={false}
+        isDragging={false}
+        disabled={false}
         onSelect={mockOnSelect}
         onDragStart={mockOnDragStart}
+        onDragEnd={mockOnDragEnd}
+        onDelete={mockOnDelete}
+        onMoveUp={mockOnMoveUp}
+        onMoveDown={mockOnMoveDown}
         index={0}
+        totalArticles={5}
       />
     )
 
@@ -48,14 +59,25 @@ describe('DragDropArticle', () => {
   it('should accept required props', () => {
     const mockOnSelect = vi.fn()
     const mockOnDragStart = vi.fn()
+    const mockOnDragEnd = vi.fn()
+    const mockOnDelete = vi.fn()
+    const mockOnMoveUp = vi.fn()
+    const mockOnMoveDown = vi.fn()
 
     render(
       <DragDropArticle
         article={mockArticle}
         isSelected={false}
+        isDragging={false}
+        disabled={false}
         onSelect={mockOnSelect}
         onDragStart={mockOnDragStart}
+        onDragEnd={mockOnDragEnd}
+        onDelete={mockOnDelete}
+        onMoveUp={mockOnMoveUp}
+        onMoveDown={mockOnMoveDown}
         index={0}
+        totalArticles={5}
       />
     )
 
@@ -66,14 +88,25 @@ describe('DragDropArticle', () => {
   it('should render with different selection state', () => {
     const mockOnSelect = vi.fn()
     const mockOnDragStart = vi.fn()
+    const mockOnDragEnd = vi.fn()
+    const mockOnDelete = vi.fn()
+    const mockOnMoveUp = vi.fn()
+    const mockOnMoveDown = vi.fn()
 
     const { rerender } = render(
       <DragDropArticle
         article={mockArticle}
         isSelected={false}
+        isDragging={false}
+        disabled={false}
         onSelect={mockOnSelect}
         onDragStart={mockOnDragStart}
+        onDragEnd={mockOnDragEnd}
+        onDelete={mockOnDelete}
+        onMoveUp={mockOnMoveUp}
+        onMoveDown={mockOnMoveDown}
         index={0}
+        totalArticles={5}
       />
     )
 
@@ -81,9 +114,16 @@ describe('DragDropArticle', () => {
       <DragDropArticle
         article={mockArticle}
         isSelected={true}
+        isDragging={false}
+        disabled={false}
         onSelect={mockOnSelect}
         onDragStart={mockOnDragStart}
+        onDragEnd={mockOnDragEnd}
+        onDelete={mockOnDelete}
+        onMoveUp={mockOnMoveUp}
+        onMoveDown={mockOnMoveDown}
         index={0}
+        totalArticles={5}
       />
     )
 
@@ -93,6 +133,10 @@ describe('DragDropArticle', () => {
   it('should handle different articles', () => {
     const mockOnSelect = vi.fn()
     const mockOnDragStart = vi.fn()
+    const mockOnDragEnd = vi.fn()
+    const mockOnDelete = vi.fn()
+    const mockOnMoveUp = vi.fn()
+    const mockOnMoveDown = vi.fn()
 
     const differentArticle = {
       ...mockArticle,
@@ -104,9 +148,16 @@ describe('DragDropArticle', () => {
       <DragDropArticle
         article={differentArticle}
         isSelected={false}
+        isDragging={false}
+        disabled={false}
         onSelect={mockOnSelect}
         onDragStart={mockOnDragStart}
+        onDragEnd={mockOnDragEnd}
+        onDelete={mockOnDelete}
+        onMoveUp={mockOnMoveUp}
+        onMoveDown={mockOnMoveDown}
         index={1}
+        totalArticles={5}
       />
     )
 
