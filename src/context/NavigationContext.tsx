@@ -14,6 +14,7 @@ interface NavigationContextType {
   setArticleList: (articles: Article[]) => void
   setPreviousArticleId: (articleId: string | undefined) => void
   setNextArticleId: (articleId: string | undefined) => void
+  refreshArticleList: (articles: Article[]) => void
 }
 
 const NavigationContext = createContext<NavigationContextType | undefined>(undefined)
@@ -87,6 +88,14 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     }))
   }, [])
 
+  const refreshArticleList = useCallback((articles: Article[]) => {
+    setNavigationState((prev) => ({
+      ...prev,
+      articleList: articles,
+      totalArticlesInWeek: articles.length,
+    }))
+  }, [])
+
   return (
     <NavigationContext.Provider
       value={{
@@ -98,6 +107,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
         setArticleList,
         setPreviousArticleId,
         setNextArticleId,
+        refreshArticleList,
       }}
     >
       {children}
