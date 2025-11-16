@@ -12,9 +12,12 @@ This document outlines the complete user system model for the Email CMS applicat
 
 1. **Family-Centric Model**: Families are first-class entities that can include both enrolled students and non-student children
 2. **Single Class Membership**: Each student belongs to exactly ONE class at any given time
-3. **Persistent Classes**: Classes grow with students year over year (e.g., "甲班" advances from Grade 1 → Grade 2 → Grade 3)
-4. **Transfer Tracking**: Student transfers between classes are tracked historically
-5. **Permission-Based Access**: Parents can only read 班級大小事 (class news) articles from their children's classes
+3. **Persistent Classes**: Classes grow with students year over year (e.g., "甲辰" advances from Grade 1 → Grade 2 → Grade 3)
+4. **Chinese Zodiac Naming**: Class names follow the 60-year sexagenary cycle (干支) based on the year students enter Grade 1
+   - 2024 → "甲辰", 2021 → "辛丑", 2015 → "乙未"
+   - Multiple classes use suffixes: "辛丑甲", "辛丑乙"
+5. **Transfer Tracking**: Student transfers between classes are tracked historically
+6. **Permission-Based Access**: Parents can only read 班級大小事 (class news) articles from their children's classes
 
 ## 1. Core Models
 
@@ -97,10 +100,9 @@ enum FamilyMemberRole {
 ```typescript
 interface Class {
   id: string;                    // UUID
-  name: string;                  // e.g., "甲班" (Class A)
+  name: string;                  // Chinese zodiac year name (e.g., "甲辰", "辛丑甲")
   currentGrade: number;          // Current grade: 1-12 (or K for kindergarten = 0)
-  section?: string;              // e.g., "A", "B", "甲", "乙"
-  startYear: number;             // Year the class was formed (e.g., 2020)
+  startYear: number;             // Gregorian year when class entered Grade 1 (e.g., 2024)
   description?: string;          // Optional class description
   teacherId: string;             // Foreign key to User (CLASS_TEACHER)
   isActive: boolean;             // Active status
@@ -111,14 +113,22 @@ interface Class {
 
 **Notes:**
 - **Classes are reused** - The same class grows with students year over year
-- `currentGrade` is updated annually as students advance (e.g., Grade 1 → Grade 2)
-- `startYear` identifies when the class was formed (doesn't change)
-- `name` stays consistent (e.g., "甲班" remains "甲班" throughout)
+- `name` is based on **Chinese sexagenary cycle (干支)** corresponding to the year students enter Grade 1
+  - Uses Heavenly Stems (天干): 甲, 乙, 丙, 丁, 戊, 己, 庚, 辛, 壬, 癸
+  - Uses Earthly Branches (地支): 子, 丑, 寅, 卯, 辰, 巳, 午, 未, 申, 酉, 戌, 亥
+  - Example mappings: 2024 = 甲辰, 2021 = 辛丑, 2015 = 乙未
+- **Multiple classes in same year** use suffixes 甲, 乙, 丙, etc.:
+  - First class: "辛丑甲" (2021, Class A)
+  - Second class: "辛丑乙" (2021, Class B)
+  - Third class: "辛丑丙" (2021, Class C)
+- `startYear` is the Gregorian calendar year (e.g., 2024) - never changes
+- `currentGrade` is updated annually as students advance (Grade 1 → 2 → 3...)
 - Each class has ONE primary teacher (teacher may change over years)
-- Example: "甲班" formed in 2020, starting at Grade 1
-  - 2020-2021: 一年級甲班 (Grade 1A, currentGrade=1)
-  - 2021-2022: 二年級甲班 (Grade 2A, currentGrade=2)
-  - 2022-2023: 三年級甲班 (Grade 3A, currentGrade=3)
+- **Example**: Class "甲辰" formed in 2024
+  - 2024-2025: 一年級甲辰 (Grade 1, currentGrade=1)
+  - 2025-2026: 二年級甲辰 (Grade 2, currentGrade=2)
+  - 2026-2027: 三年級甲辰 (Grade 3, currentGrade=3)
+  - ...continues until graduation
 - Same teacher and same classmates progress together
 
 ### 1.4 Student-Class Relationship (Class Membership)
@@ -341,8 +351,11 @@ enum ArticleType {
 **Class Table:**
 - `teacherId` must reference valid User with role = CLASS_TEACHER
 - `name` + `startYear` should be unique (composite constraint)
+  - Ensures no duplicate class names for the same starting year
+  - Allows for multiple classes: "辛丑甲", "辛丑乙" both with startYear=2021
 - `currentGrade` must be 0-12
-- `startYear` must be a valid year
+- `startYear` must be a valid year (Gregorian calendar)
+- `name` should follow Chinese zodiac naming convention (application logic)
 
 **ClassMembership Table:**
 - `studentId` must reference valid User with role = STUDENT
@@ -652,10 +665,9 @@ CREATE INDEX idx_pcr_is_primary ON parent_child_relationships(is_primary_guardia
 -- Class table
 CREATE TABLE classes (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  name VARCHAR(100) NOT NULL,
+  name VARCHAR(100) NOT NULL,  -- Chinese zodiac name (e.g., "甲辰", "辛丑甲")
   current_grade INTEGER NOT NULL CHECK (current_grade >= 0 AND current_grade <= 12),
-  section VARCHAR(10),
-  start_year INTEGER NOT NULL,
+  start_year INTEGER NOT NULL,  -- Gregorian year when entered Grade 1
   description TEXT,
   teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
   is_active BOOLEAN DEFAULT true,
@@ -797,10 +809,17 @@ INSERT INTO users (email, password_hash, role, first_name, last_name, display_na
 VALUES
   ('teacher1@school.com', '$2b$10$...', 'CLASS_TEACHER', '王', '老師', '王老師', true, true);
 
--- Insert sample class (starts in 2020, now in Grade 5 in 2024-2025)
-INSERT INTO classes (name, current_grade, section, start_year, teacher_id, is_active)
+-- Insert sample classes
+-- Class from 2024 (甲辰 year), currently in Grade 1
+INSERT INTO classes (name, current_grade, start_year, teacher_id, is_active)
 VALUES
-  ('甲班', 5, '甲', 2020, (SELECT id FROM users WHERE email = 'teacher1@school.com'), true);
+  ('甲辰', 1, 2024, (SELECT id FROM users WHERE email = 'teacher1@school.com'), true);
+
+-- Example: Multiple classes from 2021 (辛丑 year), currently in Grade 4
+-- INSERT INTO classes (name, current_grade, start_year, teacher_id, is_active)
+-- VALUES
+--   ('辛丑甲', 4, 2021, (SELECT id FROM users WHERE email = 'teacher1@school.com'), true),
+--   ('辛丑乙', 4, 2021, (SELECT id FROM users WHERE email = 'teacher2@school.com'), true);
 
 -- Insert sample student users
 INSERT INTO users (email, password_hash, role, first_name, last_name, is_active, email_verified)
@@ -865,11 +884,11 @@ VALUES
 INSERT INTO class_memberships (student_id, class_id, joined_date, status)
 VALUES
   ((SELECT id FROM users WHERE email = 'student1@school.com'),
-   (SELECT id FROM classes WHERE name = '甲班' AND start_year = 2020),
-   '2020-09-01', 'ACTIVE'),
+   (SELECT id FROM classes WHERE name = '甲辰' AND start_year = 2024),
+   '2024-09-01', 'ACTIVE'),
   ((SELECT id FROM users WHERE email = 'student2@school.com'),
-   (SELECT id FROM classes WHERE name = '甲班' AND start_year = 2020),
-   '2020-09-01', 'ACTIVE');
+   (SELECT id FROM classes WHERE name = '甲辰' AND start_year = 2024),
+   '2024-09-01', 'ACTIVE');
 
 -- Insert sample class article (班級大小事)
 INSERT INTO articles (
@@ -880,7 +899,7 @@ VALUES
   ('本週班級活動', '本週我們進行了戶外教學...', '王老師',
    (SELECT id FROM users WHERE email = 'teacher1@school.com'),
    '2025-W43',
-   (SELECT id FROM classes WHERE name = '甲班' AND start_year = 2020),
+   (SELECT id FROM classes WHERE name = '甲辰' AND start_year = 2024),
    'CLASS_NEWS', 1, '/articles/class-news-1', true);
 
 -- Insert sample all-school article
@@ -1150,17 +1169,36 @@ export interface ParentChildRelationship {
 
 export interface Class {
   id: string;
-  name: string;
-  currentGrade: number;
-  section?: string;
-  startYear: number;
+  name: string;             // Chinese zodiac name (e.g., "甲辰", "辛丑甲")
+  currentGrade: number;     // Current grade: 0-12
+  startYear: number;        // Gregorian year when entered Grade 1
   description?: string;
   teacherId: string;
-  teacher?: User; // Populated in API response
+  teacher?: User;           // Populated in API response
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
 }
+
+/**
+ * Helper: Chinese Zodiac Year Name Generator
+ * Maps Gregorian year to Chinese sexagenary cycle name
+ */
+export function getChineseZodiacName(year: number): string {
+  const stems = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
+  const branches = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+
+  // Year 4 (甲子) is the reference point in the 60-year cycle
+  const stemIndex = (year - 4) % 10;
+  const branchIndex = (year - 4) % 12;
+
+  return stems[stemIndex] + branches[branchIndex];
+}
+
+// Examples:
+// getChineseZodiacName(2024) => "甲辰"
+// getChineseZodiacName(2021) => "辛丑"
+// getChineseZodiacName(2015) => "乙未"
 
 export enum MembershipStatus {
   ACTIVE = 'ACTIVE',
@@ -1511,6 +1549,16 @@ export function canViewClassStudents(user: User | null, classId: string): boolea
 
 ## Document Change Log
 
+### Version 2.1 (2025-11-16)
+**Chinese Zodiac Class Naming** - Updated class naming convention:
+- **Class Names**: Now use Chinese sexagenary cycle (干支) based on year students enter Grade 1
+  - Examples: "甲辰" (2024), "乙未" (2015), "辛丑" (2021)
+- **Multiple Classes**: Use suffixes 甲, 乙, 丙 for multiple classes in same year
+  - Examples: "辛丑甲" (2021-A), "辛丑乙" (2021-B)
+- **Removed**: `section` field from Class model (now part of name)
+- **Added**: Helper function `getChineseZodiacName()` to calculate zodiac name from Gregorian year
+- **Updated**: All sample data to use proper Chinese zodiac names
+
 ### Version 2.0 (2025-11-16)
 **Major Revision** - Updated based on clarified requirements:
 - **Added Family Model**: Introduced `Family`, `FamilyMember`, and `ParentChildRelationship` tables to support families with non-student children
@@ -1525,7 +1573,7 @@ Initial design with basic user roles and direct parent-student relationships.
 
 ---
 
-**Document Version:** 2.0
+**Document Version:** 2.1
 **Last Updated:** 2025-11-16
 **Author:** Claude (AI Assistant)
 **Status:** Revised - Ready for Implementation
