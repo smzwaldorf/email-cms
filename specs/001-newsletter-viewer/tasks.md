@@ -207,10 +207,10 @@ description: "電子報閱讀 CMS Web App 工作項目清單"
 
 ### US4 的單元和元件測試
 
-- [ ] T058 [P] [US4] EditorPage 頁面的單元測試 tests/pages/EditorPage.test.tsx
-- [ ] T059 [P] [US4] ArticleOrderManager 元件的單元測試 tests/components/ArticleOrderManager.test.tsx
-- [ ] T060 [P] [US4] 拖拽功能的單元測試 tests/components/DragDropArticle.test.tsx
-- [ ] T061 [US4] 編輯工作流整合測試（新增 → 排序 → 刪除 → 保存） tests/integration/userStory4.test.tsx
+- [x] T058 [P] [US4] EditorPage 頁面的單元測試 tests/pages/EditorPage.test.tsx
+- [x] T059 [P] [US4] ArticleOrderManager 元件的單元測試 tests/components/ArticleOrderManager.test.tsx
+- [x] T060 [P] [US4] 拖拽功能的單元測試 tests/components/DragDropArticle.test.tsx
+- [x] T061 [US4] 編輯工作流整合測試（新增 → 排序 → 刪除 → 保存） tests/integration/userStory4.test.tsx
 
 ### US4 的實現
 
@@ -222,10 +222,10 @@ description: "電子報閱讀 CMS Web App 工作項目清單"
 - [x] T068 [US4] 在 mockApi.ts 中實現 createArticle（新增文章） src/services/mockApi.ts
 - [x] T069 [US4] 在 mockApi.ts 中實現 deleteArticle（刪除文章） src/services/mockApi.ts
 - [x] T070 [US4] 配置 React Router 編輯頁面路由 `/editor/:weekNumber` src/App.tsx
-- [ ] T066 [US4] 建立 useArticleEditor 自訂 hook（編輯狀態管理） src/hooks/useArticleEditor.ts
-- [ ] T071 [US4] 實現編輯權限檢查（假設後端驗證） src/services/authService.ts
-- [ ] T072 [US4] 新增編輯模式確認對話框（刪除確認） src/components/ConfirmDialog.tsx
-- [ ] T073 [US4] 在編輯後自動刷新讀者頁面（更新 Context） src/context/NewsletterContext.tsx
+- [x] T066 [US4] 建立 useArticleEditor 自訂 hook（編輯狀態管理） src/hooks/useArticleEditor.ts
+- [x] T071 [US4] 實現編輯權限檢查（假設後端驗證） src/services/authService.ts
+- [x] T072 [US4] 新增編輯模式確認對話框（刪除確認） src/components/ConfirmDialog.tsx
+- [x] T073 [US4] 在編輯後自動刷新讀者頁面（更新 Context） src/context/NavigationContext.tsx
 
 **檢查點**: 使用者故事 4 已完全實現
 - ✅ 編輯者可進入編輯模式
