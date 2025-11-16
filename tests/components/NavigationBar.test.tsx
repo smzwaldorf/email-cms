@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NavigationBar } from '@/components/NavigationBar'
 import { NavigationState } from '@/types'
@@ -155,5 +155,177 @@ describe('NavigationBar', () => {
 
     await user.click(screen.getByRole('button', { name: /下一篇/ }))
     expect(handleNext).toHaveBeenCalledOnce()
+  })
+
+  // T052: 鍵盤快捷鍵支援
+  describe('Keyboard Navigation (T052)', () => {
+    it('should navigate to previous article with left arrow key', async () => {
+      const handlePrevious = vi.fn()
+      const handleNext = vi.fn()
+
+      render(
+        <NavigationBar
+          navigationState={mockNavState}
+          onPrevious={handlePrevious}
+          onNext={handleNext}
+        />
+      )
+
+      // Simulate left arrow key press
+      fireEvent.keyDown(window, { key: 'ArrowLeft' })
+
+      expect(handlePrevious).toHaveBeenCalledOnce()
+      expect(handleNext).not.toHaveBeenCalled()
+    })
+
+    it('should navigate to next article with right arrow key', async () => {
+      const handlePrevious = vi.fn()
+      const handleNext = vi.fn()
+
+      render(
+        <NavigationBar
+          navigationState={mockNavState}
+          onPrevious={handlePrevious}
+          onNext={handleNext}
+        />
+      )
+
+      // Simulate right arrow key press
+      fireEvent.keyDown(window, { key: 'ArrowRight' })
+
+      expect(handleNext).toHaveBeenCalledOnce()
+      expect(handlePrevious).not.toHaveBeenCalled()
+    })
+
+    it('should not navigate previous when at first article', async () => {
+      const handlePrevious = vi.fn()
+      const handleNext = vi.fn()
+
+      const firstArticleState: NavigationState = {
+        ...mockNavState,
+        currentArticleOrder: 1,
+      }
+
+      render(
+        <NavigationBar
+          navigationState={firstArticleState}
+          onPrevious={handlePrevious}
+          onNext={handleNext}
+        />
+      )
+
+      // Simulate left arrow key press
+      fireEvent.keyDown(window, { key: 'ArrowLeft' })
+
+      expect(handlePrevious).not.toHaveBeenCalled()
+    })
+
+    it('should not navigate next when at last article', async () => {
+      const handlePrevious = vi.fn()
+      const handleNext = vi.fn()
+
+      const lastArticleState: NavigationState = {
+        ...mockNavState,
+        currentArticleOrder: 5,
+      }
+
+      render(
+        <NavigationBar
+          navigationState={lastArticleState}
+          onPrevious={handlePrevious}
+          onNext={handleNext}
+        />
+      )
+
+      // Simulate right arrow key press
+      fireEvent.keyDown(window, { key: 'ArrowRight' })
+
+      expect(handleNext).not.toHaveBeenCalled()
+    })
+
+    it('should prevent default behavior for left arrow key', async () => {
+      const handlePrevious = vi.fn()
+      const handleNext = vi.fn()
+
+      render(
+        <NavigationBar
+          navigationState={mockNavState}
+          onPrevious={handlePrevious}
+          onNext={handleNext}
+        />
+      )
+
+      const event = new KeyboardEvent('keydown', { key: 'ArrowLeft' })
+      const preventDefaultSpy = vi.spyOn(event, 'preventDefault')
+
+      window.dispatchEvent(event)
+
+      expect(preventDefaultSpy).toHaveBeenCalled()
+    })
+
+    it('should prevent default behavior for right arrow key', async () => {
+      const handlePrevious = vi.fn()
+      const handleNext = vi.fn()
+
+      render(
+        <NavigationBar
+          navigationState={mockNavState}
+          onPrevious={handlePrevious}
+          onNext={handleNext}
+        />
+      )
+
+      const event = new KeyboardEvent('keydown', { key: 'ArrowRight' })
+      const preventDefaultSpy = vi.spyOn(event, 'preventDefault')
+
+      window.dispatchEvent(event)
+
+      expect(preventDefaultSpy).toHaveBeenCalled()
+    })
+
+    it('should not respond to other keys', async () => {
+      const handlePrevious = vi.fn()
+      const handleNext = vi.fn()
+
+      render(
+        <NavigationBar
+          navigationState={mockNavState}
+          onPrevious={handlePrevious}
+          onNext={handleNext}
+        />
+      )
+
+      // Simulate pressing 'a' key
+      fireEvent.keyDown(window, { key: 'a' })
+
+      expect(handlePrevious).not.toHaveBeenCalled()
+      expect(handleNext).not.toHaveBeenCalled()
+    })
+
+    it('should handle continuous keyboard navigation', async () => {
+      const handlePrevious = vi.fn()
+      const handleNext = vi.fn()
+
+      const middleArticleState: NavigationState = {
+        ...mockNavState,
+        currentArticleOrder: 3,
+      }
+
+      render(
+        <NavigationBar
+          navigationState={middleArticleState}
+          onPrevious={handlePrevious}
+          onNext={handleNext}
+        />
+      )
+
+      // Simulate multiple arrow key presses
+      fireEvent.keyDown(window, { key: 'ArrowRight' })
+      fireEvent.keyDown(window, { key: 'ArrowRight' })
+      fireEvent.keyDown(window, { key: 'ArrowLeft' })
+
+      expect(handleNext).toHaveBeenCalledTimes(2)
+      expect(handlePrevious).toHaveBeenCalledTimes(1)
+    })
   })
 })
