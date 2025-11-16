@@ -1,0 +1,234 @@
+/**
+ * MediumEditor Rich Text Styling
+ * Provides inline preview styling for all rich text elements
+ */
+
+.medium-editor-content {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  color: #374151;
+}
+
+/* Headings */
+.medium-editor-content h1,
+.medium-editor-content h2,
+.medium-editor-content h3,
+.medium-editor-content h4,
+.medium-editor-content h5,
+.medium-editor-content h6 {
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 1.5em 0 0.5em;
+  color: #1f2937;
+}
+
+.medium-editor-content h1 {
+  font-size: 2em;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 0.3em;
+}
+
+.medium-editor-content h2 {
+  font-size: 1.5em;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 0.3em;
+}
+
+.medium-editor-content h3 {
+  font-size: 1.25em;
+}
+
+.medium-editor-content h4 {
+  font-size: 1.1em;
+}
+
+/* First heading should not have top margin */
+.medium-editor-content h1:first-child,
+.medium-editor-content h2:first-child,
+.medium-editor-content h3:first-child {
+  margin-top: 0;
+}
+
+/* Paragraphs */
+.medium-editor-content p {
+  margin: 0.75em 0;
+}
+
+.medium-editor-content p:first-child {
+  margin-top: 0;
+}
+
+/* Text formatting */
+.medium-editor-content strong,
+.medium-editor-content b {
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.medium-editor-content em,
+.medium-editor-content i {
+  font-style: italic;
+}
+
+.medium-editor-content u {
+  text-decoration: underline;
+}
+
+.medium-editor-content s,
+.medium-editor-content del {
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+/* Links */
+.medium-editor-content a {
+  color: #2563eb;
+  text-decoration: underline;
+  transition: color 0.2s;
+}
+
+.medium-editor-content a:hover {
+  color: #1d4ed8;
+}
+
+/* Lists */
+.medium-editor-content ul,
+.medium-editor-content ol {
+  margin: 1em 0;
+  padding-left: 2em;
+}
+
+.medium-editor-content ul {
+  list-style-type: disc;
+}
+
+.medium-editor-content ol {
+  list-style-type: decimal;
+}
+
+.medium-editor-content li {
+  margin: 0.5em 0;
+  line-height: 1.6;
+}
+
+.medium-editor-content li > ul,
+.medium-editor-content li > ol {
+  margin: 0.5em 0;
+}
+
+/* Nested lists */
+.medium-editor-content ul ul {
+  list-style-type: circle;
+}
+
+.medium-editor-content ul ul ul {
+  list-style-type: square;
+}
+
+/* Blockquotes */
+.medium-editor-content blockquote {
+  margin: 1.5em 0;
+  padding: 0.5em 0 0.5em 1.5em;
+  border-left: 4px solid #9ca3af;
+  background-color: #f9fafb;
+  color: #4b5563;
+  font-style: italic;
+}
+
+.medium-editor-content blockquote p {
+  margin: 0.5em 0;
+}
+
+.medium-editor-content blockquote p:first-child {
+  margin-top: 0;
+}
+
+.medium-editor-content blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+/* Code */
+.medium-editor-content code {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.9em;
+  background-color: #f3f4f6;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  color: #dc2626;
+}
+
+.medium-editor-content pre {
+  margin: 1em 0;
+  padding: 1em;
+  background-color: #1f2937;
+  color: #f3f4f6;
+  border-radius: 6px;
+  overflow-x: auto;
+}
+
+.medium-editor-content pre code {
+  background-color: transparent;
+  padding: 0;
+  color: inherit;
+  font-size: 0.875em;
+  line-height: 1.5;
+}
+
+/* Horizontal rule */
+.medium-editor-content hr {
+  margin: 2em 0;
+  border: 0;
+  border-top: 2px solid #e5e7eb;
+}
+
+/* Images */
+.medium-editor-content img {
+  max-width: 100%;
+  height: auto;
+  margin: 1em 0;
+  border-radius: 4px;
+}
+
+/* Tables */
+.medium-editor-content table {
+  margin: 1.5em 0;
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.medium-editor-content table th,
+.medium-editor-content table td {
+  padding: 0.75em;
+  border: 1px solid #e5e7eb;
+  text-align: left;
+}
+
+.medium-editor-content table th {
+  background-color: #f9fafb;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.medium-editor-content table tr:nth-child(even) {
+  background-color: #f9fafb;
+}
+
+/* Placeholder styling */
+.medium-editor-content.medium-editor-placeholder::after {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+/* Focus state */
+.medium-editor-content:focus {
+  outline: 2px solid #10b981;
+  outline-offset: -2px;
+  border-color: #10b981;
+}
+
+/* Selection */
+.medium-editor-content ::selection {
+  background-color: #bfdbfe;
+  color: #1e3a8a;
+}

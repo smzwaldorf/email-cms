@@ -7,6 +7,7 @@ import { useEffect, useRef } from 'react'
 import MediumEditorLib from 'medium-editor'
 import 'medium-editor/dist/css/medium-editor.css'
 import 'medium-editor/dist/css/themes/default.css'
+import './MediumEditor.css'
 
 interface MediumEditorProps {
   /** The HTML content to display and edit */
@@ -104,10 +105,10 @@ export function MediumEditor({
       ref={editorRef}
       className={`medium-editor-content ${className}`}
       style={{
-        minHeight: '400px',
-        padding: '1rem',
-        border: '1px solid #e5e7eb',
-        borderRadius: '0.375rem',
+        minHeight: '500px',
+        maxHeight: '600px',
+        overflowY: 'auto',
+        padding: '1.25rem',
         backgroundColor: 'white',
         outline: 'none',
       }}
