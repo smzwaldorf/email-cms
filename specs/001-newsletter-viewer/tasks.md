@@ -260,7 +260,7 @@ description: "電子報閱讀 CMS Web App 工作項目清單"
 ### 文檔與驗證
 
 - [x] T085 文檔更新：README.md, CONTRIBUTING.md, API.md
-- [ ] T086 運行 quickstart.md 驗證（新開發者能快速上手）
+- [x] T086 運行 quickstart.md 驗證（新開發者能快速上手）
 - [x] T087 最終程式碼審查和品質檢查（測試覆蓋 80%+, Linting 無錯誤）
 - [x] T088 成功標準驗證報告：驗證所有 SC-001 至 SC-007 是否達成
 
