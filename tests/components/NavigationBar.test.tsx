@@ -430,7 +430,7 @@ describe('NavigationBar', () => {
 
       fireEvent.keyDown(window, { key: 'e' })
 
-      expect(mockNavigate).toHaveBeenCalledWith('/editor/2025-W43/article-002')
+      expect(mockNavigate).toHaveBeenCalledWith('/editor/2025-W43')
       expect(handlePrevious).not.toHaveBeenCalled()
       expect(handleNext).not.toHaveBeenCalled()
     })
@@ -473,7 +473,7 @@ describe('NavigationBar', () => {
       window.dispatchEvent(event)
 
       expect(preventDefaultSpy).toHaveBeenCalled()
-      expect(mockNavigate).toHaveBeenCalledWith('/editor/2025-W43/article-002')
+      expect(mockNavigate).toHaveBeenCalledWith('/editor/2025-W43')
     })
 
     it('should support case-insensitive keyboard shortcuts', async () => {
