@@ -252,7 +252,44 @@ CREATE INDEX idx_magic_link_tokens_expires_at ON magic_link_tokens(expires_at);
 CREATE INDEX idx_magic_link_tokens_cleanup ON magic_link_tokens(expires_at, used);
 ```
 
-### 2.4 Refresh Tokens Table
+### 2.5 Temporary Article Access Tokens
+
+```sql
+-- Temporary access tokens for sharing articles via email
+CREATE TABLE article_access_tokens (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  token VARCHAR(255) NOT NULL UNIQUE, -- Hashed token
+  article_id UUID NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+  recipient_email VARCHAR(255), -- Optional: lock to specific recipient
+  expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  used BOOLEAN DEFAULT false,
+  used_at TIMESTAMP WITH TIME ZONE,
+  used_by_ip INET,
+  used_by_user_agent TEXT,
+  max_uses INTEGER DEFAULT 1,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_article_access_tokens_token ON article_access_tokens(token);
+CREATE INDEX idx_article_access_tokens_article_id ON article_access_tokens(article_id);
+CREATE INDEX idx_article_access_tokens_expires_at ON article_access_tokens(expires_at);
+
+-- Temporary sessions for non-authenticated article access
+CREATE TABLE temp_article_sessions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  token VARCHAR(255) NOT NULL UNIQUE, -- Hashed session token
+  article_id UUID NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+  expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  ip_address INET,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_temp_article_sessions_token ON temp_article_sessions(token);
+CREATE INDEX idx_temp_article_sessions_article_id ON temp_article_sessions(article_id);
+CREATE INDEX idx_temp_article_sessions_expires_at ON temp_article_sessions(expires_at);
+```
+
+### 2.6 Refresh Tokens Table
 
 ```sql
 -- JWT refresh tokens (for token rotation)
@@ -271,7 +308,7 @@ CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens(user_id);
 CREATE INDEX idx_refresh_tokens_token ON refresh_tokens(token);
 ```
 
-### 2.5 Audit Log Table
+### 2.7 Audit Log Table
 
 ```sql
 -- Authentication audit log
@@ -525,6 +562,33 @@ POST   /api/admin/users
 POST   /api/admin/users/:userId/send-magic-link
   Permissions: ADMIN only
   Returns: { success: boolean }
+```
+
+### 5.3 Temporary Article Access Endpoints
+
+```typescript
+// Temporary Article Access
+GET    /a/:token
+  Description: Access article via temporary token (from email)
+  Query: none
+  Returns: Redirect to /articles/:id (with temp session cookie if not authenticated)
+  Notes:
+    - If authenticated: checks normal permissions
+    - If not authenticated: validates token, creates temp session, redirects
+    - Token is single-use, 30-minute validity
+
+GET    /articles/:id
+  Description: View article (clean URL)
+  Headers: { Authorization: Bearer <token> } OR Cookie: temp_article_access
+  Permissions: Authenticated users with class access OR valid temp session
+  Returns: { article: Article }
+
+// Token Management (Admin/Teacher)
+POST   /api/articles/:articleId/access-token
+  Permissions: ADMIN, CLASS_TEACHER (article author)
+  Body: { recipientEmail?: string, expiresInMinutes?: number }
+  Returns: { accessUrl: string, token: string }
+  Note: Generate temporary access link for sharing
 ```
 
 ---
@@ -863,18 +927,23 @@ export function Login() {
 - [ ] Build authentication middleware
 - [ ] Add rate limiting
 
-### Phase 2: Magic Link
+### Phase 2: Magic Link & Temporary Access
 - [ ] Implement magic link token generation
 - [ ] Set up email service integration
 - [ ] Create magic link email template
 - [ ] Build verification endpoint
+- [ ] **Add temporary article access tokens**
+- [ ] **Create temp session management**
+- [ ] **Build /a/:token redirect handler**
 - [ ] Add token cleanup cron job
 
-### Phase 3: Frontend
+### Phase 3: Frontend & Article Access
 - [ ] Create AuthContext and hooks
 - [ ] Build login UI components
 - [ ] Implement token refresh logic
 - [ ] Add protected route wrapper
+- [ ] **Build article access flow (authenticated + temp access)**
+- [ ] **Add "Sign in for full access" prompt**
 - [ ] Handle auth errors gracefully
 
 ### Phase 4: Security
@@ -892,7 +961,230 @@ export function Login() {
 
 ---
 
-## 10. Environment Variables
+## 10. Use Case: Article Sharing Workflow
+
+### Email Newsletter Generation
+
+```typescript
+// When generating weekly newsletter email
+async function generateNewsletterEmail(weekNumber: string, familyId: string): Promise<string> {
+  // 1. Get family's class articles
+  const family = await db.families.findById(familyId);
+  const children = await getStudentChildrenInFamily(familyId);
+  const classIds = await getActiveClassIds(children.map(c => c.userId));
+
+  // 2. Get articles for these classes
+  const articles = await db.articles.find({
+    weekNumber,
+    classId: { $in: classIds },
+    articleType: 'CLASS_NEWS',
+    isPublished: true
+  });
+
+  // 3. Generate access tokens for each article
+  const articlesWithTokens = await Promise.all(
+    articles.map(async (article) => {
+      const accessToken = await generateArticleAccessToken(
+        article.id,
+        family.primaryContactEmail // Lock to family email
+      );
+
+      return {
+        ...article,
+        accessUrl: accessToken
+      };
+    })
+  );
+
+  // 4. Render email template
+  return renderNewsletterTemplate({
+    familyName: family.familyName,
+    weekNumber,
+    articles: articlesWithTokens
+  });
+}
+```
+
+### Article Access Flow
+
+```typescript
+// Route handler for /a/:token
+app.get('/a/:token', async (req, res) => {
+  await handleArticleAccess(req.params.token, req, res);
+});
+
+// Route handler for /articles/:id
+app.get('/articles/:id', checkArticleAccess, async (req, res) => {
+  const articleId = req.params.articleId;
+  const article = await db.articles.findById(articleId);
+
+  if (!article) {
+    return res.status(404).render('not-found');
+  }
+
+  // Check if user has permanent access or temp access
+  if (req.user) {
+    // Authenticated user - already checked by middleware
+    return res.render('article', { article, user: req.user });
+  }
+
+  if (req.tempArticleAccess) {
+    // Temporary access via email link
+    return res.render('article', {
+      article,
+      tempAccess: true,
+      showSignInPrompt: true
+    });
+  }
+
+  // No access
+  return res.redirect(`/login?redirect=/articles/${articleId}`);
+});
+```
+
+### Email Template
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>本週班級大小事 - {{familyName}}</title>
+</head>
+<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+
+  <h1 style="color: #333;">親愛的 {{familyName}}，您好！</h1>
+
+  <p style="color: #666;">以下是本週（{{weekNumber}}）的班級消息：</p>
+
+  {{#each articles}}
+  <div style="background: #f9f9f9; padding: 20px; margin: 20px 0; border-left: 4px solid #4CAF50;">
+    <h2 style="margin-top: 0; color: #333;">{{this.title}}</h2>
+
+    {{#if this.summary}}
+    <p style="color: #666;">{{this.summary}}</p>
+    {{/if}}
+
+    <p style="color: #999; font-size: 12px;">
+      📚 {{this.class.name}} | ✍️ {{this.author}}
+    </p>
+
+    <a href="{{this.accessUrl}}"
+       style="display: inline-block; margin-top: 10px; padding: 12px 24px; background: #4CAF50; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;">
+      閱讀完整內容 →
+    </a>
+
+    <p style="color: #999; font-size: 11px; margin-top: 10px;">
+      ⏰ 此連結在30分鐘內有效，僅可使用一次
+    </p>
+  </div>
+  {{/each}}
+
+  <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+
+  <div style="background: #f0f8ff; padding: 15px; border-radius: 4px;">
+    <p style="margin: 0; color: #333;">
+      💡 <strong>提示：</strong>如果您已有帳號，建議先
+      <a href="https://school.com/login" style="color: #2196F3; text-decoration: underline;">登入</a>
+      後再點擊文章連結，這樣您可以隨時重新查看內容。
+    </p>
+  </div>
+
+  <p style="color: #999; font-size: 11px; text-align: center; margin-top: 40px;">
+    這封信件由學校電子報系統自動發送<br>
+    如有任何問題，請聯絡 {{family.primaryContactEmail}}
+  </p>
+
+</body>
+</html>
+```
+
+### Frontend Article View
+
+```typescript
+// src/pages/ArticleView.tsx
+import { useParams } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+
+export function ArticleView() {
+  const { articleId } = useParams();
+  const { user, isAuthenticated } = useAuth();
+  const [article, setArticle] = useState(null);
+  const [tempAccess, setTempAccess] = useState(false);
+
+  useEffect(() => {
+    fetchArticle();
+  }, [articleId]);
+
+  async function fetchArticle() {
+    const response = await fetch(`/api/articles/${articleId}`, {
+      credentials: 'include' // Include cookies for temp access
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      setArticle(data.article);
+      setTempAccess(data.tempAccess || false);
+    } else if (response.status === 401) {
+      // Not authorized - redirect to login
+      window.location.href = `/login?redirect=/articles/${articleId}`;
+    }
+  }
+
+  if (!article) return <div>Loading...</div>;
+
+  return (
+    <div className="article-container">
+      {tempAccess && (
+        <div className="temp-access-banner">
+          <div className="banner-content">
+            <span>📧 您正在使用臨時訪問連結查看此文章</span>
+            <a href="/login" className="sign-in-link">
+              登入以獲得完整訪問權限 →
+            </a>
+          </div>
+          <p className="banner-note">
+            臨時訪問將在30分鐘後過期
+          </p>
+        </div>
+      )}
+
+      <article>
+        <h1>{article.title}</h1>
+        <div className="article-meta">
+          <span>📚 {article.class.name}</span>
+          <span>✍️ {article.author}</span>
+          <span>📅 {formatDate(article.publishedAt)}</span>
+        </div>
+
+        <div
+          className="article-content"
+          dangerouslySetInnerHTML={{ __html: article.contentHtml }}
+        />
+      </article>
+
+      {tempAccess && (
+        <div className="sign-in-prompt">
+          <h3>想要隨時查看班級消息？</h3>
+          <p>登入後，您可以：</p>
+          <ul>
+            <li>✅ 隨時重新閱讀所有文章</li>
+            <li>✅ 查看歷史班級消息</li>
+            <li>✅ 接收新文章通知</li>
+          </ul>
+          <button onClick={() => window.location.href = '/login'}>
+            立即登入
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+---
+
+## 11. Environment Variables
 
 ```env
 # JWT Secrets (generate with: openssl rand -base64 32)
@@ -914,13 +1206,32 @@ EMAIL_API_KEY=your-email-api-key
 EMAIL_FROM=noreply@your-domain.com
 EMAIL_FROM_NAME=Email CMS
 
+# Temporary Access Token Settings
+TEMP_ACCESS_TOKEN_EXPIRY_MINUTES=30
+TEMP_SESSION_EXPIRY_MINUTES=30
+
 # Database
 DATABASE_URL=postgresql://user:password@localhost:5432/email_cms
 ```
 
 ---
 
-**Document Version:** 1.0
+**Document Version:** 2.0
 **Last Updated:** 2025-11-16
 **Author:** Claude (AI Assistant)
 **Status:** Ready for Implementation
+
+### Changelog
+
+#### Version 2.0 (2025-11-16)
+- Added Temporary Article Access Links feature
+- Support for email newsletter sharing with time-limited tokens
+- Dual access modes: authenticated users + temporary sessions
+- Enhanced security with single-use, time-limited tokens
+- Email template examples for newsletter generation
+
+#### Version 1.0 (2025-11-16)
+- Initial passwordless authentication system
+- Google OAuth 2.0 and Email Magic Links
+- JWT token management
+- Role-based authorization
