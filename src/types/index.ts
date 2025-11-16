@@ -151,3 +151,157 @@ export interface ArticleListProps {
   currentArticleId: string;
   onSelectArticle: (articleId: string) => void;
 }
+
+// ============ Authentication & User System ============
+
+export enum UserRole {
+  ADMIN = 'ADMIN',
+  CLASS_TEACHER = 'CLASS_TEACHER',
+  PARENT = 'PARENT',
+  STUDENT = 'STUDENT',
+}
+
+export interface User {
+  id: string;
+  email: string;
+  role: UserRole;
+  firstName: string;
+  lastName: string;
+  displayName?: string;
+  avatar?: string;
+  phoneNumber?: string;
+  isActive: boolean;
+  emailVerified: boolean;
+  lastLoginAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AuthResponse {
+  accessToken: string;
+  refreshToken: string;
+  user: User;
+}
+
+export interface AuthSession {
+  user: User | null;
+  accessToken: string | null;
+  expiresAt?: number;
+}
+
+// ============ Family & Relationships ============
+
+export interface Family {
+  id: string;
+  familyName?: string;
+  address?: string;
+  primaryContactEmail?: string;
+  primaryContactPhone?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export enum FamilyMemberRole {
+  PARENT = 'PARENT',
+  CHILD = 'CHILD',
+}
+
+export interface FamilyMember {
+  id: string;
+  familyId: string;
+  family?: Family;
+  userId?: string;
+  user?: User;
+  role: FamilyMemberRole;
+  firstName: string;
+  lastName: string;
+  dateOfBirth?: string;
+  isStudent: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export enum RelationType {
+  MOTHER = 'MOTHER',
+  FATHER = 'FATHER',
+  GUARDIAN = 'GUARDIAN',
+  STEPMOTHER = 'STEPMOTHER',
+  STEPFATHER = 'STEPFATHER',
+  GRANDPARENT = 'GRANDPARENT',
+  OTHER = 'OTHER',
+}
+
+export interface ParentChildRelationship {
+  id: string;
+  parentMemberId: string;
+  parentMember?: FamilyMember;
+  childMemberId: string;
+  childMember?: FamilyMember;
+  relationshipType: RelationType;
+  isPrimaryGuardian: boolean;
+  canReceiveUpdates: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ============ Class System ============
+
+export interface Class {
+  id: string;
+  name: string; // Chinese zodiac name (e.g., "甲辰", "辛丑甲")
+  currentGrade: number; // Current grade: 0-12
+  startYear: number; // Gregorian year when entered Grade 1
+  description?: string;
+  teacherId: string;
+  teacher?: User;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export enum MembershipStatus {
+  ACTIVE = 'ACTIVE',
+  TRANSFERRED = 'TRANSFERRED',
+  WITHDRAWN = 'WITHDRAWN',
+  GRADUATED = 'GRADUATED',
+}
+
+export interface ClassMembership {
+  id: string;
+  studentId: string;
+  student?: User;
+  classId: string;
+  class?: Class;
+  joinedDate: string;
+  leftDate?: string;
+  status: MembershipStatus;
+  transferReason?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ============ Enhanced Article Types ============
+
+export enum ArticleType {
+  ALL_SCHOOL = 'ALL_SCHOOL',
+  CLASS_NEWS = 'CLASS_NEWS',
+  ANNOUNCEMENT = 'ANNOUNCEMENT',
+  EVENT = 'EVENT',
+}
+
+// ============ Helper Functions ============
+
+/**
+ * Chinese Zodiac Year Name Generator
+ * Maps Gregorian year to Chinese sexagenary cycle name
+ */
+export function getChineseZodiacName(year: number): string {
+  const stems = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
+  const branches = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+
+  // Year 4 (甲子) is the reference point in the 60-year cycle
+  const stemIndex = (year - 4) % 10;
+  const branchIndex = (year - 4) % 12;
+
+  return stems[stemIndex] + branches[branchIndex];
+}

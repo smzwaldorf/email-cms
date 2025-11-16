@@ -1,8 +1,13 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { AuthProvider } from '@/contexts/AuthContext'
 import { NavigationProvider } from '@/context/NavigationContext'
+import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { WeeklyReaderPage } from '@/pages/WeeklyReaderPage'
 import { ErrorPage } from '@/pages/ErrorPage'
 import { EditorPage } from '@/pages/EditorPage'
+import { LoginPage } from '@/pages/LoginPage'
+import { AuthCallbackPage } from '@/pages/AuthCallbackPage'
+import { ProfilePage } from '@/pages/ProfilePage'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import '@/styles/globals.css'
 
@@ -25,18 +30,68 @@ const HomePage = () => (
 export default function App() {
   return (
     <ErrorBoundary>
-      <NavigationProvider>
-        <Router>
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/week/:weekNumber" element={<WeeklyReaderPage />} />
-            <Route path="/article/:articleId" element={<WeeklyReaderPage />} />
-            <Route path="/newsletter/:weekNumber" element={<WeeklyReaderPage />} />
-            <Route path="/editor/:weekNumber" element={<EditorPage />} />
-            <Route path="/error" element={<ErrorPage />} />
-          </Routes>
-        </Router>
-      </NavigationProvider>
+      <AuthProvider>
+        <NavigationProvider>
+          <Router>
+            <Routes>
+              {/* Public routes */}
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/auth/callback" element={<AuthCallbackPage />} />
+
+              {/* Protected routes */}
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <HomePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/week/:weekNumber"
+                element={
+                  <ProtectedRoute>
+                    <WeeklyReaderPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/article/:articleId"
+                element={
+                  <ProtectedRoute>
+                    <WeeklyReaderPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/newsletter/:weekNumber"
+                element={
+                  <ProtectedRoute>
+                    <WeeklyReaderPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/editor/:weekNumber"
+                element={
+                  <ProtectedRoute>
+                    <EditorPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <ProfilePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/error" element={<ErrorPage />} />
+            </Routes>
+          </Router>
+        </NavigationProvider>
+      </AuthProvider>
     </ErrorBoundary>
   )
 }

@@ -14,6 +14,7 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"tests/**/*.{ts,tsx}\""
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.81.1",
     "@uiw/react-md-editor": "^4.0.8",
     "clsx": "^2.0.0",
     "react": "^18.2.0",
