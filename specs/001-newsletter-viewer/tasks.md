@@ -214,15 +214,15 @@ description: "電子報閱讀 CMS Web App 工作項目清單"
 
 ### US4 的實現
 
-- [ ] T062 [P] [US4] 建立 EditorPage.tsx 頁面元件 src/pages/EditorPage.tsx
-- [ ] T063 [P] [US4] 建立 ArticleOrderManager.tsx 元件（拖拽和排序 UI） src/components/ArticleOrderManager.tsx
-- [ ] T064 [P] [US4] 建立 DragDropArticle.tsx 可拖拽的文章項目 src/components/DragDropArticle.tsx
-- [ ] T065 [P] [US4] 建立 ArticleEditor.tsx 編輯單篇文章的表單 src/components/ArticleEditor.tsx
+- [x] T062 [P] [US4] 建立 EditorPage.tsx 頁面元件 src/pages/EditorPage.tsx
+- [x] T063 [P] [US4] 建立 ArticleOrderManager.tsx 元件（拖拽和排序 UI） src/components/ArticleOrderManager.tsx
+- [x] T064 [P] [US4] 建立 DragDropArticle.tsx 可拖拽的文章項目 src/components/DragDropArticle.tsx
+- [x] T065 [P] [US4] 建立 ArticleEditor.tsx 編輯單篇文章的表單 src/components/ArticleEditor.tsx
+- [x] T067 [US4] 在 mockApi.ts 中實現 reorderArticles（順序更新） src/services/mockApi.ts
+- [x] T068 [US4] 在 mockApi.ts 中實現 createArticle（新增文章） src/services/mockApi.ts
+- [x] T069 [US4] 在 mockApi.ts 中實現 deleteArticle（刪除文章） src/services/mockApi.ts
+- [x] T070 [US4] 配置 React Router 編輯頁面路由 `/editor/:weekNumber` src/App.tsx
 - [ ] T066 [US4] 建立 useArticleEditor 自訂 hook（編輯狀態管理） src/hooks/useArticleEditor.ts
-- [ ] T067 [US4] 在 newsApi.ts 中實現 PUT /newsletters/{weekNumber}/articles（順序更新） src/services/newsApi.ts
-- [ ] T068 [US4] 在 newsApi.ts 中實現 POST /newsletters/{weekNumber}/articles（新增文章） src/services/newsApi.ts
-- [ ] T069 [US4] 在 newsApi.ts 中實現 DELETE /articles/{articleId}（刪除文章） src/services/newsApi.ts
-- [ ] T070 [US4] 配置 React Router 編輯頁面路由 `/editor/:weekNumber` src/App.tsx
 - [ ] T071 [US4] 實現編輯權限檢查（假設後端驗證） src/services/authService.ts
 - [ ] T072 [US4] 新增編輯模式確認對話框（刪除確認） src/components/ConfirmDialog.tsx
 - [ ] T073 [US4] 在編輯後自動刷新讀者頁面（更新 Context） src/context/NewsletterContext.tsx
