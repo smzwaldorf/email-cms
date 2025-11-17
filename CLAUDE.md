@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Email CMS Newsletter Viewer** - A modern React 18 + TypeScript application for reading and managing email newsletters organized by week. Currently in Phase 5 of development (Performance Optimization for User Story 3).
+**Email CMS Newsletter Viewer** - A modern React 18 + TypeScript application for reading and managing email newsletters organized by week. Currently in Phase 7 of development (Polish & Cross-Cutting Concerns).
 
-- **Tech Stack**: React 18, TypeScript 5, Vite 5, Tailwind CSS 3, Vitest, React Router v6
-- **Current Branch**: `001-newsletter-viewer`
-- **Implementation Status**: Phases 1-4 complete (~57% overall), Phase 5 in progress
+- **Tech Stack**: React 18, TypeScript 5, Vite 5, Tailwind CSS 3, Vitest, React Router v6, Supabase, PostgreSQL
+- **Current Branch**: `002-database-structure`
+- **Implementation Status**: Phases 1-7 complete (100% - 44/44 tasks), 697 tests passing, 95%+ coverage
 
 ## Development Commands
 
@@ -160,21 +160,26 @@ Routes are defined in `src/App.tsx`:
 - **Functions**: fetchWeeklyNewsletter(), fetchArticle(), updateArticle(), deleteArticle()
 - **To change sample data**: Edit mockArticles and mockNewsletters objects in mockApi.ts
 
-## Current Development Focus (Phase 5: US3 Performance Optimization)
+## Current Development Focus (Phase 7: Polish & Cross-Cutting Concerns)
 
-### Recently Completed Tasks
-- ✅ **T047** - SideButton component tests
-- ✅ **T048** - ArticleList component tests
-- ✅ **T049** - Performance tests for article switching (<1 second requirement)
-- ✅ **T050** - Quick navigation integration tests
-- ✅ **T051** - ArticleContent performance optimization (memo + useMemo)
-- ✅ **T052** - Keyboard navigation with Vi-style shortcuts (25 tests passing)
+### Recently Completed Tasks (Phase 7)
+- ✅ **T036-T040** - Phase 6 components (ArticleEditor, ArticleClassRestrictionEditor, ClassArticleFilter)
+- ✅ **T041** - API.md documentation (1060 lines, comprehensive endpoint docs)
+- ✅ **T042** - E2E test suite (18 tests covering complete workflows)
+- ✅ **T043** - Data integrity tests (36 tests validating constraints)
+- ✅ **T044** - README.md Phase 6-7 documentation
 
-### Next Tasks (Likely Order)
-- **T053** - ArticleList quick switching performance
-- **T054** - SideButton visual feedback enhancements
-- **T055** - useNavigation hook optimization
-- **T056** - LoadingSpinner optimization
+### Recently Completed Documentation Organization
+- ✅ **Moved SETUP.md** to `specs/002-database-structure/SETUP.md`
+- ✅ **Moved TESTING.md** to `specs/002-database-structure/TESTING.md`
+- ✅ **Updated cross-references** in README.md and all documentation files
+- ✅ **All documentation consolidated** in feature specification folder
+
+### Phase 8+ Planned Tasks
+- Database write operations (create/update week, class, family)
+- Admin interfaces for content management
+- Advanced filtering and search functionality
+- Performance optimization at scale
 
 ## Important Notes
 
@@ -197,10 +202,12 @@ Routes are defined in `src/App.tsx`:
 - Mock data: Centralized in `src/services/mockApi.ts`
 
 ### Git Workflow
-- Current branch: `001-newsletter-viewer`
-- Commit format: `type(scope): description` (e.g., `feat: Implement T052 keyboard shortcuts`)
+- Current branch: `002-database-structure`
+- Main branch: `001-newsletter-viewer`
+- Commit format: `type(scope): description` (e.g., `feat: Add API endpoints` or `docs: Reorganize documentation`)
 - Test verification: Run `npm test -- --run` before committing
 - All commits include attribution line: `Co-Authored-By: Claude <noreply@anthropic.com>`
+- PR target: Main branch `001-newsletter-viewer` when Phase 7 is complete
 
 ## Debugging
 
@@ -230,3 +237,6 @@ waldorf-sage, waldorf-peach, waldorf-cream, waldorf-clay, waldorf-brown
 
 Use these colors consistently across components for visual cohesion.
 
+## Summary documents
+
+When creating summary documents (e.g. API.md, SETUP.md, TESTING.md), store them in the SpecKit folders, instead of the root directory.
