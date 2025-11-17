@@ -151,3 +151,7 @@ export interface ArticleListProps {
   currentArticleId: string;
   onSelectArticle: (articleId: string) => void;
 }
+
+// ============ 資料庫類型定義 ============
+// Re-export all database types from database.ts
+export * from './database';
