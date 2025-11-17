@@ -443,35 +443,35 @@ Final phase for performance validation, comprehensive testing, and deployment pr
   - [x] Troubleshooting guide (build, runtime, memory)
   - [x] Multi-platform deployment (Vercel, Docker, nginx)
 
-- [ ] T041 Create API.md documentation
-  - [ ] All endpoints with request/response examples
-  - [ ] Error codes and handling
-  - [ ] Rate limiting
-  - [ ] Authentication requirements (for future phases)
-  - [ ] Sample curl commands
+- [x] T041 Create API.md documentation
+  - [x] All endpoints with request/response examples
+  - [x] Error codes and handling
+  - [x] Rate limiting
+  - [x] Authentication requirements (for future phases)
+  - [x] Sample curl commands
 
 ### Final Testing & Validation
 
-- [ ] T042 Create end-to-end test suite in `tests/e2e/cms-complete-flow.test.ts`
-  - [ ] Complete workflow: Create week → Add articles → Publish → View as visitor
-  - [ ] Multi-editor concurrency: Two editors creating articles simultaneously
-  - [ ] Family multi-class scenario: Parent with 2 children viewing relevant articles
-  - [ ] All edge cases from specification
-  - [ ] Audit log verification
+- [x] T042 Create end-to-end test suite in `tests/e2e/cms-complete-flow.test.ts`
+  - [x] Complete workflow: Create week → Add articles → Publish → View as visitor
+  - [x] Multi-editor concurrency: Two editors creating articles simultaneously
+  - [x] Family multi-class scenario: Parent with 2 children viewing relevant articles
+  - [x] All edge cases from specification
+  - [x] Audit log verification
 
-- [ ] T043 Create data integrity verification in `tests/data-integrity/schema-validation.test.ts`
-  - [ ] Verify all constraints enforced
-  - [ ] Verify referential integrity
-  - [ ] Verify triggers work (audit logging, updated_at)
-  - [ ] Verify soft-delete strategy
-  - [ ] Test recovery scenarios
+- [x] T043 Create data integrity verification in `tests/data-integrity/schema-validation.test.ts`
+  - [x] Verify all constraints enforced
+  - [x] Verify referential integrity
+  - [x] Verify triggers work (audit logging, updated_at)
+  - [x] Verify soft-delete strategy
+  - [x] Test recovery scenarios
 
-- [ ] T044 Create documentation in README.md
-  - [ ] Feature overview
-  - [ ] Quick start guide
-  - [ ] Architecture diagram
-  - [ ] Key design decisions
-  - [ ] Links to detailed docs (SETUP.md, API.md, etc.)
+- [x] T044 Create documentation in README.md
+  - [x] Feature overview
+  - [x] Quick start guide
+  - [x] Architecture diagram
+  - [x] Key design decisions
+  - [x] Links to detailed docs (SETUP.md, API.md, etc.)
 
 ---
 
