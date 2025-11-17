@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ArticleEditor } from '@/components/ArticleEditor'
 import type { Article } from '@/types'
@@ -40,7 +40,7 @@ describe('ArticleEditor Component', () => {
         />,
       )
 
-      expect(screen.getByText(/article/i, { selector: 'form' })).toBeInTheDocument()
+      expect(screen.getByText('編輯文章')).toBeInTheDocument()
     })
 
     it('should populate form with article data', () => {
@@ -64,8 +64,8 @@ describe('ArticleEditor Component', () => {
         />,
       )
 
-      expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '儲存' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '取消' })).toBeInTheDocument()
     })
   })
 
@@ -81,7 +81,7 @@ describe('ArticleEditor Component', () => {
         />,
       )
 
-      const saveButton = screen.getByRole('button', { name: /save/i })
+      const saveButton = screen.getByRole('button', { name: '儲存' })
       await user.click(saveButton)
 
       expect(mockOnSave).toHaveBeenCalled()
@@ -98,7 +98,7 @@ describe('ArticleEditor Component', () => {
         />,
       )
 
-      const cancelButton = screen.getByRole('button', { name: /cancel/i })
+      const cancelButton = screen.getByRole('button', { name: '取消' })
       await user.click(cancelButton)
 
       expect(mockOnCancel).toHaveBeenCalled()
@@ -114,7 +114,7 @@ describe('ArticleEditor Component', () => {
         />,
       )
 
-      const saveButton = screen.getByRole('button', { name: /save/i })
+      const saveButton = screen.getByRole('button', { name: '儲存中...' })
       expect(saveButton).toBeDisabled()
     })
   })
@@ -131,8 +131,8 @@ describe('ArticleEditor Component', () => {
         />,
       )
 
-      const titleInput = screen.getByDisplayValue('')
-      expect(titleInput).toBeInTheDocument()
+      const titleInput = screen.getByPlaceholderText('輸入文章標題') as HTMLInputElement
+      expect(titleInput.value).toBe('')
     })
 
     it('should require article content', async () => {
@@ -146,7 +146,8 @@ describe('ArticleEditor Component', () => {
         />,
       )
 
-      expect(screen.getByDisplayValue('', { selector: 'textarea' })).toBeInTheDocument()
+      // Just verify the editor is rendered with empty content
+      expect(screen.getByText(/使用富文本編輯器編輯內容/)).toBeInTheDocument()
     })
 
     it('should validate title length', async () => {
@@ -232,7 +233,7 @@ describe('ArticleEditor Component', () => {
       )
 
       // Check for publication status indicator
-      expect(screen.getByText(/publish/i) || screen.getByRole('checkbox')).toBeDefined()
+      expect(screen.getByText('已發布')).toBeInTheDocument()
     })
 
     it('should allow toggling publication status', async () => {
@@ -247,11 +248,15 @@ describe('ArticleEditor Component', () => {
       )
 
       // Find and interact with publication toggle
-      const publishToggle = screen.queryByRole('checkbox', { name: /publish/i })
-      if (publishToggle) {
+      const publishToggle = screen.getByRole('checkbox', { name: '已發布' })
+      expect(publishToggle).not.toBeChecked()
+
+      // Click and wait for state update
+      await act(async () => {
         await user.click(publishToggle)
-        expect(publishToggle).toBeDefined()
-      }
+      })
+
+      expect(publishToggle).toBeChecked()
     })
   })
 
@@ -266,7 +271,7 @@ describe('ArticleEditor Component', () => {
       )
 
       // Verify component renders without error
-      expect(screen.getByText(mockArticle.title)).toBeInTheDocument()
+      expect(screen.getByDisplayValue(mockArticle.title)).toBeInTheDocument()
     })
 
     it('should handle save errors gracefully', async () => {
@@ -280,7 +285,7 @@ describe('ArticleEditor Component', () => {
         />,
       )
 
-      expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '儲存' })).toBeInTheDocument()
     })
   })
 
@@ -295,7 +300,7 @@ describe('ArticleEditor Component', () => {
         />,
       )
 
-      const saveButton = screen.getByRole('button', { name: /save/i })
+      const saveButton = screen.getByRole('button', { name: '儲存中...' })
       expect(saveButton).toBeDisabled()
     })
 
@@ -309,7 +314,7 @@ describe('ArticleEditor Component', () => {
         />,
       )
 
-      const saveButton = screen.getByRole('button', { name: /save/i })
+      const saveButton = screen.getByRole('button', { name: '儲存' })
       expect(saveButton).not.toBeDisabled()
     })
   })

@@ -273,37 +273,37 @@ Enable editors to modify existing articles and track changes.
 
 ### US4 Implementation
 
-- [ ] T023 [P] [US4] Create ArticleUpdateService in `src/services/ArticleUpdateService.ts`
-  - [ ] Method: `updateArticleContent(id: string, title: string, content: string)` → Article
-  - [ ] Preserve created_at, update updated_at (via trigger)
-  - [ ] Validate article exists and not deleted
-  - [ ] Trigger audit_article_changes automatically
-  - [ ] Handle concurrent edit conflicts (last-write-wins per assumption)
+- [x] T023 [P] [US4] Create ArticleUpdateService in `src/services/ArticleUpdateService.ts`
+  - [x] Method: `updateArticleContent(id: string, title: string, content: string)` → Article
+  - [x] Preserve created_at, update updated_at (via trigger)
+  - [x] Validate article exists and not deleted
+  - [x] Trigger audit_article_changes automatically
+  - [x] Handle concurrent edit conflicts (last-write-wins per assumption)
 
-- [ ] T024 [P] [US4] Create ArticleEditForm component in `src/components/ArticleEditForm.tsx`
-  - [ ] Load article for editing
-  - [ ] Form to update title & content
-  - [ ] Save button (calls ArticleUpdateService)
-  - [ ] Show last updated timestamp
-  - [ ] Revert to previous version option (via audit log)
-  - [ ] Conflict notification if updated since load
+- [x] T024 [P] [US4] Create ArticleEditForm component in `src/components/ArticleEditForm.tsx`
+  - [x] Load article for editing
+  - [x] Form to update title & content
+  - [x] Save button (calls ArticleUpdateService)
+  - [x] Show last updated timestamp
+  - [x] Revert to previous version option (via audit log)
+  - [x] Conflict notification if updated since load
 
 ### US4 Tests
 
-- [ ] T025 [US4] Create ArticleUpdateService tests in `tests/services/ArticleUpdateService.test.ts`
-  - [ ] Test: Update title and content
-  - [ ] Test: Preserve created_at, update updated_at
-  - [ ] Test: Audit log records update action
-  - [ ] Test: Error on non-existent article
-  - [ ] Test: Soft-deleted articles cannot be updated
-  - [ ] Test: All US4 acceptance scenarios
+- [x] T025 [US4] Create ArticleUpdateService tests in `tests/services/ArticleUpdateService.test.ts`
+  - [x] Test: Update title and content
+  - [x] Test: Preserve created_at, update updated_at
+  - [x] Test: Audit log records update action
+  - [x] Test: Error on non-existent article
+  - [x] Test: Soft-deleted articles cannot be updated
+  - [x] Test: All US4 acceptance scenarios
 
-- [ ] T026 [US4] Create ArticleEditForm integration test in `tests/integration/article-update-workflow.test.ts`
-  - [ ] Test: Load article for editing
-  - [ ] Test: Update title → persists
-  - [ ] Test: Update content → persists
-  - [ ] Test: Timestamps updated correctly
-  - [ ] Test: Audit trail captures change
+- [x] T026 [US4] Create ArticleEditForm integration test in `tests/integration/article-update-workflow.test.ts`
+  - [x] Test: Load article for editing
+  - [x] Test: Update title → persists
+  - [x] Test: Update content → persists
+  - [x] Test: Timestamps updated correctly
+  - [x] Test: Audit trail captures change
 
 ---
 

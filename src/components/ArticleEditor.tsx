@@ -39,7 +39,7 @@ export function ArticleEditor({
       content: article.content,
       isPublished: article.isPublished,
     })
-  }, [article.id])
+  }, [article])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
