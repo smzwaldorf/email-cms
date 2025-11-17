@@ -305,3 +305,272 @@ export function getChineseZodiacName(year: number): string {
 
   return stems[stemIndex] + branches[branchIndex];
 }
+
+// ============ Event Registration System ============
+
+export enum EventType {
+  GENERAL = 'GENERAL',
+  WORKSHOP = 'WORKSHOP',
+  MEETING = 'MEETING',
+  CELEBRATION = 'CELEBRATION',
+  FIELD_TRIP = 'FIELD_TRIP',
+  PERFORMANCE = 'PERFORMANCE',
+  OTHER = 'OTHER',
+}
+
+export enum RegistrationStatus {
+  PENDING = 'PENDING',
+  CONFIRMED = 'CONFIRMED',
+  WAITLIST = 'WAITLIST',
+  CANCELLED = 'CANCELLED',
+  REJECTED = 'REJECTED',
+}
+
+export enum PaymentStatus {
+  PENDING = 'PENDING',
+  PAID = 'PAID',
+  REFUNDED = 'REFUNDED',
+  CANCELLED = 'CANCELLED',
+  WAIVED = 'WAIVED',
+}
+
+export interface Event {
+  id: string;
+
+  // Basic Information
+  title: string;
+  description: string;
+  eventType: EventType;
+
+  // Date & Time
+  eventDate: string; // ISO string
+  eventEndDate?: string;
+  registrationDeadline?: string;
+
+  // Location
+  location?: string;
+  locationDetails?: string;
+  isOnline: boolean;
+  meetingUrl?: string;
+
+  // Capacity
+  maxParticipants?: number;
+  currentParticipants: number;
+  allowWaitlist: boolean;
+
+  // Pricing
+  hasFee: boolean;
+  pricePerPerson: number;
+  currency: string;
+
+  // Food Options
+  providesFood: boolean;
+  foodOptions?: string[];
+
+  // Registration Settings
+  requiresApproval: boolean;
+  allowPlusOnes: boolean;
+  maxAttendeesPerRegistration: number;
+
+  // Visibility
+  targetAudience: string[];
+  isPublished: boolean;
+  isFeatured: boolean;
+
+  // Media
+  coverImageUrl?: string;
+  attachments?: string[];
+
+  // Metadata
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  publishedAt?: string;
+
+  // Additional
+  tags?: string[];
+  customFields?: Record<string, any>;
+
+  // Populated fields (from joins)
+  creator?: User;
+  registrationCount?: number;
+  userRegistration?: EventRegistration; // Current user's registration
+}
+
+export interface EventRegistration {
+  id: string;
+
+  // References
+  eventId: string;
+  userId: string;
+  familyId?: string;
+
+  // Registration Details
+  numAttendees: number;
+  attendeeNames?: string[];
+  attendeeAges?: number[];
+
+  // Food Preferences
+  foodPreferences?: Record<number, string>; // {attendeeIndex: foodOption}
+  dietaryRestrictions?: string;
+  specialRequirements?: string;
+
+  // Payment
+  totalAmount: number;
+  paymentStatus: PaymentStatus;
+  paymentMethod?: string;
+  paymentReference?: string;
+  paidAt?: string;
+
+  // Status
+  registrationStatus: RegistrationStatus;
+
+  // Attendance
+  checkedIn: boolean;
+  checkedInAt?: string;
+  checkedInBy?: string;
+  actualAttendees?: number;
+
+  // Metadata
+  registeredAt: string;
+  cancelledAt?: string;
+  cancellationReason?: string;
+
+  // Contact Info
+  contactEmail?: string;
+  contactPhone?: string;
+
+  // Notes
+  notes?: string;
+  adminNotes?: string;
+
+  // Timestamps
+  createdAt: string;
+  updatedAt: string;
+
+  // Populated fields
+  event?: Event;
+  user?: User;
+  family?: Family;
+}
+
+export interface EventAttendance {
+  id: string;
+  registrationId: string;
+  eventId: string;
+  attendeeName?: string;
+  attendeeIndex?: number;
+  checkedIn: boolean;
+  checkedInAt?: string;
+  checkedInBy?: string;
+  attended: boolean;
+  noShow: boolean;
+  feedback?: string;
+  rating?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EventComment {
+  id: string;
+  eventId: string;
+  userId: string;
+  parentCommentId?: string;
+  content: string;
+  isOrganizer: boolean;
+  isPinned: boolean;
+  createdAt: string;
+  updatedAt: string;
+
+  // Populated fields
+  user?: User;
+  replies?: EventComment[];
+}
+
+// Helper types for creating/updating events
+export interface CreateEventInput {
+  title: string;
+  description: string;
+  eventType: EventType;
+  eventDate: string;
+  eventEndDate?: string;
+  registrationDeadline?: string;
+  location?: string;
+  locationDetails?: string;
+  isOnline?: boolean;
+  meetingUrl?: string;
+  maxParticipants?: number;
+  allowWaitlist?: boolean;
+  hasFee?: boolean;
+  pricePerPerson?: number;
+  currency?: string;
+  providesFood?: boolean;
+  foodOptions?: string[];
+  requiresApproval?: boolean;
+  allowPlusOnes?: boolean;
+  maxAttendeesPerRegistration?: number;
+  targetAudience?: string[];
+  isPublished?: boolean;
+  isFeatured?: boolean;
+  coverImageUrl?: string;
+  attachments?: string[];
+  tags?: string[];
+  customFields?: Record<string, any>;
+}
+
+export interface UpdateEventInput extends Partial<CreateEventInput> {
+  id: string;
+}
+
+export interface CreateRegistrationInput {
+  eventId: string;
+  numAttendees: number;
+  attendeeNames?: string[];
+  attendeeAges?: number[];
+  foodPreferences?: Record<number, string>;
+  dietaryRestrictions?: string;
+  specialRequirements?: string;
+  notes?: string;
+}
+
+export interface UpdateRegistrationInput extends Partial<CreateRegistrationInput> {
+  id: string;
+  registrationStatus?: RegistrationStatus;
+  paymentStatus?: PaymentStatus;
+  adminNotes?: string;
+}
+
+// Helper function to get event type display name
+export function getEventTypeDisplayName(type: EventType): string {
+  const names: Record<EventType, string> = {
+    [EventType.GENERAL]: '一般活動',
+    [EventType.WORKSHOP]: '工作坊',
+    [EventType.MEETING]: '會議',
+    [EventType.CELEBRATION]: '慶典',
+    [EventType.FIELD_TRIP]: '校外教學',
+    [EventType.PERFORMANCE]: '演出',
+    [EventType.OTHER]: '其他',
+  };
+  return names[type] || type;
+}
+
+// Helper function to check if event is full
+export function isEventFull(event: Event): boolean {
+  if (!event.maxParticipants) return false;
+  return event.currentParticipants >= event.maxParticipants;
+}
+
+// Helper function to check if registration is open
+export function isRegistrationOpen(event: Event): boolean {
+  const now = new Date();
+  const eventDate = new Date(event.eventDate);
+  const deadline = event.registrationDeadline ? new Date(event.registrationDeadline) : eventDate;
+
+  return now < deadline && event.isPublished;
+}
+
+// Helper function to calculate total price
+export function calculateTotalPrice(event: Event, numAttendees: number): number {
+  if (!event.hasFee) return 0;
+  return event.pricePerPerson * numAttendees;
+}
