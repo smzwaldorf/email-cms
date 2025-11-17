@@ -342,17 +342,17 @@ Implement class-based article filtering for 班級大小事 (class updates).
 
 ### US3 Components
 
-- [ ] T031 [US3] Create ClassArticleFilter component in `src/components/ClassArticleFilter.tsx`
-  - [ ] Select/multi-select for class(es) or family
-  - [ ] Show available classes for logged-in user (teachers/parents)
-  - [ ] Fetch and display articles for selected classes
-  - [ ] Sorting by grade year with visual indicators
+- [x] T031 [US3] Create ClassArticleFilter component in `src/components/ClassArticleFilter.tsx`
+  - [x] Select/multi-select for class(es) or family
+  - [x] Show available classes for logged-in user (teachers/parents)
+  - [x] Fetch and display articles for selected classes
+  - [x] Sorting by grade year with visual indicators
 
-- [ ] T032 [US3] Create ArticleClassRestrictionEditor in `src/components/ArticleClassRestrictionEditor.tsx`
-  - [ ] Multi-select for restricted_to_classes
-  - [ ] Toggle between public and class-restricted
-  - [ ] Show list of available classes (A1, B1, etc.) with grade years
-  - [ ] Save restrictions (calls setArticleClassRestriction)
+- [x] T032 [US3] Create ArticleClassRestrictionEditor in `src/components/ArticleClassRestrictionEditor.tsx`
+  - [x] Multi-select for restricted_to_classes
+  - [x] Toggle between public and class-restricted
+  - [x] Show list of available classes (A1, B1, etc.) with grade years
+  - [x] Save restrictions (calls setArticleClassRestriction)
 
 ### US3 Tests
 
