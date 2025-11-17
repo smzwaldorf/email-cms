@@ -399,6 +399,162 @@ export class ArticleService {
       )
     }
   }
+
+  /**
+   * Get articles for a specific class
+   * US3: Returns public + class-restricted articles for the class
+   *
+   * @param classId Class ID
+   * @param weekNumber Week number
+   * @returns Articles visible to the class
+   */
+  static async getArticlesForClass(classId: string, weekNumber: string): Promise<ArticleRow[]> {
+    try {
+      // Get both public and class-restricted articles
+      let query = table('articles')
+        .select('*')
+        .eq('week_number', weekNumber)
+        .eq('is_published', true)
+        .is('deleted_at', null)
+
+      const { data, error } = await query.order('article_order', { ascending: true })
+
+      if (error) {
+        throw new ArticleServiceError(
+          `Failed to fetch articles for class ${classId}: ${error.message}`,
+          'FETCH_ARTICLES_ERROR',
+          error as Error,
+        )
+      }
+
+      if (!data) {
+        return []
+      }
+
+      // Filter to visible articles
+      return data.filter((article) => {
+        // Public articles are always visible
+        if (article.visibility_type === 'public') {
+          return true
+        }
+
+        // Class-restricted articles: check if this class is in the restriction list
+        if (article.visibility_type === 'class_restricted') {
+          const restrictedTo = article.restricted_to_classes as string[]
+          return restrictedTo?.includes(classId) || false
+        }
+
+        return false
+      })
+    } catch (err) {
+      if (err instanceof ArticleServiceError) throw err
+      throw new ArticleServiceError(
+        `Unexpected error fetching articles for class: ${err instanceof Error ? err.message : String(err)}`,
+        'FETCH_ARTICLES_ERROR',
+        err instanceof Error ? err : undefined,
+      )
+    }
+  }
+
+  /**
+   * Set class restrictions for an article
+   * US3: Restrict article to specific classes
+   *
+   * @param articleId Article ID
+   * @param classIds Class IDs to restrict to
+   * @returns Updated article
+   */
+  static async setArticleClassRestriction(
+    articleId: string,
+    classIds: string[],
+  ): Promise<ArticleRow> {
+    try {
+      // Validate that we have at least one class
+      if (!classIds || classIds.length === 0) {
+        throw new ArticleServiceError(
+          'At least one class must be specified for class-restricted articles',
+          'VALIDATION_ERROR',
+        )
+      }
+
+      const { data, error } = await table('articles')
+        .update({
+          visibility_type: 'class_restricted',
+          restricted_to_classes: classIds,
+        })
+        .eq('id', articleId)
+        .select()
+        .single()
+
+      if (error) {
+        throw new ArticleServiceError(
+          `Failed to set article class restriction: ${error.message}`,
+          'UPDATE_ARTICLE_ERROR',
+          error as Error,
+        )
+      }
+
+      if (!data) {
+        throw new ArticleServiceError(
+          `Article ${articleId} not found`,
+          'ARTICLE_NOT_FOUND',
+        )
+      }
+
+      return data
+    } catch (err) {
+      if (err instanceof ArticleServiceError) throw err
+      throw new ArticleServiceError(
+        `Unexpected error setting class restriction: ${err instanceof Error ? err.message : String(err)}`,
+        'UPDATE_ARTICLE_ERROR',
+        err instanceof Error ? err : undefined,
+      )
+    }
+  }
+
+  /**
+   * Remove class restrictions from an article
+   * US3: Make article public
+   *
+   * @param articleId Article ID
+   * @returns Updated article
+   */
+  static async removeArticleClassRestriction(articleId: string): Promise<ArticleRow> {
+    try {
+      const { data, error } = await table('articles')
+        .update({
+          visibility_type: 'public',
+          restricted_to_classes: null,
+        })
+        .eq('id', articleId)
+        .select()
+        .single()
+
+      if (error) {
+        throw new ArticleServiceError(
+          `Failed to remove article class restriction: ${error.message}`,
+          'UPDATE_ARTICLE_ERROR',
+          error as Error,
+        )
+      }
+
+      if (!data) {
+        throw new ArticleServiceError(
+          `Article ${articleId} not found`,
+          'ARTICLE_NOT_FOUND',
+        )
+      }
+
+      return data
+    } catch (err) {
+      if (err instanceof ArticleServiceError) throw err
+      throw new ArticleServiceError(
+        `Unexpected error removing class restriction: ${err instanceof Error ? err.message : String(err)}`,
+        'UPDATE_ARTICLE_ERROR',
+        err instanceof Error ? err : undefined,
+      )
+    }
+  }
 }
 
 /**
