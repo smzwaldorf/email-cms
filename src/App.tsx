@@ -87,7 +87,24 @@ export default function App() {
                   </ProtectedRoute>
                 }
               />
-              <Route path="/error" element={<ErrorPage />} />
+              <Route
+                path="/error"
+                element={
+                  <ProtectedRoute>
+                    <ErrorPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Catch-all route - redirect to home */}
+              <Route
+                path="*"
+                element={
+                  <ProtectedRoute>
+                    <HomePage />
+                  </ProtectedRoute>
+                }
+              />
             </Routes>
           </Router>
         </NavigationProvider>
