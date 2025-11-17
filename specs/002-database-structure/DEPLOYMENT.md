@@ -87,7 +87,7 @@ SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIs...
 ### 2. Run Database Schema
 
 1. In **SQL Editor**, create new query
-2. Copy entire contents of `specs/002-database-structure/contracts/schema.sql`
+2. Copy entire contents of `supabase/migrations/20251117000000_initial_schema.sql`
 3. Paste into editor
 4. Click **Run**
 

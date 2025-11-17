@@ -1,230 +1,226 @@
-# Supabase Project Setup Guide
+# Setup Guide: CMS Database Structure
 
-This guide walks through setting up a Supabase project for the Email CMS Newsletter Viewer application.
+Complete setup instructions for developers implementing the Email CMS newsletter viewer application.
+
+**Table of Contents:**
+- [Prerequisites](#prerequisites)
+- [Local Supabase Setup](#local-supabase-setup)
+- [Development Setup](#development-setup)
+- [Verification](#verification)
+- [Troubleshooting](#troubleshooting)
+
+---
 
 ## Prerequisites
 
-- Supabase account (free tier at https://app.supabase.com)
-- Node.js 18+ and npm
-- This repository cloned locally
+Before starting, ensure you have:
 
-## Step 1: Create or Select a Supabase Project
+- **Node.js** 18+ and npm/yarn package manager.
+- **Git** for version control.
+- **Docker Desktop**: The local Supabase environment runs on Docker. Make sure it is installed and running.
+- **Supabase CLI**: Install it globally via npm:
+  ```bash
+  npm install -g supabase
+  ```
+- **TypeScript** knowledge (project is 100% TypeScript).
+- **React 18** and **Vite 5** familiarity.
 
-### Option A: Create a New Project
-1. Go to https://app.supabase.com
-2. Click "New project"
-3. Fill in project details:
-   - **Name**: Email CMS (or your preference)
-   - **Database Password**: Create a strong password
-   - **Region**: Select closest to your location
-4. Click "Create new project" (wait 2-3 minutes for setup)
+### System Requirements
 
-### Option B: Use Existing Project
-1. Go to https://app.supabase.com
-2. Select your project from the list
+- **Memory**: 8GB minimum RAM (to run Docker).
+- **Disk**: 5GB free space.
+- **OS**: macOS, Linux, or Windows (WSL2 recommended).
+- **Node**: v18.16.0 or higher.
 
-## Step 2: Initialize Database Schema
+---
 
-The database schema is defined in: `specs/002-database-structure/contracts/schema.sql`
+## Local Supabase Setup
 
-### Method A: Supabase Dashboard (Recommended)
+### 1. Initialize Local Supabase Project
 
-1. In Supabase Dashboard, go to **SQL Editor**
-2. Click "New query"
-3. Copy the entire contents of `specs/002-database-structure/contracts/schema.sql`
-4. Paste into the SQL Editor
-5. Click "Run" (or Cmd+Enter)
-6. Verify: Navigate to **Table Editor** and confirm all 9 tables exist:
-   - newsletter_weeks
-   - articles
-   - classes
-   - user_roles
-   - families
-   - family_enrollment
-   - child_class_enrollment
-   - teacher_class_assignment
-   - article_audit_log
+Navigate to the root of your cloned repository and run:
+```bash
+# Initialize supabase project
+supabase init
+```
+This will create a `supabase` directory in your project.
 
-### Method B: CLI (for staging/production)
+### 2. Start Supabase Services
 
-If you have `supabase-cli` installed:
+Make sure Docker Desktop is running, then start the Supabase stack:
 
 ```bash
-supabase link --project-ref YOUR_PROJECT_REF
-supabase db push
+# Start the local Supabase services
+supabase start
 ```
 
-## Step 3: Get API Credentials
+On the first run, this will download the necessary Docker images. Once started, the CLI will output your local Supabase credentials, including the API URL, anon key, and database connection string.
 
-1. Go to Supabase Dashboard > **Settings** > **API**
-2. Copy the following values:
-   - **Project URL**: Under "Project URL"
-   - **anon key**: Under "Project API keys" > "anon" public
+### 3. Configure `.env.local` File
 
-## Step 4: Configure Environment Variables
-
-1. Copy `.env.example` to `.env.local`:
-   ```bash
-   cp .env.example .env.local
-   ```
-
-2. Fill in the credentials from Step 3:
-   ```env
-   VITE_SUPABASE_URL=https://your-project.supabase.co
-   VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-   ```
-
-3. Keep other variables as-is (with defaults)
-
-## Step 5: Verify Database Connection
-
-Run the verification script:
+Create a `.env.local` file in the project root. Copy the credentials from the `supabase start` output:
 
 ```bash
-npx ts-node scripts/verify-schema.ts
+# Copy example env
+cp .env.example .env.local
 ```
 
-Expected output:
-```
-✅ Schema verification PASSED
-✅ All required tables are present
-✅ All required indexes are configured
-
-✨ Your Supabase database is ready for use!
-```
-
-## Step 6: Seed Sample Data (Optional)
-
-To populate the database with sample articles for testing:
-
-### Option A: Use Supabase Dashboard SQL Editor
-
-1. Go to Supabase Dashboard > **SQL Editor**
-2. Create a new query with sample insert statements
-3. See `scripts/seed-database.ts` for example data structure
-
-### Option B: Temporarily Disable RLS (Development Only)
-
-If you want to use the seeding script:
-
-1. In Supabase Dashboard, go to **Authentication** > **Policies**
-2. For each table, click the disable RLS button
-3. Run: `npx ts-node scripts/seed-database.ts`
-4. Re-enable RLS after seeding
-
-### Option C: Use Service Role Key (Recommended)
-
-For better security, use the service role key in the seeding script:
-
-1. Go to Supabase Dashboard > **Settings** > **API**
-2. Copy the `service_role` key (keep this private!)
-3. Update `scripts/seed-database.ts` to use this key
-4. Run: `npx ts-node scripts/seed-database.ts`
-
-## Step 7: Start Development Server
+Edit `.env.local` with the local credentials. It should look something like this:
 
 ```bash
+# Supabase Configuration
+VITE_SUPABASE_URL=http://127.0.0.1:54321
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+# Development settings
+VITE_API_TIMEOUT=5000
+VITE_ENABLE_LOGGING=true
+```
+
+### 4. Database Migrations
+
+The database schema is defined in `supabase/migrations/20251117000000_initial_schema.sql`. The Supabase CLI automatically applies any new migrations in the `supabase/migrations` directory when you run `supabase start`.
+
+If you need to reset your local database and re-apply all migrations, you can run:
+```bash
+supabase db reset
+```
+
+### 5. Seed Database (Optional)
+
+Load sample data for development:
+
+```bash
+# Run seeding script
+npx ts-node scripts/seed-database.ts
+```
+
+**Note**: The seeding script uses the credentials from your `.env.local` file to connect to the local Supabase instance.
+
+---
+
+## Development Setup
+
+### 1. Install Dependencies
+
+```bash
+# Install all project dependencies
+npm install
+```
+
+### 2. Start Development Server
+
+```bash
+# Start Vite dev server with HMR
 npm run dev
+
+# Opens at http://localhost:5173
+# Hot Module Reload enabled - changes reflect instantly
 ```
 
-Navigate to http://localhost:5173 and you should see the newsletter viewer with your data.
+### 3. Key Development Commands
+
+```bash
+# Development
+npm run dev              # Start dev server
+npm run build           # Production build
+npm run preview         # Preview production build
+npm run lint            # ESLint check
+npm run format          # Prettier format
+
+# Testing
+npm test                # Run tests in watch mode
+npm test -- --run       # Run tests once (CI mode)
+npm test -- --ui        # Visual test interface
+npm run coverage        # Coverage report
+
+# Database
+supabase start          # Start local Supabase
+supabase stop           # Stop local Supabase
+supabase db reset       # Reset local database
+npx ts-node scripts/seed-database.ts    # Seed sample data
+npx ts-node scripts/health-check.ts     # Verify database
+```
+
+---
+
+## Verification
+
+### 1. Verify Installation
+
+```bash
+# Check Node and npm
+node --version    # v18+
+npm --version     # v8+
+
+# Check dependencies
+npm ls supabase   # Should be v2.x
+npm ls react      # Should be v18+
+npm ls vite       # Should be v5+
+```
+
+### 2. Test Database Connection
+
+You can connect to your local database using any PostgreSQL client with the connection string provided by `supabase start`, or you can use the Supabase Studio, which is typically available at `http://127.0.0.1:54323`.
+
+In the Studio, navigate to the **Table Editor** and verify that all tables from the schema exist.
+
+You can also run the health check script:
+```bash
+# Run health check script
+npx ts-node scripts/health-check.ts
+```
+
+### 3. Run Tests
+
+Run the test suite to ensure everything is working correctly with the local database.
+```bash
+# Run all tests
+npm test -- --run
+```
+
+---
 
 ## Troubleshooting
 
-### Connection Error: "Cannot reach Supabase"
+### "Cannot find module '@supabase/supabase-js'"
 
-- Verify `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env.local`
-- Check that your Supabase project is active (Settings > General)
-- Ensure internet connection and firewall allows connections to Supabase
+```bash
+# Solution: Reinstall dependencies
+rm -rf node_modules package-lock.json
+npm install
+```
 
-### Tables Not Found
+### "Environment variable VITE_SUPABASE_URL is not defined"
 
-- Verify schema.sql was executed successfully
-- Check Supabase Dashboard > **Table Editor** to see existing tables
-- If tables are missing, re-run the schema.sql script
+```bash
+# Solution: Check .env.local file exists and has correct values from 'supabase start'
+cat .env.local
+```
 
-### Row-Level Security (RLS) Errors
+### "Database connection failed" or "Cannot reach Supabase"
 
-- **When reading**: This is expected for restricted articles (check RLS policies)
-- **When seeding**: Disable RLS temporarily or use service role key (see Step 6)
-- **In production**: Keep RLS enabled for security
+- Verify that the Docker containers are running (`docker ps`).
+- Ensure the `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env.local` match the output from `supabase start`.
+- Check that no other service is using ports `54321` or `54323`.
+- Run `supabase status` to check the health of the local services.
 
-### Authentication Errors
+### "Tables do not exist"
 
-- Check that you're using the `anon` key (not `service_role`)
-- Verify the key hasn't been rotated in Supabase Dashboard
-- Clear browser cache and restart dev server
+- Ensure the migration file `supabase/migrations/20251117000000_initial_schema.sql` exists.
+- Run `supabase db reset` to wipe the local database and re-apply all migrations.
 
-## Configuration Reference
+### "Port 5173 already in use"
 
-### Environment Variables
+```bash
+# Solution: Kill process using port
+# macOS/Linux:
+lsof -ti:5173 | xargs kill -9
 
-| Variable | Required | Example | Purpose |
-|----------|----------|---------|---------|
-| `VITE_SUPABASE_URL` | Yes | `https://xyz.supabase.co` | Supabase project URL |
-| `VITE_SUPABASE_ANON_KEY` | Yes | `eyJhbGc...` | Public API key for client-side |
-| `VITE_APP_URL` | No | `http://localhost:5173` | Application URL |
-| `VITE_APP_NAME` | No | `電子報 CMS` | Display name |
-| `VITE_SUPABASE_TEST_URL` | No | Same as above | Test database URL |
-| `VITE_SUPABASE_TEST_KEY` | No | Same as above | Test database key |
+# Windows:
+netstat -ano | findstr :5173
+taskkill /PID <PID> /F
 
-### Database Schema Summary
-
-See `specs/002-database-structure/ERD.md` for complete Entity-Relationship diagram.
-
-**Core Tables**:
-- `newsletter_weeks`: Weekly newsletter containers
-- `articles`: Individual article content
-
-**Access Control**:
-- `classes`: School classes
-- `user_roles`: User authentication and roles
-- `families`: Parent grouping
-- `family_enrollment`: Parent-family relationships
-- `child_class_enrollment`: Child-class relationships
-- `teacher_class_assignment`: Teacher-class assignments
-
-**Audit Trail**:
-- `article_audit_log`: Change tracking
-
-### Performance Targets
-
-- Article retrieval: <500ms (100 articles)
-- Class filtering: <100ms
-- Article switching: <1000ms
-
-See `specs/002-database-structure/quickstart.md` for query examples and performance benchmarks.
-
-## Next Steps
-
-1. **Run the application**: `npm run dev`
-2. **Read the quickstart guide**: `specs/002-database-structure/quickstart.md`
-3. **Review the data model**: `specs/002-database-structure/data-model.md`
-4. **Start development**: Begin implementing features from `specs/002-database-structure/tasks.md`
-
-## Security Considerations
-
-### For Development
-- ✅ RLS can be disabled temporarily for easier local development
-- ✅ It's safe to use sample credentials in `.env.local` (not committed)
-- ✅ Use separate Supabase project for testing if possible
-
-### For Production
-- 🔒 **Always enable RLS** on all tables
-- 🔒 **Never commit** `.env.local` or `SUPABASE_SERVICE_ROLE_KEY`
-- 🔒 Use **environment secrets** in CI/CD and hosting platforms
-- 🔒 Rotate API keys regularly
-- 🔒 Review RLS policies for each table
-- 🔒 Enable database backups
-- 🔒 Monitor audit logs for unusual activity
-
-## Support
-
-For issues with Supabase:
-- [Supabase Documentation](https://supabase.com/docs)
-- [Supabase GitHub Discussions](https://github.com/supabase/supabase/discussions)
-- [Supabase Support](https://supabase.com/support)
-
-For issues with this project:
-- Check the project [TESTING.md](./TESTING.md) for test setup
-- Review [specs/002-database-structure/](./specs/002-database-structure/) for feature documentation
+# Or use different port:
+npm run dev -- --port 5174
+```

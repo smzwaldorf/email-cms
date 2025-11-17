@@ -237,35 +237,45 @@ describe('Feature Name', () => {
 })
 ```
 
-### Mocking Supabase
+### Testing Against a Local Database
+
+With the local Supabase environment, it is recommended to run integration and service tests against a real database instance. This provides higher confidence than using mocks.
+
+Your `.env.local` file should contain the credentials for your local Supabase instance. Vitest will automatically load these environment variables.
 
 ```typescript
-// Mock at module level (before tests)
-vi.mock('@/lib/supabase', () => ({
-  table: vi.fn(),
-  getSupabaseClient: vi.fn(),
-}))
+// Example of a service test
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { createClient } from '@supabase/supabase-js'
 
 describe('ArticleService', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
+  let supabase;
 
-  it('should fetch articles', async () => {
-    const mockArticles = [
-      { id: '1', title: 'Test', is_published: true }
-    ]
+  beforeEach(async () => {
+    // Connect to the local database
+    supabase = createClient(
+      process.env.VITE_SUPABASE_URL!,
+      process.env.VITE_SUPABASE_ANON_KEY!
+    );
 
-    // Mock the response
-    const mockTable = vi.fn().mockReturnValue({
-      select: vi.fn().mockResolvedValue({ data: mockArticles })
-    })
+    // Clean up before each test
+    await supabase.from('articles').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  });
 
-    // Use the mock
-    const result = await someFunction()
-    expect(result).toEqual(mockArticles)
-  })
-})
+  it('should create and fetch an article', async () => {
+    // Create
+    await ArticleService.createArticle({
+      title: 'Test',
+      content: 'Content',
+      week_number: '2025-W47'
+    });
+
+    // Fetch
+    const articles = await ArticleService.getArticlesByWeek('2025-W47');
+    expect(articles).toHaveLength(1);
+    expect(articles[0].title).toBe('Test');
+  });
+});
 ```
 
 ### Mocking React Router
@@ -653,20 +663,17 @@ Statements:  95.2%
 - Write tests alongside code (TDD)
 - Use descriptive test names
 - Test behavior, not implementation
-- Mock external dependencies
 - Clean up after tests (afterEach)
 - Test happy paths and error cases
-- Keep tests fast (avoid real DB/network)
+- Keep tests fast, even when hitting a local database.
 
 ### Don'ts ✗
 
-- Don't test implementation details
-- Don't skip error case testing
-- Don't hardcode dates/times (use Date.now())
-- Don't forget to clear mocks (vi.clearAllMocks())
-- Don't test third-party libraries
-- Don't create interdependent tests
-- Don't use real Supabase in unit tests
+- Don't test implementation details.
+- Don't skip error case testing.
+- Don't hardcode dates/times (use Date.now()).
+- Don't create interdependent tests that rely on a specific order of execution.
+- Don't test third-party libraries.
 
 ---
 
@@ -684,42 +691,30 @@ it('slow test', async () => {
 }, 30000)  // 30 second timeout
 ```
 
-### Mock Not Working
+### Connection issues to local Supabase
+
+- Make sure your Docker Desktop is running.
+- Run `supabase status` to check if the local services are up.
+- Verify that the credentials in your `.env.local` file match the output of `supabase start`.
+
+### RLS Policy Errors in Tests
+
+When testing against a real database, you might encounter RLS policy errors if your tests don't set the correct user context.
 
 ```typescript
-// ✓ Correct: Mock at module level
-vi.mock('@/lib/supabase')
+// Example of setting the user context for a test
+import { goTrue } from '@/lib/supabase'; // assuming you have this
 
-describe('MyTests', () => {
-  // Tests here can use the mock
-})
+it('should allow an authenticated user to do something', async () => {
+  // Sign in as a test user
+  await goTrue.auth.signInWithPassword({
+    email: 'test@example.com',
+    password: 'password',
+  });
 
-// ✗ Wrong: Mock inside describe block
-describe('MyTests', () => {
-  vi.mock('@/lib/supabase')  // Won't work!
-})
-```
-
-### Act Warning in Component Tests
-
-```typescript
-// ✓ Correct: Wrap state updates
-act(() => {
-  fireEvent.click(button)
-})
-
-// Or use userEvent which wraps automatically
-await userEvent.click(button)
-```
-
-### RLS Policy Errors in Real DB Tests
-
-```typescript
-// Disable RLS for test database
-// In Supabase Console:
-// Settings → Authentication → Disable RLS
-
-// Or use anonymous key with public policies
+  // Now run the test logic
+  // ...
+});
 ```
 
 ---

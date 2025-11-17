@@ -17,25 +17,18 @@ This guide covers:
 
 ## 1. Database Setup
 
-### Option A: Supabase Dashboard (Recommended for Development)
+### Local Development Setup (Recommended)
 
-1. Go to Supabase dashboard: https://app.supabase.com
-2. Select your project
-3. Navigate to **SQL Editor**
-4. Create a new query
-5. Copy the contents of `contracts/schema.sql`
-6. Run the query
-7. Verify tables created in **Table Editor**
-
-### Option B: Migration Script (for Staging/Production)
-
-```bash
-# Using supabase-js CLI (if available)
-supabase db push
-
-# Or apply schema.sql directly
-psql -h your-db-host -U postgres -d your-database -f contracts/schema.sql
-```
+1.  **Install Supabase CLI**: If you haven't already, install the CLI:
+    ```bash
+    npm install -g supabase
+    ```
+2.  **Start Supabase**: From the root of the project, run:
+    ```bash
+    supabase start
+    ```
+3.  **Apply Migrations**: The database schema in `supabase/migrations` is applied automatically when you start the services. To reset the database and re-apply migrations, run `supabase db reset`.
+4.  **Get Credentials**: The `supabase start` command will output the local URL and anon key. Use these to fill in your `.env.local` file.
 
 ---
 
@@ -48,7 +41,9 @@ psql -h your-db-host -U postgres -d your-database -f contracts/schema.sql
 ```typescript
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY)
+// The client should be initialized once and imported from a shared module (e.g., src/lib/supabase.ts)
+// It automatically uses the environment variables VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY
+const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY)
 
 // Query: All public articles for a specific week
 async function getPublicArticles(weekNumber: string) {
@@ -316,7 +311,7 @@ async function reorderArticles(
 ```typescript
 // components/WeeklyNewsletter.tsx
 import React, { useEffect, useState } from 'react'
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '@/lib/supabase' // Assuming you have a shared client instance
 
 interface Article {
   id: string
@@ -331,11 +326,6 @@ export const WeeklyNewsletter: React.FC<{ weekNumber: string }> = ({
   const [articles, setArticles] = useState<Article[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
-  const supabase = createClient(
-    import.meta.env.VITE_SUPABASE_URL,
-    import.meta.env.VITE_SUPABASE_ANON_KEY
-  )
 
   useEffect(() => {
     const fetchArticles = async () => {
@@ -385,6 +375,8 @@ export const WeeklyNewsletter: React.FC<{ weekNumber: string }> = ({
 
 ### Unit Test Example
 
+Tests should run against the local Supabase instance.
+
 ```typescript
 // tests/unit/articles.test.ts
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
@@ -394,10 +386,10 @@ describe('Articles API', () => {
   let supabase
 
   beforeEach(() => {
-    // Use test database
+    // Connect to the local test database
     supabase = createClient(
-      process.env.VITE_SUPABASE_TEST_URL!,
-      process.env.VITE_SUPABASE_TEST_KEY!
+      process.env.VITE_SUPABASE_URL!,
+      process.env.VITE_SUPABASE_ANON_KEY!
     )
   })
 
@@ -408,7 +400,7 @@ describe('Articles API', () => {
 
   it('should fetch public articles for a week', async () => {
     // Setup: Insert test article
-    const { data: insertedArticle } = await supabase
+    await supabase
       .from('articles')
       .insert({
         week_number: '2025-W47',
@@ -418,8 +410,6 @@ describe('Articles API', () => {
         visibility_type: 'public',
         is_published: true
       })
-      .select()
-      .single()
 
     // Test
     const { data: articles } = await supabase
@@ -431,37 +421,6 @@ describe('Articles API', () => {
     // Assert
     expect(articles).toHaveLength(1)
     expect(articles[0].title).toBe('Test Article')
-  })
-
-  it('should not return deleted articles', async () => {
-    // Setup: Insert and soft-delete article
-    const { data: article } = await supabase
-      .from('articles')
-      .insert({
-        week_number: '2025-W47',
-        title: 'Deleted Article',
-        content: '# Test',
-        article_order: 1,
-        visibility_type: 'public',
-        is_published: true
-      })
-      .select()
-      .single()
-
-    await supabase
-      .from('articles')
-      .update({ deleted_at: new Date().toISOString() })
-      .eq('id', article.id)
-
-    // Test
-    const { data: articles } = await supabase
-      .from('articles')
-      .select('*')
-      .eq('week_number', '2025-W47')
-      .is('deleted_at', null)
-
-    // Assert
-    expect(articles).toHaveLength(0)
   })
 })
 ```
