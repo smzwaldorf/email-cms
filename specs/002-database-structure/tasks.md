@@ -222,46 +222,46 @@ Implement public-facing article viewing with performance optimization.
 
 ### US2 Data Access & UI
 
-- [ ] T018 [P] [US2] Implement ArticleListView component in `src/components/ArticleListView.tsx`
-  - [ ] Fetch published articles for week (via ArticleService)
-  - [ ] Display articles in article_order sequence
-  - [ ] Article cards with title, author, preview
-  - [ ] Link to ArticleContent view
-  - [ ] Loading state (SC-001: <500ms target)
-  - [ ] Error fallback
-  - [ ] Mobile responsive design
+- [x] T018 [P] [US2] Implement ArticleListView component in `src/components/ArticleListView.tsx`
+  - [x] Fetch published articles for week (via ArticleService)
+  - [x] Display articles in article_order sequence
+  - [x] Article cards with title, author, preview
+  - [x] Link to ArticleContent view
+  - [x] Loading state (SC-001: <500ms target)
+  - [x] Error fallback
+  - [x] Mobile responsive design
 
-- [ ] T019 [P] [US2] Implement ArticleContent component in `src/components/ArticleContent.tsx`
-  - [ ] Render markdown content (use markdown library like react-markdown)
-  - [ ] Display article metadata (author, created_at, updated_at)
-  - [ ] Handle markdown sanitization for XSS prevention
-  - [ ] Loading state for single article
-  - [ ] Previous/Next navigation
-  - [ ] Mobile responsive design
+- [x] T019 [P] [US2] Implement ArticleContent component in `src/components/ArticleContent.tsx`
+  - [x] Render markdown content (use markdown library like react-markdown)
+  - [x] Display article metadata (author, created_at, updated_at)
+  - [x] Handle markdown sanitization for XSS prevention
+  - [x] Loading state for single article
+  - [x] Previous/Next navigation
+  - [x] Mobile responsive design
 
 ### US2 Tests
 
-- [ ] T020 [US2] Create ArticleListView integration test in `tests/integration/visitor-views-articles.test.ts`
-  - [ ] Test: Visitor fetches published articles for week → returns only published
-  - [ ] Test: Returns articles in article_order sequence
-  - [ ] Test: Unpublished articles excluded (0% false positives, SC-003)
-  - [ ] Test: Performance <500ms for 100 articles (SC-001)
-  - [ ] Test: Deleted articles excluded (deleted_at IS NULL)
-  - [ ] Test: Handles empty week gracefully
-  - [ ] Test: All US2 acceptance scenarios
+- [x] T020 [US2] Create ArticleListView integration test in `tests/integration/visitor-views-articles.test.ts`
+  - [x] Test: Visitor fetches published articles for week → returns only published
+  - [x] Test: Returns articles in article_order sequence
+  - [x] Test: Unpublished articles excluded (0% false positives, SC-003)
+  - [x] Test: Performance <500ms for 100 articles (SC-001)
+  - [x] Test: Deleted articles excluded (deleted_at IS NULL)
+  - [x] Test: Handles empty week gracefully
+  - [x] Test: All US2 acceptance scenarios
 
-- [ ] T021 [US2] Create ArticleContent render test in `tests/components/ArticleContent.test.tsx`
-  - [ ] Test: Markdown renders correctly
-  - [ ] Test: XSS prevention (sanitized)
-  - [ ] Test: Metadata displays (author, dates)
-  - [ ] Test: Navigation buttons work
+- [x] T021 [US2] Create ArticleContent render test in `tests/components/ArticleContent.test.tsx`
+  - [x] Test: Markdown renders correctly
+  - [x] Test: XSS prevention (sanitized)
+  - [x] Test: Metadata displays (author, dates)
+  - [x] Test: Navigation buttons work
 
-- [ ] T022 [US2] Performance benchmark for US2 in `tests/performance/article-retrieval.perf.test.ts`
-  - [ ] Benchmark: 10 articles - target <100ms
-  - [ ] Benchmark: 50 articles - target <300ms
-  - [ ] Benchmark: 100 articles - target <500ms
-  - [ ] Verify indexes being used (EXPLAIN ANALYZE)
-  - [ ] Document results in PERFORMANCE.md
+- [x] T022 [US2] Performance benchmark for US2 in `tests/performance/article-retrieval.perf.test.ts`
+  - [x] Benchmark: 10 articles - target <100ms
+  - [x] Benchmark: 50 articles - target <300ms
+  - [x] Benchmark: 100 articles - target <500ms
+  - [x] Verify indexes being used (EXPLAIN ANALYZE)
+  - [x] Document results in PERFORMANCE.md
 
 ---
 
