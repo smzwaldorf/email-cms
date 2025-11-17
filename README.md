@@ -557,8 +557,8 @@ Full documentation is organized by topic:
 
 | Document | Purpose | Audience |
 |----------|---------|----------|
-| [SETUP.md](./SETUP.md) | Development environment setup | Developers |
-| [TESTING.md](./TESTING.md) | Test organization & running tests | QA / Developers |
+| [SETUP.md](./specs/002-database-structure/SETUP.md) | Development environment setup | Developers |
+| [TESTING.md](./specs/002-database-structure/TESTING.md) | Test organization & running tests | QA / Developers |
 | [API.md](./API.md) | API endpoints & examples | Developers / Integrators |
 | [DEPLOYMENT.md](./DEPLOYMENT.md) | Production deployment steps | DevOps / Team Leads |
 | [specs/002-database-structure/](./specs/002-database-structure/) | Feature specifications | Product / Architecture |
