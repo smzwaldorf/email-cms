@@ -61,42 +61,42 @@ Setup tasks initialize the database infrastructure and establish the foundation 
 
 ### Database Initialization
 
-- [ ] T001 Initialize Supabase PostgreSQL database per `specs/002-database-structure/contracts/schema.sql`
-  - [ ] Create Supabase project (or use existing)
-  - [ ] Run schema.sql in SQL Editor
-  - [ ] Verify all 8 tables created (newsletter_weeks, articles, classes, user_roles, families, family_enrollment, child_class_enrollment, teacher_class_assignment, article_audit_log)
-  - [ ] Verify indexes created (10 total)
-  - [ ] Verify triggers created (3 total: updated_at triggers, audit logging)
-  - [ ] Verify RLS policies enabled
+- [x] T001 Initialize Supabase PostgreSQL database per `specs/002-database-structure/contracts/schema.sql`
+  - [x] Create Supabase project (or use existing)
+  - [x] Run schema.sql in SQL Editor
+  - [x] Verify all 8 tables created (newsletter_weeks, articles, classes, user_roles, families, family_enrollment, child_class_enrollment, teacher_class_assignment, article_audit_log)
+  - [x] Verify indexes created (10 total)
+  - [x] Verify triggers created (3 total: updated_at triggers, audit logging)
+  - [x] Verify RLS policies enabled
 
-- [ ] T002 Create local test database configuration in `.env.test`
-  - [ ] Add VITE_SUPABASE_TEST_URL
-  - [ ] Add VITE_SUPABASE_TEST_KEY
-  - [ ] Document in TESTING.md
+- [x] T002 Create local test database configuration in `.env.test`
+  - [x] Add VITE_SUPABASE_TEST_URL
+  - [x] Add VITE_SUPABASE_TEST_KEY
+  - [x] Document in TESTING.md
 
-- [ ] T003 Create database seeding script `scripts/seed-database.ts`
-  - [ ] Create sample newsletter weeks (2025-W47, 2025-W48)
-  - [ ] Create sample classes (A1, A2, B1, B2 with grades 1-2)
-  - [ ] Document in README.md
+- [x] T003 Create database seeding script `scripts/seed-database.ts`
+  - [x] Create sample newsletter weeks (2025-W47, 2025-W48)
+  - [x] Create sample classes (A1, A2, B1, B2 with grades 1-2)
+  - [x] Document in README.md
 
-- [ ] T004 Set up Supabase project configuration
-  - [ ] Enable Row-Level Security
-  - [ ] Configure authentication providers (will be integrated later)
-  - [ ] Document connection details in SETUP.md
+- [x] T004 Set up Supabase project configuration
+  - [x] Enable Row-Level Security
+  - [x] Configure authentication providers (will be integrated later)
+  - [x] Document connection details in SETUP.md
 
-- [ ] T005 Create TypeScript type definitions for all database entities in `src/types/database.ts`
-  - [ ] Type: NewsletterWeek
-  - [ ] Type: Article
-  - [ ] Type: Class
-  - [ ] Type: UserRole
-  - [ ] Type: Family
-  - [ ] Type: ArticleAuditLog
-  - [ ] Re-export from `src/types/index.ts`
+- [x] T005 Create TypeScript type definitions for all database entities in `src/types/database.ts`
+  - [x] Type: NewsletterWeek
+  - [x] Type: Article
+  - [x] Type: Class
+  - [x] Type: UserRole
+  - [x] Type: Family
+  - [x] Type: ArticleAuditLog
+  - [x] Re-export from `src/types/index.ts`
 
-- [ ] T006 Create `.env.example` with all required environment variables
-  - [ ] VITE_SUPABASE_URL
-  - [ ] VITE_SUPABASE_ANON_KEY
-  - [ ] DATABASE documentation
+- [x] T006 Create `.env.example` with all required environment variables
+  - [x] VITE_SUPABASE_URL
+  - [x] VITE_SUPABASE_ANON_KEY
+  - [x] DATABASE documentation
 
 ---
 
@@ -108,50 +108,50 @@ Foundational tasks create the data access layer and API contracts shared by all 
 
 ### Data Access Layer
 
-- [ ] T007 [P] Create Supabase client factory in `src/lib/supabase.ts`
-  - [ ] Initialize Supabase client with proper configuration
-  - [ ] Export singleton instance
-  - [ ] Add error handling & logging
+- [x] T007 [P] Create Supabase client factory in `src/lib/supabase.ts`
+  - [x] Initialize Supabase client with proper configuration
+  - [x] Export singleton instance
+  - [x] Add error handling & logging
 
-- [ ] T008 [P] Create ArticleService in `src/services/ArticleService.ts`
-  - [ ] Method: `getArticlesByWeek(weekNumber: string, filters?: ArticleFilter)` → Article[]
-  - [ ] Method: `getArticleById(id: string)` → Article
-  - [ ] Method: `createArticle(data: CreateArticleDTO)` → Article
-  - [ ] Method: `updateArticle(id: string, data: UpdateArticleDTO)` → Article
-  - [ ] Method: `deleteArticle(id: string)` → void (soft-delete)
-  - [ ] Method: `publishArticle(id: string)` → Article
-  - [ ] Method: `unpublishArticle(id: string)` → Article
-  - [ ] Add proper error handling & logging
+- [x] T008 [P] Create ArticleService in `src/services/ArticleService.ts`
+  - [x] Method: `getArticlesByWeek(weekNumber: string, filters?: ArticleFilter)` → Article[]
+  - [x] Method: `getArticleById(id: string)` → Article
+  - [x] Method: `createArticle(data: CreateArticleDTO)` → Article
+  - [x] Method: `updateArticle(id: string, data: UpdateArticleDTO)` → Article
+  - [x] Method: `deleteArticle(id: string)` → void (soft-delete)
+  - [x] Method: `publishArticle(id: string)` → Article
+  - [x] Method: `unpublishArticle(id: string)` → Article
+  - [x] Add proper error handling & logging
 
-- [ ] T009 [P] Create WeekService in `src/services/WeekService.ts`
-  - [ ] Method: `getWeek(weekNumber: string)` → NewsletterWeek
-  - [ ] Method: `createWeek(weekNumber: string, releaseDate: Date)` → NewsletterWeek
-  - [ ] Method: `publishWeek(weekNumber: string)` → NewsletterWeek
-  - [ ] Method: `unpublishWeek(weekNumber: string)` → NewsletterWeek
-  - [ ] Method: `getAllWeeks(options?: PaginationOptions)` → NewsletterWeek[]
+- [x] T009 [P] Create WeekService in `src/services/WeekService.ts`
+  - [x] Method: `getWeek(weekNumber: string)` → NewsletterWeek
+  - [x] Method: `createWeek(weekNumber: string, releaseDate: Date)` → NewsletterWeek
+  - [x] Method: `publishWeek(weekNumber: string)` → NewsletterWeek
+  - [x] Method: `unpublishWeek(weekNumber: string)` → NewsletterWeek
+  - [x] Method: `getAllWeeks(options?: PaginationOptions)` → NewsletterWeek[]
 
-- [ ] T010 [P] Create ArticleQueryBuilder in `src/services/queries/articleQueries.ts`
-  - [ ] Query: getPublishedArticlesByWeek (for visitors)
-  - [ ] Query: getArticlesByWeekUnfiltered (for editors)
-  - [ ] Query: getArticlesByClass (for class-based filtering)
-  - [ ] Query: getArticleWithAuditLog (for editing history)
-  - [ ] Implement with proper indexes for SC-001 (<500ms)
-  - [ ] Add query profiling/logging
+- [x] T010 [P] Create ArticleQueryBuilder in `src/services/queries/articleQueries.ts`
+  - [x] Query: getPublishedArticlesByWeek (for visitors)
+  - [x] Query: getArticlesByWeekUnfiltered (for editors)
+  - [x] Query: getArticlesByClass (for class-based filtering)
+  - [x] Query: getArticleWithAuditLog (for editing history)
+  - [x] Implement with proper indexes for SC-001 (<500ms)
+  - [x] Add query profiling/logging
 
 ### API Contracts
 
-- [ ] T011 Create REST API contracts in `specs/002-database-structure/contracts/api.md`
-  - [ ] GET /api/articles?week={weekNumber} (public visitor endpoint)
-  - [ ] GET /api/articles/{id} (get single article)
-  - [ ] POST /api/articles (create article - editor only)
-  - [ ] PUT /api/articles/{id} (update article - editor only)
-  - [ ] DELETE /api/articles/{id} (soft-delete - editor only)
-  - [ ] POST /api/articles/{id}/publish (publish - editor only)
-  - [ ] POST /api/articles/{id}/unpublish (unpublish - editor only)
-  - [ ] POST /api/articles/reorder (batch reorder within week - editor only)
-  - [ ] GET /api/weeks/{weekNumber} (get week with articles)
-  - [ ] POST /api/weeks (create week - admin only)
-  - [ ] Document request/response schemas, error codes, rate limits
+- [x] T011 Create REST API contracts in `specs/002-database-structure/contracts/api.md`
+  - [x] GET /api/articles?week={weekNumber} (public visitor endpoint)
+  - [x] GET /api/articles/{id} (get single article)
+  - [x] POST /api/articles (create article - editor only)
+  - [x] PUT /api/articles/{id} (update article - editor only)
+  - [x] DELETE /api/articles/{id} (soft-delete - editor only)
+  - [x] POST /api/articles/{id}/publish (publish - editor only)
+  - [x] POST /api/articles/{id}/unpublish (unpublish - editor only)
+  - [x] POST /api/articles/reorder (batch reorder within week - editor only)
+  - [x] GET /api/weeks/{weekNumber} (get week with articles)
+  - [x] POST /api/weeks (create week - admin only)
+  - [x] Document request/response schemas, error codes, rate limits
 
 ---
 
