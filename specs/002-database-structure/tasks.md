@@ -163,54 +163,54 @@ Implement core CMS functionality for editors to create and publish articles.
 
 ### US1 Data Model
 
-- [ ] T012 [P] [US1] Implement ArticleRepository in `src/repositories/ArticleRepository.ts`
-  - [ ] Extend ArticleService with transaction support
-  - [ ] Method: `createArticleInWeek(weekNumber, articleData)` → Article
-  - [ ] Method: `reorderArticles(weekNumber, orderMap)` → void (atomic)
-  - [ ] Method: `validateArticleOrder(weekNumber)` → ValidationResult
-  - [ ] Add constraint validation (unique order per week)
+- [x] T012 [P] [US1] Implement ArticleRepository in `src/repositories/ArticleRepository.ts`
+  - [x] Extend ArticleService with transaction support
+  - [x] Method: `createArticleInWeek(weekNumber, articleData)` → Article
+  - [x] Method: `reorderArticles(weekNumber, orderMap)` → void (atomic)
+  - [x] Method: `validateArticleOrder(weekNumber)` → ValidationResult
+  - [x] Add constraint validation (unique order per week)
 
-- [ ] T013 [P] [US1] Create article editor React hook in `src/hooks/useArticleEditor.ts`
-  - [ ] State management for article form
-  - [ ] Handle title, content, author, visibility_type, restricted_to_classes
-  - [ ] Draft/publish status toggle
-  - [ ] Error handling & validation
-  - [ ] Integration with ArticleService
+- [x] T013 [P] [US1] Create article editor React hook in `src/hooks/useArticleEditor.ts`
+  - [x] State management for article form
+  - [x] Handle title, content, author, visibility_type, restricted_to_classes
+  - [x] Draft/publish status toggle
+  - [x] Error handling & validation
+  - [x] Integration with ArticleService
 
-- [ ] T014 [P] [US1] Implement ArticleEditor component in `src/components/ArticleEditor.tsx`
-  - [ ] Form for creating new articles
-  - [ ] Week selector
-  - [ ] Article order display & drag-to-reorder
-  - [ ] Markdown content editor (basic textarea for MVP)
-  - [ ] Publication status toggle
-  - [ ] Save/Publish buttons
-  - [ ] Error messaging
-  - [ ] Loading states
+- [x] T014 [P] [US1] Implement ArticleEditor component in `src/components/ArticleEditor.tsx`
+  - [x] Form for creating new articles
+  - [x] Week selector
+  - [x] Article order display & drag-to-reorder
+  - [x] Markdown content editor (basic textarea for MVP)
+  - [x] Publication status toggle
+  - [x] Save/Publish buttons
+  - [x] Error messaging
+  - [x] Loading states
 
 ### US1 Tests
 
-- [ ] T015 [US1] Create ArticleService tests in `tests/services/ArticleService.test.ts`
-  - [ ] Test: Create article in week
-  - [ ] Test: Retrieve article by ID
-  - [ ] Test: Update article content
-  - [ ] Test: Publish article (is_published = true)
-  - [ ] Test: Verify created_at and updated_at timestamps
-  - [ ] Test: Verify article_order constraint (unique per week)
-  - [ ] Test: Soft-delete preserves data
-  - [ ] Use test database fixtures
+- [x] T015 [US1] Create ArticleService tests in `tests/services/ArticleService.test.ts`
+  - [x] Test: Create article in week
+  - [x] Test: Retrieve article by ID
+  - [x] Test: Update article content
+  - [x] Test: Publish article (is_published = true)
+  - [x] Test: Verify created_at and updated_at timestamps
+  - [x] Test: Verify article_order constraint (unique per week)
+  - [x] Test: Soft-delete preserves data
+  - [x] Use test database fixtures
 
-- [ ] T016 [US1] Create ArticleEditor component tests in `tests/components/ArticleEditor.test.tsx`
-  - [ ] Test: Form submission creates article
-  - [ ] Test: Order display shows current sequence
-  - [ ] Test: Publish button sets is_published = true
-  - [ ] Test: Validation prevents empty title/content
-  - [ ] Test: Error messages displayed on save failure
+- [x] T016 [US1] Create ArticleEditor component tests in `tests/components/ArticleEditor.test.tsx`
+  - [x] Test: Form submission creates article
+  - [x] Test: Order display shows current sequence
+  - [x] Test: Publish button sets is_published = true
+  - [x] Test: Validation prevents empty title/content
+  - [x] Test: Error messages displayed on save failure
 
-- [ ] T017 [US1] Create E2E test for article creation workflow in `tests/integration/article-workflow.test.ts`
-  - [ ] Test: Editor creates article → article appears in database
-  - [ ] Test: Editor publishes article → is_published = true
-  - [ ] Test: Audit log records creation & publication
-  - [ ] Coverage: All US1 acceptance scenarios
+- [x] T017 [US1] Create E2E test for article creation workflow in `tests/integration/article-workflow.test.ts`
+  - [x] Test: Editor creates article → article appears in database
+  - [x] Test: Editor publishes article → is_published = true
+  - [x] Test: Audit log records creation & publication
+  - [x] Coverage: All US1 acceptance scenarios
 
 ---
 
