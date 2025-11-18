@@ -14,6 +14,7 @@ import { ArticleContent } from '@/components/ArticleContent'
 import { ArticleEditor } from '@/components/ArticleEditor'
 import { NavigationBar } from '@/components/NavigationBar'
 import { SideButton } from '@/components/SideButton'
+import { UserMenu } from '@/components/UserMenu'
 import { Article } from '@/types'
 
 export function WeeklyReaderPage() {
@@ -253,15 +254,16 @@ export function WeeklyReaderPage() {
 
         {/* 文章內容面板 */}
         <div className="flex-1 flex flex-col">
-          {/* 編輯按鈕 */}
+          {/* Header: 編輯按鈕 + 使用者菜單 */}
           {!isEditMode && article && (
-            <div className="px-6 py-2 bg-waldorf-cream-50 border-b border-waldorf-cream-200 flex justify-end">
+            <div className="px-6 py-2 bg-waldorf-cream-50 border-b border-waldorf-cream-200 flex justify-between items-center">
               <button
                 onClick={() => setIsEditMode(true)}
                 className="px-4 py-2 text-sm bg-waldorf-sage-600 text-white rounded-md hover:bg-waldorf-sage-700 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-500 transition-colors"
               >
                 編輯文章
               </button>
+              <UserMenu />
             </div>
           )}
 
@@ -308,15 +310,16 @@ export function WeeklyReaderPage() {
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        {/* 編輯按鈕 - 行動版 */}
+        {/* Header: 編輯按鈕 + 使用者菜單 - 行動版 */}
         {!isEditMode && article && (
-          <div className="px-4 py-2 bg-waldorf-cream-50 border-b border-waldorf-cream-200 flex justify-end">
+          <div className="px-4 py-2 bg-waldorf-cream-50 border-b border-waldorf-cream-200 flex justify-between items-center">
             <button
               onClick={() => setIsEditMode(true)}
               className="px-4 py-2 text-sm bg-waldorf-sage-600 text-white rounded-md hover:bg-waldorf-sage-700 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-500 transition-colors"
             >
               編輯
             </button>
+            <UserMenu />
           </div>
         )}
 

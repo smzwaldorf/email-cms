@@ -255,12 +255,25 @@ CREATE TRIGGER trigger_audit_article_changes
 -- Row-Level Security (RLS) Policies
 -- ============================================================================
 
+ALTER TABLE public.newsletter_weeks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.articles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.classes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.families ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.child_class_enrollment ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.teacher_class_assignment ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.article_audit_log ENABLE ROW LEVEL SECURITY;
+
+-- Allow users to read their own role information
+CREATE POLICY user_roles_read_own
+  ON public.user_roles FOR SELECT
+  USING (id = auth.uid());
+
+-- Allow public read of published newsletter weeks
+-- Anyone can see published weeks
+CREATE POLICY newsletter_weeks_read
+  ON public.newsletter_weeks FOR SELECT
+  USING (is_published = true);
 
 -- Allow public read of published, non-deleted public articles
 CREATE POLICY articles_public_read
@@ -271,8 +284,40 @@ CREATE POLICY articles_public_read
     AND visibility_type = 'public'
   );
 
--- Note: Class-restricted article filtering will be handled at application level
--- (requires checking user's enrolled classes via family, parent-child relationships)
+-- Restrict class-restricted articles to parents with children in that class
+-- Security model: Parent can read article IF:
+--   1. Parent is in a family (family_enrollment.parent_id)
+--   2. That family has a child in the article's restricted class
+--   3. The child is currently enrolled (graduated_at IS NULL)
+--   4. The article is published and not soft-deleted
+CREATE POLICY articles_class_restricted_read
+  ON public.articles FOR SELECT
+  USING (
+    visibility_type = 'class_restricted'
+    AND is_published = true
+    AND deleted_at IS NULL
+    AND (
+      -- Check if current user is a parent with a child in one of the restricted classes
+      auth.uid() IN (
+        SELECT fe.parent_id
+        FROM family_enrollment fe
+        JOIN child_class_enrollment cce ON fe.family_id = cce.family_id,
+        LATERAL jsonb_array_elements(articles.restricted_to_classes) class_elem
+        WHERE TRIM(class_elem::text, '"') = cce.class_id
+          AND cce.graduated_at IS NULL  -- Only active enrollments
+      )
+    )
+  );
+
+-- Allow reading family enrollment relationships
+CREATE POLICY family_enrollment_read
+  ON public.family_enrollment FOR SELECT
+  USING (true);
+
+-- Allow reading child class enrollment relationships
+CREATE POLICY child_class_enrollment_read
+  ON public.child_class_enrollment FOR SELECT
+  USING (true);
 
 -- All users can read class information
 CREATE POLICY classes_all_read

@@ -1,89 +1,188 @@
 /**
- * 認證服務
- * 處理編輯者身份認證和權限檢查
- * 注意：這是一個模擬實現，實際應用應該連接到真實的認證後端
+ * Authentication Service
+ * Handles user authentication with Supabase
+ * Supports email/password login and session management
  */
+
+import { getSupabaseClient } from '@/lib/supabase'
+import type { AuthSession } from '@supabase/supabase-js'
 
 export interface AuthUser {
   id: string
-  username: string
   email: string
-  role: 'viewer' | 'editor' | 'admin'
-  permissions: string[]
+  role: 'viewer' | 'editor' | 'admin' | 'parent' | 'teacher' | 'student'
+  displayName?: string
 }
 
 export interface AuthServiceInterface {
-  isAuthenticated: () => boolean
-  getCurrentUser: () => AuthUser | null
-  hasPermission: (permission: string) => boolean
-  canEditArticles: () => boolean
-  canDeleteArticles: () => boolean
-  canReorderArticles: () => boolean
-  logout: () => void
+  signIn(email: string, password: string): Promise<AuthUser | null>
+  signOut(): Promise<void>
+  getCurrentUser(): AuthUser | null
+  isAuthenticated(): boolean
+  onAuthStateChange(callback: (user: AuthUser | null) => void): () => void
+  getSession(): Promise<AuthSession | null>
 }
 
-class MockAuthService implements AuthServiceInterface {
+class SupabaseAuthService implements AuthServiceInterface {
   private currentUser: AuthUser | null = null
+  private authStateListeners: Array<(user: AuthUser | null) => void> = []
 
-  constructor() {
-    // Initialize with a mock editor user
-    this.currentUser = {
-      id: 'editor-001',
-      username: 'editor',
-      email: 'editor@example.com',
-      role: 'editor',
-      permissions: ['article:read', 'article:write', 'article:delete', 'article:reorder'],
+  async initialize(): Promise<void> {
+    const supabase = getSupabaseClient()
+
+    // Check for existing session
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+
+    if (session?.user) {
+      await this.setCurrentUser(session.user.id)
+    }
+
+    // Listen for auth state changes
+    supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        await this.setCurrentUser(session.user.id)
+      } else {
+        this.currentUser = null
+        this.notifyListeners(null)
+      }
+    })
+  }
+
+  async signIn(email: string, password: string): Promise<AuthUser | null> {
+    const supabase = getSupabaseClient()
+
+    try {
+      console.log('🔐 Attempting to sign in with email:', email)
+      console.log('Using Supabase client from:', import.meta.env.VITE_SUPABASE_URL)
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      console.log('📦 Full response - Data:', data)
+      console.log('📦 Full response - Error:', error)
+
+      if (error) {
+        console.error('❌ Sign in error detected')
+        console.error('  Message:', error.message)
+        console.error('  Status:', error.status)
+        console.error('  Code:', error.code)
+        console.error('  Full error:', JSON.stringify(error))
+        return null
+      }
+
+      const userId = data.user?.id
+      console.log('✅ Sign in successful, user ID:', userId)
+
+      if (userId) {
+        console.log('👤 Calling setCurrentUser with ID:', userId)
+        await this.setCurrentUser(userId)
+        console.log('✅ Current user is now:', this.currentUser)
+        return this.currentUser
+      }
+
+      console.warn('⚠️ No user ID returned from auth response')
+      console.warn('Data object structure:', Object.keys(data || {}))
+      return null
+    } catch (err) {
+      console.error('❌ Sign in exception caught')
+      console.error('  Error:', err)
+      console.error('  Type:', typeof err)
+      console.error('  Message:', (err as any).message)
+      return null
     }
   }
 
-  isAuthenticated(): boolean {
-    return this.currentUser !== null
+  async signOut(): Promise<void> {
+    const supabase = getSupabaseClient()
+
+    try {
+      await supabase.auth.signOut()
+      this.currentUser = null
+      this.notifyListeners(null)
+    } catch (err) {
+      console.error('Sign out error:', err)
+    }
+  }
+
+  private async setCurrentUser(userId: string): Promise<void> {
+    const supabase = getSupabaseClient()
+
+    try {
+      console.log('👤 Fetching user role for userId:', userId)
+      // Fetch user role from user_roles table
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('*')
+        .eq('id', userId)
+        .single()
+
+      if (error) {
+        console.error('❌ Error fetching user role:', error)
+        return
+      }
+
+      if (data) {
+        console.log('✅ User role found:', data)
+        const { data: session } = await supabase.auth.getSession()
+
+        this.currentUser = {
+          id: userId,
+          email: data.email,
+          role: data.role,
+          displayName: data.email?.split('@')[0],
+        }
+
+        console.log('✅ Current user set:', this.currentUser)
+        this.notifyListeners(this.currentUser)
+      }
+    } catch (err) {
+      console.error('❌ Error setting current user:', err)
+    }
   }
 
   getCurrentUser(): AuthUser | null {
     return this.currentUser
   }
 
-  hasPermission(permission: string): boolean {
-    if (!this.currentUser) {
-      return false
+  isAuthenticated(): boolean {
+    return this.currentUser !== null
+  }
+
+  onAuthStateChange(callback: (user: AuthUser | null) => void): () => void {
+    this.authStateListeners.push(callback)
+
+    // Return unsubscribe function
+    return () => {
+      this.authStateListeners = this.authStateListeners.filter((cb) => cb !== callback)
     }
-
-    // Admin has all permissions
-    if (this.currentUser.role === 'admin') {
-      return true
-    }
-
-    return this.currentUser.permissions.includes(permission)
   }
 
-  canEditArticles(): boolean {
-    return this.hasPermission('article:write')
+  private notifyListeners(user: AuthUser | null): void {
+    this.authStateListeners.forEach((callback) => {
+      callback(user)
+    })
   }
 
-  canDeleteArticles(): boolean {
-    return this.hasPermission('article:delete')
-  }
-
-  canReorderArticles(): boolean {
-    return this.hasPermission('article:reorder')
-  }
-
-  logout(): void {
-    this.currentUser = null
-  }
-
-  /**
-   * Mock login for testing purposes
-   * In real application, this would call an actual auth API
-   */
-  mockLogin(user: AuthUser): void {
-    this.currentUser = user
+  async getSession() {
+    const supabase = getSupabaseClient()
+    const { data } = await supabase.auth.getSession()
+    return data.session
   }
 }
 
 // Singleton instance
-const authService = new MockAuthService()
+const authService = new SupabaseAuthService()
+
+// Initialize on import
+console.log('🔐 Initializing AuthService...')
+authService.initialize().catch((err) => {
+  console.error('❌ Failed to initialize auth service:', err)
+})
+console.log('✅ AuthService initialized')
 
 export { authService }
 export default authService
