@@ -86,16 +86,36 @@ If you need to reset your local database and re-apply all migrations, you can ru
 supabase db reset
 ```
 
-### 5. Seed Database (Optional)
+### 5. Create Test Users
 
-Load sample data for development:
+Set up test user accounts for authentication testing:
 
 ```bash
-# Run seeding script
-npx ts-node scripts/seed-database.ts
+# Create test users in Auth and populate user_roles table
+npx ts-node scripts/setup-test-users.ts
 ```
 
-**Note**: The seeding script uses the credentials from your `.env.local` file to connect to the local Supabase instance.
+This creates three test accounts:
+- **parent1@example.com** / `parent1password123` (sees 2 public + 2 class-restricted articles)
+- **parent2@example.com** / `parent2password123` (sees 2 public + 1 class-restricted article)
+- **admin@example.com** / `admin123456` (admin access to all articles)
+
+The script automatically sets up family enrollments so each parent can access their child's class articles.
+
+### 6. Verify Setup (Optional)
+
+Run verification scripts to ensure everything is configured correctly:
+
+```bash
+# Test authentication flow
+npx ts-node scripts/test-auth.ts
+
+# Test article visibility (RLS policies)
+npx ts-node scripts/test-article-visibility.ts
+
+# Check database health
+npx ts-node scripts/health-check.ts
+```
 
 ---
 
@@ -138,8 +158,14 @@ npm run coverage        # Coverage report
 supabase start          # Start local Supabase
 supabase stop           # Stop local Supabase
 supabase db reset       # Reset local database
-npx ts-node scripts/seed-database.ts    # Seed sample data
-npx ts-node scripts/health-check.ts     # Verify database
+npx ts-node scripts/setup-test-users.ts       # Create test user accounts
+npx ts-node scripts/test-auth.ts              # Test authentication flow
+npx ts-node scripts/test-article-visibility.ts  # Test RLS policies
+npx ts-node scripts/health-check.ts           # Verify database health
+
+# Testing
+npm test -- tests/e2e/authentication-flow.test.ts --run  # Run auth E2E tests
+npm test -- --run                             # Run all tests once
 ```
 
 ---
@@ -171,12 +197,46 @@ You can also run the health check script:
 npx ts-node scripts/health-check.ts
 ```
 
-### 3. Run Tests
+### 3. Test Authentication
 
-Run the test suite to ensure everything is working correctly with the local database.
+Verify that authentication and article visibility (RLS) are working correctly:
 ```bash
-# Run all tests
+# Test authentication flow (sign in, role lookup, sign out)
+npx ts-node scripts/test-auth.ts
+
+# Test article visibility with RLS policies
+npx ts-node scripts/test-article-visibility.ts
+```
+
+Both tests should pass with all assertions green.
+
+### 4. Run Authentication Tests
+
+Run the authentication and session persistence E2E tests:
+
+```bash
+# Run authentication flow E2E tests (covers sign in, session restore, sign out, etc.)
+npm test -- tests/e2e/authentication-flow.test.ts --run
+```
+
+This test suite verifies:
+- ✅ Users can sign in and sessions are stored
+- ✅ User roles are fetched from database
+- ✅ Articles are visible based on family enrollment (RLS policies)
+- ✅ Sessions are restored across page refreshes
+- ✅ Sign out clears sessions
+- ✅ Multiple users can have concurrent sessions
+- ✅ Refresh tokens are available for auto-refresh
+
+### 5. Run All Tests
+
+Run the complete test suite:
+```bash
+# Run all tests once (CI mode)
 npm test -- --run
+
+# Run tests in watch mode
+npm test
 ```
 
 ---
