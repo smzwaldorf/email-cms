@@ -33,7 +33,7 @@ export const LoginPage: React.FC = () => {
       email: 'teacher@example.com',
       password: 'teacher123456',
       label: 'Teacher',
-      description: 'Can edit A1, B1 articles',
+      description: 'Can edit A1 (Grade 1A) articles',
     },
     {
       email: 'admin@example.com',

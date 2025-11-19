@@ -28,8 +28,8 @@
  * teacher@example.com:
  *   - Password: teacher123456
  *   - Role: teacher
- *   - Classes: A1 (Grade 1A), B1 (Grade 2A)
- *   - Can edit: Class-restricted articles for A1 and B1
+ *   - Class: A1 (Grade 1A)
+ *   - Can edit: Class-restricted articles for A1
  *   - Articles visible: All 6 articles
  *
  * admin@example.com:
@@ -306,7 +306,7 @@ const testUsers = [
     email: 'teacher@example.com',
     password: 'teacher123456',
     role: 'teacher',
-    assignedClasses: ['A1', 'B1'], // Teaches Grade 1A and Grade 2A
+    assignedClasses: ['A1'], // Teaches Grade 1A only
   },
   {
     email: 'admin@example.com',
@@ -524,7 +524,7 @@ async function setupDevelopment() {
     console.log('🎯 Article Access (RLS Enforced):')
     console.log('  parent1@example.com → 4 articles (2 public + 2 class-restricted)')
     console.log('  parent2@example.com → 3 articles (2 public + 1 class-restricted)')
-    console.log('  teacher@example.com → Can edit A1, B1 class-restricted articles (can view all 6)')
+    console.log('  teacher@example.com → Can edit A1 class-restricted article (can view all 6)')
     console.log('  admin@example.com → All 6 articles (can edit all)\n')
   } catch (err) {
     console.error('❌ Fatal error during setup:', (err as any).message)

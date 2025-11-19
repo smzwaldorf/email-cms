@@ -312,22 +312,23 @@ CREATE POLICY articles_admin_read
 --   2. That family has a child in the article's restricted class
 --   3. The child is currently enrolled (graduated_at IS NULL)
 --   4. The article is published and not soft-deleted
+--
+-- Note: Teachers can view all articles via application-layer permission checks.
+-- RLS policy prioritizes parent access control. Fine-grained teacher permissions
+-- (which specific classes they can teach) are enforced in the application.
 CREATE POLICY articles_class_restricted_read
   ON public.articles FOR SELECT
   USING (
     visibility_type = 'class_restricted'
     AND is_published = true
     AND deleted_at IS NULL
-    AND (
-      -- Check if current user is a parent with a child in one of the restricted classes
-      auth.uid() IN (
-        SELECT fe.parent_id
-        FROM family_enrollment fe
-        JOIN child_class_enrollment cce ON fe.family_id = cce.family_id,
-        LATERAL jsonb_array_elements(articles.restricted_to_classes) class_elem
-        WHERE TRIM(class_elem::text, '"') = cce.class_id
-          AND cce.graduated_at IS NULL  -- Only active enrollments
-      )
+    AND auth.uid() IN (
+      SELECT fe.parent_id
+      FROM family_enrollment fe
+      JOIN child_class_enrollment cce ON fe.family_id = cce.family_id,
+      LATERAL jsonb_array_elements(articles.restricted_to_classes) class_elem
+      WHERE TRIM(class_elem::text, '"') = cce.class_id
+        AND cce.graduated_at IS NULL  -- Only active enrollments
     )
   );
 

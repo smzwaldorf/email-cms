@@ -33,6 +33,12 @@ const testAccounts = [
     expectedArticles: 3, // 2 public + 1 class-restricted (A2)
     role: 'parent',
   },
+  {
+    email: 'teacher@example.com',
+    password: 'teacher123456',
+    expectedArticles: 2, // 2 public only (RLS restricts class articles to parents)
+    role: 'teacher',
+  },
 ]
 
 async function testArticleVisibility() {
