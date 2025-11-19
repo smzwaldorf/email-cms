@@ -6,6 +6,21 @@
 
 import { createClient } from '@supabase/supabase-js'
 
+import * as fs from 'fs'
+import * as path from 'path'
+
+// Load .env.local manually since dotenv is not available
+const envPath = path.resolve(process.cwd(), '.env.local')
+if (fs.existsSync(envPath)) {
+  const envConfig = fs.readFileSync(envPath, 'utf-8')
+  envConfig.split('\n').forEach((line) => {
+    const match = line.match(/^([^=]+)=(.*)$/)
+    if (match) {
+      process.env[match[1].trim()] = match[2].trim()
+    }
+  })
+}
+
 const supabaseUrl = process.env.VITE_SUPABASE_URL
 const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY
 
@@ -36,7 +51,7 @@ const testAccounts = [
   {
     email: 'teacher@example.com',
     password: 'teacher123456',
-    expectedArticles: 2, // 2 public only (RLS restricts class articles to parents)
+    expectedArticles: 3, // 2 public + 1 class-restricted (A1)
     role: 'teacher',
   },
 ]
