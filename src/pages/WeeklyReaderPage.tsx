@@ -30,10 +30,15 @@ export function WeeklyReaderPage() {
     articles,
     isLoading: isLoadingWeekly,
     error: weeklyError,
+    refetch: refetchWeekly,
   } = useFetchWeekly(weekNumber)
 
   const currentArticleId = navigation.navigationState.currentArticleId
-  const { article, isLoading: isLoadingArticle } = useFetchArticle(
+  const { 
+    article, 
+    isLoading: isLoadingArticle,
+    refetch: refetchArticle
+  } = useFetchArticle(
     currentArticleId
   )
 
@@ -48,17 +53,20 @@ export function WeeklyReaderPage() {
   // 初始化導航狀態 - 當文章列表加載時或週份改變時
   useEffect(() => {
     if (articles.length > 0) {
-      // 檢查是否需要初始化：週份改變或文章清單為空或文章清單內容改變（例如切換使用者）
+      // 檢查是否需要初始化：週份改變或文章清單為空
       const weekChanged = navigation.navigationState.currentWeekNumber !== weekNumber
       const currentList = navigation.navigationState.articleList
+      const isFirstLoad = currentList.length === 0
       
       // Check if list content changed (different length or different first item)
+      // This is to detect if we need to update the list in context
       const listChanged = currentList.length !== articles.length || 
-                         (currentList.length > 0 && currentList[0].id !== articles[0].id)
+                         (currentList.length > 0 && currentList[0].id !== articles[0].id) ||
+                         // Check if any title changed (e.g. after edit)
+                         (currentList.length === articles.length && 
+                          JSON.stringify(currentList.map(a => a.title)) !== JSON.stringify(articles.map(a => a.title)))
 
-      const needsInit = currentList.length === 0 || weekChanged || listChanged
-
-      if (needsInit) {
+      if (weekChanged || isFirstLoad) {
         const firstArticle = articles[0]
         navigation.setCurrentWeek(weekNumber)
         navigation.setCurrentArticle(firstArticle.id, 1)
@@ -70,6 +78,9 @@ export function WeeklyReaderPage() {
         } else {
           navigation.setNextArticleId(undefined)
         }
+      } else if (listChanged) {
+        // Only update the list, preserve current selection
+        navigation.setArticleList(articles)
       }
     }
   }, [articles, weekNumber, navigation])
@@ -179,7 +190,10 @@ export function WeeklyReaderPage() {
       // 更新成功，退出編輯模式並刷新文章
       setIsEditMode(false)
       // 觸發重新獲取文章資料
-      window.location.reload()
+      await Promise.all([
+        refetchWeekly(),
+        refetchArticle()
+      ])
     } catch (error) {
       console.error('Save error:', error)
       const errorMessage = error instanceof Error ? error.message : '儲存時發生錯誤'
