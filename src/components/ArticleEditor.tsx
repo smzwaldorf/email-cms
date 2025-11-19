@@ -1,6 +1,7 @@
 /**
  * 組件 - 文章編輯器
  * 提供文章編輯功能的表單介面，使用富文本編輯器
+ * 包含權限檢查 - 只有admin和該類別的教師可編輯
  */
 
 import { useState, useEffect } from 'react'
@@ -8,12 +9,17 @@ import MDEditor from '@uiw/react-md-editor'
 import '@uiw/react-md-editor/markdown-editor.css'
 import '@uiw/react-markdown-preview/markdown.css'
 import { Article } from '@/types'
+import { useAuth } from '@/context/AuthContext'
+import PermissionService, { PermissionError } from '@/services/PermissionService'
+import ArticleService from '@/services/ArticleService'
 
 interface ArticleEditorProps {
   article: Article
   onSave: (updates: Partial<Article>) => void
   onCancel: () => void
   isSaving?: boolean
+  canEdit?: boolean
+  permissionError?: string
 }
 
 export function ArticleEditor({
@@ -21,7 +27,10 @@ export function ArticleEditor({
   onSave,
   onCancel,
   isSaving = false,
+  canEdit,
+  permissionError,
 }: ArticleEditorProps) {
+  const { user } = useAuth()
   const [formData, setFormData] = useState({
     title: article.title,
     author: article.author || '',
@@ -29,6 +38,57 @@ export function ArticleEditor({
     content: article.content,
     isPublished: article.isPublished,
   })
+  const [localPermissionError, setLocalPermissionError] = useState<string>('')
+  const [isCheckingPermission, setIsCheckingPermission] = useState(false)
+  const [hasEditPermission, setHasEditPermission] = useState(canEdit ?? false)
+
+  // 檢查編輯權限
+  useEffect(() => {
+    const checkPermission = async () => {
+      if (canEdit !== undefined) {
+        setHasEditPermission(canEdit)
+        if (permissionError) {
+          setLocalPermissionError(permissionError)
+        }
+        return
+      }
+
+      if (!user?.id) {
+        setLocalPermissionError('未登入')
+        setHasEditPermission(false)
+        return
+      }
+
+      setIsCheckingPermission(true)
+      try {
+        // 獲取文章完整資訊以檢查權限
+        const articleRow = await ArticleService.getArticleById(article.id)
+        const canEditArticle = await PermissionService.canEditArticle(user.id, articleRow)
+        setHasEditPermission(canEditArticle)
+
+        if (!canEditArticle) {
+          const role = await PermissionService.getUserRole(user.id)
+          setLocalPermissionError(
+            role === 'parent' || role === 'student'
+              ? '家長和學生不能編輯文章'
+              : '你沒有編輯此文章的權限。只有管理員和該類別的老師可以編輯。'
+          )
+        }
+      } catch (err) {
+        if (err instanceof PermissionError) {
+          setLocalPermissionError(err.message)
+        } else {
+          console.error('Failed to check permission:', err)
+          setLocalPermissionError('檢查權限時出錯')
+        }
+        setHasEditPermission(false)
+      } finally {
+        setIsCheckingPermission(false)
+      }
+    }
+
+    checkPermission()
+  }, [article.id, user?.id, canEdit, permissionError])
 
   // 當文章改變時更新表單
   useEffect(() => {
@@ -69,6 +129,36 @@ export function ArticleEditor({
       ...prev,
       content: value || '',
     }))
+  }
+
+  // 如果沒有編輯權限，顯示權限拒絕信息
+  if (!hasEditPermission && !isCheckingPermission) {
+    return (
+      <article className="h-full flex flex-col overflow-hidden">
+        <div className="px-6 py-4 border-b border-waldorf-cream-200 bg-waldorf-sage-50">
+          <h1 className="text-2xl font-bold text-waldorf-clay-800 mb-2">編輯文章</h1>
+          <div className="flex items-center gap-2 text-sm text-waldorf-clay-600">
+            <span>文章 ID: {article.id}</span>
+            <span>|</span>
+            <span>週次: {article.weekNumber}</span>
+          </div>
+        </div>
+        <div className="flex-1 flex items-center justify-center bg-white p-6">
+          <div className="max-w-md text-center">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+              <h2 className="text-lg font-semibold text-red-900 mb-2">無法編輯</h2>
+              <p className="text-red-700 mb-4">{localPermissionError}</p>
+              <button
+                onClick={onCancel}
+                className="px-4 py-2 bg-waldorf-sage-600 text-white rounded-md hover:bg-waldorf-sage-700"
+              >
+                返回
+              </button>
+            </div>
+          </div>
+        </div>
+      </article>
+    )
   }
 
   return (

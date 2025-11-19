@@ -1,11 +1,13 @@
 /**
  * 頁面 - 週報閱讀器
  * 電子報查看的主要頁面，展示週報和文章內容
+ * 包含編輯權限檢查 - 只有admin和該類別的教師可編輯
  */
 
 import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useNavigation } from '@/context/NavigationContext'
+import { useAuth } from '@/context/AuthContext'
 import { useFetchWeekly } from '@/hooks/useFetchWeekly'
 import { useFetchArticle } from '@/hooks/useFetchArticle'
 import { fetchNextArticleId, fetchPreviousArticleId, updateArticle } from '@/services/mockApi'
@@ -16,11 +18,14 @@ import { NavigationBar } from '@/components/NavigationBar'
 import { SideButton } from '@/components/SideButton'
 import { UserMenu } from '@/components/UserMenu'
 import { Article } from '@/types'
+import PermissionService from '@/services/PermissionService'
+import ArticleService from '@/services/ArticleService'
 
 export function WeeklyReaderPage() {
   const { weekNumber: paramWeekNumber } = useParams<{ weekNumber: string }>()
   const weekNumber = paramWeekNumber || '2025-W43'
 
+  const { user } = useAuth()
   const navigation = useNavigation()
   const {
     articles,
@@ -39,6 +44,8 @@ export function WeeklyReaderPage() {
   const [isAnimating, setIsAnimating] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [canEditArticle, setCanEditArticle] = useState(false)
+  const [isCheckingPermission, setIsCheckingPermission] = useState(false)
 
   // 初始化導航狀態 - 當文章列表加載時或週份改變時
   useEffect(() => {
@@ -62,6 +69,30 @@ export function WeeklyReaderPage() {
       }
     }
   }, [articles, weekNumber])
+
+  // 檢查編輯權限 - 當文章或使用者改變時
+  useEffect(() => {
+    const checkEditPermission = async () => {
+      if (!user?.id || !article) {
+        setCanEditArticle(false)
+        return
+      }
+
+      setIsCheckingPermission(true)
+      try {
+        const articleRow = await ArticleService.getArticleById(article.id)
+        const hasPermission = await PermissionService.canEditArticle(user.id, articleRow)
+        setCanEditArticle(hasPermission)
+      } catch (error) {
+        console.error('Failed to check edit permission:', error)
+        setCanEditArticle(false)
+      } finally {
+        setIsCheckingPermission(false)
+      }
+    }
+
+    checkEditPermission()
+  }, [article?.id, user?.id])
 
   // 處理上一篇導航
   const handlePrevious = async () => {
@@ -257,12 +288,24 @@ export function WeeklyReaderPage() {
           {/* Header: 編輯按鈕 + 使用者菜單 */}
           {!isEditMode && article && (
             <div className="px-6 py-2 bg-waldorf-cream-50 border-b border-waldorf-cream-200 flex justify-between items-center">
-              <button
-                onClick={() => setIsEditMode(true)}
-                className="px-4 py-2 text-sm bg-waldorf-sage-600 text-white rounded-md hover:bg-waldorf-sage-700 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-500 transition-colors"
-              >
-                編輯文章
-              </button>
+              {canEditArticle && !isCheckingPermission && (
+                <button
+                  onClick={() => setIsEditMode(true)}
+                  className="px-4 py-2 text-sm bg-waldorf-sage-600 text-white rounded-md hover:bg-waldorf-sage-700 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-500 transition-colors"
+                >
+                  編輯文章
+                </button>
+              )}
+              {!canEditArticle && !isCheckingPermission && (
+                <div className="text-sm text-waldorf-clay-600">
+                  無編輯權限
+                </div>
+              )}
+              {isCheckingPermission && (
+                <div className="text-sm text-waldorf-clay-600">
+                  檢查權限中...
+                </div>
+              )}
               <UserMenu />
             </div>
           )}
@@ -313,12 +356,24 @@ export function WeeklyReaderPage() {
         {/* Header: 編輯按鈕 + 使用者菜單 - 行動版 */}
         {!isEditMode && article && (
           <div className="px-4 py-2 bg-waldorf-cream-50 border-b border-waldorf-cream-200 flex justify-between items-center">
-            <button
-              onClick={() => setIsEditMode(true)}
-              className="px-4 py-2 text-sm bg-waldorf-sage-600 text-white rounded-md hover:bg-waldorf-sage-700 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-500 transition-colors"
-            >
-              編輯
-            </button>
+            {canEditArticle && !isCheckingPermission && (
+              <button
+                onClick={() => setIsEditMode(true)}
+                className="px-4 py-2 text-sm bg-waldorf-sage-600 text-white rounded-md hover:bg-waldorf-sage-700 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-500 transition-colors"
+              >
+                編輯
+              </button>
+            )}
+            {!canEditArticle && !isCheckingPermission && (
+              <div className="text-sm text-waldorf-clay-600">
+                無編輯權限
+              </div>
+            )}
+            {isCheckingPermission && (
+              <div className="text-sm text-waldorf-clay-600">
+                檢查權限中...
+              </div>
+            )}
             <UserMenu />
           </div>
         )}

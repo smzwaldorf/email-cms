@@ -1,12 +1,14 @@
 /**
  * Article Service
  * Handles all article data operations (CRUD, publishing, soft-delete)
+ * Enforces permission checks via PermissionService
  *
  * Performance Target (SC-001): <500ms for 100 articles
  */
 
 import { getSupabaseClient, table } from '@/lib/supabase'
 import type { ArticleRow, NewsletterWeekRow, AuditLogMetadata } from '@/types/database'
+import PermissionService, { PermissionError } from './PermissionService'
 
 /**
  * Article data transfer object for creation
@@ -209,9 +211,21 @@ export class ArticleService {
 
   /**
    * Update an article
+   * @param id Article ID
+   * @param dto Update data
+   * @param userId Optional user ID for permission check (required for enforced permissions)
+   * @throws PermissionError if user lacks edit permission
    */
-  static async updateArticle(id: string, dto: UpdateArticleDTO): Promise<ArticleRow> {
+  static async updateArticle(id: string, dto: UpdateArticleDTO, userId?: string): Promise<ArticleRow> {
     try {
+      // Get the article first
+      const article = await this.getArticleById(id)
+
+      // Check permissions if userId provided
+      if (userId) {
+        await PermissionService.assertCanEditArticle(userId, article)
+      }
+
       const updateData: Record<string, unknown> = {}
 
       if (dto.title !== undefined) updateData.title = dto.title
@@ -254,6 +268,7 @@ export class ArticleService {
 
       return data
     } catch (err) {
+      if (err instanceof PermissionError) throw err
       if (err instanceof ArticleServiceError) throw err
       throw new ArticleServiceError(
         `Unexpected error updating article: ${err instanceof Error ? err.message : String(err)}`,
@@ -265,9 +280,20 @@ export class ArticleService {
 
   /**
    * Soft-delete an article (marks as deleted but preserves data)
+   * @param id Article ID
+   * @param userId Optional user ID for permission check (required for enforced permissions)
+   * @throws PermissionError if user lacks delete permission
    */
-  static async deleteArticle(id: string): Promise<ArticleRow> {
+  static async deleteArticle(id: string, userId?: string): Promise<ArticleRow> {
     try {
+      // Get the article first for permission check
+      const article = await this.getArticleById(id)
+
+      // Check permissions if userId provided
+      if (userId) {
+        await PermissionService.assertCanDeleteArticle(userId, article)
+      }
+
       const { data, error } = await table('articles')
         .update({
           deleted_at: new Date().toISOString(),
@@ -294,6 +320,7 @@ export class ArticleService {
 
       return data
     } catch (err) {
+      if (err instanceof PermissionError) throw err
       if (err instanceof ArticleServiceError) throw err
       throw new ArticleServiceError(
         `Unexpected error deleting article: ${err instanceof Error ? err.message : String(err)}`,

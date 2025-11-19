@@ -7,7 +7,54 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ArticleEditor } from '@/components/ArticleEditor'
+import { AuthProvider } from '@/context/AuthContext'
 import type { Article } from '@/types'
+
+// Mock the permission services
+vi.mock('@/services/PermissionService', () => ({
+  default: {
+    getUserRole: vi.fn().mockResolvedValue('admin'),
+    canEditArticle: vi.fn().mockResolvedValue(true),
+  },
+  PermissionError: class PermissionError extends Error {
+    constructor(message: string) {
+      super(message)
+      this.name = 'PermissionError'
+    }
+  },
+}))
+
+vi.mock('@/services/ArticleService', () => ({
+  default: {
+    getArticleById: vi.fn(async (id: string) => ({
+      id,
+      title: 'Test Article',
+      content: '# Test Content',
+      author: 'Test Author',
+      week_number: '2025-W47',
+      article_order: 1,
+      is_published: false,
+      visibility_type: 'public',
+      created_at: '2025-11-17T10:00:00Z',
+      updated_at: '2025-11-17T10:00:00Z',
+    })),
+  },
+}))
+
+// Mock AuthContext
+vi.mock('@/context/AuthContext', async () => {
+  const actual = await vi.importActual('@/context/AuthContext')
+  return {
+    ...actual,
+    useAuth: () => ({
+      user: { id: 'test-user', email: 'test@example.com', role: 'admin' },
+      isAuthenticated: true,
+      isLoading: false,
+      signIn: vi.fn(),
+      signOut: vi.fn(),
+    }),
+  }
+})
 
 describe('ArticleEditor Component', () => {
   const mockArticle: Article = {
