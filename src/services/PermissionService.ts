@@ -59,7 +59,7 @@ export class PermissionService {
    */
   static async getTeacherClasses(teacherId: string): Promise<string[]> {
     try {
-      const { data, error } = await table<TeacherClassAssignmentRow>('teacher_class_assignments')
+      const { data, error } = await table<TeacherClassAssignmentRow>('teacher_class_assignment')
         .select('class_id')
         .eq('teacher_id', teacherId)
 
