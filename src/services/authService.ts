@@ -100,11 +100,15 @@ class SupabaseAuthService implements AuthServiceInterface {
     const supabase = getSupabaseClient()
 
     try {
+      console.log('🚪 Signing out user...')
       await supabase.auth.signOut()
+      console.log('🚪 Supabase sign out complete')
       this.currentUser = null
+      console.log('🚪 Current user cleared')
       this.notifyListeners(null)
+      console.log('✅ Sign out successful, listeners notified')
     } catch (err) {
-      console.error('Sign out error:', err)
+      console.error('❌ Sign out error:', err)
     }
   }
 

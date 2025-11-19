@@ -44,6 +44,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     // Subscribe to auth state changes
     const unsubscribe = authService.onAuthStateChange((newUser) => {
+      console.log('🔄 Auth state changed:', newUser ? `User: ${newUser.email}` : 'User logged out')
       setUser(newUser)
     })
 
@@ -67,11 +68,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signOut = async (): Promise<void> => {
     try {
-      setIsLoading(true)
+      console.log('🔓 Starting sign out process...')
       await authService.signOut()
+      console.log('🔓 AuthService.signOut() complete, setting isLoading to false')
+      setIsLoading(false)
     } catch (err) {
-      console.error('Sign out error:', err)
-    } finally {
+      console.error('❌ Sign out error:', err)
       setIsLoading(false)
     }
   }

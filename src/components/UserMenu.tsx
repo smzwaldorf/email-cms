@@ -18,9 +18,11 @@ export const UserMenu: React.FC = () => {
   }
 
   const handleSignOut = async () => {
-    await signOut()
+    console.log('👤 User clicked sign out')
     setIsOpen(false)
-    navigate('/login')
+    await signOut()
+    console.log('👤 Sign out complete - ProtectedRoute will redirect to login')
+    // Don't navigate - ProtectedRoute will automatically redirect when user becomes null
   }
 
   return (
