@@ -77,30 +77,60 @@ VITE_API_TIMEOUT=5000
 VITE_ENABLE_LOGGING=true
 ```
 
-### 4. Database Migrations
+### 4. Database Migrations & Test Data
 
-The database schema is defined in `supabase/migrations/20251117000000_initial_schema.sql`. The Supabase CLI automatically applies any new migrations in the `supabase/migrations` directory when you run `supabase start`.
+The database schema and test data are set up automatically through migrations:
 
-If you need to reset your local database and re-apply all migrations, you can run:
+**Schema migration:** `supabase/migrations/20251117000000_initial_schema.sql`
+- Creates all tables (articles, classes, families, etc.)
+- Sets up Row-Level Security (RLS) policies
+- Creates database triggers and indexes
+
+**Test data migration:** `supabase/migrations/20251119000002_seed_complete_test_data.sql`
+- Creates 3 newsletter weeks (W47, W48, W49)
+- Creates 4 classes (A1, A2, B1, B2)
+- Creates 6 sample articles with public and class-restricted visibility
+- Creates 2 test families (FAMILY001, FAMILY002)
+- Comprehensive documentation of test data and expected access levels
+
+**RLS policy fix:** `supabase/migrations/20251119000000_fix_user_roles_rls.sql`
+- Allows authenticated users to read user roles during authentication
+- Enables session restoration across page refreshes
+
+The Supabase CLI automatically applies all migrations in `supabase/migrations/` when you run `supabase start`.
+
+**Reset database (apply all migrations):**
 ```bash
 supabase db reset
 ```
 
-### 5. Create Test Users
+### 5. Create Test Users & Family Enrollments
 
-Set up test user accounts for authentication testing:
+After applying migrations, set up test user accounts and their family relationships:
 
 ```bash
-# Create test users in Auth and populate user_roles table
+# Create test users in Auth and set up family enrollments
 npx ts-node scripts/setup-test-users.ts
 ```
 
-This creates three test accounts:
-- **parent1@example.com** / `parent1password123` (sees 2 public + 2 class-restricted articles)
-- **parent2@example.com** / `parent2password123` (sees 2 public + 1 class-restricted article)
-- **admin@example.com** / `admin123456` (admin access to all articles)
+**What this script does:**
+1. Creates 3 test users in Supabase Auth
+2. Adds role records to the `user_roles` table
+3. Creates family enrollment relationships in `family_enrollment` table
+4. Creates child class enrollments in `child_class_enrollment` table
 
-The script automatically sets up family enrollments so each parent can access their child's class articles.
+**Test Users Created:**
+
+| Email | Password | Role | Family | Classes | Articles Visible |
+|-------|----------|------|--------|---------|-----------------|
+| parent1@example.com | parent1password123 | parent | FAMILY001 | A1, B1 | 4 (2 public + Grade 1A + Grade 2A) |
+| parent2@example.com | parent2password123 | parent | FAMILY002 | A2 | 3 (2 public + Grade 1B) |
+| admin@example.com | admin123456 | admin | — | — | 6 (all articles) |
+
+**Article Visibility (RLS in action):**
+- parent1 signs in → RLS policy checks family_enrollment + child_class_enrollment → shows 4 articles
+- parent2 signs in → same checks → shows 3 articles (different class)
+- Unsigned user → RLS allows only public articles (2/6)
 
 ### 6. Verify Setup (Optional)
 
