@@ -53,13 +53,17 @@ function convertWeekRow(row: NewsletterWeekRow, articleCount: number): Newslette
   }
 }
 
+import { useAuth } from '@/context/AuthContext'
+
 export function useFetchWeekly(weekNumber: string): UseFetchWeeklyResult {
+  const { user } = useAuth()
   const [newsletter, setNewsletter] = useState<NewsletterWeek | null>(null)
   const [articles, setArticles] = useState<Article[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
 
   const refetch = async () => {
+    console.log(`🔄 useFetchWeekly: Refetching for week ${weekNumber}, User: ${user?.id || 'anon'}`)
     setIsLoading(true)
     setError(null)
     try {
@@ -70,6 +74,8 @@ export function useFetchWeekly(weekNumber: string): UseFetchWeeklyResult {
       const articlesData = await ArticleService.getArticlesByWeek(weekNumber, {
         excludeDeleted: true,
       })
+      
+      console.log(`✅ useFetchWeekly: Fetched ${articlesData.length} articles`)
 
       // Convert to UI types
       const convertedArticles = articlesData.map((row, index) =>
@@ -82,6 +88,7 @@ export function useFetchWeekly(weekNumber: string): UseFetchWeeklyResult {
       setNewsletter(convertedWeek)
       setArticles(convertedArticles)
     } catch (err) {
+      console.error('❌ useFetchWeekly error:', err)
       const errorMessage = err instanceof Error ? err.message : String(err)
       setError(new Error(errorMessage))
     } finally {
@@ -90,8 +97,11 @@ export function useFetchWeekly(weekNumber: string): UseFetchWeeklyResult {
   }
 
   useEffect(() => {
+    // Reset state when user changes to avoid showing stale data
+    setArticles([])
+    setNewsletter(null)
     refetch()
-  }, [weekNumber])
+  }, [weekNumber, user?.id])
 
   return { newsletter, articles, isLoading, error, refetch }
 }

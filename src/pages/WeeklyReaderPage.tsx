@@ -10,7 +10,6 @@ import { useNavigation } from '@/context/NavigationContext'
 import { useAuth } from '@/context/AuthContext'
 import { useFetchWeekly } from '@/hooks/useFetchWeekly'
 import { useFetchArticle } from '@/hooks/useFetchArticle'
-import { fetchNextArticleId, fetchPreviousArticleId } from '@/services/mockApi'
 import { ArticleListView } from '@/components/ArticleListView'
 import { ArticleContent } from '@/components/ArticleContent'
 import { ArticleEditor } from '@/components/ArticleEditor'
@@ -38,7 +37,6 @@ export function WeeklyReaderPage() {
     currentArticleId
   )
 
-  const [isLoadingNavigation, setIsLoadingNavigation] = useState(false)
   const touchStartX = useRef<number | null>(null)
   const [dragOffset, setDragOffset] = useState(0)
   const [isAnimating, setIsAnimating] = useState(false)
@@ -50,9 +48,15 @@ export function WeeklyReaderPage() {
   // 初始化導航狀態 - 當文章列表加載時或週份改變時
   useEffect(() => {
     if (articles.length > 0) {
-      // 檢查是否需要初始化：週份改變或文章清單為空
+      // 檢查是否需要初始化：週份改變或文章清單為空或文章清單內容改變（例如切換使用者）
       const weekChanged = navigation.navigationState.currentWeekNumber !== weekNumber
-      const needsInit = navigation.navigationState.articleList.length === 0 || weekChanged
+      const currentList = navigation.navigationState.articleList
+      
+      // Check if list content changed (different length or different first item)
+      const listChanged = currentList.length !== articles.length || 
+                         (currentList.length > 0 && currentList[0].id !== articles[0].id)
+
+      const needsInit = currentList.length === 0 || weekChanged || listChanged
 
       if (needsInit) {
         const firstArticle = articles[0]
@@ -68,7 +72,7 @@ export function WeeklyReaderPage() {
         }
       }
     }
-  }, [articles, weekNumber])
+  }, [articles, weekNumber, navigation])
 
   // 檢查編輯權限 - 當文章或使用者改變時
   useEffect(() => {
@@ -95,60 +99,44 @@ export function WeeklyReaderPage() {
   }, [article?.id, user?.id])
 
   // 處理上一篇導航
-  const handlePrevious = async () => {
-    if (navigation.navigationState.currentArticleOrder <= 1) return
+  const handlePrevious = () => {
+    const currentOrder = navigation.navigationState.currentArticleOrder
+    if (currentOrder <= 1) return
 
-    setIsLoadingNavigation(true)
-    try {
-      const previousArticleId = await fetchPreviousArticleId(
-        weekNumber,
-        navigation.navigationState.currentArticleOrder
-      )
+    const newOrder = currentOrder - 1
+    // 數組索引是 order - 1，所以上一篇的索引是 newOrder - 1
+    const previousArticle = articles[newOrder - 1]
 
-      if (previousArticleId) {
-        const newOrder = navigation.navigationState.currentArticleOrder - 1
-        navigation.setCurrentArticle(previousArticleId, newOrder)
+    if (previousArticle) {
+      navigation.setCurrentArticle(previousArticle.id, newOrder)
 
-        // 更新下一篇
-        if (newOrder < articles.length) {
-          navigation.setNextArticleId(articles[newOrder].id)
-        } else {
-          navigation.setNextArticleId(undefined)
-        }
+      // 更新下一篇 (當前篇變成了下一篇)
+      const currentArticle = articles[currentOrder - 1]
+      if (currentArticle) {
+        navigation.setNextArticleId(currentArticle.id)
       }
-    } finally {
-      setIsLoadingNavigation(false)
     }
   }
 
   // 處理下一篇導航
-  const handleNext = async () => {
-    if (
-      navigation.navigationState.currentArticleOrder >=
-      navigation.navigationState.totalArticlesInWeek
-    )
-      return
+  const handleNext = () => {
+    const currentOrder = navigation.navigationState.currentArticleOrder
+    if (currentOrder >= articles.length) return
 
-    setIsLoadingNavigation(true)
-    try {
-      const nextArticleId = await fetchNextArticleId(
-        weekNumber,
-        navigation.navigationState.currentArticleOrder
-      )
+    const newOrder = currentOrder + 1
+    // 數組索引是 order - 1，所以下一篇的索引是 newOrder - 1
+    const nextArticle = articles[newOrder - 1]
 
-      if (nextArticleId) {
-        const newOrder = navigation.navigationState.currentArticleOrder + 1
-        navigation.setCurrentArticle(nextArticleId, newOrder)
+    if (nextArticle) {
+      navigation.setCurrentArticle(nextArticle.id, newOrder)
 
-        // 更新下一篇
-        if (newOrder < articles.length) {
-          navigation.setNextArticleId(articles[newOrder].id)
-        } else {
-          navigation.setNextArticleId(undefined)
-        }
+      // 更新再下一篇
+      const nextNextArticle = articles[newOrder] // newOrder is index + 1, so this is index + 1
+      if (nextNextArticle) {
+        navigation.setNextArticleId(nextNextArticle.id)
+      } else {
+        navigation.setNextArticleId(undefined)
       }
-    } finally {
-      setIsLoadingNavigation(false)
     }
   }
 
@@ -232,12 +220,12 @@ export function WeeklyReaderPage() {
     setIsAnimating(true)
 
     // 向右滑動（距離為負） - 上一篇
-    if (distance < -minSwipeDistance && canGoPrevious && !isLoadingNavigation) {
+    if (distance < -minSwipeDistance && canGoPrevious) {
       setDragOffset(0)
       handlePrevious()
     }
     // 向左滑動（距離為正） - 下一篇
-    else if (distance > minSwipeDistance && canGoNext && !isLoadingNavigation) {
+    else if (distance > minSwipeDistance && canGoNext) {
       setDragOffset(0)
       handleNext()
     }
@@ -275,7 +263,7 @@ export function WeeklyReaderPage() {
         <SideButton
           direction="left"
           onClick={handlePrevious}
-          disabled={!canGoPrevious || isLoadingNavigation}
+          disabled={!canGoPrevious}
           label="上一篇"
         />
 
@@ -328,7 +316,7 @@ export function WeeklyReaderPage() {
               content={article?.content || ''}
               createdAt={article?.createdAt}
               viewCount={article?.viewCount}
-              isLoading={isLoadingArticle || isLoadingNavigation}
+              isLoading={isLoadingArticle}
             />
           )}
 
@@ -344,7 +332,7 @@ export function WeeklyReaderPage() {
         <SideButton
           direction="right"
           onClick={handleNext}
-          disabled={!canGoNext || isLoadingNavigation}
+          disabled={!canGoNext}
           label="下一篇"
         />
       </div>
@@ -401,7 +389,7 @@ export function WeeklyReaderPage() {
               content={article?.content || ''}
               createdAt={article?.createdAt}
               viewCount={article?.viewCount}
-              isLoading={isLoadingArticle || isLoadingNavigation}
+              isLoading={isLoadingArticle}
             />
           )}
         </div>
@@ -420,7 +408,7 @@ export function WeeklyReaderPage() {
               <SideButton
                 direction="left"
                 onClick={handlePrevious}
-                disabled={!canGoPrevious || isLoadingNavigation}
+                disabled={!canGoPrevious}
                 label="上一篇"
               />
             </div>
@@ -428,7 +416,7 @@ export function WeeklyReaderPage() {
               <SideButton
                 direction="right"
                 onClick={handleNext}
-                disabled={!canGoNext || isLoadingNavigation}
+                disabled={!canGoNext}
                 label="下一篇"
               />
             </div>
