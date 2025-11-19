@@ -25,10 +25,18 @@
  *   - Family: FAMILY002 (Grade 1B)
  *   - Articles visible: 3 (2 public + 1 class-restricted)
  *
+ * teacher@example.com:
+ *   - Password: teacher123456
+ *   - Role: teacher
+ *   - Classes: A1 (Grade 1A), B1 (Grade 2A)
+ *   - Can edit: Class-restricted articles for A1 and B1
+ *   - Articles visible: All 6 articles
+ *
  * admin@example.com:
  *   - Password: admin123456
  *   - Role: admin
  *   - Articles visible: All 6 articles
+ *   - Can edit: All articles
  * ──────────────────────────────────────────────────────────────
  */
 
@@ -295,6 +303,12 @@ const testUsers = [
     childrenClasses: ['A2'], // Grade 1B
   },
   {
+    email: 'teacher@example.com',
+    password: 'teacher123456',
+    role: 'teacher',
+    assignedClasses: ['A1', 'B1'], // Teaches Grade 1A and Grade 2A
+  },
+  {
     email: 'admin@example.com',
     password: 'admin123456',
     role: 'admin',
@@ -444,6 +458,28 @@ async function setupDevelopment() {
           console.log(
             `  ✅ Child enrollments created for classes: ${userWithFamily.childrenClasses.join(', ')}\n`,
           )
+        } else if (user.role === 'teacher' && 'assignedClasses' in user) {
+          // If this is a teacher, set up class assignments
+          const userWithClasses = user as any
+
+          // Create teacher class assignments
+          for (const classId of userWithClasses.assignedClasses) {
+            const { error: assignError } = await supabase.from('teacher_class_assignment').insert({
+              teacher_id: userId,
+              class_id: classId,
+            })
+
+            if (assignError) {
+              console.error(
+                `  ❌ Teacher assignment for class ${classId} failed: ${assignError.message}`,
+              )
+              continue
+            }
+          }
+
+          console.log(
+            `  ✅ Teacher assignments created for classes: ${userWithClasses.assignedClasses.join(', ')}\n`,
+          )
         } else {
           console.log('')
         }
@@ -468,6 +504,9 @@ async function setupDevelopment() {
       if ('childrenClasses' in user) {
         const userWithFamily = user as any
         console.log(`    - ${user.email} (Family, Classes: ${userWithFamily.childrenClasses.join(', ')})`)
+      } else if ('assignedClasses' in user) {
+        const userWithClasses = user as any
+        console.log(`    - ${user.email} (Teacher, Classes: ${userWithClasses.assignedClasses.join(', ')})`)
       } else {
         console.log(`    - ${user.email} (Admin)`)
       }
@@ -479,12 +518,14 @@ async function setupDevelopment() {
     console.log('  3. Sign in with any test user:')
     console.log('     - parent1@example.com / parent1password123')
     console.log('     - parent2@example.com / parent2password123')
+    console.log('     - teacher@example.com / teacher123456')
     console.log('     - admin@example.com / admin123456\n')
 
     console.log('🎯 Article Access (RLS Enforced):')
     console.log('  parent1@example.com → 4 articles (2 public + 2 class-restricted)')
     console.log('  parent2@example.com → 3 articles (2 public + 1 class-restricted)')
-    console.log('  admin@example.com → All 6 articles\n')
+    console.log('  teacher@example.com → Can edit A1, B1 class-restricted articles (can view all 6)')
+    console.log('  admin@example.com → All 6 articles (can edit all)\n')
   } catch (err) {
     console.error('❌ Fatal error during setup:', (err as any).message)
     process.exit(1)

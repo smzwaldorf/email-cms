@@ -68,6 +68,7 @@ describe('LoginPage Component', () => {
     // Check for test user buttons
     expect(screen.getByRole('button', { name: /parent 1/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /parent 2/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /teacher/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /admin/i })).toBeInTheDocument()
   })
 
@@ -102,6 +103,24 @@ describe('LoginPage Component', () => {
     await waitFor(() => {
       const emailInput = screen.getByDisplayValue('parent2@example.com')
       const passwordInput = screen.getByDisplayValue('parent2password123')
+      expect(emailInput).toBeInTheDocument()
+      expect(passwordInput).toBeInTheDocument()
+    })
+  })
+
+  it('should fill credentials when Teacher button is clicked', async () => {
+    render(
+      <BrowserRouter>
+        <LoginPage />
+      </BrowserRouter>,
+    )
+
+    const teacherButton = screen.getByRole('button', { name: /teacher/i })
+    fireEvent.click(teacherButton)
+
+    await waitFor(() => {
+      const emailInput = screen.getByDisplayValue('teacher@example.com')
+      const passwordInput = screen.getByDisplayValue('teacher123456')
       expect(emailInput).toBeInTheDocument()
       expect(passwordInput).toBeInTheDocument()
     })

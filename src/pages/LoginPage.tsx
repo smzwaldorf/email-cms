@@ -30,10 +30,16 @@ export const LoginPage: React.FC = () => {
       description: '2 public + 1 class-restricted article',
     },
     {
+      email: 'teacher@example.com',
+      password: 'teacher123456',
+      label: 'Teacher',
+      description: 'Can edit A1, B1 articles',
+    },
+    {
       email: 'admin@example.com',
       password: 'admin123456',
       label: 'Admin',
-      description: 'All 6 articles',
+      description: 'Can edit all articles',
     },
   ]
 
