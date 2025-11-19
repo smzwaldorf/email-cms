@@ -1,35 +1,34 @@
 /**
- * Seed Test Data Script
- * Creates comprehensive test data for development and testing
+ * Complete Development Setup Script
+ * Sets up everything needed for local development in one command
  *
  * Prerequisites:
- * - Database schema must be initialized (migrations applied)
- * - Service role key is required for direct database access
+ * - Database schema must be initialized (migrations applied via `supabase db reset`)
+ * - Service role key required for auth user creation and database writes
  *
- * This script creates:
- * 1. Newsletter weeks (W47, W48, W49)
- * 2. Classes (A1, A2, B1, B2)
- * 3. Families (FAMILY001, FAMILY002)
- * 4. Articles with mixed visibility (public and class-restricted)
+ * This script:
+ * 1. Seeds test data: newsletter weeks, classes, families, articles
+ * 2. Creates auth users: parent1, parent2, admin
+ * 3. Sets up family enrollments and class relationships
  *
- * Usage: npx ts-node scripts/seed-test-data.ts
+ * Usage: npx ts-node scripts/setup-development.ts
  *
- * Article Visibility After Seeding:
+ * Test User Access After Setup:
  * ──────────────────────────────────────────────────────────────
- * parent1@example.com sees in Week 47:
- *   1. Weekly Opening (public)
- *   2. Grade 1A Updates (class: A1)
- *   3. Grade 2A Updates (class: B1)
- *   4. Announcements (public)
- *   Total: 4 articles
+ * parent1@example.com:
+ *   - Password: parent1password123
+ *   - Family: FAMILY001 (Grade 1A, Grade 2A)
+ *   - Articles visible: 4 (2 public + 2 class-restricted)
  *
- * parent2@example.com sees in Week 47:
- *   1. Weekly Opening (public)
- *   2. Grade 1B Updates (class: A2)
- *   3. Announcements (public)
- *   Total: 3 articles
+ * parent2@example.com:
+ *   - Password: parent2password123
+ *   - Family: FAMILY002 (Grade 1B)
+ *   - Articles visible: 3 (2 public + 1 class-restricted)
  *
- * admin@example.com sees: All articles (6/6)
+ * admin@example.com:
+ *   - Password: admin123456
+ *   - Role: admin
+ *   - Articles visible: All 6 articles
  * ──────────────────────────────────────────────────────────────
  */
 
@@ -40,7 +39,7 @@ const supabaseServiceRoleKey = process.env.VITE_SUPABASE_SERVICE_ROLE_KEY
 
 if (!supabaseUrl || !supabaseServiceRoleKey) {
   console.error('❌ Error: VITE_SUPABASE_URL and VITE_SUPABASE_SERVICE_ROLE_KEY must be set in .env.local')
-  console.error('Service role key is required for database write access')
+  console.error('Service role key is required for auth user creation and database writes')
   process.exit(1)
 }
 
@@ -280,6 +279,28 @@ This week in Grade 2B:
   },
 ]
 
+const testUsers = [
+  {
+    email: 'parent1@example.com',
+    password: 'parent1password123',
+    role: 'parent',
+    familyId: 'f1111111-1111-1111-1111-111111111111', // FAMILY001
+    childrenClasses: ['A1', 'B1'], // Grade 1A, Grade 2A
+  },
+  {
+    email: 'parent2@example.com',
+    password: 'parent2password123',
+    role: 'parent',
+    familyId: 'f2222222-2222-2222-2222-222222222222', // FAMILY002
+    childrenClasses: ['A2'], // Grade 1B
+  },
+  {
+    email: 'admin@example.com',
+    password: 'admin123456',
+    role: 'admin',
+  },
+]
+
 // ============================================================================
 // Helper Functions
 // ============================================================================
@@ -287,7 +308,6 @@ This week in Grade 2B:
 async function seedData(
   table: string,
   data: any[],
-  conflictColumn: string,
 ): Promise<{ success: number; skipped: number; failed: number }> {
   let success = 0
   let skipped = 0
@@ -317,54 +337,159 @@ async function seedData(
 }
 
 // ============================================================================
-// Main Seeding Function
+// Main Setup Function
 // ============================================================================
 
-async function seedTestData() {
-  console.log('🌱 Seeding test data for development...\n')
+async function setupDevelopment() {
+  console.log('🚀 Setting up development environment...\n')
 
   try {
+    // ========================================================================
+    // PHASE 1: Seed Test Data
+    // ========================================================================
+    console.log('📊 PHASE 1: Seeding test data\n')
+
     // Seed newsletter weeks
     console.log('📅 Seeding newsletter weeks...')
-    const weeksResult = await seedData('newsletter_weeks', testWeeks, 'week_number')
+    const weeksResult = await seedData('newsletter_weeks', testWeeks)
     console.log(`   ✅ Created: ${weeksResult.success} | ⏭️  Skipped: ${weeksResult.skipped}\n`)
 
     // Seed classes
     console.log('🏫 Seeding classes...')
-    const classesResult = await seedData('classes', testClasses, 'id')
+    const classesResult = await seedData('classes', testClasses)
     console.log(`   ✅ Created: ${classesResult.success} | ⏭️  Skipped: ${classesResult.skipped}\n`)
 
     // Seed families
     console.log('👨‍👩‍👧‍👦 Seeding families...')
-    const familiesResult = await seedData('families', testFamilies, 'family_code')
+    const familiesResult = await seedData('families', testFamilies)
     console.log(`   ✅ Created: ${familiesResult.success} | ⏭️  Skipped: ${familiesResult.skipped}\n`)
 
     // Seed articles
     console.log('📰 Seeding articles...')
-    const articlesResult = await seedData('articles', testArticles, 'article_order')
+    const articlesResult = await seedData('articles', testArticles)
     console.log(`   ✅ Created: ${articlesResult.success} | ⏭️  Skipped: ${articlesResult.skipped}\n`)
 
-    // Summary
-    console.log('✅ Test data seeding complete!\n')
-    console.log('📊 Summary:')
-    console.log(`  - Newsletter weeks: ${weeksResult.success} created`)
-    console.log(`  - Classes: ${classesResult.success} created`)
-    console.log(`  - Families: ${familiesResult.success} created`)
-    console.log(`  - Articles: ${articlesResult.success} created`)
-    console.log('\n📝 Next steps:')
-    console.log('  1. Run: npx ts-node scripts/setup-test-users.ts')
-    console.log('  2. Sign in as parent1@example.com or parent2@example.com')
-    console.log('  3. View articles for Week 47 to verify RLS visibility\n')
+    // ========================================================================
+    // PHASE 2: Create Auth Users & Enrollments
+    // ========================================================================
+    console.log('🔐 PHASE 2: Creating test users and enrollments\n')
 
-    console.log('🎯 Article Access Verification:')
+    for (const user of testUsers) {
+      try {
+        console.log(`📝 Creating user: ${user.email}`)
+
+        // Create user in auth
+        const { data, error: createError } = await supabase.auth.admin.createUser({
+          email: user.email,
+          password: user.password,
+          email_confirm: true, // Auto-confirm email
+        })
+
+        if (createError) {
+          console.error(`  ❌ Auth creation failed: ${createError.message}`)
+          continue
+        }
+
+        const userId = data.user?.id
+        console.log(`  ✅ Auth user created: ${userId}`)
+
+        // Create role record
+        const { error: roleError } = await supabase.from('user_roles').insert({
+          id: userId,
+          email: user.email,
+          role: user.role,
+        })
+
+        if (roleError) {
+          console.error(`  ❌ Role creation failed: ${roleError.message}`)
+          continue
+        }
+
+        console.log(`  ✅ Role created: ${user.role}`)
+
+        // If this is a parent, set up family enrollment
+        if (user.role === 'parent' && 'familyId' in user && 'childrenClasses' in user) {
+          const userWithFamily = user as any
+
+          // Create family enrollment
+          const { error: enrollError } = await supabase.from('family_enrollment').insert({
+            family_id: userWithFamily.familyId,
+            parent_id: userId,
+            relationship: 'mother', // Default to mother for test data
+          })
+
+          if (enrollError) {
+            console.error(`  ❌ Family enrollment failed: ${enrollError.message}`)
+            continue
+          }
+
+          console.log(`  ✅ Family enrollment created`)
+
+          // Create child enrollments for each class
+          for (const classId of userWithFamily.childrenClasses) {
+            const { error: childError } = await supabase.from('child_class_enrollment').insert({
+              child_id: userId, // Use parent ID as child ID for test data
+              family_id: userWithFamily.familyId,
+              class_id: classId,
+            })
+
+            if (childError) {
+              console.error(
+                `  ❌ Child enrollment for class ${classId} failed: ${childError.message}`,
+              )
+              continue
+            }
+          }
+
+          console.log(
+            `  ✅ Child enrollments created for classes: ${userWithFamily.childrenClasses.join(', ')}\n`,
+          )
+        } else {
+          console.log('')
+        }
+      } catch (err) {
+        console.error(`  ❌ Error: ${(err as any).message}\n`)
+      }
+    }
+
+    // ========================================================================
+    // Summary
+    // ========================================================================
+    console.log('━'.repeat(80))
+    console.log('✅ Development setup complete!\n')
+    console.log('📊 Summary:')
+    console.log(`  Test Data:`)
+    console.log(`    - Newsletter weeks: ${weeksResult.success} created`)
+    console.log(`    - Classes: ${classesResult.success} created`)
+    console.log(`    - Families: ${familiesResult.success} created`)
+    console.log(`    - Articles: ${articlesResult.success} created`)
+    console.log(`\n  Test Users:`)
+    testUsers.forEach((user) => {
+      if ('childrenClasses' in user) {
+        const userWithFamily = user as any
+        console.log(`    - ${user.email} (Family, Classes: ${userWithFamily.childrenClasses.join(', ')})`)
+      } else {
+        console.log(`    - ${user.email} (Admin)`)
+      }
+    })
+
+    console.log('\n📝 Next steps:')
+    console.log('  1. Start dev server: npm run dev')
+    console.log('  2. Open http://localhost:5173')
+    console.log('  3. Sign in with any test user:')
+    console.log('     - parent1@example.com / parent1password123')
+    console.log('     - parent2@example.com / parent2password123')
+    console.log('     - admin@example.com / admin123456\n')
+
+    console.log('🎯 Article Access (RLS Enforced):')
     console.log('  parent1@example.com → 4 articles (2 public + 2 class-restricted)')
     console.log('  parent2@example.com → 3 articles (2 public + 1 class-restricted)')
     console.log('  admin@example.com → All 6 articles\n')
   } catch (err) {
-    console.error('❌ Fatal error during seeding:', (err as any).message)
+    console.error('❌ Fatal error during setup:', (err as any).message)
     process.exit(1)
   }
 }
 
-// Run the seeding
-seedTestData()
+// Run the setup
+setupDevelopment()

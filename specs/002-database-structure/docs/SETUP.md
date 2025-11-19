@@ -93,37 +93,30 @@ The Supabase CLI automatically applies all migrations in `supabase/migrations/` 
 supabase db reset
 ```
 
-### 5. Seed Development Test Data (Optional)
+### 5. Complete Development Setup
 
-For development and testing, populate the database with sample data:
+Set up test data, auth users, and family enrollments with a single script:
 
 ```bash
-# Seed articles, classes, families, and newsletter weeks
-npx ts-node scripts/seed-test-data.ts
+# Seeds test data + creates auth users + sets up enrollments
+npx ts-node scripts/setup-development.ts
 ```
 
 **What this script does:**
+
+**Phase 1: Test Data**
 1. Creates 3 newsletter weeks (W47, W48, W49)
 2. Creates 4 classes (A1, A2, B1, B2)
 3. Creates 2 families (FAMILY001, FAMILY002)
 4. Creates 6 sample articles with mixed visibility (public and class-restricted)
 
-**Note:** This is development-only data. Articles are skipped if they already exist, so it's safe to run multiple times.
-
-### 6. Create Test Users & Family Enrollments
-
-After seeding test data, set up test user accounts and their family relationships:
-
-```bash
-# Create test users in Auth and set up family enrollments
-npx ts-node scripts/setup-test-users.ts
-```
-
-**What this script does:**
+**Phase 2: Test Users & Enrollments**
 1. Creates 3 test users in Supabase Auth
 2. Adds role records to the `user_roles` table
 3. Creates family enrollment relationships in `family_enrollment` table
 4. Creates child class enrollments in `child_class_enrollment` table
+
+**Note:** This is development-only data. The script is idempotent and safe to run multiple times.
 
 **Test Users Created:**
 
@@ -138,7 +131,7 @@ npx ts-node scripts/setup-test-users.ts
 - parent2 signs in → same checks → shows 3 articles (different class)
 - Unsigned user → RLS allows only public articles (2/6)
 
-### 7. Verify Setup (Optional)
+### 6. Verify Setup (Optional)
 
 Run verification scripts to ensure everything is configured correctly:
 
@@ -156,6 +149,8 @@ npx ts-node scripts/health-check.ts
 ---
 
 ## Development Setup
+
+After completing the setup sections above, you're ready to start developing.
 
 ### 1. Install Dependencies
 
@@ -190,11 +185,11 @@ npm test -- --run       # Run tests once (CI mode)
 npm test -- --ui        # Visual test interface
 npm run coverage        # Coverage report
 
-# Database
+# Database & Setup
 supabase start          # Start local Supabase
 supabase stop           # Stop local Supabase
-supabase db reset       # Reset local database
-npx ts-node scripts/setup-test-users.ts       # Create test user accounts
+supabase db reset       # Reset local database with schema
+npx ts-node scripts/setup-development.ts      # Seed test data + create test users
 npx ts-node scripts/test-auth.ts              # Test authentication flow
 npx ts-node scripts/test-article-visibility.ts  # Test RLS policies
 npx ts-node scripts/health-check.ts           # Verify database health
