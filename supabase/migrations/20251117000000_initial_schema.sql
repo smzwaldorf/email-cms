@@ -291,6 +291,21 @@ CREATE POLICY articles_public_read
     AND visibility_type = 'public'
   );
 
+-- Allow admins to read all published articles (both public and class-restricted)
+-- Admins need full visibility of content they manage
+CREATE POLICY articles_admin_read
+  ON public.articles FOR SELECT
+  USING (
+    is_published = true
+    AND deleted_at IS NULL
+    AND (
+      -- Check if current user is an admin
+      auth.uid() IN (
+        SELECT id FROM public.user_roles WHERE role = 'admin'
+      )
+    )
+  );
+
 -- Restrict class-restricted articles to parents with children in that class
 -- Security model: Parent can read article IF:
 --   1. Parent is in a family (family_enrollment.parent_id)

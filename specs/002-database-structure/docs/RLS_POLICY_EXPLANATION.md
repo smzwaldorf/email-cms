@@ -1,8 +1,16 @@
-# RLS Policy Explanation for user_roles Table
+# RLS Policy Explanation
 
-## Current Implementation (Refactored)
+## Overview
 
-**The RLS policies are now created correctly in the initial schema migration**, ensuring authentication works from the start without requiring a separate fix migration.
+The application uses Row Level Security (RLS) to enforce data access control at the database layer. RLS policies ensure that:
+- Users can only see data they're authorized to view
+- Admins have full visibility of content they manage
+- Parents see only their children's class articles
+- No unauthorized access is possible
+
+## Current Implementation
+
+**All RLS policies are created in the initial schema migration**, ensuring proper access control from the start.
 
 ### Policies Created in Initial Schema (20251117000000_initial_schema.sql)
 
@@ -146,6 +154,96 @@ npx ts-node scripts/test-article-visibility.ts
 npm test -- tests/e2e/authentication-flow.test.ts --run
 # ✅ All 8 tests passing
 ```
+
+---
+
+## Article Visibility Control
+
+### Articles Table RLS Policies
+
+Three RLS policies control who can see which articles:
+
+#### 1. `articles_public_read` - Public Articles
+```sql
+CREATE POLICY articles_public_read
+  ON public.articles FOR SELECT
+  USING (
+    is_published = true
+    AND deleted_at IS NULL
+    AND visibility_type = 'public'
+  );
+```
+
+**Who can see:** Everyone (authenticated or not)
+**Conditions:** Article must be published, not deleted, and marked public
+
+**Use case:** Newsletter articles visible to all readers
+
+---
+
+#### 2. `articles_admin_read` - Admin Full Access
+```sql
+CREATE POLICY articles_admin_read
+  ON public.articles FOR SELECT
+  USING (
+    is_published = true
+    AND deleted_at IS NULL
+    AND (
+      auth.uid() IN (
+        SELECT id FROM public.user_roles WHERE role = 'admin'
+      )
+    )
+  );
+```
+
+**Who can see:** Admins/editors only
+**Conditions:** Article must be published and not deleted
+**Note:** Admins can see ALL articles (public and class-restricted)
+
+**Use case:** CMS editors need to manage both public and restricted content
+
+---
+
+#### 3. `articles_class_restricted_read` - Class-Based Access
+```sql
+CREATE POLICY articles_class_restricted_read
+  ON public.articles FOR SELECT
+  USING (
+    visibility_type = 'class_restricted'
+    AND is_published = true
+    AND deleted_at IS NULL
+    AND (
+      auth.uid() IN (
+        SELECT fe.parent_id
+        FROM family_enrollment fe
+        JOIN child_class_enrollment cce ON fe.family_id = cce.family_id,
+        LATERAL jsonb_array_elements(articles.restricted_to_classes) class_elem
+        WHERE TRIM(class_elem::text, '"') = cce.class_id
+          AND cce.graduated_at IS NULL
+      )
+    )
+  );
+```
+
+**Who can see:** Parents with children in the restricted classes
+**Conditions:** Article must be class-restricted, published, and child must be currently enrolled
+**Security check:** Verifies parent has a child in at least one of the article's restricted classes
+
+**Use case:** Class-specific announcements visible only to relevant families
+
+---
+
+### Article Visibility Matrix
+
+| Article Type | Admin | Teacher | Parent | Student | Anonymous |
+|---|---|---|---|---|---|
+| **Public + Published** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Class-Restricted + Published** | ✅ | ✅* | ✅** | ❌ | ❌ |
+| **Unpublished** | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Soft-Deleted** | ❌ | ❌ | ❌ | ❌ | ❌ |
+
+\* Teachers: See via `articles_admin_read` policy (teachers are not special-cased in RLS)
+\** Parents: Only if they have a child in the restricted class
 
 ---
 

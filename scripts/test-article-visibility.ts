@@ -16,14 +16,22 @@ if (!supabaseUrl || !supabaseKey) {
 
 const testAccounts = [
   {
+    email: 'admin@example.com',
+    password: 'adminpassword123',
+    expectedArticles: 6, // All 6 articles (admins see public + class-restricted)
+    role: 'admin',
+  },
+  {
     email: 'parent1@example.com',
     password: 'parent1password123',
     expectedArticles: 4, // 2 public + 2 class-restricted (A1, B1)
+    role: 'parent',
   },
   {
     email: 'parent2@example.com',
     password: 'parent2password123',
     expectedArticles: 3, // 2 public + 1 class-restricted (A2)
+    role: 'parent',
   },
 ]
 
