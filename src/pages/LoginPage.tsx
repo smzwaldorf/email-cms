@@ -16,6 +16,27 @@ export const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
 
+  const testUsers = [
+    {
+      email: 'parent1@example.com',
+      password: 'parent1password123',
+      label: 'Parent 1',
+      description: '2 public + 2 class-restricted articles',
+    },
+    {
+      email: 'parent2@example.com',
+      password: 'parent2password123',
+      label: 'Parent 2',
+      description: '2 public + 1 class-restricted article',
+    },
+    {
+      email: 'admin@example.com',
+      password: 'admin123456',
+      label: 'Admin',
+      description: 'All 6 articles',
+    },
+  ]
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
@@ -35,6 +56,22 @@ export const LoginPage: React.FC = () => {
     } else {
       console.log('❌ Sign in failed')
       setError('Invalid email or password. Check browser console (F12) for details.')
+    }
+  }
+
+  const handleQuickFill = async (testEmail: string, testPassword: string) => {
+    // Fill in the credentials
+    setEmail(testEmail)
+    setPassword(testPassword)
+    setError('')
+
+    // Wait 1 second, then submit
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+
+    // Submit the form programmatically
+    const form = document.querySelector('form')
+    if (form) {
+      form.dispatchEvent(new Event('submit', { bubbles: true }))
     }
   }
 
@@ -98,22 +135,27 @@ export const LoginPage: React.FC = () => {
           </button>
         </form>
 
-        {/* Test Credentials */}
-        <div className="mt-8 pt-6 border-t border-gray-200">
-          <p className="text-sm text-gray-600 mb-3 font-medium">Test Credentials:</p>
-          <div className="space-y-2 text-xs text-gray-600">
-            <div>
-              <p className="font-mono bg-gray-50 p-2 rounded mb-1">parent1@example.com</p>
-              <p className="font-mono bg-gray-50 p-2 rounded">parent1password123</p>
-              <p className="text-gray-500 mt-1">See 2 public + 2 class-restricted articles</p>
-            </div>
-            <div className="pt-2">
-              <p className="font-mono bg-gray-50 p-2 rounded mb-1">parent2@example.com</p>
-              <p className="font-mono bg-gray-50 p-2 rounded">parent2password123</p>
-              <p className="text-gray-500 mt-1">See 2 public + 1 class-restricted article</p>
+        {/* Test Users Quick Fill (Dev Mode Only) */}
+        {import.meta.env.DEV && (
+          <div className="mt-8 pt-6 border-t border-gray-200">
+            <p className="text-sm text-gray-600 mb-3 font-medium">🧪 Quick Fill (Dev Mode):</p>
+            <div className="space-y-2">
+              {testUsers.map((user) => (
+                <button
+                  key={user.email}
+                  type="button"
+                  onClick={() => handleQuickFill(user.email, user.password)}
+                  disabled={isLoading}
+                  className="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 active:bg-gray-200 border border-gray-200 rounded-lg transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <div className="font-medium text-sm text-gray-900">{user.label}</div>
+                  <div className="text-xs text-gray-600 font-mono">{user.email}</div>
+                  <div className="text-xs text-gray-500 mt-1">{user.description}</div>
+                </button>
+              ))}
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   )
