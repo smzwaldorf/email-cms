@@ -265,9 +265,16 @@ ALTER TABLE public.teacher_class_assignment ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.article_audit_log ENABLE ROW LEVEL SECURITY;
 
 -- Allow users to read their own role information
-CREATE POLICY user_roles_read_own
+-- Note: RLS policies for user_roles are created in fix_user_roles_rls.sql migration
+-- which uses the correct, flexible approach for authentication
+CREATE POLICY user_roles_read_self
   ON public.user_roles FOR SELECT
-  USING (id = auth.uid());
+  USING (auth.uid() IS NOT NULL AND id = auth.uid());
+
+-- Allow authenticated users to read user roles (needed for auth system)
+CREATE POLICY user_roles_read_authenticated
+  ON public.user_roles FOR SELECT
+  USING (auth.role() = 'authenticated');
 
 -- Allow public read of published newsletter weeks
 -- Anyone can see published weeks

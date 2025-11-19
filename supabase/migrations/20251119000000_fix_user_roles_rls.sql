@@ -1,0 +1,18 @@
+-- ============================================================================
+-- RLS Policy Consolidation (No-op Migration)
+--
+-- This migration was used to fix overly restrictive RLS policies in the
+-- initial schema. However, the policies have been moved to the initial
+-- schema migration (20251117000000) to have the correct policies from
+-- the start.
+--
+-- This migration is now a no-op (does nothing) but is kept for:
+-- 1. Migration history consistency
+-- 2. Database versions that already have the fix applied
+--
+-- The correct RLS policies are now created in:
+--   - 20251117000000_initial_schema.sql (user_roles_read_self, user_roles_read_authenticated)
+-- ============================================================================
+
+-- No-op: Policies are now created in initial schema
+-- This migration file is maintained for historical/consistency reasons
