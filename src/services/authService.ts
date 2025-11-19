@@ -21,33 +21,56 @@ export interface AuthServiceInterface {
   isAuthenticated(): boolean
   onAuthStateChange(callback: (user: AuthUser | null) => void): () => void
   getSession(): Promise<AuthSession | null>
+  initialize(): Promise<void>
+  ensureInitialized(): Promise<void>
 }
 
 class SupabaseAuthService implements AuthServiceInterface {
   private currentUser: AuthUser | null = null
   private authStateListeners: Array<(user: AuthUser | null) => void> = []
+  private initialized = false
+  private initializationPromise: Promise<void> | null = null
 
   async initialize(): Promise<void> {
-    const supabase = getSupabaseClient()
-
-    // Check for existing session
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
-
-    if (session?.user) {
-      await this.setCurrentUser(session.user.id)
+    // Prevent multiple simultaneous initializations
+    if (this.initializationPromise) {
+      return this.initializationPromise
     }
 
-    // Listen for auth state changes
-    supabase.auth.onAuthStateChange(async (_event, session) => {
+    if (this.initialized) {
+      return
+    }
+
+    this.initializationPromise = (async () => {
+      const supabase = getSupabaseClient()
+
+      // Check for existing session
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
       if (session?.user) {
         await this.setCurrentUser(session.user.id)
-      } else {
-        this.currentUser = null
-        this.notifyListeners(null)
       }
-    })
+
+      // Listen for auth state changes
+      supabase.auth.onAuthStateChange(async (_event, session) => {
+        if (session?.user) {
+          await this.setCurrentUser(session.user.id)
+        } else {
+          this.currentUser = null
+          this.notifyListeners(null)
+        }
+      })
+
+      this.initialized = true
+    })()
+
+    return this.initializationPromise
+  }
+
+  async ensureInitialized(): Promise<void> {
+    return this.initialize()
   }
 
   async signIn(email: string, password: string): Promise<AuthUser | null> {

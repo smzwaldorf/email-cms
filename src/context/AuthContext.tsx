@@ -28,28 +28,54 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Initialize auth state on mount
   useEffect(() => {
+    let isMounted = true
+
     const initializeAuth = async () => {
       try {
-        // Check if user is already logged in
+        console.log('🔄 AuthContext: Initializing auth state...')
+
+        // Ensure authService is initialized first
+        // This will check for existing Supabase session and set up listeners
+        await authService.ensureInitialized()
+        console.log('🔄 AuthContext: AuthService initialization complete')
+
+        // Subscribe to auth state changes
+        const unsubscribe = authService.onAuthStateChange((newUser) => {
+          console.log('🔄 Auth state changed:', newUser ? `User: ${newUser.email}` : 'User logged out')
+          if (isMounted) {
+            setUser(newUser)
+          }
+        })
+
+        // Get current user (may have been restored from session)
         const currentUser = authService.getCurrentUser()
-        setUser(currentUser)
+        console.log('🔄 AuthContext: Current user from service:', currentUser?.email || 'none')
+
+        if (isMounted) {
+          setUser(currentUser)
+          setIsLoading(false)
+        }
+
+        return unsubscribe
       } catch (err) {
         console.error('Failed to initialize auth:', err)
-      } finally {
-        setIsLoading(false)
+        if (isMounted) {
+          setIsLoading(false)
+        }
+        return () => {}
       }
     }
 
-    initializeAuth()
-
-    // Subscribe to auth state changes
-    const unsubscribe = authService.onAuthStateChange((newUser) => {
-      console.log('🔄 Auth state changed:', newUser ? `User: ${newUser.email}` : 'User logged out')
-      setUser(newUser)
+    let unsubscribe: (() => void) | null = null
+    initializeAuth().then((fn) => {
+      unsubscribe = fn
     })
 
     return () => {
-      unsubscribe()
+      isMounted = false
+      if (unsubscribe) {
+        unsubscribe()
+      }
     }
   }, [])
 
