@@ -10,7 +10,7 @@ import { useNavigation } from '@/context/NavigationContext'
 import { useAuth } from '@/context/AuthContext'
 import { useFetchWeekly } from '@/hooks/useFetchWeekly'
 import { useFetchArticle } from '@/hooks/useFetchArticle'
-import { fetchNextArticleId, fetchPreviousArticleId, updateArticle } from '@/services/mockApi'
+import { fetchNextArticleId, fetchPreviousArticleId } from '@/services/mockApi'
 import { ArticleListView } from '@/components/ArticleListView'
 import { ArticleContent } from '@/components/ArticleContent'
 import { ArticleEditor } from '@/components/ArticleEditor'
@@ -173,22 +173,29 @@ export function WeeklyReaderPage() {
 
   // 處理儲存文章
   const handleSaveArticle = async (updates: Partial<Article>) => {
-    if (!article) return
+    if (!article || !user?.id) return
 
     setIsSaving(true)
     try {
-      const success = await updateArticle(article.id, updates)
-      if (success) {
-        // 更新成功，退出編輯模式並刷新文章
-        setIsEditMode(false)
-        // 觸發重新獲取文章資料
-        window.location.reload()
-      } else {
-        alert('儲存失敗，請稍後再試')
+      // Convert Article type to UpdateArticleDTO for ArticleService
+      const updateDTO: Parameters<typeof ArticleService.updateArticle>[1] = {
+        title: updates.title,
+        content: updates.content,
+        author: updates.author,
+        isPublished: updates.isPublished,
       }
+
+      // Update article with permission check
+      await ArticleService.updateArticle(article.id, updateDTO, user.id)
+
+      // 更新成功，退出編輯模式並刷新文章
+      setIsEditMode(false)
+      // 觸發重新獲取文章資料
+      window.location.reload()
     } catch (error) {
       console.error('Save error:', error)
-      alert('儲存時發生錯誤')
+      const errorMessage = error instanceof Error ? error.message : '儲存時發生錯誤'
+      alert(`儲存失敗: ${errorMessage}`)
     } finally {
       setIsSaving(false)
     }
