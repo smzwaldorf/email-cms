@@ -10,6 +10,7 @@ import { useNavigation } from '@/context/NavigationContext'
 import { useAuth } from '@/context/AuthContext'
 import { useFetchWeekly } from '@/hooks/useFetchWeekly'
 import { useFetchArticle } from '@/hooks/useFetchArticle'
+import { useLoadingTimeout } from '@/components/LoadingTimeout'
 import { ArticleListView } from '@/components/ArticleListView'
 import { ArticleContent } from '@/components/ArticleContent'
 import { ArticleEditor } from '@/components/ArticleEditor'
@@ -49,6 +50,12 @@ export function WeeklyReaderPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [canEditArticle, setCanEditArticle] = useState(false)
   const [isCheckingPermission, setIsCheckingPermission] = useState(false)
+
+  // Detect loading timeouts (show error if loading > 3 seconds)
+  const { isTimedOut: isLoadingTimedOut } = useLoadingTimeout(
+    isLoadingWeekly && articles.length === 0,
+    3000 // 3 second timeout
+  )
 
   // 初始化導航狀態 - 當文章列表加載時或週份改變時
   useEffect(() => {
@@ -249,6 +256,28 @@ export function WeeklyReaderPage() {
     }
 
     touchStartX.current = null
+  }
+
+  // Handle loading timeout (show error if loading > 3 seconds)
+  if (isLoadingTimedOut && !weeklyError) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-waldorf-cream-100">
+        <div className="text-center max-w-md">
+          <h1 className="text-2xl font-bold text-waldorf-clay-800 mb-4">
+            加載超時
+          </h1>
+          <p className="text-waldorf-clay-600 mb-6">
+            頁面加載時間過長。請重新載入頁面。
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 bg-waldorf-sage-600 text-white rounded-md hover:bg-waldorf-sage-700 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-500 transition-colors"
+          >
+            重新載入頁面
+          </button>
+        </div>
+      </div>
+    )
   }
 
   if (weeklyError) {
