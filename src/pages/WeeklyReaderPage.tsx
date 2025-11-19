@@ -296,16 +296,12 @@ export function WeeklyReaderPage() {
                   編輯文章
                 </button>
               )}
-              {!canEditArticle && !isCheckingPermission && (
-                <div className="text-sm text-waldorf-clay-600">
-                  無編輯權限
-                </div>
-              )}
               {isCheckingPermission && (
                 <div className="text-sm text-waldorf-clay-600">
                   檢查權限中...
                 </div>
               )}
+              {!canEditArticle && !isCheckingPermission && <div />}
               <UserMenu />
             </div>
           )}
@@ -364,16 +360,12 @@ export function WeeklyReaderPage() {
                 編輯
               </button>
             )}
-            {!canEditArticle && !isCheckingPermission && (
-              <div className="text-sm text-waldorf-clay-600">
-                無編輯權限
-              </div>
-            )}
             {isCheckingPermission && (
               <div className="text-sm text-waldorf-clay-600">
                 檢查權限中...
               </div>
             )}
+            {!canEditArticle && !isCheckingPermission && <div />}
             <UserMenu />
           </div>
         )}
