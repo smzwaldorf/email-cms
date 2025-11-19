@@ -26,12 +26,14 @@ interface NavigationBarProps {
   navigationState: NavigationState
   onPrevious: () => void
   onNext: () => void
+  disabled?: boolean
 }
 
 export function NavigationBar({
   navigationState,
   onPrevious,
   onNext,
+  disabled = false,
 }: NavigationBarProps) {
   const navigate = useNavigate()
   const canGoPrevious = navigationState.currentArticleOrder > 1
@@ -40,6 +42,8 @@ export function NavigationBar({
   // Handle keyboard shortcuts (T052: 鍵盤快捷鍵支援)
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (disabled) return
+
       const key = event.key.toLowerCase()
 
       // 上一篇文章: ArrowLeft, p, k
@@ -66,7 +70,7 @@ export function NavigationBar({
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [canGoPrevious, canGoNext, onPrevious, onNext, navigationState, navigate])
+  }, [canGoPrevious, canGoNext, onPrevious, onNext, navigationState, navigate, disabled])
 
   return (
     <div className="border-t border-waldorf-cream-200 bg-waldorf-cream-50 px-6 py-4">

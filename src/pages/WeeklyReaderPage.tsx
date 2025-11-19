@@ -339,6 +339,7 @@ export function WeeklyReaderPage() {
             navigationState={navigation.navigationState}
             onPrevious={handlePrevious}
             onNext={handleNext}
+            disabled={isEditMode}
           />
         </div>
 
@@ -413,6 +414,7 @@ export function WeeklyReaderPage() {
           navigationState={navigation.navigationState}
           onPrevious={handlePrevious}
           onNext={handleNext}
+          disabled={isEditMode}
         />
 
         {/* 邊緣導航按鈕 - 行動版 */}
