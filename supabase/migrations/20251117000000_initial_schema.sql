@@ -331,6 +331,31 @@ CREATE POLICY articles_class_restricted_read
     )
   );
 
+-- Allow admins to update articles
+-- Only authenticated admins can update articles
+CREATE POLICY articles_admin_update
+  ON public.articles FOR UPDATE
+  USING (
+    auth.uid() IN (
+      SELECT id FROM public.user_roles WHERE role = 'admin'
+    )
+  )
+  WITH CHECK (
+    auth.uid() IN (
+      SELECT id FROM public.user_roles WHERE role = 'admin'
+    )
+  );
+
+-- Allow admins to delete articles
+-- Only authenticated admins can delete (soft-delete) articles
+CREATE POLICY articles_admin_delete
+  ON public.articles FOR DELETE
+  USING (
+    auth.uid() IN (
+      SELECT id FROM public.user_roles WHERE role = 'admin'
+    )
+  );
+
 -- Allow reading family enrollment relationships
 CREATE POLICY family_enrollment_read
   ON public.family_enrollment FOR SELECT
@@ -344,6 +369,18 @@ CREATE POLICY child_class_enrollment_read
 -- All users can read class information
 CREATE POLICY classes_all_read
   ON public.classes FOR SELECT
+  USING (true);
+
+-- Allow audit log insertion during article changes (triggered by audit function)
+-- This is needed to allow the audit trigger to insert when articles are updated
+-- The audit trigger runs as the table owner, so we allow all inserts
+CREATE POLICY article_audit_log_insert
+  ON public.article_audit_log FOR INSERT
+  WITH CHECK (true);
+
+-- Allow reading audit logs (for audit trails)
+CREATE POLICY article_audit_log_read
+  ON public.article_audit_log FOR SELECT
   USING (true);
 
 -- ============================================================================

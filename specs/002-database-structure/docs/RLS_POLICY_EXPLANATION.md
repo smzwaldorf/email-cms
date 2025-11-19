@@ -233,7 +233,61 @@ CREATE POLICY articles_class_restricted_read
 
 ---
 
-### Article Visibility Matrix
+#### 4. `articles_admin_update` - Admin Article Updates
+```sql
+CREATE POLICY articles_admin_update
+  ON public.articles FOR UPDATE
+  USING (
+    auth.uid() IN (
+      SELECT id FROM public.user_roles WHERE role = 'admin'
+    )
+  )
+  WITH CHECK (
+    auth.uid() IN (
+      SELECT id FROM public.user_roles WHERE role = 'admin'
+    )
+  );
+```
+
+**Who can update:** Admins/editors only
+**Conditions:** User must be an admin
+**Use case:** Admins can edit article content, title, author, visibility settings
+
+---
+
+#### 5. `articles_admin_delete` - Admin Article Deletions
+```sql
+CREATE POLICY articles_admin_delete
+  ON public.articles FOR DELETE
+  USING (
+    auth.uid() IN (
+      SELECT id FROM public.user_roles WHERE role = 'admin'
+    )
+  );
+```
+
+**Who can delete:** Admins/editors only
+**Conditions:** User must be an admin
+**Use case:** Admins can soft-delete articles (marks deleted_at timestamp)
+
+---
+
+### Article Permission Matrix
+
+| Operation | Admin | Teacher | Parent | Student | Anonymous |
+|-----------|-------|---------|--------|---------|-----------|
+| **Read (Public)** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Read (Class-Restricted)** | ✅ | ✅* | ✅** | ❌ | ❌ |
+| **Read (Unpublished)** | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Update** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Delete** | ✅ | ❌ | ❌ | ❌ | ❌ |
+
+\* Teachers: See via `articles_admin_read` policy (not special-cased in RLS)
+\** Parents: Only if they have a child in the restricted class
+
+---
+
+### Article Visibility Matrix (Read-only)
 
 | Article Type | Admin | Teacher | Parent | Student | Anonymous |
 |---|---|---|---|---|---|
