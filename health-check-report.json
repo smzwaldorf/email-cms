@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-11-17T10:35:07.060Z",
+  "timestamp": "2025-11-19T06:48:57.060Z",
   "overallStatus": "warning",
   "checks": [
     {
@@ -79,9 +79,9 @@
       "status": "pass",
       "message": "Query performance is acceptable",
       "details": [
-        "Simple select (articles): 177ms",
-        "Filter + sort (10 articles): 213ms",
-        "Related data fetch: 230ms"
+        "Simple select (articles): 2ms",
+        "Filter + sort (10 articles): 3ms",
+        "Related data fetch: 3ms"
       ]
     }
   ],

@@ -332,26 +332,5 @@ CREATE POLICY classes_all_read
   USING (true);
 
 -- ============================================================================
--- Sample Data (for testing - remove in production)
--- ============================================================================
-
-INSERT INTO public.newsletter_weeks (week_number, release_date, is_published) VALUES
-  ('2025-W47', '2025-11-17', true),
-  ('2025-W48', '2025-11-24', false);
-
-INSERT INTO public.classes (id, class_name, class_grade_year) VALUES
-  ('A1', 'Grade 1A', 1),
-  ('A2', 'Grade 1B', 1),
-  ('B1', 'Grade 2A', 2),
-  ('B2', 'Grade 2B', 2);
-
--- Sample articles for W47
-INSERT INTO public.articles (week_number, title, content, author, article_order, is_published, visibility_type, restricted_to_classes) VALUES
-  ('2025-W47', '週報開刊致詞 (Weekly Opening)', '# 歡迎閱讀本週電子報\n\nDear Parents and Students,\n\nWelcome to Week 47 of our newsletter. This week we have exciting updates from all classes.\n\n## Highlights\n- School event announcements\n- Academic updates\n- Upcoming activities', 'Principal', 1, true, 'public', NULL),
-  ('2025-W47', 'Grade 1A Class Updates', '# 一年級甲班班級大小事\n\nThis week in Grade 1A:\n- Math: Introduction to addition\n- Reading: New story time sessions\n- Art: Seasonal craft projects', 'Ms. Chen', 2, true, 'class_restricted', '["A1"]'),
-  ('2025-W47', 'Grade 1B Class Updates', '# 一年級乙班班級大小事\n\nThis week in Grade 1B:\n- Music: Learning new songs\n- PE: Team sports activities\n- Science: Exploring nature', 'Mr. Wang', 3, true, 'class_restricted', '["A2"]'),
-  ('2025-W47', 'Grade 2A Class Updates', '# 二年級甲班班級大小事\n\nThis week in Grade 2A:\n- Multiplication basics\n- Literature appreciation\n- Field trip planning', 'Ms. Liu', 4, true, 'class_restricted', '["B1"]'),
-  ('2025-W47', 'Grade 2B Class Updates', '# 二年級乙班班級大小事\n\nThis week in Grade 2B:\n- Division practice\n- Writing workshops\n- Computer lab sessions', 'Mr. Lee', 5, true, 'class_restricted', '["B2"]'),
-  ('2025-W47', 'Important Announcements', '# 重要公告\n\n- Parent-teacher conferences scheduled for Nov 22-24\n- School assembly next Monday\n- Deadline for field trip permission slips: Nov 19', 'Admin', 6, true, 'public', NULL);
-
--- Note: Additional articles can be inserted through application layer with proper auth context
+-- Note: Sample data is seeded via CLI scripts (scripts/seed-test-data.ts) for development only.
+-- Migrations contain only schema definition, not test data.

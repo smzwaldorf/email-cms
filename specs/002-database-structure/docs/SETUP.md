@@ -77,25 +77,14 @@ VITE_API_TIMEOUT=5000
 VITE_ENABLE_LOGGING=true
 ```
 
-### 4. Database Migrations & Test Data
+### 4. Database Migrations
 
-The database schema and test data are set up automatically through migrations:
+The database schema is set up automatically through migrations:
 
 **Schema migration:** `supabase/migrations/20251117000000_initial_schema.sql`
 - Creates all tables (articles, classes, families, etc.)
 - Sets up Row-Level Security (RLS) policies
 - Creates database triggers and indexes
-
-**Test data migration:** `supabase/migrations/20251119000002_seed_complete_test_data.sql`
-- Creates 3 newsletter weeks (W47, W48, W49)
-- Creates 4 classes (A1, A2, B1, B2)
-- Creates 6 sample articles with public and class-restricted visibility
-- Creates 2 test families (FAMILY001, FAMILY002)
-- Comprehensive documentation of test data and expected access levels
-
-**RLS policy fix:** `supabase/migrations/20251119000000_fix_user_roles_rls.sql`
-- Allows authenticated users to read user roles during authentication
-- Enables session restoration across page refreshes
 
 The Supabase CLI automatically applies all migrations in `supabase/migrations/` when you run `supabase start`.
 
@@ -104,9 +93,26 @@ The Supabase CLI automatically applies all migrations in `supabase/migrations/` 
 supabase db reset
 ```
 
-### 5. Create Test Users & Family Enrollments
+### 5. Seed Development Test Data (Optional)
 
-After applying migrations, set up test user accounts and their family relationships:
+For development and testing, populate the database with sample data:
+
+```bash
+# Seed articles, classes, families, and newsletter weeks
+npx ts-node scripts/seed-test-data.ts
+```
+
+**What this script does:**
+1. Creates 3 newsletter weeks (W47, W48, W49)
+2. Creates 4 classes (A1, A2, B1, B2)
+3. Creates 2 families (FAMILY001, FAMILY002)
+4. Creates 6 sample articles with mixed visibility (public and class-restricted)
+
+**Note:** This is development-only data. Articles are skipped if they already exist, so it's safe to run multiple times.
+
+### 6. Create Test Users & Family Enrollments
+
+After seeding test data, set up test user accounts and their family relationships:
 
 ```bash
 # Create test users in Auth and set up family enrollments
@@ -132,7 +138,7 @@ npx ts-node scripts/setup-test-users.ts
 - parent2 signs in → same checks → shows 3 articles (different class)
 - Unsigned user → RLS allows only public articles (2/6)
 
-### 6. Verify Setup (Optional)
+### 7. Verify Setup (Optional)
 
 Run verification scripts to ensure everything is configured correctly:
 

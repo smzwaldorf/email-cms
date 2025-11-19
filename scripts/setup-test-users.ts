@@ -3,7 +3,8 @@
  * Creates test users in Supabase Auth and sets up family enrollments
  *
  * Prerequisites:
- * - Database migrations must be applied (including seed data migration)
+ * - Database migrations must be applied (schema created)
+ * - Test data seeded via scripts/seed-test-data.ts (creates families and classes)
  * - Families FAMILY001 and FAMILY002 must exist in families table
  * - Classes A1, A2, B1, B2 must exist in classes table
  *
