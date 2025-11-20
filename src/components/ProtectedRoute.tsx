@@ -29,6 +29,15 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 
   // Redirect to login if not authenticated
   if (!isAuthenticated) {
+    // Check if we are trying to access a short URL
+    const pathParts = window.location.pathname.split('/')
+    // Expected format: /week/:weekNumber/:shortId
+    if (pathParts.length >= 4 && pathParts[1] === 'week' && pathParts[3]) {
+      const shortId = pathParts[3]
+      localStorage.setItem('pending_short_id', shortId)
+      localStorage.setItem('pending_week_number', pathParts[2])
+    }
+    
     return <Navigate to="/login" replace />
   }
 

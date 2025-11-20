@@ -95,6 +95,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signOut = async (): Promise<void> => {
     try {
       console.log('🔓 Starting sign out process...')
+      
+      // Clear any pending redirect cache
+      localStorage.removeItem('pending_short_id')
+      localStorage.removeItem('pending_week_number')
+      
       await authService.signOut()
       console.log('🔓 AuthService.signOut() complete, setting isLoading to false')
       setIsLoading(false)

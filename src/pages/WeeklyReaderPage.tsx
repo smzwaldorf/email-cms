@@ -5,7 +5,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useNavigation } from '@/context/NavigationContext'
 import { useAuth } from '@/context/AuthContext'
 import { useFetchWeekly } from '@/hooks/useFetchWeekly'
@@ -22,8 +22,9 @@ import PermissionService from '@/services/PermissionService'
 import ArticleService from '@/services/ArticleService'
 
 export function WeeklyReaderPage() {
-  const { weekNumber: paramWeekNumber } = useParams<{ weekNumber: string }>()
+  const { weekNumber: paramWeekNumber, shortId } = useParams<{ weekNumber: string, shortId?: string }>()
   const weekNumber = paramWeekNumber || '2025-W43'
+  const navigate = useNavigate()
 
   const { user } = useAuth()
   const navigation = useNavigation()
@@ -73,6 +74,41 @@ export function WeeklyReaderPage() {
                          (currentList.length === articles.length && 
                           JSON.stringify(currentList.map(a => a.title)) !== JSON.stringify(articles.map(a => a.title)))
 
+      // Check for cached short ID from localStorage (redirect after login)
+      const cachedShortId = localStorage.getItem('pending_short_id')
+      const cachedWeekNumber = localStorage.getItem('pending_week_number')
+      
+      // Determine which shortId to use: URL param or cached
+      const targetShortId = shortId || (cachedWeekNumber === weekNumber ? cachedShortId : null)
+
+      if (targetShortId) {
+        // Handle short URL redirection
+        const targetArticle = articles.find(a => a.shortId === targetShortId)
+        
+        // Clear cache if we attempted to use it
+        if (cachedShortId) {
+          localStorage.removeItem('pending_short_id')
+          localStorage.removeItem('pending_week_number')
+        }
+
+        if (targetArticle) {
+          navigation.setCurrentWeek(weekNumber)
+          navigation.setArticleList(articles)
+          navigation.setCurrentArticle(targetArticle.id, targetArticle.order)
+          
+          // Update next article
+          if (targetArticle.order < articles.length) {
+            navigation.setNextArticleId(articles[targetArticle.order].id)
+          } else {
+            navigation.setNextArticleId(undefined)
+          }
+
+          // Replace URL to clean version
+          navigate(`/week/${weekNumber}`, { replace: true })
+          return
+        }
+      }
+
       if (weekChanged || isFirstLoad) {
         const firstArticle = articles[0]
         navigation.setCurrentWeek(weekNumber)
@@ -90,7 +126,7 @@ export function WeeklyReaderPage() {
         navigation.setArticleList(articles)
       }
     }
-  }, [articles, weekNumber, navigation])
+  }, [articles, weekNumber, navigation, shortId, navigate])
 
   // 檢查編輯權限 - 當文章或使用者改變時
   useEffect(() => {

@@ -22,6 +22,7 @@ interface UseFetchArticleResult {
 function convertArticleRow(row: ArticleRow, order?: number): Article {
   return {
     id: row.id,
+    shortId: row.short_id,
     title: row.title,
     content: row.content,
     author: row.author || undefined,

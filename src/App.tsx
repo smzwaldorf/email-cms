@@ -43,6 +43,14 @@ export default function App() {
                 }
               />
               <Route
+                path="/week/:weekNumber/:shortId"
+                element={
+                  <ProtectedRoute>
+                    <WeeklyReaderPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/article/:articleId"
                 element={
                   <ProtectedRoute>
