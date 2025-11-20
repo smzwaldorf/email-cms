@@ -1,186 +1,336 @@
 /**
- * AdminDashboardPage - Main admin dashboard with statistics and recent activity
+ * AdminDashboardPage - Modern dashboard with shadcn/ui components and mock data
  */
 
-import { useEffect, useState } from 'react';
-import { StatsCard } from '@/components/admin/StatsCard';
-import {
-  fetchDashboardStats,
-  fetchRecentActivity,
-  type DashboardStats,
-  type RecentActivity,
-} from '@/services/admin/adminStatsService';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { generateMockStats, generateMockActivity, type MockActivity } from '@/lib/mockData';
 import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 
 export function AdminDashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [activity, setActivity] = useState<RecentActivity[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [stats, setStats] = useState(generateMockStats());
+  const [activity, setActivity] = useState<MockActivity[]>([]);
 
   useEffect(() => {
-    async function loadDashboardData() {
-      try {
-        setLoading(true);
-        const [statsData, activityData] = await Promise.all([
-          fetchDashboardStats(),
-          fetchRecentActivity(5),
-        ]);
-        setStats(statsData);
-        setActivity(activityData);
-      } catch (err) {
-        console.error('Failed to load dashboard data:', err);
-        setError('Failed to load dashboard data');
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadDashboardData();
+    // Simulate loading mock data
+    setStats(generateMockStats());
+    setActivity(generateMockActivity(5));
   }, []);
 
-  if (error) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-red-600">{error}</p>
-      </div>
-    );
-  }
+  const getActionBadgeVariant = (action: string): 'default' | 'success' | 'warning' | 'destructive' => {
+    switch (action) {
+      case 'create':
+        return 'success';
+      case 'update':
+        return 'default';
+      case 'publish':
+        return 'success';
+      case 'unpublish':
+        return 'warning';
+      case 'delete':
+        return 'destructive';
+      default:
+        return 'default';
+    }
+  };
+
+  const formatTimeAgo = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (seconds < 60) return `${seconds}s ago`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  };
 
   return (
-    <div>
-      <h2 className="text-3xl font-bold text-waldorf-brown mb-8">Dashboard</h2>
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-3xl font-bold text-waldorf-brown">Dashboard</h2>
+        <p className="text-waldorf-clay mt-2">Welcome to the Email CMS Admin Dashboard</p>
+      </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatsCard
-          title="Total Users"
-          value={stats?.totalUsers || 0}
-          icon="👥"
-          loading={loading}
-        />
-        <StatsCard
-          title="Newsletter Weeks"
-          value={stats?.totalWeeks || 0}
-          icon="📅"
-          loading={loading}
-        />
-        <StatsCard
-          title="Articles"
-          value={stats?.totalArticles || 0}
-          icon="📄"
-          loading={loading}
-        />
-        <StatsCard
-          title="Classes"
-          value={stats?.totalClasses || 0}
-          icon="🏫"
-          loading={loading}
-        />
+      {/* Statistics Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              className="h-4 w-4 text-waldorf-clay"
+            >
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalUsers}</div>
+            <p className="text-xs text-waldorf-clay mt-1">
+              +12% from last month
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Newsletter Weeks</CardTitle>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              className="h-4 w-4 text-waldorf-clay"
+            >
+              <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
+              <line x1="16" x2="16" y1="2" y2="6" />
+              <line x1="8" x2="8" y1="2" y2="6" />
+              <line x1="3" x2="21" y1="10" y2="10" />
+            </svg>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalWeeks}</div>
+            <p className="text-xs text-waldorf-clay mt-1">
+              {stats.publishedWeeks} published
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Articles</CardTitle>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              className="h-4 w-4 text-waldorf-clay"
+            >
+              <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+              <polyline points="14 2 14 8 20 8" />
+            </svg>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalArticles}</div>
+            <p className="text-xs text-waldorf-clay mt-1">
+              {stats.publishedArticles} published
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Classes</CardTitle>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              className="h-4 w-4 text-waldorf-clay"
+            >
+              <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+              <path d="M6 12v5c3 3 9 3 12 0v-5" />
+            </svg>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalClasses}</div>
+            <p className="text-xs text-waldorf-clay mt-1">
+              {stats.totalFamilies} families enrolled
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* User Role Breakdown */}
-      <div className="bg-white rounded-lg border border-waldorf-sage/20 p-6 mb-8 shadow-sm">
-        <h3 className="text-xl font-semibold text-waldorf-brown mb-4">User Roles</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div>
-            <p className="text-sm text-waldorf-clay">Admins</p>
-            <p className="text-2xl font-bold text-waldorf-brown">
-              {stats?.adminCount || 0}
-            </p>
-          </div>
-          <div>
-            <p className="text-sm text-waldorf-clay">Teachers</p>
-            <p className="text-2xl font-bold text-waldorf-brown">
-              {stats?.teacherCount || 0}
-            </p>
-          </div>
-          <div>
-            <p className="text-sm text-waldorf-clay">Parents</p>
-            <p className="text-2xl font-bold text-waldorf-brown">
-              {stats?.parentCount || 0}
-            </p>
-          </div>
-          <div>
-            <p className="text-sm text-waldorf-clay">Students</p>
-            <p className="text-2xl font-bold text-waldorf-brown">
-              {stats?.studentCount || 0}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Recent Activity */}
-        <div className="bg-white rounded-lg border border-waldorf-sage/20 p-6 shadow-sm">
-          <h3 className="text-xl font-semibold text-waldorf-brown mb-4">Recent Activity</h3>
-          {loading ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-12 bg-waldorf-sage/20 animate-pulse rounded"></div>
-              ))}
+      <Card>
+        <CardHeader>
+          <CardTitle>User Roles Distribution</CardTitle>
+          <CardDescription>Breakdown of users by role type</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="flex flex-col items-center justify-center p-4 bg-red-50 rounded-lg">
+              <div className="text-3xl mb-2">👤</div>
+              <p className="text-sm text-waldorf-clay">Admins</p>
+              <p className="text-2xl font-bold text-waldorf-brown">{stats.adminCount}</p>
             </div>
-          ) : activity.length === 0 ? (
-            <p className="text-waldorf-clay text-center py-8">No recent activity</p>
-          ) : (
-            <div className="space-y-3">
+            <div className="flex flex-col items-center justify-center p-4 bg-blue-50 rounded-lg">
+              <div className="text-3xl mb-2">👨‍🏫</div>
+              <p className="text-sm text-waldorf-clay">Teachers</p>
+              <p className="text-2xl font-bold text-waldorf-brown">{stats.teacherCount}</p>
+            </div>
+            <div className="flex flex-col items-center justify-center p-4 bg-green-50 rounded-lg">
+              <div className="text-3xl mb-2">👨‍👩‍👧</div>
+              <p className="text-sm text-waldorf-clay">Parents</p>
+              <p className="text-2xl font-bold text-waldorf-brown">{stats.parentCount}</p>
+            </div>
+            <div className="flex flex-col items-center justify-center p-4 bg-yellow-50 rounded-lg">
+              <div className="text-3xl mb-2">👶</div>
+              <p className="text-sm text-waldorf-clay">Students</p>
+              <p className="text-2xl font-bold text-waldorf-brown">{stats.studentCount}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Recent Activity */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Activity</CardTitle>
+            <CardDescription>Latest changes across the system</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
               {activity.map((item) => (
-                <div
-                  key={item.id}
-                  className="border-l-4 border-waldorf-peach pl-4 py-2"
-                >
-                  <p className="text-sm text-waldorf-brown font-medium">
-                    {item.description}
-                  </p>
-                  <p className="text-xs text-waldorf-clay">
-                    {item.userEmail} • {new Date(item.timestamp).toLocaleString()}
-                  </p>
+                <div key={item.id} className="flex items-start space-x-4 border-l-2 border-waldorf-peach pl-4">
+                  <div className="flex-1 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Badge variant={getActionBadgeVariant(item.action)}>
+                        {item.action}
+                      </Badge>
+                      <span className="text-xs text-waldorf-clay">
+                        {formatTimeAgo(item.timestamp)}
+                      </span>
+                    </div>
+                    <p className="text-sm text-waldorf-brown font-medium">
+                      {item.description}
+                    </p>
+                    <p className="text-xs text-waldorf-clay">by {item.userEmail}</p>
+                  </div>
                 </div>
               ))}
             </div>
-          )}
-          <Link
-            to="/admin/audit"
-            className="block mt-4 text-sm text-waldorf-clay hover:text-waldorf-brown text-center"
-          >
-            View all activity →
-          </Link>
-        </div>
+            <Link
+              to="/admin/audit"
+              className="block mt-4 text-sm text-waldorf-sage hover:text-waldorf-clay text-center"
+            >
+              View all activity →
+            </Link>
+          </CardContent>
+        </Card>
 
         {/* Quick Actions */}
-        <div className="bg-white rounded-lg border border-waldorf-sage/20 p-6 shadow-sm">
-          <h3 className="text-xl font-semibold text-waldorf-brown mb-4">Quick Actions</h3>
-          <div className="space-y-3">
+        <Card>
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
+            <CardDescription>Common administrative tasks</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3">
             <Link
               to="/admin/users"
-              className="block px-4 py-3 bg-waldorf-sage/10 hover:bg-waldorf-sage/20 rounded-lg transition-colors"
+              className="flex items-center space-x-3 px-4 py-3 bg-waldorf-sage/10 hover:bg-waldorf-sage/20 rounded-lg transition-colors group"
             >
-              <span className="text-lg mr-2">👤</span>
-              <span className="text-waldorf-brown font-medium">Create User</span>
+              <span className="text-2xl">👤</span>
+              <div className="flex-1">
+                <p className="text-waldorf-brown font-medium group-hover:text-waldorf-sage">Create User</p>
+                <p className="text-xs text-waldorf-clay">Add new user account</p>
+              </div>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5 text-waldorf-clay group-hover:text-waldorf-sage"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
             </Link>
+
             <Link
               to="/admin/weeks"
-              className="block px-4 py-3 bg-waldorf-sage/10 hover:bg-waldorf-sage/20 rounded-lg transition-colors"
+              className="flex items-center space-x-3 px-4 py-3 bg-waldorf-sage/10 hover:bg-waldorf-sage/20 rounded-lg transition-colors group"
             >
-              <span className="text-lg mr-2">📅</span>
-              <span className="text-waldorf-brown font-medium">Create Week</span>
+              <span className="text-2xl">📅</span>
+              <div className="flex-1">
+                <p className="text-waldorf-brown font-medium group-hover:text-waldorf-sage">Create Week</p>
+                <p className="text-xs text-waldorf-clay">Add new newsletter week</p>
+              </div>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5 text-waldorf-clay group-hover:text-waldorf-sage"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
             </Link>
+
             <Link
               to="/admin/articles"
-              className="block px-4 py-3 bg-waldorf-sage/10 hover:bg-waldorf-sage/20 rounded-lg transition-colors"
+              className="flex items-center space-x-3 px-4 py-3 bg-waldorf-sage/10 hover:bg-waldorf-sage/20 rounded-lg transition-colors group"
             >
-              <span className="text-lg mr-2">📄</span>
-              <span className="text-waldorf-brown font-medium">Create Article</span>
+              <span className="text-2xl">📄</span>
+              <div className="flex-1">
+                <p className="text-waldorf-brown font-medium group-hover:text-waldorf-sage">Create Article</p>
+                <p className="text-xs text-waldorf-clay">Write new article</p>
+              </div>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5 text-waldorf-clay group-hover:text-waldorf-sage"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
             </Link>
+
             <Link
               to="/admin/classes"
-              className="block px-4 py-3 bg-waldorf-sage/10 hover:bg-waldorf-sage/20 rounded-lg transition-colors"
+              className="flex items-center space-x-3 px-4 py-3 bg-waldorf-sage/10 hover:bg-waldorf-sage/20 rounded-lg transition-colors group"
             >
-              <span className="text-lg mr-2">🏫</span>
-              <span className="text-waldorf-brown font-medium">Create Class</span>
+              <span className="text-2xl">🏫</span>
+              <div className="flex-1">
+                <p className="text-waldorf-brown font-medium group-hover:text-waldorf-sage">Create Class</p>
+                <p className="text-xs text-waldorf-clay">Add new class</p>
+              </div>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5 text-waldorf-clay group-hover:text-waldorf-sage"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
             </Link>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
