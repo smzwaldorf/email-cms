@@ -15,7 +15,8 @@
       "Bash(docker exec:*)",
       "Bash(npx ts-node:*)",
       "Bash(supabase status:*)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "WebSearch"
     ],
     "deny": [],
     "ask": []
