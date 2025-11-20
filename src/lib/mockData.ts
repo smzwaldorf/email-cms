@@ -59,7 +59,7 @@ export function generateMockWeeks(count: number = 12): NewsletterWeekRow[] {
 // Generate mock articles
 export function generateMockArticles(count: number = 50): ArticleRow[] {
   const articles: ArticleRow[] = [];
-  const weeks = generateMockWeeks(10);
+  const weeks = generateMockWeeks(Math.ceil(count / 5)); // Generate enough weeks for all articles
 
   const titles = [
     '校園新聞快報', '家長須知', '數學課程更新', '科學實驗活動',
@@ -71,18 +71,24 @@ export function generateMockArticles(count: number = 50): ArticleRow[] {
   const authors = ['Ms. Wang', 'Mr. Chen', 'Ms. Liu', 'Mr. Zhou', 'Ms. Yang'];
 
   for (let i = 0; i < count; i++) {
-    const week = weeks[Math.floor(i / 5)];
+    const weekIndex = Math.floor(i / 5);
+    const week = weeks[weekIndex];
+
+    // Fallback to a default week number if week is undefined
+    const weekNumber = week?.week_number || `2025-W${(50 - weekIndex).toString().padStart(2, '0')}`;
+    const isPublished = week?.is_published ?? (weekIndex < Math.ceil(count / 10));
+
     const visibilityType = Math.random() > 0.6 ? 'class_restricted' : 'public';
 
     articles.push({
       id: `article-${i + 1}`,
       short_id: `a${(i + 1).toString().padStart(3, '0')}`,
-      week_number: week.week_number,
+      week_number: weekNumber,
       title: `${titles[i % titles.length]} ${Math.floor(i / titles.length) + 1}`,
       content: `# ${titles[i % titles.length]}\n\n這是文章的內容。包含重要的資訊和更新。\n\n- 重點一\n- 重點二\n- 重點三`,
       author: authors[i % authors.length],
       article_order: (i % 5) + 1,
-      is_published: week.is_published,
+      is_published: isPublished,
       visibility_type: visibilityType as 'public' | 'class_restricted',
       restricted_to_classes: visibilityType === 'class_restricted' ? ['A1', 'B1'] : null,
       created_by: `user-${(i % 5) + 2}`,
