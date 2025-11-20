@@ -43,25 +43,27 @@
 
 ## 📝 實施任務
 
-### Phase 1: 基礎設施與初始化
+### Phase 1: 認證基礎設施與擴展
 
-**目標**: 設定 Supabase 自主託管環境、建立數據庫結構、配置環境變數
+**目標**: 建立認證相關資料庫表、配置環境變數、設定 Supabase Auth
 
-**獨立測試**: 確認 Supabase 連接、資料庫遷移成功、環境變數已加載
+**獨立測試**: Supabase Auth 已啟用、認證表已建立、RLS 政策已應用、環境變數已加載
 
-- [ ] T001 在 Zeabur 上設定 Supabase 自主託管環境，配置 PostgreSQL 資料庫
+**注**：基礎資料庫結構（users、articles、classes、families 等）已在 Phase 2（002-database-structure）中實施
+
+- [ ] T001 確認 Supabase 自主託管在 Zeabur 上、PostgreSQL 資料庫可訪問
 - [ ] T002 建立 `.env.local` 範本並記錄所有必要的 Supabase 金鑰（SUPABASE_URL、ANON_KEY、SERVICE_ROLE_KEY）
-- [ ] T003 執行資料庫遷移 001：建立 users 擴展表，包含 id、email、name、role、created_at、last_login 欄位 (supabase/migrations/001_create_users_profile.sql)
-- [ ] T004 執行資料庫遷移 002：建立 auth_methods 表，追蹤 OAuth 和魔法連結關聯 (supabase/migrations/002_create_auth_methods.sql)
-- [ ] T005 執行資料庫遷移 003：建立 sessions 表，追蹤多裝置工作階段 (supabase/migrations/003_create_sessions.sql)
-- [ ] T006 執行資料庫遷移 004：建立 magic_link_tokens 表，管理一次性魔法連結 (supabase/migrations/004_create_magic_link_tokens.sql)
-- [ ] T007 執行資料庫遷移 005：建立 auth_events 表（分區），稽核所有認證事件 (supabase/migrations/005_create_auth_events.sql)
-- [ ] T008 執行資料庫遷移 006：建立 user_roles 表與初始 4 個角色 (Admin, Class_Teacher, Parent, Student) (supabase/migrations/006_create_user_roles.sql)
-- [ ] T009 執行資料庫遷移 007：設定 RLS 政策用於 RBAC，4 個角色分別的訪問規則 (supabase/migrations/007_setup_rls_policies.sql)
-- [ ] T010 執行資料庫遷移 008：建立認證表的效能索引 (user_id, email, created_at, event_type) (supabase/migrations/008_create_auth_indexes.sql)
-- [ ] T011 建立 rate_limit_attempts 表，追蹤魔法連結和登入嘗試 (supabase/migrations/009_create_rate_limiting.sql)
-- [ ] T012 執行 supabase/seed.sql，初始化 4 個角色和測試管理員帳號
-- [ ] T013 驗證所有遷移成功、表已建立、RLS 政策已啟用
+- [ ] T003 執行資料庫遷移 003：建立 auth_methods 表，追蹤 OAuth 和魔法連結關聯 (supabase/migrations/20251120000001_auth_methods.sql)
+- [ ] T004 執行資料庫遷移 004：建立 sessions 表，追蹤多裝置工作階段 (supabase/migrations/20251120000002_create_sessions.sql)
+- [ ] T005 執行資料庫遷移 005：建立 magic_link_tokens 表，管理一次性魔法連結 (supabase/migrations/20251120000003_magic_link_tokens.sql)
+- [ ] T006 執行資料庫遷移 006：建立 auth_events 表（分區月），稽核所有認證事件 (supabase/migrations/20251120000004_auth_events.sql)
+- [ ] T007 執行資料庫遷移 007：擴展現有 user_roles 表，添加 auth_provider、oauth_id、last_login 欄位 (supabase/migrations/20251120000005_extend_user_roles.sql)
+- [ ] T008 執行資料庫遷移 008：設定 RLS 政策用於 RBAC，基於 user_roles 角色的訪問規則 (supabase/migrations/20251120000006_setup_rls_policies.sql)
+- [ ] T009 執行資料庫遷移 009：建立認證表的效能索引 (user_id, email, created_at, event_type) (supabase/migrations/20251120000007_auth_indexes.sql)
+- [ ] T010 建立 rate_limit_attempts 表，追蹤魔法連結和登入嘗試 (supabase/migrations/20251120000008_rate_limiting.sql)
+- [ ] T011 在 Supabase 控制面板啟用 Google OAuth：設定 OAuth 金鑰、授權重定向 URI
+- [ ] T012 在 Supabase 控制面板啟用魔法連結：配置電子郵件範本、設定過期時間為 15 分鐘
+- [ ] T013 驗證所有遷移成功、表已建立、RLS 政策已啟用、OAuth 可用
 
 ---
 
