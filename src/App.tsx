@@ -5,8 +5,18 @@ import { LoginPage } from '@/pages/LoginPage'
 import { WeeklyReaderPage } from '@/pages/WeeklyReaderPage'
 import { ErrorPage } from '@/pages/ErrorPage'
 import { EditorPage } from '@/pages/EditorPage'
+import { UnauthorizedPage } from '@/pages/UnauthorizedPage'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { AdminRoute } from '@/components/admin/AdminRoute'
+import { AdminLayout } from '@/components/admin/AdminLayout'
+import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage'
+import { UserManagementPage } from '@/pages/admin/UserManagementPage'
+import { WeekManagementPage } from '@/pages/admin/WeekManagementPage'
+import { ArticleManagementPage } from '@/pages/admin/ArticleManagementPage'
+import { ClassManagementPage } from '@/pages/admin/ClassManagementPage'
+import { FamilyManagementPage } from '@/pages/admin/FamilyManagementPage'
+import { AuditLogPage } from '@/pages/admin/AuditLogPage'
 import '@/styles/globals.css'
 
 // Placeholder pages
@@ -74,6 +84,24 @@ export default function App() {
                   </ProtectedRoute>
                 }
               />
+              {/* Admin Routes */}
+              <Route
+                path="/admin"
+                element={
+                  <AdminRoute>
+                    <AdminLayout />
+                  </AdminRoute>
+                }
+              >
+                <Route index element={<AdminDashboardPage />} />
+                <Route path="users" element={<UserManagementPage />} />
+                <Route path="weeks" element={<WeekManagementPage />} />
+                <Route path="articles" element={<ArticleManagementPage />} />
+                <Route path="classes" element={<ClassManagementPage />} />
+                <Route path="families" element={<FamilyManagementPage />} />
+                <Route path="audit" element={<AuditLogPage />} />
+              </Route>
+              <Route path="/unauthorized" element={<UnauthorizedPage />} />
               <Route path="/error" element={<ErrorPage />} />
             </Routes>
           </Router>
