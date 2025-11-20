@@ -75,93 +75,91 @@ specs/[###-feature]/
 
 ### Source Code (repository root)
 
-此專案採用 **Web 應用架構**（前端 + 後端分離）。以下是認證功能的源碼組織：
+此專案採用 **React 前端 + Supabase 後端** 架構（無需自建 Node.js 伺服器）。以下是認證功能的源碼組織（適配現有結構）：
 
 ```text
-src/  (前端 - React)
+src/  (React 前端)
 ├── components/
 │   ├── LoginPage.tsx               # 登入頁面（Google OAuth + 魔法連結）
-│   ├── OAuthFlow.tsx               # Google OAuth 流程
+│   ├── OAuthFlow.tsx               # Google OAuth 流程元件
 │   ├── MagicLinkForm.tsx           # 魔法連結輸入表單
 │   ├── SessionManager.tsx          # 工作階段管理（使用者側）
 │   ├── AccountSettings.tsx         # 帳號設定（電子郵件變更、工作階段列表）
-│   └── auth/
-│       ├── ProtectedRoute.tsx      # RBAC 路由保護
-│       └── AuthProvider.tsx        # 認證上下文提供者
+│   ├── ProtectedRoute.tsx          # RBAC 路由保護
+│   └── AdminDashboard.tsx          # 管理員工作階段管理
 ├── context/
 │   ├── AuthContext.tsx             # 使用者認證狀態
-│   └── SessionContext.tsx          # 工作階段狀態
+│   └── SessionContext.tsx          # 工作階段同步狀態（Realtime）
 ├── services/
 │   ├── authService.ts             # 前端認證邏輯（OAuth、魔法連結）
 │   ├── supabaseClient.ts          # Supabase 客戶端配置
-│   └── tokenManager.ts            # JWT 權杖管理（存取 + 重新整理）
+│   ├── tokenManager.ts            # JWT 權杖管理（存取 + 重新整理）
+│   └── auditLogger.ts             # 前端稽核日誌提交
 ├── hooks/
 │   ├── useAuth.ts                 # 認證 hook
-│   └── useSession.ts              # 工作階段 hook
-└── types/
-    └── auth.ts                    # 認證相關類型定義
+│   ├── useSession.ts              # 工作階段 hook
+│   └── useSessionSync.ts          # 工作階段即時同步 hook（Realtime）
+├── lib/
+│   └── rbac.ts                    # RBAC 角色檢查工具
+├── types/
+│   └── auth.ts                    # 認證相關類型定義
+└── pages/
+    ├── LoginPage.tsx              # 登入頁面
+    └── AccountSettingsPage.tsx    # 帳號設定頁面
 
 tests/
 ├── components/
 │   ├── LoginPage.test.tsx         # 登入頁面測試
+│   ├── ProtectedRoute.test.tsx    # RBAC 路由測試
 │   └── SessionManager.test.tsx    # 工作階段管理測試
 ├── integration/
-│   ├── oauth-flow.test.ts         # OAuth 完整流程測試
-│   ├── magic-link-flow.test.ts    # 魔法連結流程測試
-│   └── rbac.test.ts               # RBAC 授權測試
+│   ├── auth-oauth-flow.test.ts    # OAuth 完整流程測試
+│   ├── auth-magic-link-flow.test.ts # 魔法連結流程測試
+│   ├── rbac-authorization.test.ts # RBAC 授權測試
+│   └── session-sync.test.ts       # 工作階段同步測試
 └── unit/
     ├── tokenManager.test.ts       # 權杖管理測試
-    └── authService.test.ts        # 認證服務單元測試
+    ├── authService.test.ts        # 認證服務單元測試
+    └── rbac.test.ts               # RBAC 角色檢查測試
 
-backend/  (後端 - 假設現有)
-├── src/
-│   ├── auth/
-│   │   ├── oauth.ts               # Google OAuth 驗證邏輯
-│   │   ├── magic-link.ts          # 魔法連結生成 + 驗證
-│   │   ├── token.ts               # JWT 簽發和驗證
-│   │   └── rbac.ts                # 角色型存取控制中間件
-│   ├── models/
-│   │   ├── User.ts
-│   │   ├── AuthMethod.ts
-│   │   ├── Session.ts
-│   │   ├── MagicLinkToken.ts
-│   │   ├── AuthEvent.ts           # 稽核日誌
-│   │   └── UserRole.ts
-│   ├── services/
-│   │   ├── authService.ts         # OAuth、魔法連結 + 帳號邏輯
-│   │   ├── sessionService.ts      # 工作階段管理
-│   │   ├── auditService.ts        # 稽核日誌
-│   │   ├── emailService.ts        # 魔法連結電子郵件發送
-│   │   └── rateLimit.ts           # 速率限制中間件
-│   ├── api/
-│   │   ├── auth.routes.ts         # 認證端點
-│   │   ├── session.routes.ts      # 工作階段端點
-│   │   ├── user.routes.ts         # 使用者帳號端點
-│   │   ├── admin.routes.ts        # 管理員工作階段管理端點
-│   │   └── audit.routes.ts        # 稽核日誌端點
-│   └── middleware/
-│       ├── auth.ts                # 認證中間件
-│       └── rbac.ts                # RBAC 授權中間件
-└── tests/
-    ├── oauth.test.ts
-    ├── magic-link.test.ts
-    ├── session-management.test.ts
-    ├── rbac.test.ts
-    └── audit-logging.test.ts
-
-database/
+supabase/  (Supabase 後端配置 - PostgreSQL + Deno 函數)
 ├── migrations/
-│   ├── 001_create_users.sql       # 使用者表
+│   ├── 001_create_users_profile.sql
 │   ├── 002_create_auth_methods.sql
 │   ├── 003_create_sessions.sql
 │   ├── 004_create_magic_link_tokens.sql
-│   ├── 005_create_auth_events.sql # 稽核日誌表
-│   └── 006_create_user_roles.sql
-└── seeds/
-    └── initial-roles.sql          # 4 個角色初始化
+│   ├── 005_create_auth_events.sql     # 稽核日誌表（分區）
+│   ├── 006_create_user_roles.sql
+│   ├── 007_setup_rls_policies.sql     # RLS 政策（RBAC 實施）
+│   └── 008_create_auth_indexes.sql    # 效能索引
+├── functions/
+│   ├── auth-handlers/
+│   │   ├── magic-link-send.ts         # Magic Link 生成和電子郵件發送
+│   │   ├── magic-link-verify.ts       # Magic Link 驗證和使用者建立
+│   │   └── oauth-callback.ts          # OAuth 回調處理
+│   ├── session-handlers/
+│   │   ├── create-session.ts          # 工作階段建立
+│   │   ├── validate-session.ts        # 工作階段驗證
+│   │   └── invalidate-session.ts      # 工作階段無效化（登出/郵件變更）
+│   ├── admin-handlers/
+│   │   ├── force-logout.ts            # 管理員強制登出（所有工作階段）
+│   │   └── get-user-sessions.ts       # 取得使用者所有工作階段
+│   └── utility/
+│       ├── rate-limiter.ts            # 速率限制檢查（email、IP）
+│       └── audit-logger.ts            # 稽核日誌記錄
+└── seed.sql                          # 初始角色：Admin, Class_Teacher, Parent, Student
 ```
 
-**架構決策**: 採用 **Web 應用架構**（React 前端 + Node.js 後端），使用 Supabase 作為認證和資料庫整合層。前端負責 OAuth 流程和魔法連結驗證 UI，後端負責權杖簽發、工作階段管理和稽核日誌。認證中間件強制執行 RBAC 和速率限制。
+**架構決策**:
+- **前端**: React 18 + TypeScript 負責 UI、OAuth 流程、魔法連結驗證、工作階段管理
+- **後端**: Supabase 提供：
+  - 原生認證（Google OAuth、Magic Links）
+  - PostgreSQL 資料庫（RLS 政策用於 RBAC）
+  - Deno 邊界函數（認證邏輯、工作階段管理、稽核日誌）
+  - 實時 WebSocket（多裝置工作階段同步）
+  - 內建電子郵件服務（Magic Link 傳遞）
+  - Upstash Redis（透過邊界函數整合，用於速率限制）
+- **優勢**: 無需自建後端，降低複雜度，Supabase 管理基礎設施和安全
 
 ## Complexity Tracking
 
