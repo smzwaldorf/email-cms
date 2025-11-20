@@ -465,8 +465,11 @@ async function checkRateLimit(limitType: string, identifier: string, limit: numb
 
 **Implementation Effort**: ~3-4 weeks for full production-ready system
 **Ongoing Maintenance**: ~2-4 hours/month
-**Cost (1,000 users)**: $0/month (all free tiers)
-**Cost (10,000 users)**: ~$25/month (Supabase Pro only - no external services needed)
+**Cost (Self-Hosted on Zeabur)**:
+- Infrastructure: ~$10-20/month (Zeabur hosting for PostgreSQL + Edge Functions)
+- External Services: $0/month (no Redis, no external APIs for MVP)
+- Email Service: $0/month (Supabase native or Mailgun free tier)
+- Total Cost: ~$10-20/month for full system
 
 ---
 

@@ -152,14 +152,14 @@ supabase/  (Supabase 後端配置 - PostgreSQL + Deno 函數)
 
 **架構決策**:
 - **前端**: React 18 + TypeScript 負責 UI、OAuth 流程、魔法連結驗證、工作階段管理
-- **後端**: Supabase 提供：
+- **後端**: Supabase 自主託管於 Zeabur 提供：
   - 原生認證（Google OAuth、Magic Links）
   - PostgreSQL 資料庫（RLS 政策用於 RBAC）
   - Deno 邊界函數（認證邏輯、工作階段管理、稽核日誌）
   - 實時 WebSocket（多裝置工作階段同步）
   - 內建電子郵件服務（Magic Link 傳遞）
-  - Upstash Redis（透過邊界函數整合，用於速率限制）
-- **優勢**: 無需自建後端，降低複雜度，Supabase 管理基礎設施和安全
+  - PostgreSQL 型速率限制（無需外部服務）
+- **優勢**: 自主託管保留完整控制權，簡化架構，無外部服務依賴
 
 ## Complexity Tracking
 
