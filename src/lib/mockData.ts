@@ -177,9 +177,11 @@ export function generateMockStats(): MockDashboardStats {
 export interface MockActivity {
   id: string;
   timestamp: string;
+  userName: string;
   userEmail: string;
   action: string;
   description: string;
+  metadata?: Record<string, string | number>;
 }
 
 export function generateMockActivity(count: number = 10): MockActivity[] {
@@ -188,14 +190,21 @@ export function generateMockActivity(count: number = 10): MockActivity[] {
   const users = generateMockUsers(10);
   const articles = generateMockArticles(20);
 
+  const names = [
+    'Zhang Wei', 'Wang Fang', 'Li Ming', 'Liu Yang', 'Chen Jing',
+    'Zhou Xin', 'Wu Lei', 'Xu Hui', 'Sun Tao', 'Ma Lin',
+  ];
+
   for (let i = 0; i < count; i++) {
     const user = users[Math.floor(Math.random() * users.length)];
     const article = articles[Math.floor(Math.random() * articles.length)];
     const action = actions[Math.floor(Math.random() * actions.length)];
+    const userName = names[Math.floor(Math.random() * names.length)];
 
     activities.push({
       id: `activity-${i + 1}`,
       timestamp: new Date(Date.now() - i * 15 * 60 * 1000).toISOString(),
+      userName,
       userEmail: user.email,
       action,
       description: `${action.charAt(0).toUpperCase() + action.slice(1)} article "${article.title}"`,
