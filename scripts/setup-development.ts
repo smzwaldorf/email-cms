@@ -37,6 +37,11 @@
  *   - Role: admin
  *   - Articles visible: All 6 articles
  *   - Can edit: All articles
+ *
+ * harryworld@gmail.com (Google Sign In):
+ *   - Password: harrypassword123
+ *   - Family: FAMILY001 (Same as parent1)
+ *   - Articles visible: 4 (Same as parent1)
  * ──────────────────────────────────────────────────────────────
  */
 
@@ -313,6 +318,13 @@ const testUsers = [
     password: 'admin123456',
     role: 'admin',
   },
+  {
+    email: 'harryworld@gmail.com',
+    password: 'harrypassword123',
+    role: 'parent',
+    familyId: 'f1111111-1111-1111-1111-111111111111', // FAMILY001
+    childrenClasses: ['A1', 'B1'], // Grade 1A, Grade 2A
+  },
 ]
 
 // ============================================================================
@@ -525,7 +537,8 @@ async function setupDevelopment() {
     console.log('  parent1@example.com → 4 articles (2 public + 2 class-restricted)')
     console.log('  parent2@example.com → 3 articles (2 public + 1 class-restricted)')
     console.log('  teacher@example.com → Can edit A1 class-restricted article (can view all 6)')
-    console.log('  admin@example.com → All 6 articles (can edit all)\n')
+    console.log('  admin@example.com → All 6 articles (can edit all)')
+    console.log('  harryworld@gmail.com → 4 articles (Same as parent1)\n')
   } catch (err) {
     console.error('❌ Fatal error during setup:', (err as any).message)
     process.exit(1)
