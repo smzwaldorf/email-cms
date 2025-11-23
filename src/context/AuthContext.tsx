@@ -13,6 +13,9 @@ export interface AuthContextType {
   isAuthenticated: boolean
   isLoading: boolean
   signIn: (email: string, password: string) => Promise<boolean>
+  signInWithGoogle: () => Promise<void>
+  sendMagicLink: (email: string) => Promise<boolean>
+  verifyMagicLink: (token: string) => Promise<boolean>
   signOut: () => Promise<void>
 }
 
@@ -92,14 +95,51 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }
 
+  const signInWithGoogle = async (): Promise<void> => {
+    try {
+      setIsLoading(true)
+      await authService.signInWithGoogle()
+      // OAuth redirects, so we don't need to do anything here
+    } catch (err) {
+      console.error('Google sign in error:', err)
+      setIsLoading(false)
+    }
+  }
+
+  const sendMagicLink = async (email: string): Promise<boolean> => {
+    try {
+      setIsLoading(true)
+      const success = await authService.sendMagicLink(email)
+      return success
+    } catch (err) {
+      console.error('Send magic link error:', err)
+      return false
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const verifyMagicLink = async (token: string): Promise<boolean> => {
+    try {
+      setIsLoading(true)
+      const loggedInUser = await authService.verifyMagicLink(token)
+      return loggedInUser !== null
+    } catch (err) {
+      console.error('Verify magic link error:', err)
+      return false
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const signOut = async (): Promise<void> => {
     try {
       console.log('🔓 Starting sign out process...')
-      
+
       // Clear any pending redirect cache
       localStorage.removeItem('pending_short_id')
       localStorage.removeItem('pending_week_number')
-      
+
       await authService.signOut()
       console.log('🔓 AuthService.signOut() complete, setting isLoading to false')
       setIsLoading(false)
@@ -114,6 +154,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isAuthenticated: user !== null,
     isLoading,
     signIn,
+    signInWithGoogle,
+    sendMagicLink,
+    verifyMagicLink,
     signOut,
   }
 
