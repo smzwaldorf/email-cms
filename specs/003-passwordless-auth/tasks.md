@@ -84,7 +84,7 @@
 - [x] T016 建立 src/context/AuthContext.tsx：提供 user、isLoading、signIn、signOut、signUp 上下文狀態
 - [x] T017 建立 src/context/SessionContext.tsx：提供 activeSessions、sessionSyncStatus 用於多裝置同步
 - [x] T018 [P] 建立 src/services/supabaseClient.ts：再導出配置的 Supabase 客戶端和 auth 方法
-- [ ] T019 [P] 建立 src/services/tokenManager.ts：管理存取權杖存儲（記憶體）、刷新權杖（HttpOnly cookie）、自動刷新邏輯
+- [x] T019 [P] 建立 src/services/tokenManager.ts：管理存取權杖存儲（記憶體）、刷新權杖（HttpOnly cookie）、自動刷新邏輯
 - [x] T020 建立 src/hooks/useAuth.ts：hook 用於獲取當前使用者、登入、登出、註冊操作
 - [x] T021 建立 src/hooks/useSession.ts：hook 用於獲取當前工作階段資訊、多裝置工作階段列表
 - [x] T022 建立 src/lib/rbac.ts：角色檢查函數 (hasRole, canAccess, requiresAdmin, requiresTeacher)
