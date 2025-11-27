@@ -569,6 +569,7 @@ function generateMockArticles(
 ): ArticleRow[] {
   return Array.from({ length: count }, (_, i) => ({
     id: `article-${i}`,
+    short_id: `a${String(i + 1).padStart(3, '0')}`,
     week_number: '2025-W47',
     title: `Article ${i + 1}`,
     content: `# Article ${i + 1}\n\nContent for article ${i + 1}`,

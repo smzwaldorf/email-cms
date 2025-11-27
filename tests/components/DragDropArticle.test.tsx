@@ -15,6 +15,7 @@ describe('DragDropArticle', () => {
 
   const mockArticle: Article = {
     id: 'article-001',
+    shortId: 'a001',
     title: 'Draggable Article',
     content: 'Content for dragging test',
     author: 'Test Author',

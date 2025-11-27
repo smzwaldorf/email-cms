@@ -1,10 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, waitFor } from '@testing-library/react'
 import { WeeklyReaderPage } from './WeeklyReaderPage'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import * as useFetchWeeklyHook from '@/hooks/useFetchWeekly'
 import * as useFetchArticleHook from '@/hooks/useFetchArticle'
-import * as NavigationContextHook from '@/context/NavigationContext'
 
 // Mock child components to avoid rendering issues
 vi.mock('@/components/ArticleListView', () => ({ ArticleListView: () => <div data-testid="article-list">Article List</div> }))

@@ -4,10 +4,9 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
+import { render, screen, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ArticleEditor } from '@/components/ArticleEditor'
-import { AuthProvider } from '@/context/AuthContext'
 import type { Article } from '@/types'
 
 // Mock the permission services
@@ -59,6 +58,7 @@ vi.mock('@/context/AuthContext', async () => {
 describe('ArticleEditor Component', () => {
   const mockArticle: Article = {
     id: 'test-1',
+    shortId: 'a001',
     title: 'Test Article',
     content: '# Test Content',
     author: 'Test Author',

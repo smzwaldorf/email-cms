@@ -5,11 +5,9 @@
  */
 
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 
 export const UserMenu: React.FC = () => {
-  const navigate = useNavigate()
   const { user, signOut, isLoading } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
 

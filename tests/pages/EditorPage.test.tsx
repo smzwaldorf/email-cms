@@ -31,6 +31,7 @@ describe('EditorPage', () => {
   const mockArticles = [
     {
       id: 'article-001',
+      shortId: 'a001',
       title: 'Article 1',
       content: 'Content 1',
       author: 'Author 1',

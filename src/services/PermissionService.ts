@@ -8,7 +8,7 @@
  * - PARENT/STUDENT: Read-only (cannot edit/delete)
  */
 
-import { getSupabaseClient, table } from '@/lib/supabase'
+import { table } from '@/lib/supabase'
 import type { ArticleRow, UserRoleRow, TeacherClassAssignmentRow } from '@/types/database'
 
 /**
@@ -119,10 +119,10 @@ export class PermissionService {
   /**
    * Check if user can delete an article
    * @param userId User ID
-   * @param article Article to check
+   * @param _article Article to check (unused - only admin can delete)
    * @returns true if user can delete, false otherwise
    */
-  static async canDeleteArticle(userId: string, article: ArticleRow): Promise<boolean> {
+  static async canDeleteArticle(userId: string, _article: ArticleRow): Promise<boolean> {
     try {
       // Only admin can delete articles
       const role = await this.getUserRole(userId)

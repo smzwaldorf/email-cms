@@ -5,9 +5,6 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import ArticleService from '@/services/ArticleService'
-import WeekService from '@/services/WeekService'
-import { getPublishedArticlesByWeek } from '@/services/queries/articleQueries'
 import type { ArticleRow, NewsletterWeekRow } from '@/types/database'
 
 // Mock database
@@ -41,6 +38,7 @@ describe('Visitor Views Articles - User Story 2', () => {
   const publishedArticles: ArticleRow[] = [
     {
       id: 'article-1',
+      short_id: 'a001',
       week_number: '2025-W48',
       title: 'Weekly Announcements',
       content: '# Important Updates\n\nPlease note the following changes...',
@@ -56,6 +54,7 @@ describe('Visitor Views Articles - User Story 2', () => {
     },
     {
       id: 'article-2',
+      short_id: 'a002',
       week_number: '2025-W48',
       title: 'Academic Calendar',
       content: '# 2025-2026 Academic Calendar\n\nHoliday schedule included...',
@@ -71,6 +70,7 @@ describe('Visitor Views Articles - User Story 2', () => {
     },
     {
       id: 'article-3',
+      short_id: 'a003',
       week_number: '2025-W48',
       title: 'Grade 1 Class News',
       content: '# 一年級班級大小事\n\n這週的學習進度...',
@@ -88,6 +88,7 @@ describe('Visitor Views Articles - User Story 2', () => {
 
   const unpublishedArticle: ArticleRow = {
     id: 'article-draft',
+    short_id: 'a004',
     week_number: '2025-W48',
     title: 'Draft Article',
     content: '# Still Drafting...',

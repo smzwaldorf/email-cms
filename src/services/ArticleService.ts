@@ -6,8 +6,8 @@
  * Performance Target (SC-001): <500ms for 100 articles
  */
 
-import { getSupabaseClient, table } from '@/lib/supabase'
-import type { ArticleRow, NewsletterWeekRow, AuditLogMetadata } from '@/types/database'
+import { table } from '@/lib/supabase'
+import type { ArticleRow } from '@/types/database'
 import PermissionService, { PermissionError } from './PermissionService'
 
 /**

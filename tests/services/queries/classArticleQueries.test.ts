@@ -5,11 +5,6 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import {
-  getArticlesForFamily,
-  getArticlesForClass,
-  countArticlesForFamily,
-} from '@/services/queries/classArticleQueries'
 import type { ArticleRow, ClassRow } from '@/types/database'
 
 // Mock Supabase
@@ -21,6 +16,7 @@ vi.mock('@/lib/supabase', () => ({
 describe('Class-Aware Article Queries', () => {
   const mockPublicArticle: ArticleRow = {
     id: 'article-public-1',
+    short_id: 'a001',
     week_number: '2025-W47',
     title: 'Public Article',
     content: '# Public Content',
@@ -38,6 +34,7 @@ describe('Class-Aware Article Queries', () => {
   const mockClassArticleA1: ArticleRow = {
     ...mockPublicArticle,
     id: 'article-class-a1',
+    short_id: 'a002',
     title: 'Class A1 Article',
     visibility_type: 'class_restricted',
     restricted_to_classes: ['A1'],
@@ -47,6 +44,7 @@ describe('Class-Aware Article Queries', () => {
   const mockClassArticleB1: ArticleRow = {
     ...mockPublicArticle,
     id: 'article-class-b1',
+    short_id: 'a003',
     title: 'Class B1 Article',
     visibility_type: 'class_restricted',
     restricted_to_classes: ['B1'],
@@ -56,6 +54,7 @@ describe('Class-Aware Article Queries', () => {
   const mockMultiClassArticle: ArticleRow = {
     ...mockPublicArticle,
     id: 'article-multi-class',
+    short_id: 'a004',
     title: 'A1 and B1 Article',
     visibility_type: 'class_restricted',
     restricted_to_classes: ['A1', 'B1'],

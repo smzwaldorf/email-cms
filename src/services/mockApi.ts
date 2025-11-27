@@ -9,6 +9,7 @@ import { NewsletterWeek, Article } from '@/types'
 const mockArticles: Record<string, Article> = {
   'article-001': {
     id: 'article-001',
+    shortId: 'a001',
     title: '如何優化 React 應用的效能',
     content: `# 如何優化 React 應用的效能
 
@@ -48,6 +49,7 @@ const MyComponent = React.memo(({ data }) => {
   },
   'article-002': {
     id: 'article-002',
+    shortId: 'a002',
     title: 'TypeScript 中的高級型別技巧',
     content: `# TypeScript 中的高級型別技巧
 
@@ -79,6 +81,7 @@ TypeScript 提供了許多內置的工具型別，如 Partial、Pick、Omit 等�
   },
   'article-003': {
     id: 'article-003',
+    shortId: 'a003',
     title: 'Web 安全基礎知識',
     content: `# Web 安全基礎知識
 

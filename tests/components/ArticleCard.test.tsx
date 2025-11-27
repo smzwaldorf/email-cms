@@ -11,6 +11,7 @@ import { Article } from '@/types'
 describe('ArticleCard', () => {
   const mockArticle: Article = {
     id: 'article-001',
+    shortId: 'a001',
     title: '測試文章標題',
     content: '測試內容',
     author: '作者名稱',

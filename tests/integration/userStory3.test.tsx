@@ -37,6 +37,7 @@ const renderWithRouter = (component: React.ReactElement) => {
 function createMockArticle(id: string, order: number): Article {
   return {
     id,
+    shortId: `a${String(order).padStart(3, '0')}`,
     title: `Article ${order}`,
     content: `# Content for article ${order}`,
     author: `Author ${order}`,

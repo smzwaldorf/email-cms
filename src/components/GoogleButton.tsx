@@ -8,11 +8,10 @@ import React from 'react'
 import { useAuth } from '@/context/AuthContext'
 
 interface GoogleButtonProps {
-  onSuccess: () => void
   disabled?: boolean
 }
 
-export const GoogleButton: React.FC<GoogleButtonProps> = ({ onSuccess, disabled = false }) => {
+export const GoogleButton: React.FC<GoogleButtonProps> = ({ disabled = false }) => {
   const { signInWithGoogle } = useAuth()
   const [isLoading, setIsLoading] = React.useState(false)
 

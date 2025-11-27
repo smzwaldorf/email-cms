@@ -9,7 +9,7 @@
  * 4. Multiple users → Concurrent sessions
  */
 
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { createClient } from '@supabase/supabase-js'
 
 describe('E2E: Authentication Flow with Session Persistence', () => {

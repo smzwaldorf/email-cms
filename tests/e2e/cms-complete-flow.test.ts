@@ -13,17 +13,15 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import type { ArticleRow, NewsletterWeekRow, ClassRow, FamilyRow } from '@/types/database'
+import type { NewsletterWeekRow, ClassRow, FamilyRow } from '@/types/database'
 import { ArticleService } from '@/services/ArticleService'
 import { WeekService } from '@/services/WeekService'
-import { ClassService } from '@/services/ClassService'
 import { FamilyService } from '@/services/FamilyService'
 import { getArticlesForFamily } from '@/services/queries/classArticleQueries'
 
 // Mock services
 vi.mock('@/services/ArticleService')
 vi.mock('@/services/WeekService')
-vi.mock('@/services/ClassService')
 vi.mock('@/services/FamilyService')
 vi.mock('@/services/queries/classArticleQueries')
 
@@ -64,6 +62,7 @@ describe('E2E: Complete CMS Workflow', () => {
   const mockArticles = {
     public: {
       id: 'article-1',
+      short_id: 'a001',
       week_number: '2025-W47',
       title: 'School-Wide Announcement',
       content: '# School Announcement\n\nPlease note...',
@@ -79,6 +78,7 @@ describe('E2E: Complete CMS Workflow', () => {
     },
     classA1: {
       id: 'article-2',
+      short_id: 'a002',
       week_number: '2025-W47',
       title: 'Grade 1A Updates',
       content: '# Grade 1A\n\nThis week...',
@@ -94,6 +94,7 @@ describe('E2E: Complete CMS Workflow', () => {
     },
     classB1: {
       id: 'article-3',
+      short_id: 'a003',
       week_number: '2025-W47',
       title: 'Grade 2B Updates',
       content: '# Grade 2B\n\nThis week...',
@@ -109,6 +110,7 @@ describe('E2E: Complete CMS Workflow', () => {
     },
     classB2: {
       id: 'article-4',
+      short_id: 'a004',
       week_number: '2025-W47',
       title: 'Grade 2A Updates',
       content: '# Grade 2A\n\nThis week...',
@@ -199,6 +201,7 @@ describe('E2E: Complete CMS Workflow', () => {
       const editor1Article = {
         ...mockArticles.public,
         id: 'article-concurrent-1',
+        short_id: 'a005',
         author: 'teacher-001',
         article_order: 1,
       }
@@ -206,6 +209,7 @@ describe('E2E: Complete CMS Workflow', () => {
       const editor2Article = {
         ...mockArticles.classA1,
         id: 'article-concurrent-2',
+        short_id: 'a006',
         author: 'teacher-002',
         article_order: 2,
         visibility_type: 'class_restricted' as const,
@@ -478,6 +482,7 @@ describe('E2E: Complete CMS Workflow', () => {
       const manyArticles = Array.from({ length: 100 }, (_, i) => ({
         ...mockArticles.public,
         id: `article-${i}`,
+        short_id: `a${String(i + 1).padStart(3, '0')}`,
         article_order: i + 1,
         title: `Article ${i + 1}`,
       }))
@@ -497,6 +502,7 @@ describe('E2E: Complete CMS Workflow', () => {
       const largeWeekArticles = Array.from({ length: 100 }, (_, i) => ({
         ...mockArticles.public,
         id: `article-${i}`,
+        short_id: `a${String(i + 1).padStart(3, '0')}`,
         article_order: i + 1,
         title: `Article ${i + 1}`,
         visibility_type: i % 3 === 0 ? ('class_restricted' as const) : ('public' as const),

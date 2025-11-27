@@ -102,11 +102,6 @@ export const LoginPage: React.FC = () => {
     }
   }
 
-  const handleGoogleSuccess = () => {
-    console.log('✅ Google sign in successful, redirecting to latest week...')
-    redirectToLatestWeek()
-  }
-
   const handleMagicLinkSuccess = () => {
     setError('')
     setEmail('')
@@ -124,7 +119,7 @@ export const LoginPage: React.FC = () => {
 
         {/* Google Sign-in */}
         <div className="mb-6">
-          <GoogleButton onSuccess={handleGoogleSuccess} disabled={isLoading} />
+          <GoogleButton disabled={isLoading} />
         </div>
 
         {/* Divider */}

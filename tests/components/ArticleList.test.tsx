@@ -28,6 +28,7 @@ const renderWithRouter = (component: React.ReactElement) => {
 const mockArticles: Article[] = [
   {
     id: 'article-001',
+    shortId: 'a001',
     title: 'React Performance Optimization',
     content: '# React Performance...',
     author: 'Alice',
@@ -42,6 +43,7 @@ const mockArticles: Article[] = [
   },
   {
     id: 'article-002',
+    shortId: 'a002',
     title: 'TypeScript Advanced Types',
     content: '# TypeScript Types...',
     author: 'Bob',
@@ -56,6 +58,7 @@ const mockArticles: Article[] = [
   },
   {
     id: 'article-003',
+    shortId: 'a003',
     title: 'Web Security Basics',
     content: '# Security...',
     author: 'Charlie',

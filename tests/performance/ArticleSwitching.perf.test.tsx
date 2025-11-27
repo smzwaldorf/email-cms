@@ -28,6 +28,7 @@ const renderWithRouter = (component: React.ReactElement) => {
 function generateMockArticles(count: number): Article[] {
   return Array.from({ length: count }, (_, i) => ({
     id: `article-${i}`,
+    shortId: `a${String(i + 1).padStart(3, '0')}`,
     title: `Article ${i + 1}`,
     content: `# Content ${i + 1}`,
     author: `Author ${i + 1}`,

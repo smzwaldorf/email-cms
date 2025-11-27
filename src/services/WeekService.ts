@@ -3,7 +3,7 @@
  * Handles newsletter week operations (CRUD, publishing)
  */
 
-import { getSupabaseClient, table } from '@/lib/supabase'
+import { table } from '@/lib/supabase'
 import type { NewsletterWeekRow } from '@/types/database'
 
 /**

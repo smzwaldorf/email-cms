@@ -17,6 +17,7 @@ import type { ArticleRow } from '@/types/database'
 function generateTestArticles(count: number): ArticleRow[] {
   return Array.from({ length: count }, (_, i) => ({
     id: `article-${i}`,
+    short_id: `a${String(i + 1).padStart(3, '0')}`,
     week_number: '2025-W48',
     title: `Article ${i + 1}: ${generateRealisticTitle()}`,
     content: generateRealisticContent(500 + Math.random() * 1500), // 500-2000 chars

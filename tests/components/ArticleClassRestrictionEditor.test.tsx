@@ -7,7 +7,6 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import type { ArticleRow, ClassRow } from '@/types/database'
 import { ArticleClassRestrictionEditor } from '@/components/ArticleClassRestrictionEditor'
 
@@ -28,6 +27,7 @@ vi.mock('@/services/ClassService', () => ({
 describe('ArticleClassRestrictionEditor Component', () => {
   const mockArticle: ArticleRow = {
     id: 'article-1',
+    short_id: 'a001',
     week_number: '2025-W47',
     title: 'Test Article',
     content: '# Test Content',
@@ -392,7 +392,6 @@ describe('ArticleClassRestrictionEditor Component', () => {
 
     it('should handle save with service available', async () => {
       const { ClassService } = await import('@/services/ClassService')
-      const { ArticleService } = await import('@/services/ArticleService')
 
       vi.mocked(ClassService.getAllClasses).mockResolvedValue(mockClasses)
 

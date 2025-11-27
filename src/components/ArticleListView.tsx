@@ -7,7 +7,6 @@ import { memo, useCallback } from 'react'
 import { Article } from '@/types'
 import { ArticleCard } from './ArticleCard'
 import { WeekSelector } from './WeekSelector'
-import { formatWeekNumber } from '@/utils/formatters'
 
 interface ArticleListViewProps {
   weekNumber: string
@@ -18,7 +17,6 @@ interface ArticleListViewProps {
 }
 
 export const ArticleListView = memo(function ArticleListView({
-  weekNumber,
   articles,
   selectedArticleId,
   onSelectArticle,

@@ -6,6 +6,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { authService } from '@/services/authService'
+import { tokenManager } from '@/services/tokenManager'
 import type { AuthUser } from '@/services/authService'
 
 export interface AuthContextType {
@@ -36,6 +37,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const initializeAuth = async () => {
       try {
         console.log('🔄 AuthContext: Initializing auth state...')
+
+        // Initialize tokenManager with existing session (if any)
+        await tokenManager.initializeFromSession()
+        console.log('🔄 AuthContext: TokenManager initialization complete')
 
         // Ensure authService is initialized first
         // This will check for existing Supabase session and set up listeners
@@ -139,6 +144,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Clear any pending redirect cache
       localStorage.removeItem('pending_short_id')
       localStorage.removeItem('pending_week_number')
+
+      // Clean up token manager (stops auto-refresh and clears tokens)
+      tokenManager.onLogout()
+      console.log('🔓 TokenManager cleanup complete')
 
       await authService.signOut()
       console.log('🔓 AuthService.signOut() complete, setting isLoading to false')

@@ -36,6 +36,7 @@ describe('Class-Based Article Filtering (US3)', () => {
   // Mock articles
   const mockPublicArticle: ArticleRow = {
     id: 'public-1',
+    short_id: 'a001',
     week_number: mockWeekNumber,
     title: 'Public Article',
     content: '# Public Content',
@@ -53,6 +54,7 @@ describe('Class-Based Article Filtering (US3)', () => {
   const mockClassA1Article: ArticleRow = {
     ...mockPublicArticle,
     id: 'class-a1-1',
+    short_id: 'a002',
     title: 'Grade 1 News',
     visibility_type: 'class_restricted',
     restricted_to_classes: ['A1'],
@@ -62,6 +64,7 @@ describe('Class-Based Article Filtering (US3)', () => {
   const mockClassB1Article: ArticleRow = {
     ...mockPublicArticle,
     id: 'class-b1-1',
+    short_id: 'a003',
     title: 'Grade 2 News',
     visibility_type: 'class_restricted',
     restricted_to_classes: ['B1'],

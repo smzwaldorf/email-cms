@@ -13,9 +13,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import type { ArticleRow, NewsletterWeekRow, ClassRow, FamilyRow } from '@/types/database'
+import type { ArticleRow, ClassRow } from '@/types/database'
 import { ArticleService } from '@/services/ArticleService'
-import { WeekService } from '@/services/WeekService'
 import { ClassService } from '@/services/ClassService'
 
 // Mock services
@@ -27,6 +26,7 @@ describe('Data Integrity & Schema Validation', () => {
   // Mock data
   const mockArticle: ArticleRow = {
     id: 'article-1',
+    short_id: 'a001',
     week_number: '2025-W47',
     title: 'Test Article',
     content: '# Test\n\nContent',
@@ -38,17 +38,6 @@ describe('Data Integrity & Schema Validation', () => {
     created_by: 'teacher-001',
     created_at: '2025-11-17T10:00:00Z',
     updated_at: '2025-11-17T10:00:00Z',
-    deleted_at: null,
-  }
-
-  const mockWeek: NewsletterWeekRow = {
-    id: 'week-w47-2025',
-    week_number: '2025-W47',
-    week_start_date: '2025-11-17',
-    week_end_date: '2025-11-23',
-    is_published: false,
-    created_at: '2025-11-17T08:00:00Z',
-    updated_at: '2025-11-17T08:00:00Z',
     deleted_at: null,
   }
 
@@ -438,7 +427,7 @@ describe('Data Integrity & Schema Validation', () => {
         .mockResolvedValueOnce(article1)
         .mockResolvedValueOnce(article2)
 
-      const [result1, result2] = await Promise.all([
+      await Promise.all([
         ArticleService.updateArticle('article-1', { title: 'Title from User A' }),
         ArticleService.updateArticle('article-1', { title: 'Title from User B' }),
       ])
@@ -477,7 +466,7 @@ describe('Data Integrity & Schema Validation', () => {
           restricted_to_classes: ['A1', 'B1'],
         })
 
-      const [result1, result2] = await Promise.all([
+      await Promise.all([
         ArticleService.setArticleClassRestriction('article-1', ['A1']),
         ArticleService.setArticleClassRestriction('article-1', ['A1', 'B1']),
       ])
@@ -599,8 +588,6 @@ describe('Data Integrity & Schema Validation', () => {
 
     it('should handle class_grade_year boundary values', async () => {
       // Grade year should support reasonable values (1-12 or similar)
-      const validGrades = [1, 6, 12, 20] // Including reasonable max values
-
       vi.mocked(ClassService.getClassesByGradeYear).mockResolvedValue([
         {
           ...mockClass,
