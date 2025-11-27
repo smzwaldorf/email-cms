@@ -12,6 +12,7 @@
 import { table } from '@/lib/supabase'
 import type { ArticleRow } from '@/types/database'
 import { ArticleServiceError } from './ArticleService'
+import PermissionService, { PermissionError } from './PermissionService'
 
 /**
  * Update article content DTO - for US4 content updates
@@ -41,6 +42,7 @@ export class ArticleUpdateService {
    * Update article content (title and content only)
    * This is the primary US4 operation
    *
+   * @param userId User ID (from Supabase auth) - used for permission check
    * @param id Article ID
    * @param title New title
    * @param content New content
@@ -50,8 +52,12 @@ export class ArticleUpdateService {
    * - updated_at is auto-updated via trigger
    * - created_at is preserved
    * - audit_article_changes trigger records the update
+   *
+   * @throws PermissionError if user doesn't have edit permission
+   * @throws ArticleServiceError on other errors
    */
   static async updateArticleContent(
+    userId: string,
     id: string,
     title: string,
     content: string,
@@ -71,6 +77,9 @@ export class ArticleUpdateService {
           fetchError instanceof Error ? fetchError : undefined,
         )
       }
+
+      // Check permission - throws if not allowed
+      await PermissionService.assertCanEditArticle(userId, existingArticle)
 
       // Perform update - trigger will auto-update updated_at
       const { data, error } = await table('articles')
@@ -102,6 +111,7 @@ export class ArticleUpdateService {
       return data
     } catch (err) {
       if (err instanceof ArticleServiceError) throw err
+      if (err instanceof PermissionError) throw err
       throw new ArticleServiceError(
         `Unexpected error updating article content: ${err instanceof Error ? err.message : String(err)}`,
         'UPDATE_ARTICLE_ERROR',
@@ -114,11 +124,16 @@ export class ArticleUpdateService {
    * Update article with full metadata
    * Includes title, content, author, visibility settings
    *
+   * @param userId User ID (from Supabase auth) - used for permission check
    * @param id Article ID
    * @param updates Fields to update
    * @returns Updated article
+   *
+   * @throws PermissionError if user doesn't have edit permission
+   * @throws ArticleServiceError on other errors
    */
   static async updateArticle(
+    userId: string,
     id: string,
     updates: Partial<UpdateArticleContentDTO> & {
       author?: string
@@ -141,6 +156,9 @@ export class ArticleUpdateService {
           fetchError instanceof Error ? fetchError : undefined,
         )
       }
+
+      // Check permission - throws if not allowed
+      await PermissionService.assertCanEditArticle(userId, existingArticle)
 
       // Build update object
       const updateData: Record<string, unknown> = {}
@@ -197,6 +215,7 @@ export class ArticleUpdateService {
       return data
     } catch (err) {
       if (err instanceof ArticleServiceError) throw err
+      if (err instanceof PermissionError) throw err
       throw new ArticleServiceError(
         `Unexpected error updating article: ${err instanceof Error ? err.message : String(err)}`,
         'UPDATE_ARTICLE_ERROR',

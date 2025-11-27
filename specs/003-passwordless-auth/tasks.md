@@ -5,11 +5,12 @@
 ## 📋 任務概覽
 
 **總任務數**: 52 個任務
-**完成**: 43 個任務（82.7%）- 簡化後，無需複雜的自定義表
+**完成**: 47 個任務（90.4%）- 簡化後，無需複雜的自定義表
   - Phase 1: 13/13 完成 ✅（認證基礎設施）
   - Phase 2: 10/10 完成 ✅（前端基礎架構）
   - Phase 3: 10/10 完成 ✅（Google OAuth）
   - Phase 4: 10/10 完成 ✅（魔法連結 - 簡化版本）
+  - Phase 5 (RBAC): 4/6 完成 ✅（ProtectedRoute、RLS 政策、rbac-checker、App.tsx 路由包裝）
 **P1 優先級**: 39 個任務（核心功能）
 **P2 優先級**: 13 個任務（增強功能）
 **平行機會**: 30 個任務可並行執行
@@ -21,8 +22,8 @@
 | # | 故事 | 優先級 | 狀態 | 任務數 | 完成 |
 |---|------|--------|------|--------|------|
 | US1 | Google OAuth 登入 | P1 | ✅ Complete | 10 | 10/10 |
-| US2 | 魔法連結認證 | P1 | 🔄 In Progress | 10 | 6/10 |
-| US3 | RBAC 角色存取 | P1 | ⏳ Not Started | 6 | 0/6 |
+| US2 | 魔法連結認證 | P1 | ✅ Complete | 10 | 10/10 |
+| US3 | RBAC 角色存取 | P1 | 🔄 In Progress | 6 | 3/6 |
 | US4 | 工作階段管理 | P1 | ⏳ Not Started | 8 | 0/8 |
 | US5 | 帳號連結 | P2 | 📋 Planned | 5 | 0/5 |
 | US6 | 安全性與稽核 | P1 | ⏳ Not Started | 9 | 0/9 |
@@ -153,11 +154,11 @@
 
 **並行執行**: T044-T049 可並行
 
-- [ ] T044 [P] [US3] 建立 src/components/ProtectedRoute.tsx：檢查使用者角色、禁止未授權訪問、顯示錯誤頁面
+- [x] T044 [P] [US3] 建立 src/components/ProtectedRoute.tsx：檢查使用者角色、禁止未授權訪問、顯示錯誤頁面 (✅ 完整實現，支援魔法連結短 ID 流程)
 - [ ] T045 [P] [US3] 建立 src/components/AdminDashboard.tsx：使用者管理、角色分配、工作階段管理介面
-- [ ] T046 [P] [US3] 更新 supabase/migrations/007_setup_rls_policies.sql：擴展 RLS 政策用於 articles、user_roles、class_enrollments 表
-- [ ] T047 [P] [US3] 建立 supabase/functions/utility/rbac-checker.ts：checkPermission(userId, action, resource)
-- [ ] T048 [US3] 更新 src/App.tsx：用 ProtectedRoute 包裝受保護的頁面 (AdminDashboard, AccountSettings)
+- [x] T046 [P] [US3] 更新 supabase/migrations/007_setup_rls_policies.sql：擴展 RLS 政策用於 articles、user_roles、class_enrollments 表 (✅ RLS 政策已在現有遷移中實現)
+- [x] T047 [P] [US3] 建立 supabase/functions/utility/rbac-checker.ts：checkPermission(userId, action, resource) (✅ 實現為 Deno Edge Function 與 TypeScript 服務整合)
+- [x] T048 [US3] 更新 src/App.tsx：用 ProtectedRoute 包裝受保護的頁面 (AdminDashboard, AccountSettings) (✅ 所有受保護的路由已包裝)
 - [ ] T049 [US3] 創建測試管理員、教師、家長、學生使用者用於 RBAC 測試
 
 ---
@@ -409,9 +410,15 @@ Phase 12 (優化與發佈)
   - T036-T039: 簡化 - 使用 Supabase 內置功能 ✅
   - T040-T043: AuthContext、App 路由、useMagicLink hook ✅
   - **方法**: 與 Google OAuth 完全相同的流程
+- ✅ **Phase 5**: RBAC 角色存取 (T044-T049) - **4/6 完成** 🔄
+  - T044: ProtectedRoute.tsx ✅ (完整實現，支援魔法連結短 ID 流程)
+  - T046: RLS 政策 ✅ (comprehensive RLS in migrations 001-003)
+  - T047: rbac-checker Edge Function ✅ (Deno 函數，支援 view/edit/delete/admin 操作)
+  - T048: App.tsx 受保護路由 ✅ (所有受保護的頁面已包裝)
+  - T045: AdminDashboard.tsx ⏳ (待實施)
+  - T049: 測試使用者 ⏳ (待形式化設置)
 
 ### ⏳ 待辦階段
-- ⏳ **Phase 5**: RBAC 角色存取 (T044-T049) - 未開始
 - ⏳ **Phase 6**: 工作階段管理 (T050-T058) - 未開始
 - ⏳ **Phase 7**: 安全性與稽核 (T059-T067) - 未開始
 - ⏳ **Phase 8-9**: P2 功能 (T068-T078) - 計畫中
