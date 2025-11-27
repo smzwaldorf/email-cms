@@ -71,7 +71,7 @@ const testWeeks = [
   {
     week_number: '2025-W48',
     release_date: '2025-11-24',
-    is_published: false,
+    is_published: true,
   },
   {
     week_number: '2025-W49',
@@ -117,6 +117,7 @@ const testFamilies = [
 const testArticles = [
   {
     week_number: '2025-W47',
+    short_id: 'a00001',
     title: '週報開刊致詞 (Weekly Opening)',
     content: `# 歡迎閱讀本週電子報
 
@@ -141,6 +142,7 @@ Welcome to Week 47 of our newsletter. This week we have exciting updates from al
   },
   {
     week_number: '2025-W47',
+    short_id: 'a00002',
     title: 'Grade 1A Class Updates (一年級甲班班級大小事)',
     content: `# 一年級甲班班級大小事
 
@@ -169,6 +171,7 @@ This week in Grade 1A:
   },
   {
     week_number: '2025-W47',
+    short_id: 'a00003',
     title: 'Grade 1B Class Updates (一年級乙班班級大小事)',
     content: `# 一年級乙班班級大小事
 
@@ -197,6 +200,7 @@ This week in Grade 1B:
   },
   {
     week_number: '2025-W47',
+    short_id: 'a00004',
     title: 'Grade 2A Class Updates (二年級甲班班級大小事)',
     content: `# 二年級甲班班級大小事
 
@@ -226,6 +230,7 @@ This week in Grade 2A:
   },
   {
     week_number: '2025-W47',
+    short_id: 'a00005',
     title: 'Grade 2B Class Updates (二年級乙班班級大小事)',
     content: `# 二年級乙班班級大小事
 
@@ -255,6 +260,7 @@ This week in Grade 2B:
   },
   {
     week_number: '2025-W47',
+    short_id: 'a00006',
     title: 'Important Announcements (重要公告)',
     content: `# 重要公告 - Important Announcements
 
@@ -286,6 +292,108 @@ This week in Grade 2B:
 **Visibility:** This article is visible to all parents and visitors.`,
     author: 'Admin',
     article_order: 6,
+    is_published: true,
+    visibility_type: 'public',
+    restricted_to_classes: null,
+  },
+  // Week 2025-W48 Articles
+  {
+    week_number: '2025-W48',
+    short_id: 'a00007',
+    title: '週報開刊致詞 (Weekly Opening - Week 48)',
+    content: `# 歡迎閱讀第 48 週電子報
+
+Dear Parents and Students,
+
+Welcome to Week 48 of our newsletter. As we enter the final stretch before the holiday season, we want to share exciting updates from our school community.
+
+## Holiday Season Planning
+- Thanksgiving celebration week (Nov 24-28)
+- Holiday performances planning (upcoming)
+- Winter break schedule announcement
+
+## Academic Updates
+- End of quarter assessments
+- Progress reports distribution
+- Achievement recognitions
+
+---
+
+**Published on:** 2025-11-24
+**Week:** 2025-W48`,
+    author: 'Principal',
+    article_order: 1,
+    is_published: true,
+    visibility_type: 'public',
+    restricted_to_classes: null,
+  },
+  {
+    week_number: '2025-W48',
+    short_id: 'a00008',
+    title: 'Thanksgiving Activities & Gratitude (感恩節活動)',
+    content: `# 感恩節特別活動
+
+Dear Families,
+
+This week we celebrate gratitude and thankfulness with special activities across all grades.
+
+## Grade 1 Activities
+- Gratitude chain craft project
+- Thanksgiving story time
+- Food sharing day preparation
+
+## Grade 2 Activities
+- Community helpers appreciation event
+- Gratitude journal writing
+- Potluck celebration planning
+
+## Family Engagement
+- Share your gratitude: Send us your family's thankfulness message
+- Join us for the school-wide gratitude assembly on Friday at 10:00 AM
+- Bring dishes for the potluck: Sign-up sheet sent separately
+
+---
+
+**Note:** All grades participating in special Thanksgiving programming.`,
+    author: 'Ms. Chen & Mr. Wang',
+    article_order: 2,
+    is_published: true,
+    visibility_type: 'public',
+    restricted_to_classes: null,
+  },
+  {
+    week_number: '2025-W48',
+    short_id: 'a00009',
+    title: 'Winter Break Logistics & Holiday Closure',
+    content: `# 冬季假期說明與校園關閉
+
+Dear Parents,
+
+## Winter Break Schedule
+- **Last day of school:** December 19, 2025
+- **Winter break:** December 20, 2025 - January 4, 2026
+- **School resumes:** January 5, 2026 (Monday)
+
+## Campus Closure
+- Administrative offices closed Dec 20 - Jan 4
+- Emergency contact for urgent matters: (123) 456-7890
+- All facilities closed except for scheduled maintenance
+
+## Before Holiday Break
+- Return all borrowed books and materials
+- Clear out lockers and cubbies
+- Take home all seasonal decorations and projects
+
+## Winter Break Activities (Optional)
+- Reading challenge: Log 10 hours of reading
+- Math practice: Complete learning packets (available online)
+- Art project: Create holiday greeting card for classmates
+
+---
+
+**Questions?** Contact the main office by December 12.`,
+    author: 'Admin',
+    article_order: 3,
     is_published: true,
     visibility_type: 'public',
     restricted_to_classes: null,

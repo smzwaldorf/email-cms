@@ -159,7 +159,7 @@
 - [x] T046 [P] [US3] 更新 supabase/migrations/007_setup_rls_policies.sql：擴展 RLS 政策用於 articles、user_roles、class_enrollments 表 (✅ RLS 政策已在現有遷移中實現)
 - [x] T047 [P] [US3] 建立 supabase/functions/utility/rbac-checker.ts：checkPermission(userId, action, resource) (✅ 實現為 Deno Edge Function 與 TypeScript 服務整合)
 - [x] T048 [US3] 更新 src/App.tsx：用 ProtectedRoute 包裝受保護的頁面 (AdminDashboard, AccountSettings) (✅ 所有受保護的路由已包裝)
-- [ ] T049 [US3] 創建測試管理員、教師、家長、學生使用者用於 RBAC 測試
+- [x] T049 [US3] 創建測試管理員、教師、家長使用者用於 RBAC 測試
 
 ---
 
