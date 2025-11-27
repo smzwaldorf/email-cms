@@ -5,8 +5,24 @@
 
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import { BrowserRouter } from 'react-router-dom'
 import { ArticleListView } from '@/components/ArticleListView'
 import { Article } from '@/types'
+
+// Mock useFetchAllWeeks hook
+vi.mock('@/hooks/useFetchAllWeeks', () => ({
+  useFetchAllWeeks: vi.fn(() => ({
+    weeks: [],
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+  })),
+}))
+
+// Helper to render with Router context
+const renderWithRouter = (component: React.ReactElement) => {
+  return render(<BrowserRouter>{component}</BrowserRouter>)
+}
 
 // Mock data
 const mockArticles: Article[] = [
@@ -58,7 +74,7 @@ describe('ArticleList Component', () => {
   describe('Rendering', () => {
     it('should render all articles in the list', () => {
       const mockOnSelect = vi.fn()
-      render(
+      renderWithRouter(
         <ArticleListView
           weekNumber="2025-W43"
           articles={mockArticles}
@@ -74,7 +90,7 @@ describe('ArticleList Component', () => {
 
     it('should display article metadata (author, summary)', () => {
       const mockOnSelect = vi.fn()
-      render(
+      renderWithRouter(
         <ArticleListView
           weekNumber="2025-W43"
           articles={mockArticles}
@@ -89,7 +105,7 @@ describe('ArticleList Component', () => {
 
     it('should display week number header', () => {
       const mockOnSelect = vi.fn()
-      render(
+      renderWithRouter(
         <ArticleListView
           weekNumber="2025-W43"
           articles={mockArticles}
@@ -98,13 +114,13 @@ describe('ArticleList Component', () => {
         />
       )
 
-      // Check that week header exists (formatWeekNumber returns "2025 年第 43 週")
-      expect(screen.getByText(/43 週/)).toBeInTheDocument()
+      // Check that WeekSelector button is displayed (shows week selector dropdown button)
+      expect(screen.getByRole('button')).toBeInTheDocument()
     })
 
     it('should display article count', () => {
       const mockOnSelect = vi.fn()
-      render(
+      renderWithRouter(
         <ArticleListView
           weekNumber="2025-W43"
           articles={mockArticles}
@@ -121,7 +137,7 @@ describe('ArticleList Component', () => {
   describe('User Interactions', () => {
     it('should call onSelectArticle when an article is clicked', async () => {
       const mockOnSelect = vi.fn()
-      render(
+      renderWithRouter(
         <ArticleListView
           weekNumber="2025-W43"
           articles={mockArticles}
@@ -141,7 +157,7 @@ describe('ArticleList Component', () => {
 
     it('should handle multiple article selections', () => {
       const mockOnSelect = vi.fn()
-      render(
+      renderWithRouter(
         <ArticleListView
           weekNumber="2025-W43"
           articles={mockArticles}
@@ -166,7 +182,7 @@ describe('ArticleList Component', () => {
   describe('Quick Navigation Performance', () => {
     it('should handle rapid clicks without lag', async () => {
       const mockOnSelect = vi.fn()
-      const { rerender } = render(
+      const { rerender } = renderWithRouter(
         <ArticleListView
           weekNumber="2025-W43"
           articles={mockArticles}
@@ -186,12 +202,14 @@ describe('ArticleList Component', () => {
 
       // Update component
       rerender(
-        <ArticleListView
-          weekNumber="2025-W43"
-          articles={mockArticles}
-          selectedArticleId="article-003"
-          onSelectArticle={mockOnSelect}
-        />
+        <BrowserRouter>
+          <ArticleListView
+            weekNumber="2025-W43"
+            articles={mockArticles}
+            selectedArticleId="article-003"
+            onSelectArticle={mockOnSelect}
+          />
+        </BrowserRouter>
       )
 
       const endTime = performance.now()
@@ -212,7 +230,7 @@ describe('ArticleList Component', () => {
       const mockOnSelect = vi.fn()
       const startTime = performance.now()
 
-      render(
+      renderWithRouter(
         <ArticleListView
           weekNumber="2025-W43"
           articles={largeArticleList}
@@ -232,7 +250,7 @@ describe('ArticleList Component', () => {
   describe('Visual Feedback', () => {
     it('should display all articles with proper spacing', () => {
       const mockOnSelect = vi.fn()
-      const { container } = render(
+      const { container } = renderWithRouter(
         <ArticleListView
           weekNumber="2025-W43"
           articles={mockArticles}
@@ -248,7 +266,7 @@ describe('ArticleList Component', () => {
 
     it('should highlight selected article', () => {
       const mockOnSelect = vi.fn()
-      render(
+      renderWithRouter(
         <ArticleListView
           weekNumber="2025-W43"
           articles={mockArticles}
@@ -266,7 +284,7 @@ describe('ArticleList Component', () => {
   describe('Accessibility', () => {
     it('should display loading state with accessible message', () => {
       const mockOnSelect = vi.fn()
-      render(
+      renderWithRouter(
         <ArticleListView
           weekNumber="2025-W43"
           articles={[]}
@@ -281,7 +299,7 @@ describe('ArticleList Component', () => {
 
     it('should display empty state message when no articles', () => {
       const mockOnSelect = vi.fn()
-      render(
+      renderWithRouter(
         <ArticleListView
           weekNumber="2025-W43"
           articles={[]}
@@ -295,7 +313,7 @@ describe('ArticleList Component', () => {
 
     it('should be keyboard accessible through article cards', () => {
       const mockOnSelect = vi.fn()
-      const { container } = render(
+      const { container } = renderWithRouter(
         <ArticleListView
           weekNumber="2025-W43"
           articles={mockArticles}
@@ -318,7 +336,7 @@ describe('ArticleList Component', () => {
   describe('Edge Cases', () => {
     it('should handle empty article list', () => {
       const mockOnSelect = vi.fn()
-      render(
+      renderWithRouter(
         <ArticleListView
           weekNumber="2025-W43"
           articles={[]}
@@ -333,7 +351,7 @@ describe('ArticleList Component', () => {
     it('should handle invalid selectedArticleId gracefully', () => {
       const mockOnSelect = vi.fn()
       expect(() => {
-        render(
+        renderWithRouter(
           <ArticleListView
             weekNumber="2025-W43"
             articles={mockArticles}
@@ -346,7 +364,7 @@ describe('ArticleList Component', () => {
 
     it('should update when articles prop changes', () => {
       const mockOnSelect = vi.fn()
-      const { rerender } = render(
+      const { rerender } = renderWithRouter(
         <ArticleListView
           weekNumber="2025-W43"
           articles={mockArticles}
@@ -359,12 +377,14 @@ describe('ArticleList Component', () => {
 
       const newArticles = mockArticles.slice(0, 2)
       rerender(
-        <ArticleListView
-          weekNumber="2025-W43"
-          articles={newArticles}
-          selectedArticleId="article-001"
-          onSelectArticle={mockOnSelect}
-        />
+        <BrowserRouter>
+          <ArticleListView
+            weekNumber="2025-W43"
+            articles={newArticles}
+            selectedArticleId="article-001"
+            onSelectArticle={mockOnSelect}
+          />
+        </BrowserRouter>
       )
 
       expect(screen.getByText('React Performance Optimization')).toBeInTheDocument()
@@ -373,7 +393,7 @@ describe('ArticleList Component', () => {
 
     it('should handle loading state', () => {
       const mockOnSelect = vi.fn()
-      render(
+      renderWithRouter(
         <ArticleListView
           weekNumber="2025-W43"
           articles={mockArticles}

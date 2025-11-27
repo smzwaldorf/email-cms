@@ -14,7 +14,8 @@
       "Bash(supabase start:*)",
       "Bash(docker exec:*)",
       "Bash(npx ts-node:*)",
-      "Bash(supabase status:*)"
+      "Bash(supabase status:*)",
+      "Bash(perl -i -pe:*)"
     ],
     "deny": [],
     "ask": []
