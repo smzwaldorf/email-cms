@@ -21,13 +21,29 @@ vi.mock('react-router-dom', async () => {
   return { ...actual, useNavigate: () => mockNavigate }
 })
 
+// Mock WeekService
+vi.mock('@/services/WeekService', () => ({
+  WeekService: {
+    getLatestPublishedWeek: vi.fn(),
+  },
+}))
+
 describe('LoginPage Component', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks()
     mockNavigate.mockClear()
     ;(useAuth as any).mockReturnValue({
       signIn: vi.fn().mockResolvedValue(true),
       isLoading: false,
+    })
+    // Mock WeekService to return a default latest week
+    const { WeekService } = await import('@/services/WeekService')
+    vi.mocked(WeekService.getLatestPublishedWeek).mockResolvedValue({
+      week_number: '2025-W47',
+      release_date: '2025-11-27',
+      is_published: true,
+      created_at: '2025-11-27T00:00:00Z',
+      updated_at: '2025-11-27T00:00:00Z',
     })
   })
 
@@ -40,7 +56,7 @@ describe('LoginPage Component', () => {
 
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/password/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /login/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '登入' })).toBeInTheDocument()
   })
 
   it('should show error when submitting empty form', async () => {
@@ -50,7 +66,7 @@ describe('LoginPage Component', () => {
       </BrowserRouter>,
     )
 
-    const submitButton = screen.getByRole('button', { name: /login/i })
+    const submitButton = screen.getByRole('button', { name: '登入' })
     fireEvent.click(submitButton)
 
     await waitFor(() => {
@@ -177,7 +193,7 @@ describe('LoginPage Component', () => {
     )
 
     // First, create an error
-    const submitButton = screen.getByRole('button', { name: /login/i })
+    const submitButton = screen.getByRole('button', { name: '登入' })
     fireEvent.click(submitButton)
 
     await waitFor(() => {
@@ -210,7 +226,7 @@ describe('LoginPage Component', () => {
     expect(parent1Button).toBeDisabled()
   })
 
-  it('should navigate to /week/2025-W47 on successful login', async () => {
+  it('should navigate to latest published week on successful login', async () => {
     const mockSignIn = vi.fn().mockResolvedValue(true)
     ;(useAuth as any).mockReturnValue({
       signIn: mockSignIn,
@@ -225,7 +241,7 @@ describe('LoginPage Component', () => {
 
     const emailInput = screen.getByLabelText(/email/i)
     const passwordInput = screen.getByLabelText(/password/i)
-    const submitButton = screen.getByRole('button', { name: /login/i })
+    const submitButton = screen.getByRole('button', { name: '登入' })
 
     fireEvent.change(emailInput, { target: { value: 'parent1@example.com' } })
     fireEvent.change(passwordInput, { target: { value: 'parent1password123' } })
@@ -233,7 +249,7 @@ describe('LoginPage Component', () => {
 
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('/week/2025-W47')
-    })
+    }, { timeout: 2000 })
   })
 
   it('should show error message on failed login', async () => {
@@ -251,7 +267,7 @@ describe('LoginPage Component', () => {
 
     const emailInput = screen.getByLabelText(/email/i)
     const passwordInput = screen.getByLabelText(/password/i)
-    const submitButton = screen.getByRole('button', { name: /login/i })
+    const submitButton = screen.getByRole('button', { name: '登入' })
 
     fireEvent.change(emailInput, { target: { value: 'invalid@example.com' } })
     fireEvent.change(passwordInput, { target: { value: 'wrongpassword' } })

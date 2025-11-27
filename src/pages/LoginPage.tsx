@@ -1,7 +1,7 @@
 /**
  * Login Page
  * Multi-method authentication: Google OAuth, Magic Link, and Email/Password
- * Redirects to /week/2025-W47 after successful login
+ * Redirects to the latest published week after successful login
  */
 
 import React, { useState } from 'react'
@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { GoogleButton } from '@/components/GoogleButton'
 import { MagicLinkForm } from '@/components/MagicLinkForm'
+import { WeekService } from '@/services/WeekService'
 
 type AuthMethod = 'password' | 'magic-link'
 
@@ -48,6 +49,22 @@ export const LoginPage: React.FC = () => {
     },
   ]
 
+  const redirectToLatestWeek = async () => {
+    try {
+      const latestWeek = await WeekService.getLatestPublishedWeek()
+      if (latestWeek) {
+        console.log(`✅ Redirecting to latest week: ${latestWeek.week_number}`)
+        navigate(`/week/${latestWeek.week_number}`)
+      } else {
+        console.warn('⚠️ No published weeks found, using fallback week')
+        navigate('/week/2025-W47')
+      }
+    } catch (err) {
+      console.error('❌ Error fetching latest week:', err)
+      navigate('/week/2025-W47')
+    }
+  }
+
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
@@ -61,8 +78,8 @@ export const LoginPage: React.FC = () => {
     const success = await signIn(email, password)
 
     if (success) {
-      console.log('✅ Sign in successful, redirecting...')
-      navigate('/week/2025-W47')
+      console.log('✅ Sign in successful, redirecting to latest week...')
+      await redirectToLatestWeek()
     } else {
       console.log('❌ Sign in failed')
       setError('Invalid email or password. Check browser console (F12) for details.')
@@ -86,8 +103,8 @@ export const LoginPage: React.FC = () => {
   }
 
   const handleGoogleSuccess = () => {
-    console.log('✅ Google sign in successful, redirecting...')
-    navigate('/week/2025-W47')
+    console.log('✅ Google sign in successful, redirecting to latest week...')
+    redirectToLatestWeek()
   }
 
   const handleMagicLinkSuccess = () => {
