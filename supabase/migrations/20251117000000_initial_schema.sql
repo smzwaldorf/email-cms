@@ -263,6 +263,7 @@ ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.child_class_enrollment ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.teacher_class_assignment ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.article_audit_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.family_enrollment ENABLE ROW LEVEL SECURITY;
 
 -- Allow users to read their own role information
 -- Note: RLS policies for user_roles are created in fix_user_roles_rls.sql migration
@@ -358,9 +359,37 @@ CREATE POLICY articles_admin_delete
   );
 
 -- Allow reading family enrollment relationships
-CREATE POLICY family_enrollment_read
+
+-- 1. Create a secure helper function to get the current user's family IDs
+-- This function runs with the privileges of the creator (SECURITY DEFINER),
+-- allowing it to bypass RLS on the family_enrollment table to avoid recursion.
+CREATE OR REPLACE FUNCTION public.get_auth_user_family_ids()
+RETURNS TABLE (family_id UUID)
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+STABLE
+AS $$
+  SELECT family_id
+  FROM public.family_enrollment
+  WHERE parent_id = auth.uid()
+$$;
+
+-- 2. Update the family_enrollment RLS policy to use the helper function
+CREATE POLICY family_enrollment_read_secure
   ON public.family_enrollment FOR SELECT
-  USING (true);
+  USING (
+    -- Admin Check
+    auth.uid() IN (
+      SELECT id FROM public.user_roles WHERE role = 'admin'
+    )
+    OR
+    -- Family Member Check (using secure function to avoid recursion)
+    family_id IN (
+      SELECT family_id FROM public.get_auth_user_family_ids()
+    )
+  );
+
 
 -- Allow reading child class enrollment relationships
 CREATE POLICY child_class_enrollment_read

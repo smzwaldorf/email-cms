@@ -37,6 +37,11 @@
  *   - Role: admin
  *   - Articles visible: All 6 articles
  *   - Can edit: All articles
+ *
+ * harryworld@gmail.com (Google Sign In):
+ *   - Password: harrypassword123
+ *   - Family: FAMILY001 (Same as parent1)
+ *   - Articles visible: 4 (Same as parent1)
  * ──────────────────────────────────────────────────────────────
  */
 
@@ -300,7 +305,6 @@ const testUsers = [
     password: 'parent2password123',
     role: 'parent',
     familyId: 'f2222222-2222-2222-2222-222222222222', // FAMILY002
-    childrenClasses: ['A2'], // Grade 1B
   },
   {
     email: 'teacher@example.com',
@@ -312,6 +316,33 @@ const testUsers = [
     email: 'admin@example.com',
     password: 'admin123456',
     role: 'admin',
+  },
+  {
+    email: 'harryworld@gmail.com',
+    password: 'harrypassword123',
+    role: 'parent',
+    familyId: 'f1111111-1111-1111-1111-111111111111', // FAMILY001
+  },
+]
+
+const testChildren = [
+  {
+    id: 'c1111111-1111-1111-1111-111111111111',
+    name: 'Child One',
+    familyId: 'f1111111-1111-1111-1111-111111111111', // FAMILY001
+    classId: 'A1', // Grade 1A
+  },
+  {
+    id: 'c2222222-2222-2222-2222-222222222222',
+    name: 'Child Two',
+    familyId: 'f1111111-1111-1111-1111-111111111111', // FAMILY001
+    classId: 'B1', // Grade 2A
+  },
+  {
+    id: 'c3333333-3333-3333-3333-333333333333',
+    name: 'Child Three',
+    familyId: 'f2222222-2222-2222-2222-222222222222', // FAMILY002
+    classId: 'A2', // Grade 1B
   },
 ]
 
@@ -422,7 +453,7 @@ async function setupDevelopment() {
         console.log(`  ✅ Role created: ${user.role}`)
 
         // If this is a parent, set up family enrollment
-        if (user.role === 'parent' && 'familyId' in user && 'childrenClasses' in user) {
+        if (user.role === 'parent' && 'familyId' in user) {
           const userWithFamily = user as any
 
           // Create family enrollment
@@ -439,25 +470,7 @@ async function setupDevelopment() {
 
           console.log(`  ✅ Family enrollment created`)
 
-          // Create child enrollments for each class
-          for (const classId of userWithFamily.childrenClasses) {
-            const { error: childError } = await supabase.from('child_class_enrollment').insert({
-              child_id: userId, // Use parent ID as child ID for test data
-              family_id: userWithFamily.familyId,
-              class_id: classId,
-            })
-
-            if (childError) {
-              console.error(
-                `  ❌ Child enrollment for class ${classId} failed: ${childError.message}`,
-              )
-              continue
-            }
-          }
-
-          console.log(
-            `  ✅ Child enrollments created for classes: ${userWithFamily.childrenClasses.join(', ')}\n`,
-          )
+          console.log(`  ✅ Family enrollment created\n`)
         } else if (user.role === 'teacher' && 'assignedClasses' in user) {
           // If this is a teacher, set up class assignments
           const userWithClasses = user as any
@@ -489,6 +502,60 @@ async function setupDevelopment() {
     }
 
     // ========================================================================
+    // PHASE 3: Create Children & Enrollments
+    // ========================================================================
+    console.log('👶 PHASE 3: Creating children and enrollments\n')
+
+    for (const child of testChildren) {
+      try {
+        console.log(`📝 Creating child: ${child.name}`)
+
+        // Create child in students table
+        const { error: studentError } = await supabase.from('students').insert({
+          id: child.id,
+          name: child.name,
+        })
+
+        if (studentError) {
+          console.error(`  ❌ Student creation failed: ${studentError.message}`)
+          continue
+        }
+
+        console.log(`  ✅ Student created`)
+
+        // Create family enrollment for student
+        const { error: familyError } = await supabase.from('family_enrollment').insert({
+          family_id: child.familyId,
+          student_id: child.id,
+          relationship: 'child',
+        })
+
+        if (familyError) {
+          console.error(`  ❌ Student family enrollment failed: ${familyError.message}`)
+          continue
+        }
+
+        console.log(`  ✅ Student added to family`)
+
+        // Create student class enrollment
+        const { error: enrollError } = await supabase.from('student_class_enrollment').insert({
+          student_id: child.id,
+          family_id: child.familyId,
+          class_id: child.classId,
+        })
+
+        if (enrollError) {
+          console.error(`  ❌ Student class enrollment failed: ${enrollError.message}`)
+          continue
+        }
+
+        console.log(`  ✅ Student enrolled in class: ${child.classId}\n`)
+      } catch (err) {
+        console.error(`  ❌ Error: ${(err as any).message}\n`)
+      }
+    }
+
+    // ========================================================================
     // Summary
     // ========================================================================
     console.log('━'.repeat(80))
@@ -498,12 +565,13 @@ async function setupDevelopment() {
     console.log(`    - Newsletter weeks: ${weeksResult.success} created`)
     console.log(`    - Classes: ${classesResult.success} created`)
     console.log(`    - Families: ${familiesResult.success} created`)
-    console.log(`    - Articles: ${articlesResult.success} created`)
+    console.log(`    - Articles: ${articlesResult.success} created
+    - Children: ${testChildren.length} created`)
     console.log(`\n  Test Users:`)
     testUsers.forEach((user) => {
-      if ('childrenClasses' in user) {
+      if ('familyId' in user) {
         const userWithFamily = user as any
-        console.log(`    - ${user.email} (Family, Classes: ${userWithFamily.childrenClasses.join(', ')})`)
+        console.log(`    - ${user.email} (Family: ${userWithFamily.familyId})`)
       } else if ('assignedClasses' in user) {
         const userWithClasses = user as any
         console.log(`    - ${user.email} (Teacher, Classes: ${userWithClasses.assignedClasses.join(', ')})`)
@@ -525,7 +593,8 @@ async function setupDevelopment() {
     console.log('  parent1@example.com → 4 articles (2 public + 2 class-restricted)')
     console.log('  parent2@example.com → 3 articles (2 public + 1 class-restricted)')
     console.log('  teacher@example.com → Can edit A1 class-restricted article (can view all 6)')
-    console.log('  admin@example.com → All 6 articles (can edit all)\n')
+    console.log('  admin@example.com → All 6 articles (can edit all)')
+    console.log('  harryworld@gmail.com → 4 articles (Same as parent1)\n')
   } catch (err) {
     console.error('❌ Fatal error during setup:', (err as any).message)
     process.exit(1)
