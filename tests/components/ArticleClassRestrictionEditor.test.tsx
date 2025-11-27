@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import type { ArticleRow, ClassRow } from '@/types/database'
 import { ArticleClassRestrictionEditor } from '@/components/ArticleClassRestrictionEditor'
 
@@ -76,15 +76,19 @@ describe('ArticleClassRestrictionEditor Component', () => {
       const { ClassService } = await import('@/services/ClassService')
       vi.mocked(ClassService.getAllClasses).mockResolvedValue([])
 
-      render(
-        <ArticleClassRestrictionEditor
-          article={mockArticle}
-        />
-      )
+      await act(async () => {
+        render(
+          <ArticleClassRestrictionEditor
+            article={mockArticle}
+          />
+        )
+      })
 
-      expect(
-        screen.getByText('Article Visibility Settings')
-      ).toBeInTheDocument()
+      await waitFor(() => {
+        expect(
+          screen.getByText('Article Visibility Settings')
+        ).toBeInTheDocument()
+      })
       expect(screen.getByText('Test Article')).toBeInTheDocument()
     })
 

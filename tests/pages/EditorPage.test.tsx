@@ -7,10 +7,25 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import { EditorPage } from '@/pages/EditorPage'
+import { AuthProvider } from '@/context/AuthContext'
 import * as mockApi from '@/services/mockApi'
 
 // Mock the mockApi module
 vi.mock('@/services/mockApi')
+
+// Mock auth services
+vi.mock('@/services/authService', () => ({
+  authService: {
+    ensureInitialized: vi.fn(),
+  },
+}))
+
+vi.mock('@/services/tokenManager', () => ({
+  tokenManager: {
+    initializeFromSession: vi.fn(),
+    subscribe: vi.fn(),
+  },
+}))
 
 // Mock useNavigate
 const mockNavigate = vi.fn()
@@ -63,7 +78,9 @@ describe('EditorPage', () => {
 
     render(
       <BrowserRouter>
-        <EditorPage />
+        <AuthProvider>
+          <EditorPage />
+        </AuthProvider>
       </BrowserRouter>
     )
 

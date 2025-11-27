@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MagicLinkForm } from '@/components/MagicLinkForm'
 
@@ -160,27 +160,30 @@ describe('MagicLinkForm - Redirect URL Handling', () => {
       render(<MagicLinkForm onSuccess={mockOnSuccess} />)
 
       const submitButton = screen.getByRole('button', { name: /發送登入連結/i })
-      await user.click(submitButton)
-
-      await waitFor(() => {
-        expect(screen.getByText(/請輸入您的電子郵件地址/i)).toBeInTheDocument()
+      await act(async () => {
+        await user.click(submitButton)
       })
+
+      expect(screen.getByText(/Please enter your email address/i)).toBeInTheDocument()
       expect(mockSendMagicLink).not.toHaveBeenCalled()
     })
 
     it('should show error for invalid email format', async () => {
       const user = userEvent.setup()
-      render(<MagicLinkForm onSuccess={mockOnSuccess} />)
+      const { container } = render(<MagicLinkForm onSuccess={mockOnSuccess} />)
 
-      const emailInput = screen.getByPlaceholderText('your-email@example.com')
-      await user.type(emailInput, 'invalid-email')
+      const emailInput = screen.getByPlaceholderText('your-email@example.com') as HTMLInputElement
+      const form = container.querySelector('form')!
 
-      const submitButton = screen.getByRole('button', { name: /發送登入連結/i })
-      await user.click(submitButton)
+      // Set invalid email value
+      await user.type(emailInput, 'invalidemail')
 
-      await waitFor(() => {
-        expect(screen.getByText(/請輸入有效的電子郵件地址/i)).toBeInTheDocument()
+      // Dispatch form submit event to trigger handleSubmit
+      await act(async () => {
+        form.dispatchEvent(new Event('submit', { bubbles: true }))
       })
+
+      expect(screen.getByText(/Please enter a valid email address/i)).toBeInTheDocument()
       expect(mockSendMagicLink).not.toHaveBeenCalled()
     })
   })
@@ -198,7 +201,7 @@ describe('MagicLinkForm - Redirect URL Handling', () => {
       await user.click(submitButton)
 
       await waitFor(() => {
-        expect(screen.getByText(/無法發送魔法連結。請重試。/i)).toBeInTheDocument()
+        expect(screen.getByText(/Failed to send magic link/i)).toBeInTheDocument()
       })
     })
 
@@ -214,7 +217,7 @@ describe('MagicLinkForm - Redirect URL Handling', () => {
       await user.click(submitButton)
 
       await waitFor(() => {
-        expect(screen.getByText(/無法發送魔法連結。請重試。/i)).toBeInTheDocument()
+        expect(screen.getByText(/Failed to send magic link/i)).toBeInTheDocument()
       })
     })
   })
