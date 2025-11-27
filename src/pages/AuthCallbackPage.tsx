@@ -35,6 +35,10 @@ export const AuthCallbackPage: React.FC = () => {
           return
         }
 
+        // Get redirect destination from query params
+        const redirectUrl = searchParams.get('redirect_to')
+        console.log('📍 Redirect destination from params:', redirectUrl || 'none')
+
         // Supabase handles OAuth and Magic Link callbacks automatically
         // The user session is established when the auth state changes
         // We just need to wait for the user to be set by AuthContext
@@ -51,9 +55,15 @@ export const AuthCallbackPage: React.FC = () => {
             console.log('✅ User authenticated:', user.email)
             setStatus('success')
 
-            // Redirect to newsletter after short delay
+            // Redirect to original article link or latest week
             setTimeout(() => {
-              navigate('/week/2025-W47')
+              if (redirectUrl) {
+                console.log('🔄 Redirecting to original article:', redirectUrl)
+                navigate(redirectUrl)
+              } else {
+                console.log('🔄 Redirecting to default week')
+                navigate('/week/2025-W47')
+              }
             }, 500)
           } else if (attempts >= maxAttempts) {
             clearInterval(checkUser)

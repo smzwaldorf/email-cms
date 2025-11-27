@@ -17,7 +17,7 @@ export interface AuthUser {
 export interface AuthServiceInterface {
   signIn(email: string, password: string): Promise<AuthUser | null>
   signInWithGoogle(): Promise<AuthUser | null>
-  sendMagicLink(email: string): Promise<boolean>
+  sendMagicLink(email: string, redirectTo?: string): Promise<boolean>
   verifyMagicLink(token: string): Promise<AuthUser | null>
   signOut(): Promise<void>
   getCurrentUser(): AuthUser | null
@@ -150,17 +150,26 @@ class SupabaseAuthService implements AuthServiceInterface {
     }
   }
 
-  async sendMagicLink(email: string): Promise<boolean> {
+  async sendMagicLink(email: string, redirectTo?: string): Promise<boolean> {
     const supabase = getSupabaseClient()
 
     try {
       console.log('📧 Sending magic link to:', email)
+      if (redirectTo) {
+        console.log('📍 Redirect destination:', redirectTo)
+      }
+
+      // Build email redirect URL with optional redirect parameter
+      const callbackUrl = new URL(`${window.location.origin}/auth/callback`)
+      if (redirectTo) {
+        callbackUrl.searchParams.set('redirect_to', redirectTo)
+      }
 
       // Use Supabase's built-in magic link functionality
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: callbackUrl.toString(),
         },
       })
 

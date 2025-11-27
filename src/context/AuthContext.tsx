@@ -15,7 +15,7 @@ export interface AuthContextType {
   isLoading: boolean
   signIn: (email: string, password: string) => Promise<boolean>
   signInWithGoogle: () => Promise<void>
-  sendMagicLink: (email: string) => Promise<boolean>
+  sendMagicLink: (email: string, redirectTo?: string) => Promise<boolean>
   verifyMagicLink: (token: string) => Promise<boolean>
   signOut: () => Promise<void>
 }
@@ -111,10 +111,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }
 
-  const sendMagicLink = async (email: string): Promise<boolean> => {
+  const sendMagicLink = async (email: string, redirectTo?: string): Promise<boolean> => {
     try {
       setIsLoading(true)
-      const success = await authService.sendMagicLink(email)
+      const success = await authService.sendMagicLink(email, redirectTo)
       return success
     } catch (err) {
       console.error('Send magic link error:', err)
