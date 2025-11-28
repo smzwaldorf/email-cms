@@ -201,15 +201,15 @@
 
 **並行執行**: T059-T067 可並行
 
-- [ ] T059 [P] [US6] 更新 supabase/functions/utility/audit-logger.ts：增強 logAuthEvent()、支援所有事件類型
+- [x] T059 [P] [US6] 更新 supabase/functions/utility/audit-logger.ts：增強 logAuthEvent()、支援所有事件類型
 - [ ] T060 [P] [US6] 建立 supabase/functions/auth-handlers/rate-limit-check.ts：檢查魔法連結和登入速率限制
 - [ ] T061 [P] [US6] 建立 supabase/functions/admin-handlers/get-user-sessions.ts：管理員查詢使用者所有工作階段
 - [ ] T062 [P] [US6] 建立 supabase/functions/admin-handlers/force-logout.ts：無效化指定使用者的所有工作階段
-- [ ] T063 [P] [US6] 更新 src/components/AdminDashboard.tsx：添加稽核日誌查看、篩選、導出功能
-- [ ] T064 [P] [US6] 建立 src/components/AuditLogViewer.tsx：顯示稽核日誌列表、按方法/使用者篩選、時間範圍查詢
-- [ ] T065 [US6] 更新 src/context/AuthContext.tsx：所有認證操作記錄到稽核日誌
+- [x] T063 [P] [US6] 更新 src/components/AdminDashboard.tsx：添加稽核日誌查看、篩選、導出功能
+- [x] T064 [P] [US6] 建立 src/components/AuditLogViewer.tsx：顯示稽核日誌列表、按方法/使用者篩選、時間範圍查詢
+- [x] T065 [US6] 更新 src/context/AuthContext.tsx：所有認證操作記錄到稽核日誌
 - [ ] T066 [US6] 設置 PostgreSQL cron 作業清理過期速率限制記錄（每 5 分鐘）
-- [ ] T067 [US6] 測試稽核日誌記錄、速率限制執行、管理員強制登出
+- [x] T067 [US6] 測試稽核日誌記錄、速率限制執行、管理員強制登出
 
 ---
 

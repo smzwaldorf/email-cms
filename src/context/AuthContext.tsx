@@ -7,7 +7,9 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { authService } from '@/services/authService'
 import { tokenManager } from '@/services/tokenManager'
-import type { AuthUser } from '@/services/authService'
+import { getSupabaseClient } from '@/lib/supabase'
+import type { AuthUser } from '@/types/auth'
+import type { RealtimePostgresInsertPayload } from '@supabase/supabase-js'
 
 export interface AuthContextType {
   user: AuthUser | null
@@ -75,8 +77,41 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
 
     let unsubscribe: (() => void) | null = null
+    let realtimeChannel: ReturnType<ReturnType<typeof getSupabaseClient>['channel']> | null = null
+
     initializeAuth().then((fn) => {
       unsubscribe = fn
+
+      // Set up Realtime listener for force logout events
+      const supabase = getSupabaseClient()
+      const currentUser = authService.getCurrentUser()
+      
+      if (currentUser) {
+        console.log(`🔌 Setting up Realtime listener for user ${currentUser.id}`)
+        realtimeChannel = supabase
+          .channel('auth_events_listener')
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'auth_events',
+              filter: `user_id=eq.${currentUser.id}`,
+            },
+            (payload: RealtimePostgresInsertPayload<any>) => {
+              console.log('🔌 Received auth event:', payload)
+              const event = payload.new as { event_type: string }
+              
+              if (event.event_type === 'logout') {
+                console.warn('⚠️ Received force logout event from server. Signing out...')
+                signOut()
+              }
+            }
+          )
+          .subscribe((status) => {
+            console.log(`🔌 Realtime subscription status: ${status}`)
+          })
+      }
     })
 
     return () => {
@@ -84,8 +119,45 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (unsubscribe) {
         unsubscribe()
       }
+      if (realtimeChannel) {
+        console.log('🔌 Cleaning up Realtime listener')
+        realtimeChannel.unsubscribe()
+      }
     }
   }, [])
+
+  // Re-subscribe when user changes (e.g. login)
+  useEffect(() => {
+    if (!user) return
+
+    console.log(`🔌 Setting up Realtime listener for user ${user.id} (user changed)`)
+    const supabase = getSupabaseClient()
+    
+    const channel = supabase
+      .channel(`auth_events_${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'auth_events',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload: RealtimePostgresInsertPayload<any>) => {
+          const event = payload.new as { event_type: string }
+          if (event.event_type === 'logout') {
+            console.warn('⚠️ Received force logout event from server. Signing out...')
+            signOut()
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      console.log(`🔌 Cleaning up Realtime listener for user ${user.id}`)
+      channel.unsubscribe()
+    }
+  }, [user?.id])
 
   const signIn = async (email: string, password: string): Promise<boolean> => {
     try {

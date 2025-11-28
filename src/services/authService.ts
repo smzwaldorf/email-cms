@@ -7,6 +7,7 @@
 import { getSupabaseClient } from '@/lib/supabase'
 import type { AuthSession } from '@supabase/supabase-js'
 import type { AuthUser } from '@/types/auth'
+import { auditLogger } from './auditLogger'
 
 export interface AuthServiceInterface {
   signIn(email: string, password: string): Promise<AuthUser | null>
@@ -101,6 +102,14 @@ class SupabaseAuthService implements AuthServiceInterface {
         console.log('👤 Calling setCurrentUser with ID:', userId)
         await this.setCurrentUser(userId)
         console.log('✅ Current user is now:', this.currentUser)
+
+        // Log successful login
+        await auditLogger.logAuthEvent({
+          userId,
+          eventType: 'login_success',
+          authMethod: 'email_password',
+        })
+
         return this.currentUser
       }
 
@@ -112,6 +121,15 @@ class SupabaseAuthService implements AuthServiceInterface {
       console.error('  Error:', err)
       console.error('  Type:', typeof err)
       console.error('  Message:', (err as any).message)
+
+      // Log failed login
+      await auditLogger.logAuthEvent({
+        userId: null,
+        eventType: 'login_failure',
+        authMethod: 'email_password',
+        metadata: { email, error: (err as any).message },
+      })
+
       return null
     }
   }
@@ -121,6 +139,13 @@ class SupabaseAuthService implements AuthServiceInterface {
 
     try {
       console.log('🔐 Attempting to sign in with Google OAuth...')
+
+      // Log OAuth flow start
+      await auditLogger.logAuthEvent({
+        userId: null,
+        eventType: 'oauth_google_start',
+        authMethod: 'google_oauth',
+      })
 
       // Initiate OAuth flow with Google
       const { error } = await supabase.auth.signInWithOAuth({
@@ -132,6 +157,15 @@ class SupabaseAuthService implements AuthServiceInterface {
 
       if (error) {
         console.error('❌ Google OAuth error:', error)
+
+        // Log OAuth failure
+        await auditLogger.logAuthEvent({
+          userId: null,
+          eventType: 'oauth_google_failure',
+          authMethod: 'google_oauth',
+          metadata: { error: error.message },
+        })
+
         return null
       }
 
@@ -140,6 +174,15 @@ class SupabaseAuthService implements AuthServiceInterface {
       return null
     } catch (err) {
       console.error('❌ Google sign-in exception:', err)
+
+      // Log OAuth exception
+      await auditLogger.logAuthEvent({
+        userId: null,
+        eventType: 'oauth_google_failure',
+        authMethod: 'google_oauth',
+        metadata: { error: (err as any).message },
+      })
+
       return null
     }
   }
@@ -173,6 +216,15 @@ class SupabaseAuthService implements AuthServiceInterface {
       }
 
       console.log('✅ Magic link sent successfully')
+
+      // Log magic link sent
+      await auditLogger.logAuthEvent({
+        userId: null,
+        eventType: 'magic_link_sent',
+        authMethod: 'magic_link',
+        metadata: { email },
+      })
+
       return true
     } catch (err) {
       console.error('❌ Magic link exception:', err)
@@ -194,18 +246,44 @@ class SupabaseAuthService implements AuthServiceInterface {
 
       if (error) {
         console.error('❌ Magic link verification error:', error)
+
+        // Log magic link verification failure
+        await auditLogger.logAuthEvent({
+          userId: null,
+          eventType: 'magic_link_expired',
+          authMethod: 'magic_link',
+          metadata: { error: error.message },
+        })
+
         return null
       }
 
       if (data.user?.id) {
         console.log('✅ Magic link verified, setting current user')
         await this.setCurrentUser(data.user.id)
+
+        // Log magic link verification success
+        await auditLogger.logAuthEvent({
+          userId: data.user.id,
+          eventType: 'magic_link_verified',
+          authMethod: 'magic_link',
+        })
+
         return this.currentUser
       }
 
       return null
     } catch (err) {
       console.error('❌ Magic link verification exception:', err)
+
+      // Log magic link verification exception
+      await auditLogger.logAuthEvent({
+        userId: null,
+        eventType: 'magic_link_expired',
+        authMethod: 'magic_link',
+        metadata: { error: (err as any).message },
+      })
+
       return null
     }
   }
@@ -215,6 +293,14 @@ class SupabaseAuthService implements AuthServiceInterface {
 
     try {
       console.log('🚪 Signing out user...')
+
+      // Log logout if user exists
+      if (this.currentUser?.id) {
+        await auditLogger.logAuthEvent({
+          userId: this.currentUser.id,
+          eventType: 'logout',
+        })
+      }
 
       // Clear the current user FIRST - this is important for immediate UI update
       this.currentUser = null

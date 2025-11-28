@@ -3,6 +3,8 @@ import { getSupabaseClient, getSupabaseServiceClient } from '@/lib/supabase'
 import { useAuth } from '@/context/AuthContext'
 import { UserRole } from '@/types/auth'
 import { ROLES } from '@/lib/rbac'
+import { AuditLogViewer } from './AuditLogViewer'
+import { adminSessionService } from '@/services/adminSessionService'
 
 interface UserData {
   id: string
@@ -10,6 +12,7 @@ interface UserData {
   role: UserRole
   display_name?: string
   last_seen?: string
+  hasActiveSessions?: boolean
 }
 
 interface AddUserModalProps {
@@ -244,9 +247,35 @@ export const AdminDashboard: React.FC = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [latestWeek, setLatestWeek] = useState<number>(1)
 
+  // Tab state for switching between user management and audit logs
+  const [activeTab, setActiveTab] = useState<'users' | 'audit'>('users')
+
+  // Suspicious activity detection
+  const [suspiciousUsers, setSuspiciousUsers] = useState<Array<{ userId: string; failureCount: number }>>([])
+
   useEffect(() => {
     fetchUsers()
     fetchLatestWeek()
+  }, [])
+
+  // Check for suspicious activity every 5 minutes
+  useEffect(() => {
+    const checkSuspicious = async () => {
+      try {
+        const suspicious = await adminSessionService.detectSuspiciousActivity()
+        setSuspiciousUsers(suspicious)
+      } catch (err) {
+        console.error('Error detecting suspicious activity:', err)
+      }
+    }
+
+    // Check immediately
+    checkSuspicious()
+
+    // Then check every 5 minutes
+    const interval = setInterval(checkSuspicious, 5 * 60 * 1000)
+
+    return () => clearInterval(interval)
   }, [])
 
   const fetchLatestWeek = async () => {
@@ -269,11 +298,35 @@ export const AdminDashboard: React.FC = () => {
     }
   }
 
+  const handleForceLogout = async (userId: string) => {
+    if (!confirm('Force logout this user from all devices?')) {
+      return
+    }
+
+    try {
+      setDeletingId(userId) // Reuse deletingId for loading state
+      const success = await adminSessionService.forceLogoutUser(userId, user?.id || '')
+
+      if (success) {
+        alert('User successfully logged out from all devices')
+        // Refresh users list to show updated session status
+        await fetchUsers()
+      } else {
+        alert('Failed to force logout user')
+      }
+    } catch (err: any) {
+      console.error('Error force logging out user:', err)
+      alert(`Failed to force logout: ${err.message}`)
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   const fetchUsers = async () => {
     try {
       setIsLoading(true)
       const supabase = getSupabaseClient()
-      
+
       const { data, error } = await supabase
         .from('user_roles')
         .select('*')
@@ -281,7 +334,23 @@ export const AdminDashboard: React.FC = () => {
 
       if (error) throw error
 
-      setUsers(data as UserData[])
+      // Fetch session information for each user
+      const usersWithSessions = await Promise.all(
+        (data as UserData[]).map(async (userData) => {
+          try {
+            const sessions = await adminSessionService.getUserSessions(userData.id)
+            return {
+              ...userData,
+              hasActiveSessions: sessions.length > 0,
+            }
+          } catch (err) {
+            console.error(`Error fetching sessions for user ${userData.id}:`, err)
+            return userData
+          }
+        })
+      )
+
+      setUsers(usersWithSessions)
     } catch (err: any) {
       console.error('Error fetching users:', err)
       setError(err.message)
@@ -394,8 +463,61 @@ export const AdminDashboard: React.FC = () => {
         </div>
       )}
 
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+      {/* Suspicious Activity Alert */}
+      {suspiciousUsers.length > 0 && (
+        <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-red-800">
+                ⚠️ Suspicious activity detected: {suspiciousUsers.length} user(s) with multiple failed login attempts
+              </p>
+              <ul className="mt-2 list-disc list-inside text-sm text-red-700">
+                {suspiciousUsers.map((su) => (
+                  <li key={su.userId}>
+                    User {su.userId.substring(0, 8)}... has {su.failureCount} failed attempts
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab Navigation */}
+      <div className="mb-6 border-b border-gray-200 bg-white rounded-t-lg">
+        <nav className="flex space-x-8 px-6" aria-label="Tabs">
+          <button
+            onClick={() => setActiveTab('users')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'users'
+                ? 'border-waldorf-peach-500 text-waldorf-peach-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            User Management
+          </button>
+          <button
+            onClick={() => setActiveTab('audit')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'audit'
+                ? 'border-waldorf-peach-500 text-waldorf-peach-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Audit Logs
+          </button>
+        </nav>
+      </div>
+
+      {/* User Management Tab */}
+      {activeTab === 'users' && (
+        <div className="bg-white shadow rounded-lg overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
           <div>
             <h2 className="text-lg font-medium text-gray-900">User Management</h2>
             <p className="text-sm text-gray-500 mt-1">{users.length} users found</p>
@@ -447,8 +569,10 @@ export const AdminDashboard: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {userData.id === user?.id ? (
                       <span className="text-green-600 font-medium">Current User</span>
+                    ) : userData.hasActiveSessions ? (
+                      <span className="text-green-600 font-medium">Active Session</span>
                     ) : (
-                      'Active'
+                      <span className="text-gray-400">No Active Session</span>
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -471,13 +595,24 @@ export const AdminDashboard: React.FC = () => {
                       Edit
                     </button>
                     {userData.id !== user?.id && (
-                      <button
-                        onClick={() => handleDeleteUser(userData.id)}
-                        disabled={deletingId === userData.id}
-                        className="text-red-600 hover:text-red-800 disabled:opacity-50"
-                      >
-                        {deletingId === userData.id ? 'Deleting...' : 'Delete'}
-                      </button>
+                      <>
+                        {userData.hasActiveSessions && (
+                          <button
+                            onClick={() => handleForceLogout(userData.id)}
+                            disabled={deletingId === userData.id}
+                            className="text-orange-600 hover:text-orange-800 disabled:opacity-50"
+                          >
+                            {deletingId === userData.id ? 'Logging out...' : 'Force Logout'}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDeleteUser(userData.id)}
+                          disabled={deletingId === userData.id}
+                          className="text-red-600 hover:text-red-800 disabled:opacity-50"
+                        >
+                          {deletingId === userData.id ? 'Deleting...' : 'Delete'}
+                        </button>
+                      </>
                     )}
                   </td>
                 </tr>
@@ -486,6 +621,20 @@ export const AdminDashboard: React.FC = () => {
           </table>
         </div>
       </div>
+      )}
+
+      {/* Audit Logs Tab */}
+      {activeTab === 'audit' && (
+        <div className="bg-white shadow rounded-lg overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <h2 className="text-lg font-medium text-gray-900">Authentication Audit Logs</h2>
+            <p className="text-sm text-gray-500 mt-1">View all authentication events for security auditing</p>
+          </div>
+          <div className="p-6">
+            <AuditLogViewer />
+          </div>
+        </div>
+      )}
 
       <AddUserModal
         isOpen={isAddModalOpen}
