@@ -7,6 +7,7 @@ import { WeeklyReaderPage } from '@/pages/WeeklyReaderPage'
 import { ErrorPage } from '@/pages/ErrorPage'
 import { EditorPage } from '@/pages/EditorPage'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
+import { AdminDashboard } from '@/components/AdminDashboard'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import '@/styles/globals.css'
 
@@ -73,6 +74,14 @@ export default function App() {
                 element={
                   <ProtectedRoute>
                     <EditorPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute requiredRole="admin">
+                    <AdminDashboard />
                   </ProtectedRoute>
                 }
               />

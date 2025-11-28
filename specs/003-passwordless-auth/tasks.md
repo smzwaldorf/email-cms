@@ -155,7 +155,7 @@
 **並行執行**: T044-T049 可並行
 
 - [x] T044 [P] [US3] 建立 src/components/ProtectedRoute.tsx：檢查使用者角色、禁止未授權訪問、顯示錯誤頁面 (✅ 完整實現，支援魔法連結短 ID 流程)
-- [ ] T045 [P] [US3] 建立 src/components/AdminDashboard.tsx：使用者管理、角色分配、工作階段管理介面
+- [x] T045 [P] [US3] 建立 src/components/AdminDashboard.tsx：使用者管理、角色分配、工作階段管理介面
 - [x] T046 [P] [US3] 更新 supabase/migrations/007_setup_rls_policies.sql：擴展 RLS 政策用於 articles、user_roles、class_enrollments 表 (✅ RLS 政策已在現有遷移中實現)
 - [x] T047 [P] [US3] 建立 supabase/functions/utility/rbac-checker.ts：checkPermission(userId, action, resource) (✅ 實現為 Deno Edge Function 與 TypeScript 服務整合)
 - [x] T048 [US3] 更新 src/App.tsx：用 ProtectedRoute 包裝受保護的頁面 (AdminDashboard, AccountSettings) (✅ 所有受保護的路由已包裝)

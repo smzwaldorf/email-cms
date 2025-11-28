@@ -6,13 +6,7 @@
 
 import { getSupabaseClient } from '@/lib/supabase'
 import type { AuthSession } from '@supabase/supabase-js'
-
-export interface AuthUser {
-  id: string
-  email: string
-  role: 'viewer' | 'editor' | 'admin' | 'parent' | 'teacher' | 'student'
-  displayName?: string
-}
+import type { AuthUser } from '@/types/auth'
 
 export interface AuthServiceInterface {
   signIn(email: string, password: string): Promise<AuthUser | null>

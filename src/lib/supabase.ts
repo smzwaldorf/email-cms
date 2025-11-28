@@ -83,6 +83,31 @@ export function getSupabaseClient(): SupabaseClient {
 }
 
 /**
+ * Get Supabase client with service role key for admin operations
+ * WARNING: Only use this for admin operations that require elevated privileges
+ */
+export function getSupabaseServiceClient(): SupabaseClient {
+  validateEnvironment()
+
+  const url = import.meta.env.VITE_SUPABASE_URL
+  const serviceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY
+
+  if (!serviceKey) {
+    throw new Error(
+      'Missing VITE_SUPABASE_SERVICE_ROLE_KEY environment variable. ' +
+      'This is required for admin operations.'
+    )
+  }
+
+  return createClient(url, serviceKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  })
+}
+
+/**
  * Reset the Supabase client (useful for testing)
  */
 export function resetSupabaseClient(): void {
