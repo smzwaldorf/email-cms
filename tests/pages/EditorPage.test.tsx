@@ -16,14 +16,17 @@ vi.mock('@/services/mockApi')
 // Mock auth services
 vi.mock('@/services/authService', () => ({
   authService: {
-    ensureInitialized: vi.fn(),
+    ensureInitialized: vi.fn().mockResolvedValue(undefined),
+    onAuthStateChange: vi.fn(() => () => {}), // Returns an unsubscribe function
+    getCurrentUser: vi.fn(() => null),
   },
 }))
 
 vi.mock('@/services/tokenManager', () => ({
   tokenManager: {
-    initializeFromSession: vi.fn(),
-    subscribe: vi.fn(),
+    initializeFromSession: vi.fn().mockResolvedValue(undefined),
+    subscribe: vi.fn(() => () => {}),
+    onLogout: vi.fn(),
   },
 }))
 

@@ -16,8 +16,8 @@ const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || ''
 
 describe('E2E: Audit Logging', () => {
   let supabase = createClient(supabaseUrl, supabaseAnonKey)
-  const testEmail = `test-audit-${Date.now()}@example.com`
-  let testUserId: string | null = null
+  let testEmails: string[] = []
+  let testUserIds: string[] = []
 
   beforeEach(() => {
     // Reset client for each test
@@ -25,27 +25,47 @@ describe('E2E: Audit Logging', () => {
   })
 
   afterEach(async () => {
-    // Cleanup: Delete test user and their audit logs
-    if (testUserId) {
-      try {
-        // Delete audit logs
-        await supabase
-          .from('auth_events')
-          .delete()
-          .eq('user_id', testUserId)
-
-        // Delete from user_roles
-        await supabase
-          .from('user_roles')
-          .delete()
-          .eq('id', testUserId)
-      } catch (err) {
-        console.error('Cleanup error:', err)
+    // Cleanup: Delete test data from all tables
+    try {
+      // Delete audit logs by email (in case users weren't created)
+      if (testEmails.length > 0) {
+        for (const email of testEmails) {
+          await supabase
+            .from('auth_events')
+            .delete()
+            .ilike('metadata->email', email)
+        }
       }
+
+      // Delete by user IDs if any were created
+      if (testUserIds.length > 0) {
+        for (const userId of testUserIds) {
+          // Delete audit logs
+          await supabase
+            .from('auth_events')
+            .delete()
+            .eq('user_id', userId)
+
+          // Delete from user_roles
+          await supabase
+            .from('user_roles')
+            .delete()
+            .eq('id', userId)
+        }
+      }
+
+      // Clear the tracking arrays
+      testEmails = []
+      testUserIds = []
+    } catch (err) {
+      console.error('Cleanup error:', err)
     }
   })
 
   it('should log magic link sent event', async () => {
+    const testEmail = `test-audit-${Date.now()}-magic-link@example.com`
+    testEmails.push(testEmail)
+
     // Send magic link
     const { error } = await supabase.auth.signInWithOtp({
       email: testEmail,
@@ -83,6 +103,9 @@ describe('E2E: Audit Logging', () => {
   }, { timeout: 10000 })
 
   it('should log login failure when password is invalid', async () => {
+    const testEmail = `test-audit-${Date.now()}-login-failure@example.com`
+    testEmails.push(testEmail)
+
     // Attempt login with invalid password
     const { error } = await supabase.auth.signInWithPassword({
       email: testEmail,
@@ -117,6 +140,9 @@ describe('E2E: Audit Logging', () => {
   }, { timeout: 10000 })
 
   it('should log OAuth flow start', async () => {
+    const testEmail = `test-audit-${Date.now()}-oauth@example.com`
+    testEmails.push(testEmail)
+
     // Initiate OAuth
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -142,6 +168,9 @@ describe('E2E: Audit Logging', () => {
   }, { timeout: 15000 })
 
   it('should log metadata with error details on auth failure', async () => {
+    const testEmail = `test-audit-${Date.now()}-metadata@example.com`
+    testEmails.push(testEmail)
+
     // Attempt login with invalid credentials
     const { error } = await supabase.auth.signInWithPassword({
       email: testEmail,
@@ -167,6 +196,9 @@ describe('E2E: Audit Logging', () => {
   }, { timeout: 10000 })
 
   it('should capture user agent for device identification', async () => {
+    const testEmail = `test-audit-${Date.now()}-useragent@example.com`
+    testEmails.push(testEmail)
+
     // Send magic link (which will be logged with user agent)
     const { error } = await supabase.auth.signInWithOtp({
       email: testEmail,
@@ -204,11 +236,14 @@ describe('E2E: Audit Logging', () => {
   }, { timeout: 10000 })
 
   it('should log events with correct timestamps', async () => {
+    const testEmail = `test-audit-${Date.now()}-timestamp@example.com`
+    testEmails.push(testEmail)
+
     const beforeTime = new Date()
 
     // Send magic link
     const { error } = await supabase.auth.signInWithOtp({
-      email: `${Date.now()}-timestamp-test@example.com`,
+      email: testEmail,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
