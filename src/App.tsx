@@ -1,15 +1,29 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { lazy, Suspense } from 'react'
 import { AuthProvider } from '@/context/AuthContext'
 import { NavigationProvider } from '@/context/NavigationContext'
 import { LoginPage } from '@/pages/LoginPage'
 import { AuthCallbackPage } from '@/pages/AuthCallbackPage'
 import { WeeklyReaderPage } from '@/pages/WeeklyReaderPage'
 import { ErrorPage } from '@/pages/ErrorPage'
-import { EditorPage } from '@/pages/EditorPage'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
-import { AdminDashboard } from '@/components/AdminDashboard'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import '@/styles/globals.css'
+
+// Lazy load editor and admin pages - only loaded when route is accessed
+// Reduces initial bundle size and improves Time to Interactive (TTI)
+const LazyEditorPage = lazy(() => import('@/pages/EditorPage').then(m => ({ default: m.EditorPage })))
+const LazyAdminDashboard = lazy(() => import('@/components/AdminDashboard').then(m => ({ default: m.AdminDashboard })))
+
+// Loading component shown while lazy route is loading
+const RouteLoader = () => (
+  <div className="flex items-center justify-center h-screen bg-gray-50">
+    <div className="text-center">
+      <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
+      <p className="text-gray-600">読み込み中...</p>
+    </div>
+  </div>
+)
 
 // Placeholder pages
 const HomePage = () => (
@@ -73,7 +87,9 @@ export default function App() {
                 path="/editor/:weekNumber"
                 element={
                   <ProtectedRoute>
-                    <EditorPage />
+                    <Suspense fallback={<RouteLoader />}>
+                      <LazyEditorPage />
+                    </Suspense>
                   </ProtectedRoute>
                 }
               />
@@ -81,7 +97,9 @@ export default function App() {
                 path="/admin"
                 element={
                   <ProtectedRoute requiredRole="admin">
-                    <AdminDashboard />
+                    <Suspense fallback={<RouteLoader />}>
+                      <LazyAdminDashboard />
+                    </Suspense>
                   </ProtectedRoute>
                 }
               />

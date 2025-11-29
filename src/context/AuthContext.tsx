@@ -8,6 +8,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { authService } from '@/services/authService'
 import { tokenManager } from '@/services/tokenManager'
 import { getSupabaseClient } from '@/lib/supabase'
+import { clearPermissionCache } from '@/services/PermissionService'
 import type { AuthUser } from '@/types/auth'
 import type { RealtimePostgresInsertPayload } from '@supabase/supabase-js'
 
@@ -186,6 +187,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Clear any pending redirect cache
       localStorage.removeItem('pending_short_id')
       localStorage.removeItem('pending_week_number')
+
+      // Clear permission cache to avoid stale role/class data after logout
+      clearPermissionCache()
+      console.log('🔓 Permission cache cleared')
 
       // Clean up token manager (stops auto-refresh and clears tokens)
       tokenManager.onLogout()
