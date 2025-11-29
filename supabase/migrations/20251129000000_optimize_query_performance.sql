@@ -52,13 +52,13 @@ CREATE INDEX IF NOT EXISTS idx_articles_created_by_week
 COMMENT ON INDEX idx_articles_created_by_week IS
 'Optimizes queries for fetching articles created by a specific user in a specific week (article editor).';
 
--- Index for active child class enrollments (excluding graduated students)
--- Query pattern: SELECT * FROM child_class_enrollment WHERE family_id = ? AND graduated_at IS NULL
-CREATE INDEX IF NOT EXISTS idx_child_enrollment_family_active
-  ON public.child_class_enrollment(family_id, class_id)
+-- Index for active student class enrollments (excluding graduated students)
+-- Query pattern: SELECT * FROM student_class_enrollment WHERE family_id = ? AND graduated_at IS NULL
+CREATE INDEX IF NOT EXISTS idx_student_enrollment_family_active
+  ON public.student_class_enrollment(family_id, class_id)
   WHERE graduated_at IS NULL;
 
-COMMENT ON INDEX idx_child_enrollment_family_active IS
+COMMENT ON INDEX idx_student_enrollment_family_active IS
 'Partial index for active enrollments only. Optimizes family view queries and RLS policy evaluation for parents.';
 
 -- ============================================================================
@@ -92,7 +92,7 @@ COMMENT ON INDEX idx_auth_events_magic_link_user IS
 ANALYZE public.user_roles;
 ANALYZE public.teacher_class_assignment;
 ANALYZE public.articles;
-ANALYZE public.child_class_enrollment;
+ANALYZE public.student_class_enrollment;
 ANALYZE public.auth_events;
 
 -- ============================================================================
@@ -105,5 +105,5 @@ COMMENT ON TABLE public.auth_events IS
 COMMENT ON TABLE public.user_roles IS
 'User roles lookup table with optimized indexes for role-based RLS policy evaluation and admin dashboard queries.';
 
-COMMENT ON TABLE public.child_class_enrollment IS
-'Child class enrollment tracking with partial indexes optimized for active enrollments (graduated_at IS NULL) to reduce query scope.';
+COMMENT ON TABLE public.student_class_enrollment IS
+'Student class enrollment tracking with partial indexes optimized for active enrollments (graduated_at IS NULL) to reduce query scope.';

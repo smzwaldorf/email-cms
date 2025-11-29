@@ -13,6 +13,7 @@ import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || ''
 const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || ''
+const supabaseServiceKey = process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 
 describe('E2E: Audit Logging', () => {
   let supabase = createClient(supabaseUrl, supabaseAnonKey)
@@ -51,6 +52,32 @@ describe('E2E: Audit Logging', () => {
             .from('user_roles')
             .delete()
             .eq('id', userId)
+        }
+      }
+
+      // Delete users from auth.users if service key is available
+      if (supabaseServiceKey) {
+        const adminSupabase = createClient(supabaseUrl, supabaseServiceKey, {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
+        })
+
+        // List all users and filter by pattern
+        // Note: listUsers pagination defaults to 50, so we request more to be safe
+        const { data: { users }, error: listError } = await adminSupabase.auth.admin.listUsers({ perPage: 1000 })
+        
+        if (!listError && users) {
+          // Find all users matching the test pattern
+          const usersToDelete = users.filter(u => u.email?.startsWith('test-audit-'))
+          
+          if (usersToDelete.length > 0) {
+            console.log(`Cleaning up ${usersToDelete.length} test users...`)
+            for (const user of usersToDelete) {
+              await adminSupabase.auth.admin.deleteUser(user.id)
+            }
+          }
         }
       }
 
