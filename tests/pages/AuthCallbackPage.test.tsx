@@ -4,9 +4,10 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { BrowserRouter as Router } from 'react-router-dom'
 import { AuthCallbackPage } from '@/pages/AuthCallbackPage'
+import WeekService from '@/services/WeekService'
 
 // Mock react-router-dom
 const mockNavigate = vi.fn()
@@ -27,6 +28,14 @@ vi.mock('@/context/AuthContext', () => ({
   useAuth: () => mockUseAuth(),
 }))
 
+// Mock WeekService
+vi.mock('@/services/WeekService', () => ({
+  default: {
+    getLatestPublishedWeek: vi.fn(),
+    getAllWeeks: vi.fn(),
+  },
+}))
+
 describe('AuthCallbackPage - Redirect URL Handling', () => {
   const testUser = {
     id: 'test-user-id',
@@ -38,6 +47,15 @@ describe('AuthCallbackPage - Redirect URL Handling', () => {
     vi.clearAllMocks()
     vi.useFakeTimers()
     mockSearchParams = new URLSearchParams()
+
+    // Mock WeekService to return a default week
+    vi.mocked(WeekService.getLatestPublishedWeek).mockResolvedValue({
+      week_number: '2025-W43',
+      release_date: '2025-10-27',
+      is_published: true,
+      created_at: '2025-10-27T00:00:00Z',
+      updated_at: '2025-10-27T00:00:00Z',
+    } as any)
   })
 
   afterEach(() => {
@@ -132,7 +150,8 @@ describe('AuthCallbackPage - Redirect URL Handling', () => {
       expect(mockNavigate).toHaveBeenCalledWith(articleUrl)
     })
 
-    it('navigates to default week when no redirect_to param', () => {
+    it('navigates to latest week from database when no redirect_to param', async () => {
+      vi.useRealTimers()
       mockSearchParams = new URLSearchParams()
 
       mockUseAuth.mockReturnValue({
@@ -147,12 +166,16 @@ describe('AuthCallbackPage - Redirect URL Handling', () => {
         </Router>
       )
 
-      vi.runAllTimers()
+      // Wait for navigation to be called
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith('/week/2025-W43')
+      }, { timeout: 2000 })
 
-      expect(mockNavigate).toHaveBeenCalledWith('/week/2025-W47')
+      vi.useFakeTimers()
     })
 
-    it('handles empty redirect_to as falsy and uses default', () => {
+    it('handles empty redirect_to as falsy and uses latest week from database', async () => {
+      vi.useRealTimers()
       mockSearchParams = new URLSearchParams('redirect_to=')
 
       mockUseAuth.mockReturnValue({
@@ -167,9 +190,12 @@ describe('AuthCallbackPage - Redirect URL Handling', () => {
         </Router>
       )
 
-      vi.runAllTimers()
+      // Wait for navigation to be called
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith('/week/2025-W43')
+      }, { timeout: 2000 })
 
-      expect(mockNavigate).toHaveBeenCalledWith('/week/2025-W47')
+      vi.useFakeTimers()
     })
   })
 
@@ -195,10 +221,10 @@ describe('AuthCallbackPage - Redirect URL Handling', () => {
       expect(mockNavigate).toHaveBeenCalledWith(url)
     })
 
-    it('handles different week numbers', () => {
+    it('handles different week numbers', async () => {
       const weeks = ['2025-W40', '2025-W50', '2026-W01']
 
-      weeks.forEach((week) => {
+      for (const week of weeks) {
         vi.clearAllMocks()
         const url = `/week/${week}/a001`
         mockSearchParams = new URLSearchParams(`redirect_to=${encodeURIComponent(url)}`)
@@ -218,7 +244,7 @@ describe('AuthCallbackPage - Redirect URL Handling', () => {
         vi.runAllTimers()
 
         expect(mockNavigate).toHaveBeenCalledWith(url)
-      })
+      }
     })
 
     it('handles encoded URLs correctly', () => {
@@ -245,36 +271,9 @@ describe('AuthCallbackPage - Redirect URL Handling', () => {
     })
   })
 
-  describe('logging', () => {
-    it('logs redirect destination when present', () => {
-      const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-      const testUrl = '/week/2025-W43/a001'
-      mockSearchParams = new URLSearchParams(`redirect_to=${encodeURIComponent(testUrl)}`)
-
-      mockUseAuth.mockReturnValue({
-        user: testUser,
-        isLoading: false,
-        verifyMagicLink: vi.fn(),
-      })
-
-      render(
-        <Router>
-          <AuthCallbackPage />
-        </Router>
-      )
-
-      vi.runAllTimers()
-
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        '🔄 Redirecting to original article:',
-        testUrl
-      )
-
-      consoleLogSpy.mockRestore()
-    })
-
-    it('logs default redirect when no redirect_to param', () => {
-      const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+  describe('error handling', () => {
+    it('shows error page when no weeks are available in database', async () => {
+      vi.useRealTimers()
       mockSearchParams = new URLSearchParams()
 
       mockUseAuth.mockReturnValue({
@@ -283,15 +282,79 @@ describe('AuthCallbackPage - Redirect URL Handling', () => {
         verifyMagicLink: vi.fn(),
       })
 
+      // Mock WeekService to return no weeks
+      vi.mocked(WeekService.getLatestPublishedWeek).mockResolvedValue(null)
+      vi.mocked(WeekService.getAllWeeks).mockResolvedValue([])
+
       render(
         <Router>
           <AuthCallbackPage />
         </Router>
       )
 
-      vi.runAllTimers()
+      // Wait for error status to be displayed
+      await waitFor(() => {
+        expect(screen.getByText(/驗證失敗/i)).toBeInTheDocument()
+        expect(screen.getByText(/No newsletter weeks available/i)).toBeInTheDocument()
+      }, { timeout: 2000 })
 
-      expect(consoleLogSpy).toHaveBeenCalledWith('🔄 Redirecting to default week')
+      expect(mockNavigate).not.toHaveBeenCalledWith(expect.stringMatching(/^\/week/))
+
+      vi.useFakeTimers()
+    })
+
+    it('shows error page when WeekService fails to fetch weeks', async () => {
+      vi.useRealTimers()
+      mockSearchParams = new URLSearchParams()
+
+      mockUseAuth.mockReturnValue({
+        user: testUser,
+        isLoading: false,
+        verifyMagicLink: vi.fn(),
+      })
+
+      // Mock WeekService to throw error
+      vi.mocked(WeekService.getLatestPublishedWeek).mockRejectedValue(new Error('Database error'))
+
+      render(
+        <Router>
+          <AuthCallbackPage />
+        </Router>
+      )
+
+      // Wait for error status to be displayed
+      await waitFor(() => {
+        expect(screen.getByText(/驗證失敗/i)).toBeInTheDocument()
+        expect(screen.getByText(/Failed to load newsletter weeks/i)).toBeInTheDocument()
+      }, { timeout: 2000 })
+
+      expect(mockNavigate).not.toHaveBeenCalledWith(expect.stringMatching(/^\/week/))
+
+      vi.useFakeTimers()
+    })
+  })
+
+  describe('logging', () => {
+    it('logs auth callback initialization and error checks', () => {
+      const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+      mockSearchParams = new URLSearchParams()
+
+      mockUseAuth.mockReturnValue({
+        user: null,
+        isLoading: true,
+        verifyMagicLink: vi.fn(),
+      })
+
+      render(
+        <Router>
+          <AuthCallbackPage />
+        </Router>
+      )
+
+      // Should log initialization
+      expect(consoleLogSpy).toHaveBeenCalledWith('🔄 Auth callback handler initiated')
+      expect(consoleLogSpy).toHaveBeenCalledWith('📍 URL hash:', 'none')
+      expect(consoleLogSpy).toHaveBeenCalledWith('📍 Redirect destination from params:', 'none')
 
       consoleLogSpy.mockRestore()
     })
