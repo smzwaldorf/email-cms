@@ -6,17 +6,22 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mediaService, MediaService } from '@/services/mediaService'
 import type { ImageProperties, AudioProperties } from '@/types/media'
+import { MediaFileType } from '@/types/media'
 
 // Mock browser APIs that don't exist in Node.js
 class MockImage {
   onload: (() => void) | null = null
   onerror: (() => void) | null = null
-  src = ''
+  _src = ''
   width = 800
   height = 600
 
+  get src(): string {
+    return this._src
+  }
+
   set src(value: string) {
-    this.src = value
+    this._src = value
     // Simulate image load completion
     if (this.onload) {
       setTimeout(this.onload, 0)
@@ -27,11 +32,15 @@ class MockImage {
 class MockAudio {
   onloadedmetadata: (() => void) | null = null
   onerror: (() => void) | null = null
-  src = ''
+  _src = ''
   duration = 120
 
+  get src(): string {
+    return this._src
+  }
+
   set src(value: string) {
-    this.src = value
+    this._src = value
     // Simulate audio metadata load
     if (this.onloadedmetadata) {
       setTimeout(this.onloadedmetadata, 0)
@@ -74,7 +83,7 @@ describe('MediaService', () => {
   describe('validateFile', () => {
     it('should validate image file successfully', () => {
       const file = new File([''], 'test.jpg', { type: 'image/jpeg' })
-      const result = service.validateFile(file, 'image')
+      const result = service.validateFile(file, MediaFileType.IMAGE)
 
       expect(result.valid).toBe(true)
       expect(result.errors.length).toBe(0)
@@ -82,7 +91,7 @@ describe('MediaService', () => {
 
     it('should validate audio file successfully', () => {
       const file = new File([''], 'test.mp3', { type: 'audio/mpeg' })
-      const result = service.validateFile(file, 'audio')
+      const result = service.validateFile(file, MediaFileType.AUDIO)
 
       expect(result.valid).toBe(true)
       expect(result.errors.length).toBe(0)
@@ -91,7 +100,7 @@ describe('MediaService', () => {
     it('should reject oversized image', () => {
       const largeContent = new Array(11 * 1024 * 1024).fill('x').join('') // 11MB
       const file = new File([largeContent], 'large.jpg', { type: 'image/jpeg' })
-      const result = service.validateFile(file, 'image')
+      const result = service.validateFile(file, MediaFileType.IMAGE)
 
       expect(result.valid).toBe(false)
       expect(result.errors.some((e) => e.includes('size'))).toBe(true)
@@ -99,7 +108,7 @@ describe('MediaService', () => {
 
     it('should reject unsupported file type', () => {
       const file = new File([''], 'test.exe', { type: 'application/x-msdownload' })
-      const result = service.validateFile(file, 'image')
+      const result = service.validateFile(file, MediaFileType.IMAGE)
 
       expect(result.valid).toBe(false)
       expect(result.errors.length).toBeGreaterThan(0)
@@ -108,7 +117,7 @@ describe('MediaService', () => {
     it('should validate file with warning for large size near limit', () => {
       const content = new Array(9 * 1024 * 1024).fill('x').join('') // 9MB
       const file = new File([content], 'test.jpg', { type: 'image/jpeg' })
-      const result = service.validateFile(file, 'image')
+      const result = service.validateFile(file, MediaFileType.IMAGE)
 
       expect(result.valid).toBe(true)
       expect(result.warnings.length).toBeGreaterThan(0)
@@ -116,21 +125,21 @@ describe('MediaService', () => {
 
     it('should reject file with invalid filename', () => {
       const file = new File([''], 'test<script>.jpg', { type: 'image/jpeg' })
-      const result = service.validateFile(file, 'image')
+      const result = service.validateFile(file, MediaFileType.IMAGE)
 
       expect(result.valid).toBe(false)
     })
 
     it('should validate PNG images', () => {
       const file = new File([''], 'test.png', { type: 'image/png' })
-      const result = service.validateFile(file, 'image')
+      const result = service.validateFile(file, MediaFileType.IMAGE)
 
       expect(result.valid).toBe(true)
     })
 
     it('should validate WebP images', () => {
       const file = new File([''], 'test.webp', { type: 'image/webp' })
-      const result = service.validateFile(file, 'image')
+      const result = service.validateFile(file, MediaFileType.IMAGE)
 
       expect(result.valid).toBe(true)
     })
@@ -144,7 +153,7 @@ describe('MediaService', () => {
 
       formats.forEach(({ name, type }) => {
         const file = new File([''], name, { type })
-        const result = service.validateFile(file, 'audio')
+        const result = service.validateFile(file, MediaFileType.AUDIO)
         expect(result.valid).toBe(true)
       })
     })
@@ -244,7 +253,7 @@ describe('MediaService', () => {
       const originalGetImageDimensions = service.getImageDimensions
       service.getImageDimensions = vi.fn(async () => ({ width: 800, height: 600 }))
 
-      const metadata = await service.createMediaMetadata(file, 'id-123', 'user-456', 'image')
+      const metadata = await service.createMediaMetadata(file, 'id-123', 'user-456', MediaFileType.IMAGE)
 
       expect(metadata.id).toBe('id-123')
       expect(metadata.fileName).toBe('test.jpg')
@@ -262,7 +271,7 @@ describe('MediaService', () => {
       const originalGetAudioDuration = service.getAudioDuration
       service.getAudioDuration = vi.fn(async () => 120)
 
-      const metadata = await service.createMediaMetadata(file, 'id-456', 'user-789', 'audio')
+      const metadata = await service.createMediaMetadata(file, 'id-456', 'user-789', MediaFileType.AUDIO)
 
       expect(metadata.mediaType).toBe('audio')
       expect(metadata.uploadedBy).toBe('user-789')
@@ -272,7 +281,7 @@ describe('MediaService', () => {
 
     it('should include timestamps', async () => {
       const file = new File(['test'], 'test.txt', { type: 'text/plain' })
-      const metadata = await service.createMediaMetadata(file, 'id-789', 'user-123', 'document')
+      const metadata = await service.createMediaMetadata(file, 'id-789', 'user-123', MediaFileType.DOCUMENT)
 
       expect(metadata.uploadedAt).toBeDefined()
       expect(metadata.updatedAt).toBeDefined()
@@ -400,22 +409,22 @@ describe('MediaService', () => {
 
   describe('getFileSizeLimit', () => {
     it('should return image size limit', () => {
-      const limit = service.getFileSizeLimit('image')
+      const limit = service.getFileSizeLimit(MediaFileType.IMAGE)
 
       expect(limit).toBeGreaterThan(0)
       expect(limit).toBeLessThanOrEqual(10 * 1024 * 1024) // 10MB or less
     })
 
     it('should return audio size limit', () => {
-      const limit = service.getFileSizeLimit('audio')
+      const limit = service.getFileSizeLimit(MediaFileType.AUDIO)
 
       expect(limit).toBeGreaterThan(0)
       expect(limit).toBeLessThanOrEqual(50 * 1024 * 1024) // 50MB or less
     })
 
     it('should return larger limit for audio than image', () => {
-      const imageLimit = service.getFileSizeLimit('image')
-      const audioLimit = service.getFileSizeLimit('audio')
+      const imageLimit = service.getFileSizeLimit(MediaFileType.IMAGE)
+      const audioLimit = service.getFileSizeLimit(MediaFileType.AUDIO)
 
       expect(audioLimit).toBeGreaterThanOrEqual(imageLimit)
     })
@@ -440,7 +449,7 @@ describe('MediaService', () => {
       const file = new File(['image data'], 'photo.jpg', { type: 'image/jpeg' })
 
       // Validate
-      const validation = service.validateFile(file, 'image')
+      const validation = service.validateFile(file, MediaFileType.IMAGE)
       expect(validation.valid).toBe(true)
 
       // Mock getImageDimensions
@@ -449,7 +458,7 @@ describe('MediaService', () => {
 
       // Create metadata
       const mediaId = service.generateMediaId()
-      const metadata = await service.createMediaMetadata(file, mediaId, 'user-123', 'image')
+      const metadata = await service.createMediaMetadata(file, mediaId, 'user-123', MediaFileType.IMAGE)
 
       expect(metadata.id).toBe(mediaId)
       expect(metadata.fileSize).toBeGreaterThan(0)
@@ -461,7 +470,7 @@ describe('MediaService', () => {
       const file = new File(['content'], 'document.pdf', { type: 'application/pdf' })
 
       // Validate file
-      const validation = service.validateFile(file, 'document')
+      const validation = service.validateFile(file, MediaFileType.DOCUMENT)
       expect(validation.valid).toBe(true)
 
       // Generate ID and path
@@ -474,7 +483,7 @@ describe('MediaService', () => {
       expect(typeInfo.type).toBe('document')
 
       // Create metadata
-      const metadata = await service.createMediaMetadata(file, mediaId, 'user-id', 'document')
+      const metadata = await service.createMediaMetadata(file, mediaId, 'user-id', MediaFileType.DOCUMENT)
       expect(metadata.id).toBe(mediaId)
     })
   })
@@ -485,7 +494,7 @@ describe('MediaService', () => {
       const file = new File([''], 'huge.jpg', { type: 'image/jpeg' })
       Object.defineProperty(file, 'size', { value: 200 * 1024 * 1024 })
 
-      const result = service.validateFile(file, 'image')
+      const result = service.validateFile(file, MediaFileType.IMAGE)
 
       expect(result.valid).toBe(false)
       expect(result.errors.length).toBeGreaterThan(0)
@@ -501,7 +510,7 @@ describe('MediaService', () => {
 
       for (const name of specialNames) {
         const file = new File([''], name, { type: 'image/jpeg' })
-        const result = service.validateFile(file, 'image')
+        const result = service.validateFile(file, MediaFileType.IMAGE)
 
         // Should not throw, validation result should be returned
         expect(result).toBeDefined()

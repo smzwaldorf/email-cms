@@ -269,7 +269,7 @@ export const htmlSanitizer = {
       'gi'
     )
 
-    return html.replace(regex, (match, attrs) => {
+    return html.replace(regex, (_match, attrs) => {
       // 解析現有屬性
       // Parse existing attributes
       const attrRegex = /(\w+)=["']([^"']*)["']/g

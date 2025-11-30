@@ -5,12 +5,11 @@
 
 import type {
   MediaFile,
-  MediaFileType,
   MediaValidationResult,
-  MediaUploadOptions,
   ImageProperties,
   AudioProperties,
 } from '@/types/media'
+import { MediaFileType, MediaFileStatus } from '@/types/media'
 
 /**
  * 支援的 MIME 類型
@@ -100,13 +99,13 @@ export class MediaService {
 
     switch (mimeType) {
       case 'image':
-        return { type: 'image', confidence: 1.0 }
+        return { type: MediaFileType.IMAGE, confidence: 1.0 }
       case 'audio':
-        return { type: 'audio', confidence: 1.0 }
+        return { type: MediaFileType.AUDIO, confidence: 1.0 }
       case 'video':
-        return { type: 'video', confidence: 1.0 }
+        return { type: MediaFileType.VIDEO, confidence: 1.0 }
       default:
-        return { type: 'document', confidence: 0.8 }
+        return { type: MediaFileType.DOCUMENT, confidence: 0.8 }
     }
   }
 
@@ -203,7 +202,7 @@ export class MediaService {
       fileSize: file.size,
       mimeType: file.type,
       mediaType,
-      status: 'pending',
+      status: MediaFileStatus.PENDING,
       uploadedBy: userId,
       uploadedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -211,7 +210,7 @@ export class MediaService {
 
     // 取得圖片尺寸
     // Get image dimensions
-    if (mediaType === 'image') {
+    if (mediaType === MediaFileType.IMAGE) {
       const dimensions = await this.getImageDimensions(file)
       if (dimensions) {
         metadata.width = dimensions.width
@@ -221,7 +220,7 @@ export class MediaService {
 
     // 取得音訊時長
     // Get audio duration
-    if (mediaType === 'audio') {
+    if (mediaType === MediaFileType.AUDIO) {
       const duration = await this.getAudioDuration(file)
       if (duration !== null) {
         metadata.duration = duration

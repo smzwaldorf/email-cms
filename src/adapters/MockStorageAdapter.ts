@@ -53,7 +53,7 @@ export class MockStorageAdapter implements StorageProvider {
     bucket: string,
     path: string,
     file: File | Blob,
-    options?: UploadOptions,
+    _options?: UploadOptions,
     onProgress?: UploadProgressCallback
   ): Promise<StorageOperationResult> {
     try {
