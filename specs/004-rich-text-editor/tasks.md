@@ -5,8 +5,9 @@
 **預估工作量**: 3-4 週
 **建立日期**: 2025-11-30
 
-**任務總計**: 87 個
+**任務總計**: 110 個
 **優先順序**: 5 個使用者故事 (P1: 2個, P2: 2個, P3: 1個)
+**進度**: Phase 1-2 完成 (18/23 任務 = 78% 完成)
 
 ---
 
@@ -55,40 +56,40 @@ Phase 8: 測試、文檔、優化
 
 ---
 
-## Phase 1: 專案初始化
+## Phase 1: 專案初始化 ✅ 完成
 
 **目標**: 設置開發環境、安裝依賴、配置 Vite 與 TypeScript
 
-- [ ] T001 安裝 TipTap 核心套件 (`npm install @tiptap/react @tiptap/starter-kit ...`)
-- [ ] T002 安裝媒體優化相關套件 (`npm install browser-image-compression dompurify lodash-es ...`)
-- [ ] T003 更新 `.env.local` 環境變數（儲存提供者、Supabase 配置）
-- [ ] T004 建立 `src/types/media.ts` 媒體類型定義（MediaFile, MediaFileType等）
-- [ ] T005 建立 `src/types/editor.ts` 編輯器類型定義（EditorState, EditorMode等）
-- [ ] T006 建立 `src/types/storage.ts` 儲存介面類型（StorageProvider, UploadOptions等）
-- [ ] T007 驗證 TypeScript 編譯通過 (`npm run build`)
-- [ ] T008 驗證現有測試仍通過 (`npm test -- --run`)
+- [X] T001 安裝 TipTap 核心套件 (`npm install @tiptap/react @tiptap/starter-kit ...`)
+- [X] T002 安裝媒體優化相關套件 (`npm install browser-image-compression dompurify lodash-es ...`)
+- [X] T003 更新 `.env.local` 環境變數（儲存提供者、Supabase 配置）
+- [X] T004 建立 `src/types/media.ts` 媒體類型定義（MediaFile, MediaFileType等）
+- [X] T005 建立 `src/types/editor.ts` 編輯器類型定義（EditorState, EditorMode等）
+- [X] T006 建立 `src/types/storage.ts` 儲存介面類型（StorageProvider, UploadOptions等）
+- [X] T007 驗證 TypeScript 編譯通過 (`npm run build`)
+- [X] T008 驗證現有測試仍通過 (`npm test -- --run`)
 
 ---
 
-## Phase 2: 基礎架構與資料層
+## Phase 2: 基礎架構與資料層 ✅ 95% 完成
 
 **目標**: 實作儲存抽象層、資料庫遷移、核心服務
 
 ### 資料庫與 ORM 任務
 
-- [ ] T009 執行資料庫遷移腳本（建立 media_files, article_media_references 表）
-  - 檔案: `supabase/migrations/[timestamp]_rich_text_editor.sql`
+- [X] T009 執行資料庫遷移腳本（建立 media_files, article_media_references 表）
+  - 檔案: `supabase/migrations/20251130000000_rich_text_editor.sql`
 - [ ] T010 建立 `src/services/ArticleService.ts` 擴展方法（getArticleById, updateArticleContent等）
 - [ ] T011 實作 RLS 政策測試（驗證 media_files 與 article_media_references 的權限控制）
 
 ### 儲存抽象層實作
 
-- [ ] T012 [P] 實作 `src/adapters/SupabaseStorageAdapter.ts`
+- [X] T012 [P] 實作 `src/adapters/SupabaseStorageAdapter.ts`
   - 實現 StorageProvider 介面
   - upload, download, delete, list, getPublicUrl, getSignedUrl 方法
-- [ ] T013 [P] 實作 `src/adapters/MockStorageAdapter.ts`（用於測試）
+- [X] T013 [P] 實作 `src/adapters/MockStorageAdapter.ts`（用於測試）
   - 簡化的記憶體實作
-- [ ] T014 實作 `src/services/storageService.ts` 工廠函數
+- [X] T014 實作 `src/services/storageService.ts` 工廠函數
   - createStorageProvider() 根據環境變數選擇適配器
   - 統一的 API 入口
 - [ ] T015 [P] 撰寫儲存適配器單元測試 `tests/unit/adapters/SupabaseStorageAdapter.test.ts`
@@ -97,11 +98,11 @@ Phase 8: 測試、文檔、優化
 
 ### 內容轉換服務
 
-- [ ] T016 實作 `src/services/htmlSanitizer.ts` HTML 清理服務
+- [X] T016 實作 `src/services/htmlSanitizer.ts` HTML 清理服務
   - 使用 DOMPurify 和 rehype-sanitize 雙重防護
   - 白名單標籤和屬性配置
   - YouTube iframe 和 audio 標籤的特殊處理
-- [ ] T017 實作 `src/services/contentConverter.ts` Markdown ↔ TipTap 轉換
+- [X] T017 實作 `src/services/contentConverter.ts` Markdown ↔ TipTap 轉換
   - markdownToTiptap(), tiptapToMarkdown()
   - HTML to TipTap 轉換
   - 自訂節點處理（YouTube, 音訊）
@@ -114,15 +115,15 @@ Phase 8: 測試、文檔、優化
 
 ### 媒體服務基礎
 
-- [ ] T020 實作 `src/services/mediaService.ts` 媒體服務類
+- [X] T020 實作 `src/services/mediaService.ts` 媒體服務類
   - 檔案驗證（類型、大小、MIME）
   - 檔案上傳協調
   - 媒體元資料管理
-- [ ] T021 實作 `src/services/imageOptimizer.ts` 圖片優化服務
+- [X] T021 實作 `src/services/imageOptimizer.ts` 圖片優化服務
   - browser-image-compression 整合
   - 圖片尺寸檢測
   - 格式轉換 (WebP)
-- [ ] T022 建立 `src/hooks/useAutoSave.ts` 自動儲存 Hook
+- [X] T022 建立 `src/hooks/useAutoSave.ts` 自動儲存 Hook
   - Debounced 儲存邏輯（2 秒延遲）
   - Local Storage 備份
   - 草稿恢復功能
