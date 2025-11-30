@@ -12,13 +12,30 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import { BrowserRouter } from 'react-router-dom'
 import { ArticleListView } from '@/components/ArticleListView'
 import { Article } from '@/types'
+
+// Mock useFetchAllWeeks hook
+vi.mock('@/hooks/useFetchAllWeeks', () => ({
+  useFetchAllWeeks: vi.fn(() => ({
+    weeks: [],
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+  })),
+}))
+
+// Helper to render with Router context
+const renderWithRouter = (component: React.ReactElement) => {
+  return render(<BrowserRouter>{component}</BrowserRouter>)
+}
 
 // Mock data generator
 function generateMockArticles(count: number): Article[] {
   return Array.from({ length: count }, (_, i) => ({
     id: `article-${i}`,
+    shortId: `a${String(i + 1).padStart(3, '0')}`,
     title: `Test Article ${i + 1}`,
     content: `# Article ${i + 1}\n\nThis is test content for article ${i + 1}.`,
     author: `Author ${i + 1}`,
@@ -44,7 +61,7 @@ describe('Article Switching Performance (T049)', () => {
       const mockOnSelect = vi.fn()
 
       // Initial render with first article
-      const { rerender } = render(
+      const { rerender } = renderWithRouter(
         <ArticleListView
           weekNumber="2025-w43"
           articles={articles}
@@ -57,12 +74,15 @@ describe('Article Switching Performance (T049)', () => {
       const switchStartTime = performance.now()
 
       rerender(
-        <ArticleListView
+        <BrowserRouter>
+          <ArticleListView
           weekNumber="2025-w43"
           articles={articles}
           selectedArticleId={articles[1].id}
           onSelectArticle={mockOnSelect}
-        />
+          />
+        )
+        </BrowserRouter>
       )
 
       const switchEndTime = performance.now()
@@ -76,7 +96,7 @@ describe('Article Switching Performance (T049)', () => {
       const articles = generateMockArticles(10)
       const mockOnSelect = vi.fn()
 
-      const { rerender } = render(
+      const { rerender } = renderWithRouter(
         <ArticleListView
           weekNumber="2025-w43"
           articles={articles}
@@ -92,12 +112,15 @@ describe('Article Switching Performance (T049)', () => {
         const switchStart = performance.now()
 
         rerender(
-          <ArticleListView
+          <BrowserRouter>
+            <ArticleListView
             weekNumber="2025-w43"
             articles={articles}
             selectedArticleId={articles[i].id}
             onSelectArticle={mockOnSelect}
-          />
+            />
+          )
+          </BrowserRouter>
         )
 
         const switchEnd = performance.now()
@@ -120,7 +143,7 @@ describe('Article Switching Performance (T049)', () => {
       const articles = generateMockArticles(10)
       const mockOnSelect = vi.fn()
 
-      const { rerender } = render(
+      const { rerender } = renderWithRouter(
         <ArticleListView
           weekNumber="2025-w43"
           articles={articles}
@@ -137,12 +160,15 @@ describe('Article Switching Performance (T049)', () => {
         const switchStart = performance.now()
 
         rerender(
-          <ArticleListView
+          <BrowserRouter>
+            <ArticleListView
             weekNumber="2025-w43"
             articles={articles}
             selectedArticleId={articles[i].id}
             onSelectArticle={mockOnSelect}
-          />
+            />
+          )
+          </BrowserRouter>
         )
 
         const switchEnd = performance.now()
@@ -169,7 +195,7 @@ describe('Article Switching Performance (T049)', () => {
       const articles = generateMockArticles(15)
       const mockOnSelect = vi.fn()
 
-      const { rerender } = render(
+      const { rerender } = renderWithRouter(
         <ArticleListView
           weekNumber="2025-w43"
           articles={articles}
@@ -185,12 +211,15 @@ describe('Article Switching Performance (T049)', () => {
         const startTime = performance.now()
 
         rerender(
-          <ArticleListView
+          <BrowserRouter>
+            <ArticleListView
             weekNumber="2025-w43"
             articles={articles}
             selectedArticleId={articles[i % articles.length].id}
             onSelectArticle={mockOnSelect}
-          />
+            />
+          )
+          </BrowserRouter>
         )
 
         const endTime = performance.now()
@@ -218,7 +247,7 @@ describe('Article Switching Performance (T049)', () => {
       const articles = generateMockArticles(20)
       const mockOnSelect = vi.fn()
 
-      render(
+      renderWithRouter(
         <ArticleListView
           weekNumber="2025-w43"
           articles={articles}
@@ -254,7 +283,7 @@ describe('Article Switching Performance (T049)', () => {
       const articles = generateMockArticles(8)
       const mockOnSelect = vi.fn()
 
-      const { rerender } = render(
+      const { rerender } = renderWithRouter(
         <ArticleListView
           weekNumber="2025-w43"
           articles={articles}
@@ -273,12 +302,15 @@ describe('Article Switching Performance (T049)', () => {
 
       // Update component
       rerender(
-        <ArticleListView
+        <BrowserRouter>
+          <ArticleListView
           weekNumber="2025-w43"
           articles={articles}
           selectedArticleId={articles[4].id}
           onSelectArticle={mockOnSelect}
-        />
+          />
+        )
+        </BrowserRouter>
       )
 
       const endTime = performance.now()
@@ -293,7 +325,7 @@ describe('Article Switching Performance (T049)', () => {
       const articles = generateMockArticles(5)
       const mockOnSelect = vi.fn()
 
-      const { rerender } = render(
+      const { rerender } = renderWithRouter(
         <ArticleListView
           weekNumber="2025-w43"
           articles={articles}
@@ -306,22 +338,28 @@ describe('Article Switching Performance (T049)', () => {
 
       // Navigate to previous
       rerender(
-        <ArticleListView
+        <BrowserRouter>
+          <ArticleListView
           weekNumber="2025-w43"
           articles={articles}
           selectedArticleId={articles[1].id}
           onSelectArticle={mockOnSelect}
-        />
+          />
+        )
+        </BrowserRouter>
       )
 
       // Navigate forward again
       rerender(
-        <ArticleListView
+        <BrowserRouter>
+          <ArticleListView
           weekNumber="2025-w43"
           articles={articles}
           selectedArticleId={articles[2].id}
           onSelectArticle={mockOnSelect}
-        />
+          />
+        )
+        </BrowserRouter>
       )
 
       const endTime = performance.now()
@@ -337,7 +375,7 @@ describe('Article Switching Performance (T049)', () => {
       const articles = generateMockArticles(20)
       const mockOnSelect = vi.fn()
 
-      const { rerender } = render(
+      const { rerender } = renderWithRouter(
         <ArticleListView
           weekNumber="2025-w43"
           articles={articles}
@@ -350,12 +388,15 @@ describe('Article Switching Performance (T049)', () => {
 
       // Switch to middle article
       rerender(
-        <ArticleListView
+        <BrowserRouter>
+          <ArticleListView
           weekNumber="2025-w43"
           articles={articles}
           selectedArticleId={articles[10].id}
           onSelectArticle={mockOnSelect}
-        />
+          />
+        )
+        </BrowserRouter>
       )
 
       const endTime = performance.now()
@@ -368,7 +409,7 @@ describe('Article Switching Performance (T049)', () => {
       const articles = generateMockArticles(30)
       const mockOnSelect = vi.fn()
 
-      const { rerender } = render(
+      const { rerender } = renderWithRouter(
         <ArticleListView
           weekNumber="2025-w43"
           articles={articles}
@@ -383,12 +424,15 @@ describe('Article Switching Performance (T049)', () => {
       const indices = [5, 10, 15, 20, 25]
       indices.forEach((index) => {
         rerender(
-          <ArticleListView
+          <BrowserRouter>
+            <ArticleListView
             weekNumber="2025-w43"
             articles={articles}
             selectedArticleId={articles[index].id}
             onSelectArticle={mockOnSelect}
-          />
+            />
+          )
+          </BrowserRouter>
         )
       })
 
@@ -409,7 +453,7 @@ describe('Article Switching Performance (T049)', () => {
         navigationClick: [],
       }
 
-      const { rerender } = render(
+      const { rerender } = renderWithRouter(
         <ArticleListView
           weekNumber="2025-w43"
           articles={articles}
@@ -421,12 +465,15 @@ describe('Article Switching Performance (T049)', () => {
       // Test 1: Single switch
       let startTime = performance.now()
       rerender(
-        <ArticleListView
+        <BrowserRouter>
+          <ArticleListView
           weekNumber="2025-w43"
           articles={articles}
           selectedArticleId={articles[1].id}
           onSelectArticle={mockOnSelect}
-        />
+          />
+        )
+        </BrowserRouter>
       )
       performanceMetrics.singleSwitch.push(performance.now() - startTime)
 
@@ -434,12 +481,15 @@ describe('Article Switching Performance (T049)', () => {
       for (let i = 0; i < 3; i++) {
         startTime = performance.now()
         rerender(
-          <ArticleListView
+          <BrowserRouter>
+            <ArticleListView
             weekNumber="2025-w43"
             articles={articles}
             selectedArticleId={articles[(i + 2) % articles.length].id}
             onSelectArticle={mockOnSelect}
-          />
+            />
+          )
+          </BrowserRouter>
         )
         performanceMetrics.rapidSwitches.push(performance.now() - startTime)
       }

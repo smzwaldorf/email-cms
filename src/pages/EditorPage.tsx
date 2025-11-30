@@ -12,53 +12,81 @@ import { ArticleEditor } from '@/components/ArticleEditor'
 import { ArticleOrderManager } from '@/components/ArticleOrderManager'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { useAuth } from '@/context/AuthContext'
+import PermissionService from '@/services/PermissionService'
 import clsx from 'clsx'
 
 export interface EditorPageState {
   articles: Article[]
+  editableArticles: Article[]  // Articles user can edit (filtered by permission)
   weekData: NewsletterWeek | null
   isLoading: boolean
   isSaving: boolean
   error: string | null
   editingArticleId: string | null
   unsavedChanges: boolean
+  hasEditPermission: boolean  // Does user have edit access to any article?
 }
 
 export function EditorPage() {
   const { weekNumber } = useParams<{ weekNumber: string }>()
   const navigate = useNavigate()
+  const { user } = useAuth()
 
   const [state, setState] = useState<EditorPageState>({
     articles: [],
+    editableArticles: [],
     weekData: null,
     isLoading: true,
     isSaving: false,
     error: null,
     editingArticleId: null,
     unsavedChanges: false,
+    hasEditPermission: false,
   })
 
   // 加載週報資料
   useEffect(() => {
-    if (!weekNumber) {
-      setState(prev => ({ ...prev, error: '週份資訊缺失' }))
+    if (!weekNumber || !user?.id) {
+      setState(prev => ({ ...prev, error: '週份資訊或使用者資訊缺失' }))
       return
     }
 
-    loadWeeklyData(weekNumber)
-  }, [weekNumber])
+    loadWeeklyData(weekNumber, user.id)
+  }, [weekNumber, user?.id])
 
-  // 加載週報和文章資料
-  const loadWeeklyData = async (week: string) => {
+  // 加載週報和文章資料，並過濾使用者可編輯的文章
+  const loadWeeklyData = async (week: string, userId: string) => {
     setState(prev => ({ ...prev, isLoading: true, error: null }))
     try {
       const weekData = await fetchWeeklyNewsletter(week)
+      const allArticles = weekData.articles || []
+
+      // Filter articles by permission
+      const editableArticles = []
+      for (const article of allArticles) {
+        const canEdit = await PermissionService.canEditArticle(userId, article)
+        if (canEdit) {
+          editableArticles.push(article)
+        }
+      }
+
       setState(prev => ({
         ...prev,
         weekData,
-        articles: weekData.articles || [],
+        articles: allArticles,
+        editableArticles,
+        hasEditPermission: editableArticles.length > 0,
         isLoading: false,
       }))
+
+      // Show error if no editable articles
+      if (editableArticles.length === 0 && allArticles.length > 0) {
+        setState(prev => ({
+          ...prev,
+          error: '你沒有權限編輯此週的任何文章',
+        }))
+      }
     } catch (err) {
       setState(prev => ({
         ...prev,
@@ -188,17 +216,20 @@ export function EditorPage() {
     return <LoadingSpinner />
   }
 
-  if (state.error && !state.articles.length) {
+  if (state.error && !state.hasEditPermission) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">錯誤</h1>
-          <p className="text-gray-600">{state.error}</p>
+          <h1 className="text-2xl font-bold text-red-600 mb-4">無法存取</h1>
+          <p className="text-gray-600 mb-2">{state.error}</p>
+          <p className="text-gray-500 text-sm mb-6">
+            你沒有權限編輯此週的文章
+          </p>
           <button
-            onClick={() => navigate('/newsletter/2025-W43')}
+            onClick={() => navigate(`/week/${weekNumber}`)}
             className="mt-6 px-4 py-2 bg-waldorf-brown text-white rounded-lg hover:bg-opacity-90"
           >
-            返回首頁
+            返回閱讀頁面
           </button>
         </div>
       </div>
@@ -244,7 +275,7 @@ export function EditorPage() {
             <div className="lg:col-span-1">
               <div className="bg-white rounded-lg shadow p-6">
                 <h2 className="text-lg font-bold text-gray-900 mb-4">
-                  文章清單 ({state.articles.length})
+                  文章清單 ({state.editableArticles.length}/{state.articles.length})
                 </h2>
 
                 {state.isSaving && (
@@ -253,17 +284,28 @@ export function EditorPage() {
                   </div>
                 )}
 
-                {state.articles.length > 0 ? (
-                  <ArticleOrderManager
-                    articles={state.articles}
-                    onReorder={handleReorderArticles}
-                    onSelectArticle={(articleId) =>
-                      setState(prev => ({ ...prev, editingArticleId: articleId }))
-                    }
-                    onDeleteArticle={handleDeleteArticle}
-                    selectedArticleId={state.editingArticleId || ''}
-                    disabled={state.isSaving}
-                  />
+                {state.editableArticles.length > 0 ? (
+                  <>
+                    <ArticleOrderManager
+                      articles={state.editableArticles}
+                      onReorder={handleReorderArticles}
+                      onSelectArticle={(articleId) =>
+                        setState(prev => ({ ...prev, editingArticleId: articleId }))
+                      }
+                      onDeleteArticle={handleDeleteArticle}
+                      selectedArticleId={state.editingArticleId || ''}
+                      disabled={state.isSaving}
+                    />
+                    {state.articles.length > state.editableArticles.length && (
+                      <p className="text-gray-500 text-xs mt-2">
+                        {state.articles.length - state.editableArticles.length} 篇文章無權編輯
+                      </p>
+                    )}
+                  </>
+                ) : state.articles.length > 0 ? (
+                  <p className="text-red-600 text-sm mb-4 font-medium">
+                    你沒有權限編輯此週的任何文章
+                  </p>
                 ) : (
                   <p className="text-gray-600 text-sm mb-4">
                     此週還沒有文章

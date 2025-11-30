@@ -30,6 +30,8 @@ export interface NewsletterWeek {
 export interface Article {
   // 唯一識別
   id: string; // UUID 或遞增整數
+  shortId: string; // 短網址 ID
+
 
   // 內容
   title: string; // 文章標題，必填
@@ -151,3 +153,7 @@ export interface ArticleListProps {
   currentArticleId: string;
   onSelectArticle: (articleId: string) => void;
 }
+
+// ============ 資料庫類型定義 ============
+// Re-export all database types from database.ts
+export * from './database';

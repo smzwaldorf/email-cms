@@ -6,7 +6,7 @@
 import { memo, useCallback } from 'react'
 import { Article } from '@/types'
 import { ArticleCard } from './ArticleCard'
-import { formatWeekNumber } from '@/utils/formatters'
+import { WeekSelector } from './WeekSelector'
 
 interface ArticleListViewProps {
   weekNumber: string
@@ -17,7 +17,6 @@ interface ArticleListViewProps {
 }
 
 export const ArticleListView = memo(function ArticleListView({
-  weekNumber,
   articles,
   selectedArticleId,
   onSelectArticle,
@@ -52,10 +51,10 @@ export const ArticleListView = memo(function ArticleListView({
   return (
     <div className="h-full flex flex-col">
       {/* 週報頭部 */}
-      <div className="px-4 py-3 border-b border-waldorf-cream-200 bg-waldorf-cream-100">
-        <h2 className="text-lg font-semibold text-waldorf-clay-800">
-          {formatWeekNumber(weekNumber)}
-        </h2>
+      <div className="px-4 py-3 border-b border-waldorf-cream-200 bg-waldorf-cream-100 space-y-3">
+        <div className="flex items-center justify-between">
+          <WeekSelector />
+        </div>
         <p className="text-sm text-waldorf-clay-600">共 {articles.length} 篇文章</p>
       </div>
 

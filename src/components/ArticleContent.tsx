@@ -10,6 +10,7 @@
 
 import { memo, useMemo } from 'react'
 import { useMarkdownConverter } from '@/hooks/useMarkdownConverter'
+import { useLoadingTimeout } from '@/components/LoadingTimeout'
 import { formatDate, formatViewCount } from '@/utils/formatters'
 
 interface ArticleContentProps {
@@ -35,6 +36,7 @@ function ArticleContentComponent({
   isLoading = false,
 }: ArticleContentProps) {
   const { html, isConverting } = useMarkdownConverter(content)
+  const { isTimedOut } = useLoadingTimeout(isLoading || isConverting, 3000)
 
   // 使用 useMemo 優化 HTML 內容，避免在非內容相關 props 變化時重新計算
   const memoizedHtml = useMemo(() => html, [html])
@@ -54,6 +56,28 @@ function ArticleContentComponent({
   )
 
   if (isLoading || isConverting) {
+    // Show timeout warning if loading takes > 3 seconds
+    if (isTimedOut) {
+      return (
+        <div className="flex-1 flex items-center justify-center p-8">
+          <div className="text-center max-w-md">
+            <h2 className="text-xl font-bold text-waldorf-clay-800 mb-4">
+              加載超時
+            </h2>
+            <p className="text-waldorf-clay-600 mb-6">
+              文章加載時間過長。請重新載入頁面。
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-2 bg-waldorf-sage-600 text-white rounded-md hover:bg-waldorf-sage-700 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-500 transition-colors"
+            >
+              重新載入頁面
+            </button>
+          </div>
+        </div>
+      )
+    }
+
     return (
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="text-center">

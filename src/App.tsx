@@ -1,10 +1,29 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { lazy, Suspense } from 'react'
+import { AuthProvider } from '@/context/AuthContext'
 import { NavigationProvider } from '@/context/NavigationContext'
+import { LoginPage } from '@/pages/LoginPage'
+import { AuthCallbackPage } from '@/pages/AuthCallbackPage'
 import { WeeklyReaderPage } from '@/pages/WeeklyReaderPage'
 import { ErrorPage } from '@/pages/ErrorPage'
-import { EditorPage } from '@/pages/EditorPage'
+import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import '@/styles/globals.css'
+
+// Lazy load editor and admin pages - only loaded when route is accessed
+// Reduces initial bundle size and improves Time to Interactive (TTI)
+const LazyEditorPage = lazy(() => import('@/pages/EditorPage').then(m => ({ default: m.EditorPage })))
+const LazyAdminDashboard = lazy(() => import('@/components/AdminDashboard').then(m => ({ default: m.AdminDashboard })))
+
+// Loading component shown while lazy route is loading
+const RouteLoader = () => (
+  <div className="flex items-center justify-center h-screen bg-gray-50">
+    <div className="text-center">
+      <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
+      <p className="text-gray-600">読み込み中...</p>
+    </div>
+  </div>
+)
 
 // Placeholder pages
 const HomePage = () => (
@@ -13,10 +32,10 @@ const HomePage = () => (
       <h1 className="text-3xl font-bold text-gray-900 mb-4">電子報閱讀器</h1>
       <p className="text-gray-600 mb-4">Newsletter Viewer</p>
       <a
-        href="/week/2025-W43"
+        href="/login"
         className="inline-block px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
       >
-        查看最新週報
+        登入查看週報
       </a>
     </div>
   </div>
@@ -25,18 +44,70 @@ const HomePage = () => (
 export default function App() {
   return (
     <ErrorBoundary>
-      <NavigationProvider>
-        <Router>
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/week/:weekNumber" element={<WeeklyReaderPage />} />
-            <Route path="/article/:articleId" element={<WeeklyReaderPage />} />
-            <Route path="/newsletter/:weekNumber" element={<WeeklyReaderPage />} />
-            <Route path="/editor/:weekNumber" element={<EditorPage />} />
-            <Route path="/error" element={<ErrorPage />} />
-          </Routes>
-        </Router>
-      </NavigationProvider>
+      <AuthProvider>
+        <NavigationProvider>
+          <Router>
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/auth/callback" element={<AuthCallbackPage />} />
+              <Route
+                path="/week/:weekNumber"
+                element={
+                  <ProtectedRoute>
+                    <WeeklyReaderPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/week/:weekNumber/:shortId"
+                element={
+                  <ProtectedRoute>
+                    <WeeklyReaderPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/article/:articleId"
+                element={
+                  <ProtectedRoute>
+                    <WeeklyReaderPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/newsletter/:weekNumber"
+                element={
+                  <ProtectedRoute>
+                    <WeeklyReaderPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/editor/:weekNumber"
+                element={
+                  <ProtectedRoute>
+                    <Suspense fallback={<RouteLoader />}>
+                      <LazyEditorPage />
+                    </Suspense>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute requiredRole="admin">
+                    <Suspense fallback={<RouteLoader />}>
+                      <LazyAdminDashboard />
+                    </Suspense>
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/error" element={<ErrorPage />} />
+            </Routes>
+          </Router>
+        </NavigationProvider>
+      </AuthProvider>
     </ErrorBoundary>
   )
 }

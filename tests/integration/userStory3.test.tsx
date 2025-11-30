@@ -12,15 +12,32 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import { BrowserRouter } from 'react-router-dom'
 import { useState } from 'react'
 import { Article } from '@/types'
 import { SideButton } from '@/components/SideButton'
 import { ArticleListView } from '@/components/ArticleListView'
 
+// Mock useFetchAllWeeks hook
+vi.mock('@/hooks/useFetchAllWeeks', () => ({
+  useFetchAllWeeks: vi.fn(() => ({
+    weeks: [],
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+  })),
+}))
+
+// Helper to render with Router context
+const renderWithRouter = (component: React.ReactElement) => {
+  return render(<BrowserRouter>{component}</BrowserRouter>)
+}
+
 // Mock data generator
 function createMockArticle(id: string, order: number): Article {
   return {
     id,
+    shortId: `a${String(order).padStart(3, '0')}`,
     title: `Article ${order}`,
     content: `# Content for article ${order}`,
     author: `Author ${order}`,
@@ -139,7 +156,7 @@ describe('User Story 3 - Quick Navigation', () => {
 
   describe('US3-Scenario-1: Left Side Button Navigation', () => {
     it('should navigate to previous article via left side button immediately', () => {
-      render(<QuickNavigationContainer initialArticleId="article-3" />)
+      renderWithRouter(<QuickNavigationContainer initialArticleId="article-3" />)
 
       // Verify starting article
       expect(screen.getByText('Article 3')).toBeInTheDocument()
@@ -154,7 +171,7 @@ describe('User Story 3 - Quick Navigation', () => {
     })
 
     it('should disable left button at first article', () => {
-      const { container } = render(
+      const { container } = renderWithRouter(
         <QuickNavigationContainer initialArticleId="article-1" />
       )
 
@@ -168,7 +185,7 @@ describe('User Story 3 - Quick Navigation', () => {
     })
 
     it('should allow continuous left navigation from middle article', () => {
-      render(<QuickNavigationContainer initialArticleId="article-4" />)
+      renderWithRouter(<QuickNavigationContainer initialArticleId="article-4" />)
 
       const leftButton = screen.getByTitle('Previous article')
 
@@ -186,7 +203,7 @@ describe('User Story 3 - Quick Navigation', () => {
 
   describe('US3-Scenario-2: Right Side Button Navigation', () => {
     it('should navigate to next article via right side button immediately', () => {
-      render(<QuickNavigationContainer initialArticleId="article-2" />)
+      renderWithRouter(<QuickNavigationContainer initialArticleId="article-2" />)
 
       // Verify starting article
       expect(screen.getByText('Article 2')).toBeInTheDocument()
@@ -201,7 +218,7 @@ describe('User Story 3 - Quick Navigation', () => {
     })
 
     it('should disable right button at last article', () => {
-      const { container } = render(
+      const { container } = renderWithRouter(
         <QuickNavigationContainer initialArticleId="article-5" />
       )
 
@@ -215,7 +232,7 @@ describe('User Story 3 - Quick Navigation', () => {
     })
 
     it('should allow continuous right navigation from middle article', () => {
-      render(<QuickNavigationContainer initialArticleId="article-1" />)
+      renderWithRouter(<QuickNavigationContainer initialArticleId="article-1" />)
 
       const rightButton = screen.getByTitle('Next article')
 
@@ -236,7 +253,7 @@ describe('User Story 3 - Quick Navigation', () => {
 
   describe('US3-Scenario-3: Toolbar Button Navigation', () => {
     it('should support previous article button in toolbar', () => {
-      render(<QuickNavigationContainer initialArticleId="article-3" />)
+      renderWithRouter(<QuickNavigationContainer initialArticleId="article-3" />)
 
       // Click toolbar "上一篇" (Previous) button
       const toolbarPrevButton = screen.getByTitle('Previous article (toolbar)')
@@ -246,7 +263,7 @@ describe('User Story 3 - Quick Navigation', () => {
     })
 
     it('should support next article button in toolbar', () => {
-      render(<QuickNavigationContainer initialArticleId="article-2" />)
+      renderWithRouter(<QuickNavigationContainer initialArticleId="article-2" />)
 
       // Click toolbar "下一篇" (Next) button
       const toolbarNextButton = screen.getByTitle('Next article (toolbar)')
@@ -256,14 +273,14 @@ describe('User Story 3 - Quick Navigation', () => {
     })
 
     it('should display position indicator in toolbar', () => {
-      render(<QuickNavigationContainer initialArticleId="article-2" />)
+      renderWithRouter(<QuickNavigationContainer initialArticleId="article-2" />)
 
       // Verify position indicator shows correct information
       expect(screen.getByText('第 2 篇，共 5 篇')).toBeInTheDocument()
     })
 
     it('should update position indicator after navigation', () => {
-      render(<QuickNavigationContainer initialArticleId="article-1" />)
+      renderWithRouter(<QuickNavigationContainer initialArticleId="article-1" />)
 
       // Initially at article 1
       expect(screen.getByText('第 1 篇，共 5 篇')).toBeInTheDocument()
@@ -281,7 +298,7 @@ describe('User Story 3 - Quick Navigation', () => {
 
   describe('US3-Scenario-4: Article List Click Navigation', () => {
     it('should support direct article selection via list click', () => {
-      render(<QuickNavigationContainer initialArticleId="article-1" />)
+      renderWithRouter(<QuickNavigationContainer initialArticleId="article-1" />)
 
       // Click on article 4 in the list
       const article4Element = screen.getByText('Article 4').closest('div')
@@ -295,7 +312,7 @@ describe('User Story 3 - Quick Navigation', () => {
     })
 
     it('should support jumping to any article via list', () => {
-      render(<QuickNavigationContainer initialArticleId="article-2" />)
+      renderWithRouter(<QuickNavigationContainer initialArticleId="article-2" />)
 
       // Click article 5
       const article5 = screen.getByText('Article 5').closest('div')
@@ -315,7 +332,7 @@ describe('User Story 3 - Quick Navigation', () => {
     })
 
     it('should keep article list visible while navigating', () => {
-      render(<QuickNavigationContainer initialArticleId="article-1" />)
+      renderWithRouter(<QuickNavigationContainer initialArticleId="article-1" />)
 
       // All articles should be visible in list
       for (let i = 1; i <= 5; i++) {
@@ -335,7 +352,7 @@ describe('User Story 3 - Quick Navigation', () => {
 
   describe('US3-Scenario-5: Multi-Method Navigation Consistency', () => {
     it('should maintain consistent state across navigation methods', () => {
-      render(
+      renderWithRouter(
         <QuickNavigationContainer initialArticleId="article-1" />
       )
 
@@ -364,7 +381,7 @@ describe('User Story 3 - Quick Navigation', () => {
     })
 
     it('should handle rapid navigation without state loss', () => {
-      render(<QuickNavigationContainer initialArticleId="article-1" />)
+      renderWithRouter(<QuickNavigationContainer initialArticleId="article-1" />)
 
       // Perform rapid navigation using different methods
       const rightButton = screen.getByTitle('Next article')
@@ -390,7 +407,7 @@ describe('User Story 3 - Quick Navigation', () => {
     it('should complete article switching in < 1 second (SC-001)', () => {
       const startTime = performance.now()
 
-      const { rerender } = render(
+      const { rerender } = renderWithRouter(
         <QuickNavigationContainer initialArticleId="article-1" />
       )
 
@@ -398,7 +415,11 @@ describe('User Story 3 - Quick Navigation', () => {
       const articles = ['article-2', 'article-3', 'article-4', 'article-5', 'article-3', 'article-1']
 
       articles.forEach((articleId) => {
-        rerender(<QuickNavigationContainer initialArticleId={articleId} />)
+        rerender(
+          <BrowserRouter>
+            <QuickNavigationContainer initialArticleId={articleId} />
+          </BrowserRouter>
+        )
       })
 
       const endTime = performance.now()
@@ -409,7 +430,7 @@ describe('User Story 3 - Quick Navigation', () => {
     })
 
     it('should handle rapid list clicks within 1 second', () => {
-      render(<QuickNavigationContainer initialArticleId="article-1" />)
+      renderWithRouter(<QuickNavigationContainer initialArticleId="article-1" />)
 
       const startTime = performance.now()
 
@@ -430,7 +451,7 @@ describe('User Story 3 - Quick Navigation', () => {
     })
 
     it('should maintain responsive button clicks during navigation', () => {
-      render(<QuickNavigationContainer initialArticleId="article-2" />)
+      renderWithRouter(<QuickNavigationContainer initialArticleId="article-2" />)
 
       const startTime = performance.now()
 
@@ -455,7 +476,7 @@ describe('User Story 3 - Quick Navigation', () => {
 
   describe('Keyboard Navigation Accessibility', () => {
     it('should support button focus and keyboard interaction', () => {
-      render(
+      renderWithRouter(
         <QuickNavigationContainer initialArticleId="article-2" />
       )
 
@@ -473,7 +494,7 @@ describe('User Story 3 - Quick Navigation', () => {
     })
 
     it('should have proper ARIA labels for navigation buttons', () => {
-      const { container } = render(
+      const { container } = renderWithRouter(
         <QuickNavigationContainer initialArticleId="article-3" />
       )
 
@@ -489,7 +510,7 @@ describe('User Story 3 - Quick Navigation', () => {
 
   describe('Visual Feedback & State Indication', () => {
     it('should highlight current article in list', () => {
-      render(
+      renderWithRouter(
         <QuickNavigationContainer initialArticleId="article-3" />
       )
 
@@ -506,7 +527,7 @@ describe('User Story 3 - Quick Navigation', () => {
     })
 
     it('should show disabled state on navigation buttons at boundaries', () => {
-      render(
+      renderWithRouter(
         <QuickNavigationContainer initialArticleId="article-1" />
       )
 
@@ -522,7 +543,7 @@ describe('User Story 3 - Quick Navigation', () => {
 
   describe('Edge Cases & Error Handling', () => {
     it('should prevent navigation beyond boundaries', () => {
-      render(<QuickNavigationContainer initialArticleId="article-5" />)
+      renderWithRouter(<QuickNavigationContainer initialArticleId="article-5" />)
 
       expect(screen.getByText('Article 5')).toBeInTheDocument()
 
@@ -535,7 +556,7 @@ describe('User Story 3 - Quick Navigation', () => {
     })
 
     it('should handle navigation to same article gracefully', () => {
-      render(<QuickNavigationContainer initialArticleId="article-3" />)
+      renderWithRouter(<QuickNavigationContainer initialArticleId="article-3" />)
 
       expect(screen.getByText('Article 3')).toBeInTheDocument()
 
@@ -551,14 +572,18 @@ describe('User Story 3 - Quick Navigation', () => {
     })
 
     it('should maintain navigation state across re-renders', () => {
-      const { rerender } = render(
+      const { rerender } = renderWithRouter(
         <QuickNavigationContainer initialArticleId="article-2" />
       )
 
       expect(screen.getByText('Article 2')).toBeInTheDocument()
 
-      // Force re-render
-      rerender(<QuickNavigationContainer initialArticleId="article-2" />)
+      // Force re-render with BrowserRouter wrapper
+      rerender(
+        <BrowserRouter>
+          <QuickNavigationContainer initialArticleId="article-2" />
+        </BrowserRouter>
+      )
 
       // Should still be at article 2
       expect(screen.getByText('Article 2')).toBeInTheDocument()
@@ -568,7 +593,7 @@ describe('User Story 3 - Quick Navigation', () => {
 
   describe('Comprehensive Quick Navigation Workflow', () => {
     it('should support complete US3 workflow: side buttons + toolbar + list clicks', () => {
-      render(<QuickNavigationContainer initialArticleId="article-1" />)
+      renderWithRouter(<QuickNavigationContainer initialArticleId="article-1" />)
 
       // 1. Verify initial state
       expect(screen.getByText('Article 1')).toBeInTheDocument()

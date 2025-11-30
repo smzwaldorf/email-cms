@@ -16,6 +16,7 @@ describe('ArticleOrderManager', () => {
   const mockArticles: Article[] = [
     {
       id: 'article-001',
+      shortId: 'a001',
       title: 'Article 1',
       content: 'Content 1',
       author: 'Author 1',
@@ -30,6 +31,7 @@ describe('ArticleOrderManager', () => {
     },
     {
       id: 'article-002',
+      shortId: 'a002',
       title: 'Article 2',
       content: 'Content 2',
       author: 'Author 2',

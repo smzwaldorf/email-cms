@@ -2,7 +2,7 @@
  * 導航狀態 Context - 管理電子報和文章導航狀態
  */
 
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react'
 import { NavigationState, Article } from '@/types'
 
 interface NavigationContextType {
@@ -32,8 +32,22 @@ const defaultNavigationState: NavigationState = {
   nextArticleId: undefined,
 }
 
+import { useAuth } from './AuthContext'
+
+// ... (keep existing imports)
+
 export function NavigationProvider({ children }: { children: ReactNode }) {
   const [navigationState, setNavigationState] = useState<NavigationState>(defaultNavigationState)
+  const { isAuthenticated } = useAuth()
+
+  // Reset navigation state when user logs out
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setNavigationState(defaultNavigationState)
+    }
+  }, [isAuthenticated])
+
+  // ... (keep existing methods)
 
   const setCurrentWeek = useCallback((weekNumber: string) => {
     setNavigationState((prev) => ({

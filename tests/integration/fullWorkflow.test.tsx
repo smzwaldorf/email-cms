@@ -17,6 +17,7 @@ describe('Full Application Workflow', () => {
   const mockArticles = [
     {
       id: 'article-001',
+      shortId: 'a001',
       title: 'First Article',
       content: '# Content 1',
       author: 'Author 1',
@@ -31,6 +32,7 @@ describe('Full Application Workflow', () => {
     },
     {
       id: 'article-002',
+      shortId: 'a002',
       title: 'Second Article',
       content: '# Content 2',
       author: 'Author 2',
@@ -45,6 +47,7 @@ describe('Full Application Workflow', () => {
     },
     {
       id: 'article-003',
+      shortId: 'a003',
       title: 'Third Article',
       content: '# Content 3',
       author: 'Author 3',
