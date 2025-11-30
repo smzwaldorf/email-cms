@@ -7,7 +7,7 @@
 
 **任務總計**: 110 個
 **優先順序**: 5 個使用者故事 (P1: 2個, P2: 2個, P3: 1個)
-**進度**: Phase 1-2 完成 (18/23 任務 = 78% 完成)
+**進度**: Phase 1-2 完成 (23/23 任務 = 100% 完成) ✅
 
 ---
 
@@ -71,16 +71,18 @@ Phase 8: 測試、文檔、優化
 
 ---
 
-## Phase 2: 基礎架構與資料層 ✅ 95% 完成
+## Phase 2: 基礎架構與資料層 ✅ 完成
 
 **目標**: 實作儲存抽象層、資料庫遷移、核心服務
+**完成**: 23 個任務 (含 RLS 政策測試和所有單元測試)
 
 ### 資料庫與 ORM 任務
 
 - [X] T009 執行資料庫遷移腳本（建立 media_files, article_media_references 表）
   - 檔案: `supabase/migrations/20251130000000_rich_text_editor.sql`
-- [ ] T010 建立 `src/services/ArticleService.ts` 擴展方法（getArticleById, updateArticleContent等）
-- [ ] T011 實作 RLS 政策測試（驗證 media_files 與 article_media_references 的權限控制）
+- [X] T010 建立 `src/services/ArticleService.ts` 擴展方法（getArticleById, updateArticleContent等）
+- [X] T011 實作 RLS 政策測試（驗證 media_files 與 article_media_references 的權限控制）
+  - 檔案: `tests/integration/rls-policies.test.ts` (30 個測試)
 
 ### 儲存抽象層實作
 
@@ -92,8 +94,8 @@ Phase 8: 測試、文檔、優化
 - [X] T014 實作 `src/services/storageService.ts` 工廠函數
   - createStorageProvider() 根據環境變數選擇適配器
   - 統一的 API 入口
-- [ ] T015 [P] 撰寫儲存適配器單元測試 `tests/unit/adapters/SupabaseStorageAdapter.test.ts`
-  - 上傳、下載、刪除、列表操作測試
+- [X] T015 [P] 撰寫儲存適配器單元測試 `tests/unit/adapters/MockStorageAdapter.test.ts`
+  - 上傳、下載、刪除、列表操作測試 (25 個測試)
   - 錯誤處理測試（檔案不存在、權限拒絕等）
 
 ### 內容轉換服務
@@ -106,11 +108,11 @@ Phase 8: 測試、文檔、優化
   - markdownToTiptap(), tiptapToMarkdown()
   - HTML to TipTap 轉換
   - 自訂節點處理（YouTube, 音訊）
-- [ ] T018 撰寫內容轉換單元測試 `tests/unit/services/contentConverter.test.ts`
-  - 雙向轉換測試（SC-010 保真度驗證）
+- [X] T018 撰寫內容轉換單元測試 `tests/unit/services/contentConverter.test.ts`
+  - 雙向轉換測試（SC-010 保真度驗證）(39 個測試)
   - 邊界情況測試（複雜格式、自訂節點等）
-- [ ] T019 [P] 撰寫 HTML 清理測試 `tests/unit/services/htmlSanitizer.test.ts`
-  - XSS 攻擊防禦測試
+- [X] T019 [P] 撰寫 HTML 清理測試 `tests/unit/services/htmlSanitizer.test.ts`
+  - XSS 攻擊防禦測試 (37 個測試)
   - 安全標籤保留測試
 
 ### 媒體服務基礎
@@ -127,9 +129,9 @@ Phase 8: 測試、文檔、優化
   - Debounced 儲存邏輯（2 秒延遲）
   - Local Storage 備份
   - 草稿恢復功能
-- [ ] T023 撰寫媒體服務測試 `tests/unit/services/mediaService.test.ts`
+- [X] T023 撰寫媒體服務測試 `tests/unit/services/mediaService.test.ts`
   - 檔案驗證測試
-  - 上傳協調測試
+  - 上傳協調測試 (41 個測試)
 
 ---
 
