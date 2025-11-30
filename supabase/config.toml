@@ -278,7 +278,9 @@ client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
 # DO NOT commit your OAuth provider secret to git. Use environment variable substitution instead:
 secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
 # Overrides the default auth redirectUrl.
-redirect_uri = "http://localhost:5173/auth/callback"
+# Leave empty to use Supabase's default: http://127.0.0.1:54321/auth/v1/callback
+# Google redirects to Supabase first, then Supabase redirects to site_url or additional_redirect_urls
+redirect_uri = ""
 # Skip nonce check for local development with Google
 skip_nonce_check = true
 

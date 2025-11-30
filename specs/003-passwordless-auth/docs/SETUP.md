@@ -349,6 +349,29 @@ npm run dev
 3. Google OAuth is enabled in Supabase
 4. You're testing with correct Google account
 
+**Solution:**
+Based on [supabase/config.toml](../../../supabase/config.toml), the correct configuration is:
+
+1. **Google Console Redirect URI**: Use Supabase's callback URL:
+   ```
+   http://127.0.0.1:54321/auth/v1/callback
+   ```
+   (Google redirects to Supabase first, then Supabase redirects to your app)
+
+2. **Supabase config.toml settings**:
+   ```toml
+   [auth]
+   site_url = "http://localhost:5173"
+   additional_redirect_urls = ["http://localhost:5173/auth/callback", ...]
+
+   [auth.external.google]
+   enabled = true
+   skip_nonce_check = true  # Required for local development
+   redirect_uri = ""        # Empty = use Supabase default
+   ```
+
+3. **OAuth flow**: Google → Supabase (127.0.0.1:54321) → Your app (localhost:5173)
+
 **Test:**
 ```bash
 # Open browser console (F12) and look for auth errors

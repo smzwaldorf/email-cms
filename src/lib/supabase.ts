@@ -42,6 +42,14 @@ function createSupabaseClient(): SupabaseClient {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
+      // Explicitly use PKCE flow for OAuth (required for Google sign-in)
+      flowType: 'pkce',
+      // Ensure localStorage is used for storing PKCE code verifier
+      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+      // Detect session from URL on page load (important for OAuth callbacks)
+      detectSessionInUrl: true,
+      // Storage key for session data
+      storageKey: 'supabase.auth.token',
     },
     global: {
       headers: {
