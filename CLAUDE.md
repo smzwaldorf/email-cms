@@ -236,7 +236,3 @@ waldorf-sage, waldorf-peach, waldorf-cream, waldorf-clay, waldorf-brown
 ```
 
 Use these colors consistently across components for visual cohesion.
-
-## Summary documents
-
-No need to save summary in markdown. When it is critical to save summary documents (e.g. API.md, SETUP.md, TESTING.md), store them in the SpecKit folders, instead of the root directory.
