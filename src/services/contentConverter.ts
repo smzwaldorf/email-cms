@@ -336,7 +336,7 @@ export const contentConverter = {
             return `<ol>${this._renderTipTapNode(node.content)}</ol>`
 
           case 'listItem':
-            return `<li>${this._renderTipTapContent(node.content)}</li>`
+            return `<li>${this._renderTipTapNode(node.content)}</li>`
 
           case 'codeBlock':
             return `<pre><code>${this._escape(this._renderTipTapContent(node.content))}</code></pre>`

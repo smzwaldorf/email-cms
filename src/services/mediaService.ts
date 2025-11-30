@@ -87,7 +87,7 @@ export class MediaService {
       errors,
       warnings,
     }
-  },
+  }
 
   /**
    * 檢測媒體檔案的實際類型
@@ -108,7 +108,7 @@ export class MediaService {
       default:
         return { type: 'document', confidence: 0.8 }
     }
-  },
+  }
 
   /**
    * 取得圖片尺寸
@@ -142,7 +142,7 @@ export class MediaService {
       }
       reader.readAsDataURL(file)
     })
-  },
+  }
 
   /**
    * 取得音訊時長
@@ -164,7 +164,7 @@ export class MediaService {
       }
       audio.src = URL.createObjectURL(file)
     })
-  },
+  }
 
   /**
    * 生成唯一的媒體檔案 ID
@@ -172,7 +172,7 @@ export class MediaService {
    */
   generateMediaId(): string {
     return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
-  },
+  }
 
   /**
    * 生成媒體檔案的儲存路徑
@@ -185,7 +185,7 @@ export class MediaService {
   ): string {
     const extension = originalFileName.split('.').pop() || 'bin'
     return `media/${userId}/${new Date().getFullYear()}/${String(new Date().getMonth() + 1).padStart(2, '0')}/${mediaId}.${extension}`
-  },
+  }
 
   /**
    * 建立媒體檔案元資料
@@ -229,7 +229,7 @@ export class MediaService {
     }
 
     return metadata
-  },
+  }
 
   /**
    * 驗證圖片屬性
@@ -270,7 +270,7 @@ export class MediaService {
       errors,
       warnings,
     }
-  },
+  }
 
   /**
    * 驗證音訊屬性
@@ -281,7 +281,7 @@ export class MediaService {
     const warnings: string[] = []
 
     if (!props.mediaId) {
-      errors.push('缺少媒體檔案 ID / Missing media file ID')
+      errors.push('缺少媒體檔案 mediaId / Missing media file mediaId')
     }
 
     return {
@@ -289,13 +289,13 @@ export class MediaService {
       errors,
       warnings,
     }
-  },
+  }
 
   /**
    * 檢查檔案是否重複（簡單實現）
    * Check if file is duplicate (simple implementation)
    */
-  async checkDuplicate(file: File): Promise<{ isDuplicate: boolean; hash?: string }> {
+  async checkDuplicate(file: File): Promise<{ isDuplicate: boolean; hash: string }> {
     try {
       // 計算檔案雜湊值
       // Calculate file hash
@@ -312,9 +312,20 @@ export class MediaService {
       }
     } catch (error) {
       console.error('Hash calculation error:', error)
-      return { isDuplicate: false }
+      // Fallback: generate simple hash from file size only (content-based)
+      const buffer = await file.arrayBuffer()
+      const bytes = new Uint8Array(buffer)
+      let hash = ''
+      for (let i = 0; i < bytes.length; i++) {
+        hash += bytes[i].toString(16).padStart(2, '0')
+        if (i > 100) break // Only use first 100 bytes for speed
+      }
+      return {
+        isDuplicate: false,
+        hash: hash || `fallback-${file.size}`,
+      }
     }
-  },
+  }
 
   // ===== 私有輔助方法 / Private helper methods =====
 
@@ -330,7 +341,7 @@ export class MediaService {
     const i = Math.floor(Math.log(bytes) / Math.log(k))
 
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-  },
+  }
 
   /**
    * 檢查檔案名稱是否有效
@@ -341,7 +352,7 @@ export class MediaService {
     // Check invalid characters
     const invalidChars = /[<>:"|?*\x00-\x1f]/g
     return !invalidChars.test(fileName)
-  },
+  }
 
   /**
    * 取得環境變數中的檔案大小限制
@@ -350,7 +361,7 @@ export class MediaService {
   getFileSizeLimit(mediaType: MediaFileType): number {
     const envLimit = import.meta.env[`VITE_MEDIA_MAX_${mediaType.toUpperCase()}_SIZE`]
     return envLimit ? parseInt(envLimit) : FILE_SIZE_LIMITS[mediaType]
-  },
+  }
 }
 
 /**

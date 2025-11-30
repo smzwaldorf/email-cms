@@ -142,7 +142,13 @@ export const htmlSanitizer = {
 
     // 使用 DOMPurify 清理
     // Use DOMPurify to clean
-    const cleaned = DOMPurify.sanitize(html, PURIFY_CONFIG)
+    let cleaned = DOMPurify.sanitize(html, PURIFY_CONFIG)
+
+    // 移除危險的 data: URL 和其他協議
+    // Remove dangerous data: URLs and other protocols from src/href attributes
+    cleaned = cleaned.replace(/\s(src|href)="(data:|javascript:|vbscript:)[^"]*"/gi, (_match, attr) => {
+      return ` ${attr}=""`
+    })
 
     // 檢測是否進行了修改
     // Check if content was modified
