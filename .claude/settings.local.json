@@ -17,7 +17,8 @@
       "Bash(supabase status:*)",
       "WebFetch(domain:github.com)",
       "WebSearch",
-      "Bash(perl -i -pe:*)"
+      "Bash(perl -i -pe:*)",
+      "Bash(npx tsx:*)"
     ],
     "deny": [],
     "ask": []

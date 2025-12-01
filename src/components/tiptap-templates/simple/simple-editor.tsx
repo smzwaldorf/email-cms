@@ -12,6 +12,11 @@ import Highlight from '@tiptap/extension-highlight'
 import { TextStyle } from '@tiptap/extension-text-style'
 import Placeholder from '@tiptap/extension-placeholder'
 import Color from '@tiptap/extension-color'
+import TextAlign from '@tiptap/extension-text-align'
+import Superscript from '@tiptap/extension-superscript'
+import Subscript from '@tiptap/extension-subscript'
+import TaskList from '@tiptap/extension-task-list'
+import TaskItem from '@tiptap/extension-task-item'
 
 import { EditorToolbar } from './toolbar'
 import './styles/editor.css'
@@ -58,7 +63,9 @@ export function SimpleEditor({
 
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        link: false, // Disable Link from StarterKit to avoid duplication
+      }),
       Image.configure({
         allowBase64: true,
       }),
@@ -71,12 +78,23 @@ export function SimpleEditor({
       }),
       TextStyle,
       Color,
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
+      }),
+      Superscript,
+      Subscript,
+      TaskList,
+      TaskItem.configure({
+        nested: true,
+      }),
       Placeholder.configure({
         placeholder,
       }),
     ],
     content: initialContent,
     onUpdate: ({ editor }) => {
+      // Always call onChange when content updates
+      // autoSave flag is for external auto-save behavior, not for internal onChange
       onChange?.(editor.getHTML(), 'html')
     },
   })

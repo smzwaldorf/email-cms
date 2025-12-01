@@ -1,9 +1,16 @@
 /**
- * 內容轉換服務 - Markdown ↔ TipTap ↔ HTML 轉換
- * Content Converter Service - Markdown ↔ TipTap ↔ HTML conversion
+ * 內容轉換服務 - HTML 驗證與 Markdown 導出
+ * Content Converter Service - HTML validation and Markdown export
+ *
+ * 該服務主要支援：
+ * 1. Markdown 轉換為 HTML（用於導出）
+ * 2. HTML 驗證和清理
+ * 3. 文本提取
+ *
+ * Note: 富文本編輯器直接輸出 HTML，存儲在數據庫中，無需複雜的轉換
  */
 
-import type { ConversionResult, TipTapDocument, TipTapNode } from '@/types/editor'
+import type { ConversionResult } from '@/types/editor'
 
 /**
  * 轉換結果詳情
@@ -19,63 +26,7 @@ export interface DetailedConversionResult extends ConversionResult {
  * 內容轉換服務
  * Content Converter Service
  */
-export const contentConverter = {
-  /**
-   * Markdown 轉換為 HTML
-   * Convert Markdown to HTML
-   */
-  markdownToHtml(markdown: string): string {
-    try {
-      // 基本的 Markdown 轉換邏輯
-      // Basic Markdown conversion logic
-      let html = markdown
-
-      // 標題 / Headers
-      html = html.replace(/^### (.*?)$/gm, '<h3>$1</h3>')
-      html = html.replace(/^## (.*?)$/gm, '<h2>$1</h2>')
-      html = html.replace(/^# (.*?)$/gm, '<h1>$1</h1>')
-
-      // 粗體 / Bold
-      html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      html = html.replace(/__(.+?)__/g, '<strong>$1</strong>')
-
-      // 斜體 / Italic
-      html = html.replace(/\*(.*?)\*/g, '<em>$1</em>')
-      html = html.replace(/_(.*?)_/g, '<em>$1</em>')
-
-      // 刪除線 / Strikethrough
-      html = html.replace(/~~(.*?)~~/g, '<del>$1</del>')
-
-      // 無序列表 / Unordered list
-      html = html.replace(/^\* (.*?)$/gm, '<li>$1</li>')
-      html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
-
-      // 有序列表 / Ordered list
-      html = html.replace(/^\d+\. (.*?)$/gm, '<li>$1</li>')
-
-      // 程式碼 / Code
-      html = html.replace(/`([^`]+)`/g, '<code>$1</code>')
-
-      // 區塊引用 / Blockquote
-      html = html.replace(/^> (.*?)$/gm, '<blockquote>$1</blockquote>')
-
-      // 換行 / Line breaks
-      html = html.replace(/\n\n/g, '</p><p>')
-      html = '<p>' + html + '</p>'
-
-      // 清理 / Clean up
-      html = html.replace(/<p><\/p>/g, '')
-      html = html.replace(/<p><ul>/g, '<ul>')
-      html = html.replace(/<\/ul><\/p>/g, '</ul>')
-
-      return html
-    } catch (error) {
-      console.error('Markdown to HTML conversion error:', error)
-      return markdown
-    }
-  },
-
-  /**
+export const contentConverter = {  /**
    * HTML 轉換為 Markdown
    * Convert HTML to Markdown
    */
@@ -115,13 +66,86 @@ export const contentConverter = {
         '[$2]($1)'
       )
 
-      // 列表項目 / List items
-      markdown = markdown.replace(/<li[^>]*>(.*?)<\/li>/gi, '- $1\n')
-      markdown = markdown.replace(/<ul[^>]*>|<\/ul>/gi, '')
-      markdown = markdown.replace(/<ol[^>]*>|<\/ol>/gi, '')
+      // 移除 <p> 標籤在列表項中 / Remove <p> tags inside list items first
+      markdown = markdown.replace(/<li[^>]*>\s*<p[^>]*>(.*?)<\/p>\s*<\/li>/gi, '<li>$1</li>')
+
+      // 處理任務列表 / Handle task lists - mark them before removing tags
+      // Important: wrap in <TASKLIST> markers to preserve list boundaries
+      markdown = markdown.replace(/<ul[^>]*data-type="taskList"[^>]*>([\s\S]*?)<\/ul>/gi, (_match: string, content: string) => {
+        // Replace task list items with checkbox markers
+        // Handle both attribute orders and attribute presence/absence variations
+        const processed = content.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (_liMatch: string, liContent: string) => {
+          // Check if this is a task item by looking for data-type="taskItem" in the original match
+          if (!_liMatch.includes('data-type="taskItem"')) {
+            return _liMatch // Not a task item, return as is
+          }
+
+          // Extract checked value from the li tag attributes
+          const checkedMatch = _liMatch.match(/data-checked="([^"]*)"/i)
+          const checked = checkedMatch ? checkedMatch[1] : 'false'
+
+          // Remove label/checkbox HTML and extract text content from div/p structure
+          let textContent = liContent
+            .replace(/<label[^>]*>.*?<\/label>/gi, '')  // Remove label with checkbox
+            .replace(/<div[^>]*>/gi, '')  // Remove opening div tags
+            .replace(/<\/div>/gi, '')  // Remove closing div tags
+            .replace(/<p[^>]*>/gi, '')  // Remove opening p tags
+            .replace(/<\/p>/gi, '')  // Remove closing p tags
+            .trim()
+          const isChecked = checked === 'true'
+          return `<TASKITEM>${isChecked ? '[x]' : '[ ]'} ${textContent}</TASKITEM>`
+        })
+        return `<TASKLIST>${processed}</TASKLIST>`
+      })
+
+      // 處理有序列表 / Handle ordered lists - mark them before removing tags
+      markdown = markdown.replace(/<ol[^>]*>([\s\S]*?)<\/ol>/gi, (_match: string, content: string) => {
+        // Replace li tags with ordered list markers
+        let itemIndex = 1
+        const processed = content.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (_liMatch: string, liContent: string) => {
+          return `<ORDEREDITEM>${itemIndex++}. ${liContent}</ORDEREDITEM>`
+        })
+        return processed
+      })
+
+      // 處理無序列表 / Handle unordered lists - mark them before removing tags
+      markdown = markdown.replace(/<ul[^>]*>([\s\S]*?)<\/ul>/gi, (_match: string, content: string) => {
+        // Replace li tags with bullet markers
+        const processed = content.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (_liMatch: string, liContent: string) => {
+          return `<BULLETITEM>- ${liContent}</BULLETITEM>`
+        })
+        return processed
+      })
+
+      // 清理臨時標記 / Clean up temporary markers
+      // Remove the markers; add newline if the next marker/char suggests we need one
+      // Task items followed by another list item - keep them together
+      markdown = markdown.replace(/<TASKITEM>([\s\S]*?)<\/TASKITEM>(?=<(?:TASKITEM|ORDEREDITEM|BULLETITEM)>)/g, '- $1\n')
+      // Task items at the end or standalone
+      markdown = markdown.replace(/<TASKITEM>([\s\S]*?)<\/TASKITEM>/g, '- $1')
+
+      // Ordered items followed by another list item
+      markdown = markdown.replace(/<ORDEREDITEM>([\s\S]*?)<\/ORDEREDITEM>(?=<(?:ORDEREDITEM|BULLETITEM|TASKITEM)>)/g, '$1\n')
+      // Ordered items at the end
+      markdown = markdown.replace(/<ORDEREDITEM>([\s\S]*?)<\/ORDEREDITEM>/g, '$1')
+
+      // Bullet items followed by another list item
+      markdown = markdown.replace(/<BULLETITEM>([\s\S]*?)<\/BULLETITEM>(?=<(?:ORDEREDITEM|BULLETITEM|TASKITEM)>)/g, '$1\n')
+      // Bullet items at the end
+      markdown = markdown.replace(/<BULLETITEM>([\s\S]*?)<\/BULLETITEM>/g, '$1')
 
       // 換行和段落 / Line breaks and paragraphs
       markdown = markdown.replace(/<br\s*\/?>/gi, '\n')
+
+      // Ensure proper spacing between lists and paragraphs
+      // </TASKLIST> followed by <p> needs separation
+      markdown = markdown.replace(/<\/TASKLIST>\s*<p[^>]*>/gi, '\n\n')
+      // Regular </ul> or </ol> followed by <p> also needs separation
+      markdown = markdown.replace(/<\/(?:ul|ol)>\s*<p[^>]*>/gi, '\n\n')
+
+      // Remove list markers
+      markdown = markdown.replace(/<\/?(?:TASKLIST|BULLETLIST|ul|ol)[^>]*>/gi, '')
+
       markdown = markdown.replace(/<p[^>]*>/gi, '')
       markdown = markdown.replace(/<\/p>/gi, '\n\n')
 
@@ -129,6 +153,7 @@ export const contentConverter = {
       markdown = markdown.replace(/<[^>]+>/g, '')
 
       // 清理空白 / Clean whitespace
+      // Collapse multiple newlines that aren't between list items into double newlines
       markdown = markdown.replace(/\n{3,}/g, '\n\n')
       markdown = markdown.trim()
 
@@ -139,91 +164,6 @@ export const contentConverter = {
     }
   },
 
-  /**
-   * TipTap JSON 轉換為 HTML
-   * Convert TipTap JSON to HTML
-   */
-  tiptapToHtml(tiptapJson: any): string {
-    try {
-      if (!tiptapJson || !tiptapJson.content) {
-        return ''
-      }
-
-      return this._renderTipTapNode(tiptapJson.content)
-    } catch (error) {
-      console.error('TipTap to HTML conversion error:', error)
-      return ''
-    }
-  },
-
-  /**
-   * TipTap JSON 轉換為 Markdown
-   * Convert TipTap JSON to Markdown
-   */
-  tiptapToMarkdown(tiptapJson: any): string {
-    try {
-      const html = this.tiptapToHtml(tiptapJson)
-      return this.htmlToMarkdown(html)
-    } catch (error) {
-      console.error('TipTap to Markdown conversion error:', error)
-      return ''
-    }
-  },
-
-  /**
-   * Markdown 轉換為 TipTap JSON
-   * Convert Markdown to TipTap JSON
-   */
-  markdownToTiptap(markdown: string): TipTapDocument {
-    try {
-      const html = this.markdownToHtml(markdown)
-      return this.htmlToTiptap(html)
-    } catch (error) {
-      console.error('Markdown to TipTap conversion error:', error)
-      return {
-        type: 'doc',
-        content: [
-          {
-            type: 'paragraph',
-            content: [
-              {
-                type: 'text',
-                text: markdown,
-              },
-            ],
-          },
-        ],
-      }
-    }
-  },
-
-  /**
-   * HTML 轉換為 TipTap JSON
-   * Convert HTML to TipTap JSON
-   */
-  htmlToTiptap(html: string): TipTapDocument {
-    try {
-      const parser = new DOMParser()
-      const doc = parser.parseFromString(html, 'text/html')
-      const content = this._parseHtmlToTiptapNodes(doc.body)
-
-      return {
-        type: 'doc',
-        content: content.length > 0 ? content : [{ type: 'paragraph' }],
-      }
-    } catch (error) {
-      console.error('HTML to TipTap conversion error:', error)
-      return {
-        type: 'doc',
-        content: [
-          {
-            type: 'paragraph',
-            content: [{ type: 'text', text: html }],
-          },
-        ],
-      }
-    }
-  },
 
   /**
    * 計算內容保真度（0-100）
@@ -315,258 +255,6 @@ export const contentConverter = {
   // ===== 私有輔助方法 / Private helper methods =====
 
   /**
-   * 呈現 TipTap 節點為 HTML
-   * Render TipTap nodes to HTML
-   */
-  _renderTipTapNode(nodes: any[]): string {
-    return (nodes || [])
-      .map((node) => {
-        switch (node.type) {
-          case 'paragraph':
-            return `<p>${this._renderTipTapContent(node.content)}</p>`
-
-          case 'heading':
-            const level = node.attrs?.level || 1
-            return `<h${level}>${this._renderTipTapContent(node.content)}</h${level}>`
-
-          case 'bulletList':
-            return `<ul>${this._renderTipTapNode(node.content)}</ul>`
-
-          case 'orderedList':
-            return `<ol>${this._renderTipTapNode(node.content)}</ol>`
-
-          case 'listItem':
-            return `<li>${this._renderTipTapNode(node.content)}</li>`
-
-          case 'codeBlock':
-            return `<pre><code>${this._escape(this._renderTipTapContent(node.content))}</code></pre>`
-
-          case 'blockquote':
-            return `<blockquote>${this._renderTipTapNode(node.content)}</blockquote>`
-
-          case 'image':
-            return `<img src="${node.attrs?.src || ''}" alt="${node.attrs?.alt || ''}">`
-
-          case 'horizontalRule':
-            return '<hr>'
-
-          default:
-            return node.content ? this._renderTipTapNode(node.content) : ''
-        }
-      })
-      .join('')
-  },
-
-  /**
-   * 呈現 TipTap 內容（包含標記）
-   * Render TipTap content with marks
-   */
-  _renderTipTapContent(content: any[]): string {
-    if (!content) return ''
-
-    return (content || [])
-      .map((item) => {
-        let text = item.text || ''
-
-        // 套用標記 / Apply marks
-        if (item.marks) {
-          item.marks.forEach((mark: any) => {
-            switch (mark.type) {
-              case 'bold':
-                text = `<strong>${text}</strong>`
-                break
-              case 'italic':
-                text = `<em>${text}</em>`
-                break
-              case 'underline':
-                text = `<u>${text}</u>`
-                break
-              case 'strikethrough':
-                text = `<del>${text}</del>`
-                break
-              case 'code':
-                text = `<code>${this._escape(text)}</code>`
-                break
-              case 'link':
-                text = `<a href="${mark.attrs?.href || ''}">${text}</a>`
-                break
-            }
-          })
-        }
-
-        return text
-      })
-      .join('')
-  },
-
-  /**
-   * 解析 HTML 為 TipTap 節點
-   * Parse HTML to TipTap nodes
-   */
-  _parseHtmlToTiptapNodes(element: any): TipTapNode[] {
-    const nodes: TipTapNode[] = []
-
-    for (const child of element.childNodes) {
-      if (child.nodeType === 3) {
-        // 文本節點 / Text node
-        const text = child.textContent?.trim()
-        if (text) {
-          nodes.push({
-            type: 'paragraph',
-            content: [{ type: 'text', text }],
-          })
-        }
-      } else if (child.nodeType === 1) {
-        // 元素節點 / Element node
-        const tagName = child.tagName.toLowerCase()
-        const node = this._createTipTapNode(child, tagName)
-        if (node) {
-          nodes.push(node)
-        }
-      }
-    }
-
-    return nodes
-  },
-
-  /**
-   * 根據 HTML 標籤建立 TipTap 節點
-   * Create TipTap node from HTML tag
-   */
-  _createTipTapNode(element: any, tagName: string): TipTapNode | null {
-    switch (tagName) {
-      case 'h1':
-      case 'h2':
-      case 'h3':
-      case 'h4':
-      case 'h5':
-      case 'h6':
-        return {
-          type: 'heading',
-          attrs: { level: parseInt(tagName[1]) },
-          content: this._parseTextContent(element),
-        }
-
-      case 'p':
-        return {
-          type: 'paragraph',
-          content: this._parseTextContent(element),
-        }
-
-      case 'ul':
-        return {
-          type: 'bulletList',
-          content: Array.from(element.querySelectorAll('li')).map((li) => ({
-            type: 'listItem',
-            content: this._parseTextContent(li),
-          })),
-        }
-
-      case 'ol':
-        return {
-          type: 'orderedList',
-          content: Array.from(element.querySelectorAll('li')).map((li) => ({
-            type: 'listItem',
-            content: this._parseTextContent(li),
-          })),
-        }
-
-      case 'blockquote':
-        return {
-          type: 'blockquote',
-          content: this._parseHtmlToTiptapNodes(element),
-        }
-
-      case 'code':
-      case 'pre':
-        return {
-          type: 'codeBlock',
-          content: [{ type: 'text', text: element.textContent || '' }],
-        }
-
-      case 'img':
-        return {
-          type: 'image',
-          attrs: {
-            src: element.getAttribute('src') || '',
-            alt: element.getAttribute('alt') || '',
-          },
-        }
-
-      case 'hr':
-        return {
-          type: 'horizontalRule',
-        }
-
-      default:
-        return null
-    }
-  },
-
-  /**
-   * 解析文本內容（帶標記）
-   * Parse text content with marks
-   */
-  _parseTextContent(element: any): any[] {
-    const content = []
-
-    for (const child of element.childNodes) {
-      if (child.nodeType === 3) {
-        content.push({
-          type: 'text',
-          text: child.textContent,
-        })
-      } else if (child.nodeType === 1) {
-        const tagName = child.tagName.toLowerCase()
-        const text = child.textContent
-
-        let marks = []
-        switch (tagName) {
-          case 'strong':
-          case 'b':
-            marks.push({ type: 'bold' })
-            break
-          case 'em':
-          case 'i':
-            marks.push({ type: 'italic' })
-            break
-          case 'u':
-            marks.push({ type: 'underline' })
-            break
-          case 'del':
-          case 's':
-            marks.push({ type: 'strikethrough' })
-            break
-          case 'code':
-            marks.push({ type: 'code' })
-            break
-          case 'a':
-            marks.push({
-              type: 'link',
-              attrs: { href: child.getAttribute('href') || '' },
-            })
-            break
-        }
-
-        if (marks.length > 0) {
-          content.push({
-            type: 'text',
-            text,
-            marks,
-          })
-        } else {
-          content.push({
-            type: 'text',
-            text,
-          })
-        }
-      }
-    }
-
-    return content.length > 0 ? content : [{ type: 'text', text: '' }]
-  },
-
-  /**
    * 計算字符串相似度（Levenshtein 距離）
    * Calculate string similarity (Levenshtein distance)
    */
@@ -612,18 +300,4 @@ export const contentConverter = {
     return matrix[str2.length][str1.length]
   },
 
-  /**
-   * 轉義 HTML 特殊字元
-   * Escape HTML special characters
-   */
-  _escape(text: string): string {
-    const map: { [key: string]: string } = {
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#039;',
-    }
-    return text.replace(/[&<>"']/g, (char) => map[char])
-  },
 }

@@ -260,13 +260,6 @@ export interface ContentConverter {
    */
   tiptapToHtml(doc: JSONContent): string
 
-  /**
-   * Markdown → HTML
-   * @param markdown - Markdown 內容
-   * @returns HTML 內容
-   * @throws ConversionError 當轉換失敗時
-   */
-  markdownToHtml(markdown: string): Promise<string>
 
   /**
    * 驗證轉換保真度

@@ -9,9 +9,9 @@
  */
 
 import { memo, useMemo } from 'react'
-import { useMarkdownConverter } from '@/hooks/useMarkdownConverter'
 import { useLoadingTimeout } from '@/components/LoadingTimeout'
 import { formatDate, formatViewCount } from '@/utils/formatters'
+import './ArticleContent.css'
 
 interface ArticleContentProps {
   title: string
@@ -35,11 +35,11 @@ function ArticleContentComponent({
   viewCount,
   isLoading = false,
 }: ArticleContentProps) {
-  const { html, isConverting } = useMarkdownConverter(content)
-  const { isTimedOut } = useLoadingTimeout(isLoading || isConverting, 3000)
+  const { isTimedOut } = useLoadingTimeout(isLoading, 3000)
 
   // 使用 useMemo 優化 HTML 內容，避免在非內容相關 props 變化時重新計算
-  const memoizedHtml = useMemo(() => html, [html])
+  // content 已經是 HTML 格式（TipTap 直接輸出），無需轉換
+  const memoizedHtml = useMemo(() => content, [content])
 
   // 使用 useMemo 優化文章中繼資料，避免重複建立相同的 UI 結構
   const metadataSection = useMemo(
@@ -55,7 +55,7 @@ function ArticleContentComponent({
     [author, createdAt, viewCount]
   )
 
-  if (isLoading || isConverting) {
+  if (isLoading) {
     // Show timeout warning if loading takes > 3 seconds
     if (isTimedOut) {
       return (

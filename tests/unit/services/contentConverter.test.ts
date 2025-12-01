@@ -7,57 +7,7 @@ import { describe, it, expect } from 'vitest'
 import { contentConverter } from '@/services/contentConverter'
 
 describe('ContentConverter', () => {
-  describe('markdownToHtml', () => {
-    it('should convert basic markdown to HTML', () => {
-      const markdown = '# Heading\n**bold** text'
-      const html = contentConverter.markdownToHtml(markdown)
 
-      expect(html).toContain('<h1>Heading</h1>')
-      expect(html).toContain('<strong>bold</strong>')
-    })
-
-    it('should convert bold markers', () => {
-      const markdown = '**bold text**'
-      const html = contentConverter.markdownToHtml(markdown)
-
-      expect(html).toContain('<strong>bold text</strong>')
-    })
-
-    it('should convert italic markers', () => {
-      const markdown = '*italic text*'
-      const html = contentConverter.markdownToHtml(markdown)
-
-      expect(html).toContain('<em>italic text</em>')
-    })
-
-    it('should convert strikethrough', () => {
-      const markdown = '~~strikethrough~~'
-      const html = contentConverter.markdownToHtml(markdown)
-
-      expect(html).toContain('<del>strikethrough</del>')
-    })
-
-    it('should convert headers', () => {
-      const markdown = '# H1\n## H2\n### H3'
-      const html = contentConverter.markdownToHtml(markdown)
-
-      expect(html).toContain('<h1>H1</h1>')
-      expect(html).toContain('<h2>H2</h2>')
-      expect(html).toContain('<h3>H3</h3>')
-    })
-
-    it('should convert inline code', () => {
-      const markdown = 'Use `const` keyword'
-      const html = contentConverter.markdownToHtml(markdown)
-
-      expect(html).toContain('<code>const</code>')
-    })
-
-    it('should handle empty markdown', () => {
-      const html = contentConverter.markdownToHtml('')
-      expect(typeof html).toBe('string')
-    })
-  })
 
   describe('htmlToMarkdown', () => {
     it('should convert HTML to markdown', () => {
@@ -92,12 +42,297 @@ describe('ContentConverter', () => {
       expect(markdown).toContain('- Item 2')
     })
 
+    it('should convert task list with unchecked items', () => {
+      const html = `<ul data-type="taskList">
+<li data-type="taskItem" data-checked="false"><label><input type="checkbox"><span></span></label>Buy milk</li>
+<li data-type="taskItem" data-checked="false"><label><input type="checkbox"><span></span></label>Buy eggs</li>
+</ul>`
+      const markdown = contentConverter.htmlToMarkdown(html)
+
+      expect(markdown).toContain('- [ ] Buy milk')
+      expect(markdown).toContain('- [ ] Buy eggs')
+      expect(markdown).not.toContain('[x]')
+    })
+
+    it('should convert task list with checked items', () => {
+      const html = `<ul data-type="taskList">
+<li data-type="taskItem" data-checked="true"><label><input type="checkbox" checked><span></span></label>Buy milk</li>
+<li data-type="taskItem" data-checked="true"><label><input type="checkbox" checked><span></span></label>Buy eggs</li>
+</ul>`
+      const markdown = contentConverter.htmlToMarkdown(html)
+
+      expect(markdown).toContain('- [x] Buy milk')
+      expect(markdown).toContain('- [x] Buy eggs')
+    })
+
+    it('should convert task list with mixed checked/unchecked items', () => {
+      const html = `<ul data-type="taskList">
+<li data-type="taskItem" data-checked="false"><label><input type="checkbox"><span></span></label>Todo item 1</li>
+<li data-type="taskItem" data-checked="true"><label><input type="checkbox" checked><span></span></label>Completed item</li>
+<li data-type="taskItem" data-checked="false"><label><input type="checkbox"><span></span></label>Todo item 2</li>
+</ul>`
+      const markdown = contentConverter.htmlToMarkdown(html)
+
+      expect(markdown).toContain('- [ ] Todo item 1')
+      expect(markdown).toContain('- [x] Completed item')
+      expect(markdown).toContain('- [ ] Todo item 2')
+      const lines = markdown.split('\n').filter((line) => line.match(/^\s*-\s+\[/))
+      expect(lines.length).toBe(3)
+    })
+
+    it('should preserve task list item content after checkbox', () => {
+      const html = `<ul data-type="taskList">
+<li data-type="taskItem" data-checked="false"><label><input type="checkbox"><span></span></label>Complete the implementation</li>
+</ul>`
+      const markdown = contentConverter.htmlToMarkdown(html)
+
+      expect(markdown).toContain('- [ ] Complete the implementation')
+    })
+
+    it('should handle task list with complex content', () => {
+      const html = `<ul data-type="taskList">
+<li data-type="taskItem" data-checked="false"><label><input type="checkbox"><span></span></label>Task with <strong>bold</strong> text</li>
+<li data-type="taskItem" data-checked="true"><label><input type="checkbox" checked><span></span></label>Task with <em>italic</em> text</li>
+</ul>`
+      const markdown = contentConverter.htmlToMarkdown(html)
+
+      expect(markdown).toContain('- [ ]')
+      expect(markdown).toContain('- [x]')
+      expect(markdown).toContain('bold')
+      expect(markdown).toContain('italic')
+    })
+
+    it('should remove HTML label wrapper from task list items', () => {
+      const html = `<ul data-type="taskList">
+<li data-type="taskItem" data-checked="false"><label><input type="checkbox"><span></span></label>Task</li>
+</ul>`
+      const markdown = contentConverter.htmlToMarkdown(html)
+
+      expect(markdown).toContain('- [ ] Task')
+      expect(markdown).not.toContain('<label>')
+      expect(markdown).not.toContain('<input>')
+    })
+
     it('should remove HTML tags', () => {
       const html = '<div><span>Clean text</span></div>'
       const markdown = contentConverter.htmlToMarkdown(html)
 
       expect(markdown).toContain('Clean text')
       expect(markdown).not.toContain('<div>')
+    })
+
+    describe('Task list with TipTap nested structure', () => {
+      it('should convert TipTap task list HTML to markdown - unchecked items', () => {
+        const html = `<ul data-type="taskList">
+<li data-type="taskItem" data-checked="false"><label contenteditable="false"><input aria-label="Task item checkbox" type="checkbox"><span></span></label><div><p>Buy milk</p></div></li>
+<li data-type="taskItem" data-checked="false"><label contenteditable="false"><input aria-label="Task item checkbox" type="checkbox"><span></span></label><div><p>Buy eggs</p></div></li>
+</ul>`
+        const markdown = contentConverter.htmlToMarkdown(html)
+
+        expect(markdown).toContain('- [ ] Buy milk')
+        expect(markdown).toContain('- [ ] Buy eggs')
+        expect(markdown).not.toContain('<label>')
+        expect(markdown).not.toContain('<input>')
+        expect(markdown).not.toContain('<div>')
+        expect(markdown).not.toContain('<p>')
+      })
+
+      it('should convert TipTap task list HTML to markdown - checked items', () => {
+        const html = `<ul data-type="taskList">
+<li data-type="taskItem" data-checked="true"><label contenteditable="false"><input aria-label="Task item checkbox" type="checkbox" checked><span></span></label><div><p>Task completed</p></div></li>
+<li data-type="taskItem" data-checked="true"><label contenteditable="false"><input aria-label="Task item checkbox" type="checkbox" checked><span></span></label><div><p>Done</p></div></li>
+</ul>`
+        const markdown = contentConverter.htmlToMarkdown(html)
+
+        expect(markdown).toContain('- [x] Task completed')
+        expect(markdown).toContain('- [x] Done')
+      })
+
+      it('should convert TipTap task list with disabled checkboxes to markdown', () => {
+        const html = `<ul data-type="taskList">
+<li data-type="taskItem" data-checked="false"><label contenteditable="false"><input aria-label="Task item checkbox" type="checkbox" disabled><span></span></label><div><p>Read-only task</p></div></li>
+<li data-type="taskItem" data-checked="true"><label contenteditable="false"><input aria-label="Task item checkbox" type="checkbox" checked disabled><span></span></label><div><p>Completed task</p></div></li>
+</ul>`
+        const markdown = contentConverter.htmlToMarkdown(html)
+
+        expect(markdown).toContain('- [ ] Read-only task')
+        expect(markdown).toContain('- [x] Completed task')
+        expect(markdown).not.toContain('disabled')
+      })
+
+      it('should convert TipTap task list with mixed checked/unchecked items', () => {
+        const html = `<ul data-type="taskList">
+<li data-type="taskItem" data-checked="false"><label contenteditable="false"><input aria-label="Task item checkbox" type="checkbox"><span></span></label><div><p>Todo item 1</p></div></li>
+<li data-type="taskItem" data-checked="true"><label contenteditable="false"><input aria-label="Task item checkbox" type="checkbox" checked><span></span></label><div><p>Completed item</p></div></li>
+<li data-type="taskItem" data-checked="false"><label contenteditable="false"><input aria-label="Task item checkbox" type="checkbox"><span></span></label><div><p>Todo item 2</p></div></li>
+</ul>`
+        const markdown = contentConverter.htmlToMarkdown(html)
+
+        expect(markdown).toContain('- [ ] Todo item 1')
+        expect(markdown).toContain('- [x] Completed item')
+        expect(markdown).toContain('- [ ] Todo item 2')
+      })
+
+      it('should convert TipTap task list items with formatting in text', () => {
+        const html = `<ul data-type="taskList">
+<li data-type="taskItem" data-checked="false"><label contenteditable="false"><input aria-label="Task item checkbox" type="checkbox"><span></span></label><div><p>Task with <strong>bold</strong> text</p></div></li>
+<li data-type="taskItem" data-checked="true"><label contenteditable="false"><input aria-label="Task item checkbox" type="checkbox" checked><span></span></label><div><p>Task with <em>italic</em> text</p></div></li>
+</ul>`
+        const markdown = contentConverter.htmlToMarkdown(html)
+
+        expect(markdown).toContain('- [ ]')
+        expect(markdown).toContain('- [x]')
+        expect(markdown).toContain('bold')
+        expect(markdown).toContain('italic')
+      })
+
+      it('should handle TipTap task list with inline code', () => {
+        const html = `<ul data-type="taskList">
+<li data-type="taskItem" data-checked="false"><label contenteditable="false"><input aria-label="Task item checkbox" type="checkbox"><span></span></label><div><p>Install <code>npm</code> package</p></div></li>
+</ul>`
+        const markdown = contentConverter.htmlToMarkdown(html)
+
+        expect(markdown).toContain('- [ ]')
+        expect(markdown).toContain('npm')
+      })
+
+      it('should handle TipTap task list with very long text', () => {
+        const longText = 'This is a very long task description that spans multiple words to ensure proper handling of extended content'
+        const html = `<ul data-type="taskList">
+<li data-type="taskItem" data-checked="false"><label contenteditable="false"><input aria-label="Task item checkbox" type="checkbox"><span></span></label><div><p>${longText}</p></div></li>
+</ul>`
+        const markdown = contentConverter.htmlToMarkdown(html)
+
+        expect(markdown).toContain('- [ ]')
+        expect(markdown).toContain(longText)
+      })
+
+      it('should handle TipTap task list with special characters', () => {
+        const html = `<ul data-type="taskList">
+<li data-type="taskItem" data-checked="false"><label contenteditable="false"><input aria-label="Task item checkbox" type="checkbox"><span></span></label><div><p>Task with special chars: @#$%&</p></div></li>
+</ul>`
+        const markdown = contentConverter.htmlToMarkdown(html)
+
+        expect(markdown).toContain('- [ ]')
+        expect(markdown).toContain('@#$%&')
+      })
+    })
+
+
+
+
+
+    describe('TipTap native HTML structure (without div wrapper)', () => {
+      it('should convert TipTap native task list HTML to markdown - unchecked items', () => {
+        // TipTap's getHTML() produces <p> directly in <li>, not wrapped in <div>
+        const html = `<ul data-type="taskList">
+<li data-type="taskItem" data-checked="false"><label><input type="checkbox"><span></span></label><p>Buy milk</p></li>
+<li data-type="taskItem" data-checked="false"><label><input type="checkbox"><span></span></label><p>Buy eggs</p></li>
+</ul>`
+        const markdown = contentConverter.htmlToMarkdown(html)
+
+        expect(markdown).toContain('- [ ] Buy milk')
+        expect(markdown).toContain('- [ ] Buy eggs')
+      })
+
+      it('should convert TipTap native task list HTML to markdown - checked items', () => {
+        const html = `<ul data-type="taskList">
+<li data-type="taskItem" data-checked="true"><label><input type="checkbox" checked><span></span></label><p>Task completed</p></li>
+<li data-type="taskItem" data-checked="true"><label><input type="checkbox" checked><span></span></label><p>Done</p></li>
+</ul>`
+        const markdown = contentConverter.htmlToMarkdown(html)
+
+        expect(markdown).toContain('- [x] Task completed')
+        expect(markdown).toContain('- [x] Done')
+      })
+
+      it('should convert TipTap native task list with mixed checked/unchecked items', () => {
+        const html = `<ul data-type="taskList">
+<li data-type="taskItem" data-checked="false"><label><input type="checkbox"><span></span></label><p>Todo item 1</p></li>
+<li data-type="taskItem" data-checked="true"><label><input type="checkbox" checked><span></span></label><p>Completed item</p></li>
+<li data-type="taskItem" data-checked="false"><label><input type="checkbox"><span></span></label><p>Todo item 2</p></li>
+</ul>`
+        const markdown = contentConverter.htmlToMarkdown(html)
+
+        expect(markdown).toContain('- [ ] Todo item 1')
+        expect(markdown).toContain('- [x] Completed item')
+        expect(markdown).toContain('- [ ] Todo item 2')
+      })
+
+      it('should convert TipTap native task list with formatting', () => {
+        const html = `<ul data-type="taskList">
+<li data-type="taskItem" data-checked="false"><label><input type="checkbox"><span></span></label><p>Task with <strong>bold</strong> text</p></li>
+<li data-type="taskItem" data-checked="true"><label><input type="checkbox" checked><span></span></label><p>Task with <em>italic</em> text</p></li>
+</ul>`
+        const markdown = contentConverter.htmlToMarkdown(html)
+
+        expect(markdown).toContain('- [ ]')
+        expect(markdown).toContain('bold')
+        expect(markdown).toContain('- [x]')
+        expect(markdown).toContain('italic')
+      })
+    })
+
+    describe('ArticleEditor complete workflow test', () => {
+
+
+      it('should handle editing task list content in the editor', () => {
+        // When user edits task text, HTML might change slightly
+        // Simulate user editing the task text (TipTap outputs it)
+        // TipTap might output the text inside <p> directly
+        const editedHtml = `<ul data-type="taskList"><li data-type="taskItem" data-checked="false"><label><input type="checkbox"><span></span></label><p>Modified task</p></li></ul>`
+
+        // Convert back to markdown
+        const markdown = contentConverter.htmlToMarkdown(editedHtml)
+
+        expect(markdown).toContain('- [ ] Modified task')
+      })
+
+      it('should handle TipTap HTML with data-checked before data-type attributes', () => {
+        // TipTap sometimes outputs attributes in reverse order: data-checked="false" data-type="taskItem"
+        const htmlWithReverseAttributes = `<ul data-type="taskList"><li data-checked="false" data-type="taskItem"><label><input type="checkbox"><span></span></label><div><p>Test</p></div></li></ul>`
+
+        const markdown = contentConverter.htmlToMarkdown(htmlWithReverseAttributes)
+
+        expect(markdown).toContain('- [ ] Test')
+        expect(markdown).not.toContain('data-')
+        expect(markdown).not.toContain('<')
+      })
+
+      it('should convert complex article HTML with task list to markdown', () => {
+        // Real-world example: article with heading, text, task list, and more content
+        const complexHtml = `<h1>歡迎閱讀第 48 週電子報</h1>
+<p>Dear <strong>Parents</strong> and Students,</p>
+<ul data-type="taskList">
+<li data-checked="false" data-type="taskItem"><label><input type="checkbox"><span></span></label><div><p>Test</p></div></li>
+</ul>
+<p>Welcome to Week 48 of our newsletter.</p>`
+
+        const markdown = contentConverter.htmlToMarkdown(complexHtml)
+
+        expect(markdown).toContain('# 歡迎閱讀第 48 週電子報')
+        expect(markdown).toContain('Parents')
+        expect(markdown).toContain('- [ ] Test')
+        expect(markdown).toContain('Welcome to Week 48')
+      })
+
+      it('should not merge task list with following paragraph', () => {
+        // Regression test: task list should be separated from next paragraph with newline
+        const html = `<ul data-type="taskList"><li data-checked="false" data-type="taskItem"><label><input type="checkbox"><span></span></label><div><p>Test</p></div></li></ul><p>Welcome to Week 48 of our newsletter.</p>`
+
+        const markdown = contentConverter.htmlToMarkdown(html)
+
+        // Most important: should NOT merge text directly (no "TestWelcome")
+        expect(markdown).not.toContain('TestWelcome')
+
+        // Verify there's a newline after the task list before the paragraph
+        expect(markdown).toMatch(/- \[ \] Test\n+Welcome/)
+
+        // Check that lines are properly separated
+        const lines = markdown.trim().split('\n').filter(line => line.trim())
+        expect(lines[0]).toBe('- [ ] Test')
+        expect(lines[1]).toBe('Welcome to Week 48 of our newsletter.')
+      })
     })
   })
 
@@ -190,180 +425,8 @@ describe('ContentConverter', () => {
     })
   })
 
-  describe('tiptapToHtml', () => {
-    it('should convert TipTap JSON to HTML', () => {
-      const tiptapJson = {
-        type: 'doc',
-        content: [
-          {
-            type: 'paragraph',
-            content: [
-              {
-                type: 'text',
-                text: 'Hello World',
-              },
-            ],
-          },
-        ],
-      }
 
-      const html = contentConverter.tiptapToHtml(tiptapJson)
 
-      expect(html).toContain('Hello World')
-      expect(html).toContain('<p>')
-    })
-
-    it('should handle empty TipTap document', () => {
-      const tiptapJson = {
-        type: 'doc',
-        content: [],
-      }
-
-      const html = contentConverter.tiptapToHtml(tiptapJson)
-
-      expect(html).toBe('')
-    })
-
-    it('should handle null input', () => {
-      const html = contentConverter.tiptapToHtml(null)
-
-      expect(html).toBe('')
-    })
-
-    it('should convert heading nodes', () => {
-      const tiptapJson = {
-        type: 'doc',
-        content: [
-          {
-            type: 'heading',
-            attrs: { level: 1 },
-            content: [{ type: 'text', text: 'Title' }],
-          },
-        ],
-      }
-
-      const html = contentConverter.tiptapToHtml(tiptapJson)
-
-      expect(html).toContain('<h1>')
-      expect(html).toContain('Title')
-    })
-
-    it('should convert list nodes', () => {
-      const tiptapJson = {
-        type: 'doc',
-        content: [
-          {
-            type: 'bulletList',
-            content: [
-              {
-                type: 'listItem',
-                content: [
-                  {
-                    type: 'paragraph',
-                    content: [{ type: 'text', text: 'Item 1' }],
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      }
-
-      const html = contentConverter.tiptapToHtml(tiptapJson)
-
-      expect(html).toContain('<ul>')
-      expect(html).toContain('<li>')
-      expect(html).toContain('Item 1')
-    })
-  })
-
-  describe('htmlToTiptap', () => {
-    it('should convert HTML to TipTap JSON', () => {
-      const html = '<p>Hello World</p>'
-      const tiptapJson = contentConverter.htmlToTiptap(html)
-
-      expect(tiptapJson.type).toBe('doc')
-      expect(tiptapJson.content).toBeDefined()
-    })
-
-    it('should handle empty HTML', () => {
-      const tiptapJson = contentConverter.htmlToTiptap('')
-
-      expect(tiptapJson.type).toBe('doc')
-      expect(Array.isArray(tiptapJson.content)).toBe(true)
-    })
-
-    it('should preserve heading levels', () => {
-      const html = '<h2>Heading</h2>'
-      const tiptapJson = contentConverter.htmlToTiptap(html)
-
-      // Document structure should be preserved
-      expect(tiptapJson.content).toBeDefined()
-    })
-  })
-
-  describe('markdownToTiptap', () => {
-    it('should convert markdown to TipTap JSON', () => {
-      const markdown = '# Title\n**bold text**'
-      const tiptapJson = contentConverter.markdownToTiptap(markdown)
-
-      expect(tiptapJson.type).toBe('doc')
-      expect(tiptapJson.content).toBeDefined()
-      expect(Array.isArray(tiptapJson.content)).toBe(true)
-    })
-
-    it('should handle empty markdown', () => {
-      const tiptapJson = contentConverter.markdownToTiptap('')
-
-      expect(tiptapJson.type).toBe('doc')
-    })
-  })
-
-  describe('tiptapToMarkdown', () => {
-    it('should convert TipTap JSON to markdown', () => {
-      const tiptapJson = {
-        type: 'doc',
-        content: [
-          {
-            type: 'paragraph',
-            content: [
-              {
-                type: 'text',
-                text: 'Hello',
-                marks: [{ type: 'bold' }],
-              },
-            ],
-          },
-        ],
-      }
-
-      const markdown = contentConverter.tiptapToMarkdown(tiptapJson)
-
-      expect(typeof markdown).toBe('string')
-    })
-  })
-
-  describe('bidirectional conversion', () => {
-    it('should preserve content through markdown -> html -> markdown cycle', () => {
-      const original = '**bold** and *italic*'
-      const html = contentConverter.markdownToHtml(original)
-      const back = contentConverter.htmlToMarkdown(html)
-
-      expect(back.toLowerCase()).toContain('bold')
-      expect(back.toLowerCase()).toContain('italic')
-    })
-
-    it('should maintain structure through conversion cycles', () => {
-      const markdown = '# Title\n\nParagraph with **bold** and *italic*.'
-      const html = contentConverter.markdownToHtml(markdown)
-      const back = contentConverter.htmlToMarkdown(html)
-
-      // Should contain key elements
-      expect(back).toContain('Title')
-      expect(back).toContain('**bold**')
-      expect(back).toContain('*italic*')
-    })
-  })
 
   describe('error handling', () => {
     it('should handle malformed HTML gracefully', () => {
@@ -373,17 +436,8 @@ describe('ContentConverter', () => {
       expect(typeof markdown).toBe('string')
     })
 
-    it('should handle null/undefined inputs', () => {
-      expect(() => contentConverter.markdownToHtml(null as any)).not.toThrow()
-      expect(() => contentConverter.htmlToMarkdown(undefined as any)).not.toThrow()
-    })
 
-    it('should handle very long content', () => {
-      const longContent = 'a'.repeat(10000) + '\n' + '**bold**'
-      const html = contentConverter.markdownToHtml(longContent)
 
-      expect(html.length).toBeGreaterThan(0)
-      expect(html).toContain('<strong>bold</strong>')
-    })
+
   })
 })

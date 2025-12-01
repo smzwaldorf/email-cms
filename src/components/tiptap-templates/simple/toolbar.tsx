@@ -8,20 +8,24 @@ import { Editor } from '@tiptap/react'
 import {
   Bold,
   Italic,
-  Underline,
+  Strikethrough,
   Code,
   ListOrdered,
-  Quote,
   Undo,
   Redo,
-  Highlighter,
 } from 'lucide-react'
 import { MarkButton } from './buttons/mark-button'
 import { HeadingButton } from './buttons/heading-button'
 import { ListButton } from './buttons/list-button'
+import { TaskListButton } from './buttons/task-list-button'
+import { BlockquoteButton } from './buttons/blockquote-button'
 import { LinkButton } from './buttons/link-button'
-import { ImageButton } from './buttons/image-button'
-import { ColorButton } from './buttons/color-button'
+import { TextAlignButton } from './buttons/text-align-button'
+import { SuperscriptButton } from './buttons/superscript-button'
+import { SubscriptButton } from './buttons/subscript-button'
+import { UnderlineButton } from './buttons/underline-button'
+import { HighlightButton } from './buttons/highlight-button'
+import { InsertButton } from './buttons/insert-button'
 
 interface EditorToolbarProps {
   editor: Editor
@@ -48,21 +52,31 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
 
   return (
     <div className="toolbar">
+      {/* 1. Undo/Redo */}
       <div className="toolbar-group">
-        {/* Undo/Redo */}
         <button
-          onClick={() => editor.chain().focus().undo().run()}
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            editor.chain().focus().undo().run()
+          }}
           disabled={!editor.can().undo()}
           title="Undo"
           className="toolbar-button"
+          type="button"
         >
           <Undo size={18} />
         </button>
         <button
-          onClick={() => editor.chain().focus().redo().run()}
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            editor.chain().focus().redo().run()
+          }}
           disabled={!editor.can().redo()}
           title="Redo"
           className="toolbar-button"
+          type="button"
         >
           <Redo size={18} />
         </button>
@@ -70,7 +84,65 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
 
       <div className="toolbar-divider" />
 
-      {/* Text Formatting */}
+      {/* 2. Heading */}
+      <div className="toolbar-group">
+        <HeadingButton editor={editor} />
+      </div>
+
+      <div className="toolbar-divider" />
+
+      {/* 3. Lists (Bullet & Numbered) */}
+      <div className="toolbar-group">
+        <ListButton editor={editor} />
+        <button
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            editor.chain().focus().toggleOrderedList().run()
+          }}
+          className={`toolbar-button ${editor.isActive('orderedList') ? 'active' : ''}`}
+          title="Ordered List"
+          type="button"
+        >
+          <ListOrdered size={18} />
+        </button>
+      </div>
+
+      <div className="toolbar-divider" />
+
+      {/* 4. Task List */}
+      <div className="toolbar-group">
+        <TaskListButton editor={editor} />
+      </div>
+
+      <div className="toolbar-divider" />
+
+      {/* 5. Blockquote */}
+      <div className="toolbar-group">
+        <BlockquoteButton editor={editor} />
+      </div>
+
+      <div className="toolbar-divider" />
+
+      {/* 6. Code Block */}
+      <div className="toolbar-group">
+        <button
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            editor.chain().focus().toggleCodeBlock().run()
+          }}
+          className={`toolbar-button ${editor.isActive('codeBlock') ? 'active' : ''}`}
+          title="Code Block"
+          type="button"
+        >
+          <Code size={18} />
+        </button>
+      </div>
+
+      <div className="toolbar-divider" />
+
+      {/* 7. Bold, Italic, Strikethrough, Underline */}
       <div className="toolbar-group">
         <MarkButton
           editor={editor}
@@ -86,9 +158,9 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
         />
         <MarkButton
           editor={editor}
-          mark="underline"
-          icon={<Underline size={18} />}
-          title="Underline"
+          mark="strike"
+          icon={<Strikethrough size={18} />}
+          title="Strikethrough"
         />
         <MarkButton
           editor={editor}
@@ -96,88 +168,43 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
           icon={<Code size={18} />}
           title="Inline Code"
         />
+        <UnderlineButton editor={editor} />
       </div>
 
       <div className="toolbar-divider" />
 
-      {/* Headings */}
+      {/* 8. Highlight */}
       <div className="toolbar-group">
-        <HeadingButton editor={editor} />
+        <HighlightButton editor={editor} />
       </div>
 
       <div className="toolbar-divider" />
 
-      {/* Highlights & Color */}
-      <div className="toolbar-group">
-        <MarkButton
-          editor={editor}
-          mark="highlight"
-          icon={<Highlighter size={18} />}
-          title="Highlight"
-        />
-        <ColorButton editor={editor} />
-      </div>
-
-      <div className="toolbar-divider" />
-
-      {/* Lists */}
-      <div className="toolbar-group">
-        <ListButton editor={editor} />
-        <button
-          onClick={() =>
-            editor.chain().focus().toggleOrderedList().run()
-          }
-          className={`toolbar-button ${
-            editor.isActive('orderedList') ? 'active' : ''
-          }`}
-          title="Ordered List"
-        >
-          <ListOrdered size={18} />
-        </button>
-      </div>
-
-      <div className="toolbar-divider" />
-
-      {/* Block Elements */}
-      <div className="toolbar-group">
-        <button
-          onClick={() =>
-            editor
-              .chain()
-              .focus()
-              .toggleCodeBlock()
-              .run()
-          }
-          className={`toolbar-button ${
-            editor.isActive('codeBlock') ? 'active' : ''
-          }`}
-          title="Code Block"
-        >
-          <Code size={18} />
-        </button>
-        <button
-          onClick={() =>
-            editor
-              .chain()
-              .focus()
-              .toggleBlockquote()
-              .run()
-          }
-          className={`toolbar-button ${
-            editor.isActive('blockquote') ? 'active' : ''
-          }`}
-          title="Block Quote"
-        >
-          <Quote size={18} />
-        </button>
-      </div>
-
-      <div className="toolbar-divider" />
-
-      {/* Links & Media */}
+      {/* 9. Link */}
       <div className="toolbar-group">
         <LinkButton editor={editor} />
-        <ImageButton editor={editor} />
+      </div>
+
+      <div className="toolbar-divider" />
+
+      {/* 10. Subscript & Superscript */}
+      <div className="toolbar-group">
+        <SubscriptButton editor={editor} />
+        <SuperscriptButton editor={editor} />
+      </div>
+
+      <div className="toolbar-divider" />
+
+      {/* 11. Text Alignment */}
+      <div className="toolbar-group">
+        <TextAlignButton editor={editor} />
+      </div>
+
+      <div className="toolbar-divider" />
+
+      {/* 12. Add Image */}
+      <div className="toolbar-group">
+        <InsertButton editor={editor} />
       </div>
     </div>
   )

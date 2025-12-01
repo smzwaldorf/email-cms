@@ -168,9 +168,26 @@
 .editor-content .ProseMirror ol {
   margin: 1rem 0;
   padding-left: 2rem;
+  list-style: revert;
+}
+
+.editor-content .ProseMirror ul {
+  list-style-type: disc;
+}
+
+.editor-content .ProseMirror ol {
+  list-style-type: decimal;
 }
 
 .editor-content .ProseMirror li {
+  margin: 0.25rem 0;
+  display: list-item;
+}
+
+.editor-content .ProseMirror ul ul,
+.editor-content .ProseMirror ol ol,
+.editor-content .ProseMirror ul ol,
+.editor-content .ProseMirror ol ul {
   margin: 0.25rem 0;
 }
 
@@ -240,6 +257,58 @@
 
 .editor-content .ProseMirror .text-justify {
   text-align: justify;
+}
+
+/* Task List */
+.editor-content .ProseMirror ul[data-type="taskList"] {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+}
+
+.editor-content .ProseMirror ul[data-type="taskList"] li {
+  display: flex;
+  align-items: center;
+  margin: 0.5rem 0;
+  padding-left: 0;
+  line-height: 1.5;
+}
+
+.editor-content .ProseMirror ul[data-type="taskList"] li input[type="checkbox"] {
+  margin-right: 0.75rem;
+  margin-left: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+  accent-color: #7e9c6a;
+  flex-shrink: 0;
+  vertical-align: middle;
+  line-height: 1;
+}
+
+.editor-content .ProseMirror ul[data-type="taskList"] li label {
+  cursor: pointer;
+  margin: 0;
+  padding: 0;
+  display: inline;
+  vertical-align: middle;
+  line-height: inherit;
+}
+
+.editor-content .ProseMirror ul[data-type="taskList"] li input[type="checkbox"]:checked + label {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.editor-content .ProseMirror ul[data-type="taskList"] li input[type="checkbox"]:checked + label p {
+  margin: 0;
+}
+
+.editor-content .ProseMirror ul[data-type="taskList"] li p {
+  margin: 0;
+  display: inline;
 }
 
 /* Scrollbar Styling */

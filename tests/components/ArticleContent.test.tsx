@@ -7,13 +7,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { ArticleContent } from '@/components/ArticleContent'
 
-// Mock useMarkdownConverter hook
-vi.mock('@/hooks/useMarkdownConverter', () => ({
-  useMarkdownConverter: vi.fn((content: string) => ({
-    html: `<p>${content}</p>`,
-    isConverting: false,
-  })),
-}))
+// contentConverter is no longer needed since content is already HTML
+// No mocking needed - ArticleContent receives HTML directly from the database
 
 describe('ArticleContent Component', () => {
   const defaultProps = {
@@ -77,7 +72,7 @@ describe('ArticleContent Component', () => {
       expect(screen.queryByText(/瀏覽：/)).not.toBeInTheDocument()
     })
 
-    it('should render markdown content with dangerouslySetInnerHTML', () => {
+    it('should render HTML content with dangerouslySetInnerHTML', () => {
       render(<ArticleContent {...defaultProps} />)
 
       const contentDiv = screen.getByText(/This is test content/)
@@ -93,12 +88,11 @@ describe('ArticleContent Component', () => {
       expect(screen.getByText('載入文章中...')).toBeInTheDocument()
     })
 
-    it('should show loading spinner when content is converting', () => {
+    it('should show article when isLoading is false (conversion is synchronous)', () => {
       const props = { ...defaultProps, isLoading: false }
-      // The mock will need to be updated to return isConverting: true
       render(<ArticleContent {...props} />)
 
-      // When not loading, article should be visible
+      // When not loading, article should be visible (conversion happens immediately)
       expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
     })
 
@@ -148,7 +142,8 @@ describe('ArticleContent Component', () => {
 
       const proseDiv = container.querySelector('div.prose')
       expect(proseDiv).toBeInTheDocument()
-      expect(proseDiv?.className).toContain('prose-sm')
+      expect(proseDiv?.className).toContain('prose')
+      expect(proseDiv?.className).toContain('max-w-none')
     })
   })
 
@@ -268,15 +263,15 @@ describe('ArticleContent Component', () => {
       expect(renderSpy).toHaveBeenCalledTimes(2) // Only TestWrapper re-renders
     })
 
-    it('should use useMemo for markdown conversion to avoid recalculation', () => {
-      // The useMarkdownConverter hook should use useMemo internally
+    it('should use useMemo for HTML content to avoid recalculation', () => {
+      // useMemo should cache the HTML content
       const { rerender } = render(<ArticleContent {...defaultProps} />)
 
       // Change other props but keep content the same
       const sameContent = { ...defaultProps, viewCount: 2000 }
       rerender(<ArticleContent {...sameContent} />)
 
-      // The markdown conversion should use cached result if content is same
+      // The HTML content should use cached result if content is same
       expect(screen.getByText(/This is test content/)).toBeInTheDocument()
     })
   })

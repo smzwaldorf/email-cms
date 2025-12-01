@@ -10,7 +10,6 @@ import { useAuth } from '@/context/AuthContext'
 import PermissionService, { PermissionError } from '@/services/PermissionService'
 import ArticleService from '@/services/ArticleService'
 import { SimpleEditor } from '@/components/tiptap-templates/simple/simple-editor'
-import { contentConverter } from '@/services/contentConverter'
 
 interface ArticleEditorProps {
   article: Article
@@ -41,9 +40,9 @@ export function ArticleEditor({
   const [isCheckingPermission, setIsCheckingPermission] = useState(false)
   const [hasEditPermission, setHasEditPermission] = useState(canEdit ?? false)
 
-  // 轉換 Markdown 內容為 HTML 用於編輯器
-  // Convert markdown to HTML for the editor
-  const editorContent = contentConverter.markdownToHtml(formData.content)
+  // article.content 已經是 HTML 格式（TipTap 直接輸出），直接使用
+  // Content is already in HTML format from the database
+  const editorContent = formData.content
 
   // 檢查編輯權限
   useEffect(() => {
@@ -106,11 +105,14 @@ export function ArticleEditor({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Save HTML content directly (TipTap output)
+    // No conversion needed - store HTML directly in database
     onSave({
       title: formData.title,
       author: formData.author || undefined,
       summary: formData.summary || undefined,
-      content: formData.content,
+      content: formData.content,  // Already HTML from editor
       isPublished: formData.isPublished,
     })
   }
