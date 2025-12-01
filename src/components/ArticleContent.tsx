@@ -99,7 +99,7 @@ function ArticleContentComponent({
       {/* 文章內容 */}
       <div className="flex-1 overflow-y-auto px-6 py-4 bg-white">
         <div
-          className="prose prose-sm max-w-none text-waldorf-clay-700 leading-relaxed"
+          className="prose max-w-none text-waldorf-clay-700 leading-relaxed"
           dangerouslySetInnerHTML={{ __html: memoizedHtml }}
         />
       </div>

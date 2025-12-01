@@ -8,3 +8,26 @@
     @apply font-sans antialiased;
   }
 }
+
+@layer components {
+  .prose h1 {
+    font-size: 1.875rem;
+    font-weight: 700;
+    margin: 1.5rem 0 1rem;
+    color: inherit;
+  }
+  
+  .prose h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 1.25rem 0 0.875rem;
+    color: inherit;
+  }
+  
+  .prose h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 1rem 0 0.75rem;
+    color: inherit;
+  }
+}
