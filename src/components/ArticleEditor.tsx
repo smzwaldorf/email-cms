@@ -5,13 +5,12 @@
  */
 
 import { useState, useEffect } from 'react'
-import MDEditor from '@uiw/react-md-editor'
-import '@uiw/react-md-editor/markdown-editor.css'
-import '@uiw/react-markdown-preview/markdown.css'
 import { Article } from '@/types'
 import { useAuth } from '@/context/AuthContext'
 import PermissionService, { PermissionError } from '@/services/PermissionService'
 import ArticleService from '@/services/ArticleService'
+import { SimpleEditor } from '@/components/tiptap-templates/simple/simple-editor'
+import { contentConverter } from '@/services/contentConverter'
 
 interface ArticleEditorProps {
   article: Article
@@ -41,6 +40,10 @@ export function ArticleEditor({
   const [localPermissionError, setLocalPermissionError] = useState<string>('')
   const [isCheckingPermission, setIsCheckingPermission] = useState(false)
   const [hasEditPermission, setHasEditPermission] = useState(canEdit ?? false)
+
+  // 轉換 Markdown 內容為 HTML 用於編輯器
+  // Convert markdown to HTML for the editor
+  const editorContent = contentConverter.markdownToHtml(formData.content)
 
   // 檢查編輯權限
   useEffect(() => {
@@ -246,22 +249,16 @@ export function ArticleEditor({
             >
               內容 <span className="text-waldorf-rose-500">*</span>
             </label>
-            <div className="border border-waldorf-cream-300 rounded-md overflow-hidden" data-color-mode="light">
-              <MDEditor
-                value={formData.content}
-                onChange={handleContentChange}
-                height={500}
-                preview="live"
-                hideToolbar={false}
-                enableScroll={true}
-                visibleDragbar={true}
-                textareaProps={{
-                  placeholder: '輸入文章內容，支援 Markdown 格式...',
-                }}
+            <div className="border border-waldorf-cream-300 rounded-md overflow-hidden">
+              <SimpleEditor
+                content={editorContent}
+                contentType="html"
+                onChange={(html) => handleContentChange(html)}
+                placeholder="輸入文章內容..."
               />
             </div>
             <p className="text-xs text-waldorf-clay-500 mt-1">
-              使用富文本編輯器編輯內容，內容將以 Markdown 格式儲存
+              使用富文本編輯器編輯內容
             </p>
           </div>
 
