@@ -7,11 +7,11 @@
 
 **任務總計**: 104 個
 **優先順序**: 5 個使用者故事 (P1: 2個, P2: 2個, P3: 1個)
-**進度**: Phase 1-3 完成, Phase 4 實作中 (48/104 任務 = 46% 完成) ✅
+**進度**: Phase 1-3 完成, Phase 4 實作中 (51/104 任務 = 49% 完成) ✅
   - Phase 1: 8/8 任務完成 ✅
   - Phase 2: 15/15 任務完成 ✅
   - Phase 3 [US1]: 18/18 任務完成 ✅ (2025-12-01)
-  - Phase 4 [US2]: 7/20 任務完成 ✅ (實作中: T039-T045)
+  - Phase 4 [US2]: 10/20 任務完成 ✅ (實作中: T039-T045, T055-T057)
   - Phase 5-8: 進行中或待實作
 
 ---
@@ -283,18 +283,21 @@ Phase 8: 測試、文檔、優化
 
 ### [US2] 整合測試
 
-- [ ] T055 [P] 撰寫 `tests/components/ImageUploader.test.tsx`
-  - 拖放上傳測試
-  - 檔案選擇器測試
-  - 進度指示測試
-- [ ] T056 [P] 撰寫 `tests/components/ImageEditor.test.tsx`
-  - 大小調整測試
-  - 對齊方式測試
-  - 屬性編輯測試
-- [ ] T057 [P] 撰寫 `tests/components/MediaLibrary.test.tsx`
-  - 列表分頁測試
-  - 搜尋功能測試
-  - 重複使用測試
+- [X] T055 [P] 撰寫 `tests/components/ImageUploader.test.tsx` ✅ (2025-12-02)
+  - 拖放上傳測試 ✅
+  - 檔案選擇器測試 ✅
+  - 進度指示測試 ✅
+  - **實作**: 20 個測試，100% 通過
+- [X] T056 [P] 撰寫 `tests/components/ImageEditor.test.tsx` ✅ (2025-12-02)
+  - 大小調整測試 ✅
+  - 對齊方式測試 ✅
+  - 屬性編輯測試 ✅
+  - **實作**: 22 個測試，100% 通過
+- [X] T057 [P] 撰寫 `tests/components/MediaLibrary.test.tsx` ✅ (2025-12-02)
+  - 列表分頁測試 ✅
+  - 搜尋功能測試 ✅
+  - 重複使用測試 ✅
+  - **實作**: 23 個測試，100% 通過
 - [ ] T058 撰寫 `tests/integration/image-upload-flow.test.tsx`
   - 完整上傳流程（驗證 → 優化 → 儲存）
   - 圖片顯示驗證
