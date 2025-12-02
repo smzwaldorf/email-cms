@@ -3,7 +3,7 @@
  * Supabase Storage Adapter Implementation
  */
 
-import { createClient } from '@supabase/supabase-js'
+import { getSupabaseClient } from '@/lib/supabase'
 import type {
   StorageProvider,
   StorageOperationResult,
@@ -37,7 +37,7 @@ export class SupabaseStorageAdapter implements StorageProvider {
     onProgress?: UploadProgressCallback
   ): Promise<StorageOperationResult> {
     try {
-      const supabase = createClient(this.supabaseUrl, this.supabaseKey)
+      const supabase = getSupabaseClient()
 
       // 模擬進度回呼（Supabase JS 不直接支援進度）
       // Simulate progress callback (Supabase JS doesn't directly support progress)
@@ -93,7 +93,7 @@ export class SupabaseStorageAdapter implements StorageProvider {
    */
   async download(bucket: string, path: string): Promise<Blob> {
     try {
-      const supabase = createClient(this.supabaseUrl, this.supabaseKey)
+      const supabase = getSupabaseClient()
 
       const { data, error } = await supabase.storage
         .from(bucket)
@@ -115,7 +115,7 @@ export class SupabaseStorageAdapter implements StorageProvider {
    */
   async delete(bucket: string, path: string): Promise<StorageOperationResult> {
     try {
-      const supabase = createClient(this.supabaseUrl, this.supabaseKey)
+      const supabase = getSupabaseClient()
 
       const { data, error } = await supabase.storage
         .from(bucket)
@@ -149,7 +149,7 @@ export class SupabaseStorageAdapter implements StorageProvider {
     options?: ListOptions
   ): Promise<FileObject[]> {
     try {
-      const supabase = createClient(this.supabaseUrl, this.supabaseKey)
+      const supabase = getSupabaseClient()
 
       const { data, error } = await supabase.storage
         .from(bucket)
@@ -178,7 +178,7 @@ export class SupabaseStorageAdapter implements StorageProvider {
    * Get public URL for a file in Supabase Storage
    */
   getPublicUrl(bucket: string, path: string): string {
-    const supabase = createClient(this.supabaseUrl, this.supabaseKey)
+    const supabase = getSupabaseClient()
     const { data } = supabase.storage.from(bucket).getPublicUrl(path)
     return data.publicUrl
   }
@@ -193,7 +193,7 @@ export class SupabaseStorageAdapter implements StorageProvider {
     expiresIn: number = 3600
   ): Promise<string> {
     try {
-      const supabase = createClient(this.supabaseUrl, this.supabaseKey)
+      const supabase = getSupabaseClient()
 
       const { data, error } = await supabase.storage
         .from(bucket)
@@ -215,7 +215,7 @@ export class SupabaseStorageAdapter implements StorageProvider {
    */
   async exists(bucket: string, path: string): Promise<boolean> {
     try {
-      const supabase = createClient(this.supabaseUrl, this.supabaseKey)
+      const supabase = getSupabaseClient()
 
       const { data, error } = await supabase.storage
         .from(bucket)
@@ -235,7 +235,7 @@ export class SupabaseStorageAdapter implements StorageProvider {
    */
   async getMetadata(bucket: string, path: string): Promise<FileMetadata> {
     try {
-      const supabase = createClient(this.supabaseUrl, this.supabaseKey)
+      const supabase = getSupabaseClient()
 
       // Supabase doesn't provide direct metadata, we'll use info method
       const { data: list } = await supabase.storage
@@ -270,7 +270,7 @@ export class SupabaseStorageAdapter implements StorageProvider {
     destinationPath: string
   ): Promise<StorageOperationResult> {
     try {
-      const supabase = createClient(this.supabaseUrl, this.supabaseKey)
+      const supabase = getSupabaseClient()
 
       // 下載來源檔案
       // Download source file
@@ -336,7 +336,7 @@ export class SupabaseStorageAdapter implements StorageProvider {
    */
   async getStats(): Promise<StorageStats> {
     try {
-      const supabase = createClient(this.supabaseUrl, this.supabaseKey)
+      const supabase = getSupabaseClient()
 
       // 此功能需要管理 API，暫時返回預設值
       // This feature requires admin API, return default for now

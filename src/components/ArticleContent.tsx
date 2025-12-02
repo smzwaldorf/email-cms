@@ -8,9 +8,10 @@
  * - 優化文章切換性能，減少重新渲染時間
  */
 
-import { memo, useMemo } from 'react'
+import { memo, useMemo, useState, useEffect, useRef } from 'react'
 import { useLoadingTimeout } from '@/components/LoadingTimeout'
 import { formatDate, formatViewCount } from '@/utils/formatters'
+import { replaceStorageTokens } from '@/utils/contentParser'
 import './ArticleContent.css'
 
 interface ArticleContentProps {
@@ -36,14 +37,75 @@ function ArticleContentComponent({
   isLoading = false,
 }: ArticleContentProps) {
   const { isTimedOut } = useLoadingTimeout(isLoading, 3000)
+  const contentRef = useRef<HTMLDivElement>(null)
+  const [processedContent, setProcessedContent] = useState('')
 
-  // 使用 useMemo 優化 HTML 內容，避免在非內容相關 props 變化時重新計算
-  // content 已經是 HTML 格式（TipTap 直接輸出），無需轉換
-  // 為所有 checkbox 添加 disabled 屬性，確保閱讀模式下不可編輯
-  const memoizedHtml = useMemo(() => {
-    if (!content) return ''
-    return content.replace(/<input type="checkbox"/g, '<input type="checkbox" disabled')
+  // 處理內容中的 storage:// token 並轉換為簽署 URL
+  useEffect(() => {
+    let isMounted = true
+
+    const processContent = async () => {
+      if (!content) {
+        if (isMounted) setProcessedContent('')
+        return
+      }
+
+      try {
+        const htmlWithSignedUrls = await replaceStorageTokens(content)
+        
+        // 為所有 checkbox 添加 disabled 屬性，確保閱讀模式下不可編輯
+        const finalHtml = htmlWithSignedUrls.replace(/<input type="checkbox"/g, '<input type="checkbox" disabled')
+        
+        if (isMounted) {
+          setProcessedContent(finalHtml)
+        }
+      } catch (error) {
+        console.error('Failed to process content:', error)
+        // Fallback to original content if processing fails
+        if (isMounted) {
+          setProcessedContent(content)
+        }
+      }
+    }
+
+    processContent()
+
+    return () => {
+      isMounted = false
+    }
   }, [content])
+
+  // Sanitize image URLs after loading
+  useEffect(() => {
+    if (!contentRef.current) return
+
+    const images = contentRef.current.querySelectorAll('img')
+    images.forEach((img) => {
+      if (img.dataset.sanitized === 'true') return
+
+      const sanitize = async () => {
+        const currentSrc = img.getAttribute('src')
+        // Only sanitize if it has query parameters (likely a signed URL) and isn't already a blob
+        if (!currentSrc || currentSrc.startsWith('blob:') || !currentSrc.includes('?')) return
+
+        try {
+          const response = await fetch(currentSrc)
+          const blob = await response.blob()
+          const objectUrl = URL.createObjectURL(blob)
+          img.src = objectUrl
+          img.dataset.sanitized = 'true'
+        } catch (error) {
+          console.error('Failed to sanitize image URL:', error)
+        }
+      }
+
+      if (img.complete) {
+        sanitize()
+      } else {
+        img.addEventListener('load', sanitize, { once: true })
+      }
+    })
+  }, [processedContent])
 
   // 使用 useMemo 優化文章中繼資料，避免重複建立相同的 UI 結構
   const metadataSection = useMemo(
@@ -103,8 +165,9 @@ function ArticleContentComponent({
       {/* 文章內容 */}
       <div className="flex-1 overflow-y-auto px-6 py-4 bg-white">
         <div
+          ref={contentRef}
           className="prose max-w-none text-waldorf-clay-700 leading-relaxed"
-          dangerouslySetInnerHTML={{ __html: memoizedHtml }}
+          dangerouslySetInnerHTML={{ __html: processedContent }}
         />
       </div>
     </article>

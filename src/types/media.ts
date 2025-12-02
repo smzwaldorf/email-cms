@@ -65,6 +65,7 @@ export interface MediaFile {
   uploadedBy: string; // 使用者 ID User ID
   publicUrl?: string; // 公開 URL（如適用）Public URL if applicable
   signedUrl?: string; // 簽署 URL（臨時存取）Signed URL for temporary access
+  storageUrl?: string; // 儲存路徑 URI Storage URI (storage://...)
   // 圖片專用欄位
   width?: number; // 圖片寬度（像素）
   height?: number; // 圖片高度（像素）

@@ -6,7 +6,7 @@
 
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import Image from '@tiptap/extension-image'
+import { SecureImage } from './extensions/SecureImage'
 import Link from '@tiptap/extension-link'
 import Highlight from '@tiptap/extension-highlight'
 import { TextStyle } from '@tiptap/extension-text-style'
@@ -66,7 +66,7 @@ export function SimpleEditor({
       StarterKit.configure({
         link: false, // Disable Link from StarterKit to avoid duplication
       }),
-      Image.configure({
+      SecureImage.configure({
         allowBase64: true,
       }),
       Link.configure({

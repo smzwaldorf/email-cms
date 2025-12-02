@@ -61,12 +61,15 @@ export function InsertButton({ editor, articleId }: InsertButtonProps) {
       // 將上傳的圖片插入到編輯器
       // Insert uploaded images into editor
       uploadedFiles.forEach((file) => {
-        if (file.mediaType === 'image' && file.publicUrl) {
-          editor.chain().focus().setImage({
-            src: file.publicUrl,
-            alt: file.fileName,
-            title: file.fileName,
-          }).run()
+        if (file.mediaType === 'image') {
+          const src = file.storageUrl || file.publicUrl
+          if (src) {
+            editor.chain().focus().setImage({
+              src,
+              alt: file.fileName,
+              title: file.fileName,
+            }).run()
+          }
         }
       })
 

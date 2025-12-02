@@ -170,7 +170,7 @@ export class MediaService {
    * Generate unique media file ID
    */
   generateMediaId(): string {
-    return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+    return crypto.randomUUID()
   }
 
   /**
@@ -183,7 +183,7 @@ export class MediaService {
     userId: string
   ): string {
     const extension = originalFileName.split('.').pop() || 'bin'
-    return `media/${userId}/${new Date().getFullYear()}/${String(new Date().getMonth() + 1).padStart(2, '0')}/${mediaId}.${extension}`
+    return `${userId}/${new Date().getFullYear()}/${String(new Date().getMonth() + 1).padStart(2, '0')}/${mediaId}.${extension}`
   }
 
   /**

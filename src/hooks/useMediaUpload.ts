@@ -5,6 +5,7 @@
 
 import { useState, useCallback } from 'react'
 import type { MediaFile, MediaFileType } from '@/types/media'
+import { MediaFileStatus } from '@/types/media'
 import { mediaService } from '@/services/mediaService'
 import { imageOptimizer } from '@/services/imageOptimizer'
 import { storageService } from '@/services/storageService'
@@ -131,7 +132,8 @@ export function useMediaUpload() {
           // 上傳到儲存提供者
           // Upload to storage provider
           const storageProvider = storageService.provider()
-          const { success: uploadSuccess, publicUrl } = await storageProvider.upload(
+          const { success: uploadSuccess, data: uploadData, error: uploadError } = await storageProvider.upload(
+            'media',
             storagePath,
             optimizedFile,
             {
@@ -144,8 +146,13 @@ export function useMediaUpload() {
           )
 
           if (!uploadSuccess) {
-            throw new Error(`Failed to upload ${file.name}`)
+            console.error('Storage upload error:', uploadError)
+            throw new Error(`Failed to upload ${file.name}: ${uploadError?.message || 'Unknown error'}`)
           }
+
+          // Construct storage URL
+          const finalPath = uploadData?.path || storagePath
+          const storageUrl = `storage://media/${finalPath}`
 
           // 將元資料保存到資料庫
           // Save metadata to database
@@ -153,13 +160,12 @@ export function useMediaUpload() {
             .from('media_files')
             .insert({
               id: mediaId,
-              file_name: file.name,
+              filename: file.name,
               file_size: optimizedFile.size,
               mime_type: optimizedFile.type,
-              media_type: mediaType,
-              storage_url: publicUrl,
+              file_type: mediaType,
+              public_url: storageUrl, // Store storage:// URI in public_url column
               storage_path: storagePath,
-              status: 'uploaded',
               width: metadata.width,
               height: metadata.height,
               duration: metadata.duration,
@@ -178,7 +184,24 @@ export function useMediaUpload() {
             await articleMediaManager.addMediaToArticle(articleId, mediaId)
           }
 
-          uploadedFiles.push(dbFile as MediaFile)
+          const mediaFile: MediaFile = {
+            id: dbFile.id,
+            fileName: dbFile.filename,
+            fileSize: dbFile.file_size,
+            mimeType: dbFile.mime_type,
+            mediaType: dbFile.file_type,
+            status: MediaFileStatus.READY,
+            uploadedBy: dbFile.uploaded_by,
+            uploadedAt: dbFile.uploaded_at,
+            updatedAt: dbFile.updated_at,
+            publicUrl: dbFile.public_url,
+            storageUrl: dbFile.public_url,
+            width: dbFile.width,
+            height: dbFile.height,
+            duration: dbFile.duration,
+          }
+
+          uploadedFiles.push(mediaFile)
 
           currentStep++
           const finalProgress = Math.round((currentStep / totalSteps) * 100)
