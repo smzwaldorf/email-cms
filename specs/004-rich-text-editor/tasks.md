@@ -7,11 +7,12 @@
 
 **任務總計**: 104 個
 **優先順序**: 5 個使用者故事 (P1: 2個, P2: 2個, P3: 1個)
-**進度**: Phase 1-3 完成 (41/104 任務 = 39% 完成) ✅
+**進度**: Phase 1-3 完成, Phase 4 實作中 (48/104 任務 = 46% 完成) ✅
   - Phase 1: 8/8 任務完成 ✅
   - Phase 2: 15/15 任務完成 ✅
   - Phase 3 [US1]: 18/18 任務完成 ✅ (2025-12-01)
-  - Phase 4-8: 進行中或待實作
+  - Phase 4 [US2]: 7/20 任務完成 ✅ (實作中: T039-T045)
+  - Phase 5-8: 進行中或待實作
 
 ---
 
@@ -220,49 +221,54 @@ Phase 8: 測試、文檔、優化
 
 ### 媒體檔案資料層
 
-- [ ] T038 建立 Supabase 儲存 bucket 設定與 RLS 政策
-  - 建立 `media` bucket
-  - 配置公開讀取政策
-  - 驗證 CORS 設定
-- [ ] T039 實作 `src/services/articleMediaManager.ts` 文章媒體管理
-  - addMediaToArticle(), removeMediaFromArticle()
-  - getArticleMedia(), syncMediaReferences()
-  - 孤立檔案追蹤
+- [X] T038 建立 Supabase 儲存 bucket 設定與 RLS 政策 ✅ (Phase 2 完成)
+  - 建立 `media` bucket ✅
+  - 配置公開讀取政策 ✅
+  - 驗證 CORS 設定 ✅
+- [X] T039 實作 `src/services/articleMediaManager.ts` 文章媒體管理 ✅ (2025-12-02)
+  - addMediaToArticle(), removeMediaFromArticle() ✅
+  - getArticleMedia(), syncMediaReferences() ✅
+  - 孤立檔案追蹤 ✅
 
 ### 圖片上傳元件
 
-- [ ] T040 [P] 實作 `src/components/ImageUploader.tsx` 圖片上傳器
-  - 拖放支援
-  - 檔案選擇器
-  - 剪貼簿貼上支援
-  - 進度指示器
-- [ ] T041 [P] 實作 `src/components/ImageEditor.tsx` 圖片編輯工具
-  - 大小調整滑塊
-  - 對齊方式選擇器（左、中、右）
-  - 替代文字輸入
-  - 標題輸入
-- [ ] T042 [P] 實作 `src/components/MediaLibrary.tsx` 媒體庫瀏覽器
-  - 媒體檔案分頁列表
-  - 搜尋功能
-  - 排序選項（名稱、大小、日期）
-  - 重複使用功能
+- [X] T040 [P] 實作 `src/components/ImageUploader.tsx` 圖片上傳器 ✅ (2025-12-02)
+  - 拖放支援 ✅
+  - 檔案選擇器 ✅
+  - 剪貼簿貼上支援 ✅
+  - 進度指示器 ✅
+  - **實作**: 404 行，完整功能
+- [X] T041 [P] 實作 `src/components/ImageEditor.tsx` 圖片編輯工具 ✅ (2025-12-02)
+  - 大小調整滑塊 ✅
+  - 對齊方式選擇器（左、中、右）✅
+  - 替代文字輸入 ✅
+  - 標題輸入 ✅
+  - **實作**: 378 行，包含圖片預覽和寬高比鎖定
+- [X] T042 [P] 實作 `src/components/MediaLibrary.tsx` 媒體庫瀏覽器 ✅ (2025-12-02)
+  - 媒體檔案分頁列表 ✅
+  - 搜尋功能 ✅
+  - 排序選項（名稱、大小、日期）✅
+  - 重複使用功能 ✅
+  - **實作**: 438 行，支援多選和篩選
 
 ### TipTap 圖片節點整合
 
-- [ ] T043 建立 `src/adapters/TipTapImageNode.tsx` 自訂圖片節點
-  - 擴展 @tiptap/extension-image
-  - 支援 mediaId 屬性
-  - 內聯圖片編輯控制項
+- [X] T043 建立 `src/adapters/TipTapImageNode.tsx` 自訂圖片節點 ✅ (2025-12-02)
+  - 擴展 @tiptap/extension-image ✅
+  - 支援 mediaId 屬性 ✅
+  - 內聯圖片編輯控制項 ✅
+  - **實作**: 294 行，包含屬性解析、HTML 轉換、鍵盤快捷鍵
 - [ ] T044 整合 ImageUploader 到 RichTextEditor
-  - 工具列「插入圖片」按鈕
-  - 拖放圖片到編輯器
+  - 工具列「插入圖片」按鈕 (待實作)
+  - 拖放圖片到編輯器 (待實作)
 
 ### 圖片最佳化與上傳流程
 
-- [ ] T045 [P] 實作 `src/hooks/useMediaUpload.ts` 媒體上傳 Hook
-  - 驗證 → 優化 → 上傳三步驟
-  - 進度回呼
-  - 錯誤處理（SC-002 <5秒上傳，1-5MB檔案）
+- [X] T045 [P] 實作 `src/hooks/useMediaUpload.ts` 媒體上傳 Hook ✅ (2025-12-02)
+  - 驗證 → 優化 → 上傳三步驟 ✅
+  - 進度回呼 ✅
+  - 錯誤處理（SC-002 <5秒上傳，1-5MB檔案）✅
+  - **實作**: 279 行，完整的上傳流程和 Supabase 整合
 - [ ] T046 驗證 FR-005: 圖片上傳支援（拖放、選擇器、剪貼簿）
 - [ ] T047 驗證 FR-006: 自動優化（格式轉換、壓縮、回應式）
 - [ ] T048 驗證 FR-007: 唯一識別碼與衝突避免
