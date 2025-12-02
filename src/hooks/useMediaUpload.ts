@@ -90,7 +90,7 @@ export function useMediaUpload() {
           if (mediaType === 'image') {
             try {
               const result = await imageOptimizer.optimize(file)
-              optimizedFile = result.file
+              optimizedFile = result.optimizedFile
             } catch (error) {
               console.warn('Image optimization failed, using original:', error)
               // Fallback to original file
