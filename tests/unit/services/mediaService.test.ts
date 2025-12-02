@@ -208,11 +208,12 @@ describe('MediaService', () => {
       expect(id.length).toBeGreaterThan(0)
     })
 
-    it('should contain timestamp', () => {
+    it('should be a valid UUID', () => {
       const id = service.generateMediaId()
 
-      // ID should contain timestamp prefix
-      expect(/^\d+/.test(id)).toBe(true)
+      // ID should be a valid UUID format (v4)
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      expect(uuidRegex.test(id)).toBe(true)
     })
   })
 

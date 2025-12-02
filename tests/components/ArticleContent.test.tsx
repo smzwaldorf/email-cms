@@ -72,20 +72,20 @@ describe('ArticleContent Component', () => {
       expect(screen.queryByText(/瀏覽：/)).not.toBeInTheDocument()
     })
 
-    it('should render HTML content with dangerouslySetInnerHTML', () => {
+    it('should render HTML content with dangerouslySetInnerHTML', async () => {
       render(<ArticleContent {...defaultProps} />)
 
-      const contentDiv = screen.getByText(/This is test content/)
+      const contentDiv = await waitFor(() => screen.getByText(/This is test content/))
       expect(contentDiv).toBeInTheDocument()
     })
 
-    it('should disable checkboxes in task lists', () => {
+    it('should disable checkboxes in task lists', async () => {
       const contentWithCheckbox =
         '<ul data-type="taskList"><li data-type="taskItem"><label><input type="checkbox"><span>Task 1</span></label></li></ul>'
       const props = { ...defaultProps, content: contentWithCheckbox }
       render(<ArticleContent {...props} />)
 
-      const checkbox = screen.getByRole('checkbox')
+      const checkbox = await waitFor(() => screen.getByRole('checkbox'))
       expect(checkbox).toBeDisabled()
     })
   })
@@ -158,7 +158,7 @@ describe('ArticleContent Component', () => {
   })
 
   describe('Props Variations', () => {
-    it('should handle minimal props (title and content only)', () => {
+    it('should handle minimal props (title and content only)', async () => {
       const props = {
         title: 'Minimal Article',
         content: 'Content',
@@ -166,7 +166,8 @@ describe('ArticleContent Component', () => {
       render(<ArticleContent {...props} />)
 
       expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
-      expect(screen.getByText(/Content/)).toBeInTheDocument()
+      const content = await waitFor(() => screen.getByText(/Content/))
+      expect(content).toBeInTheDocument()
     })
 
     it('should handle all props provided', () => {
@@ -273,7 +274,7 @@ describe('ArticleContent Component', () => {
       expect(renderSpy).toHaveBeenCalledTimes(2) // Only TestWrapper re-renders
     })
 
-    it('should use useMemo for HTML content to avoid recalculation', () => {
+    it('should use useMemo for HTML content to avoid recalculation', async () => {
       // useMemo should cache the HTML content
       const { rerender } = render(<ArticleContent {...defaultProps} />)
 
@@ -282,7 +283,8 @@ describe('ArticleContent Component', () => {
       rerender(<ArticleContent {...sameContent} />)
 
       // The HTML content should use cached result if content is same
-      expect(screen.getByText(/This is test content/)).toBeInTheDocument()
+      const content = await waitFor(() => screen.getByText(/This is test content/))
+      expect(content).toBeInTheDocument()
     })
   })
 

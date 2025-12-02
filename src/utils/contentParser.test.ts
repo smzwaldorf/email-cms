@@ -15,12 +15,12 @@ describe('replaceStorageTokens', () => {
 
   it('replaces storage:// tokens with signed URLs', async () => {
     vi.mocked(storageService.getSignedUrl).mockResolvedValue('https://signed.url/file.jpg')
-    
+
     const html = '<img src="storage://media/user/file.jpg" />'
     const result = await replaceStorageTokens(html)
-    
+
     expect(result).toBe('<img src="https://signed.url/file.jpg" />')
-    expect(storageService.getSignedUrl).toHaveBeenCalledWith('media', 'user/file.jpg', 3600)
+    expect(storageService.getSignedUrl).toHaveBeenCalledWith('media', 'user/file.jpg', 300)
   })
 
   it('handles multiple tokens', async () => {
@@ -44,11 +44,11 @@ describe('replaceStorageTokens', () => {
 
   it('handles tokens with special characters', async () => {
     vi.mocked(storageService.getSignedUrl).mockResolvedValue('https://signed.url/file.jpg')
-    
+
     const html = '<img src="storage://media/user/file(1).jpg" />'
     const result = await replaceStorageTokens(html)
-    
+
     expect(result).toBe('<img src="https://signed.url/file.jpg" />')
-    expect(storageService.getSignedUrl).toHaveBeenCalledWith('media', 'user/file(1).jpg', 3600)
+    expect(storageService.getSignedUrl).toHaveBeenCalledWith('media', 'user/file(1).jpg', 300)
   })
 })
