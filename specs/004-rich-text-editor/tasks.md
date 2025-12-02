@@ -5,7 +5,7 @@
 **預估工作量**: 3-4 週
 **建立日期**: 2025-11-30
 
-**任務總計**: 110 個
+**任務總計**: 104 個
 **優先順序**: 5 個使用者故事 (P1: 2個, P2: 2個, P3: 1個)
 **進度**: Phase 1-2 完成 (23/23 任務 = 100% 完成) ✅
 
@@ -156,20 +156,13 @@ Phase 8: 測試、文檔、優化
   - 標題選擇器 (H1-H6)
   - 清單切換按鈕
   - 連結插入對話框
-- [ ] T026 [P] 實作 `src/components/EditorSwitcher.tsx` 編輯器切換器
-  - 在 RichTextEditor 和 ArticleEditor 之間切換
-  - 自動雙向內容轉換
-  - 使用者偏好記憶
 
 ### 文章編輯頁面整合
 
 - [ ] T027 [P] 更新 `src/pages/ArticleEditPage.tsx`
-  - 整合 EditorSwitcher 或 RichTextEditor
+  - 整合 RichTextEditor
   - 權限檢查（FR-020 向後相容性）
   - 儲存邏輯（content 和 content_format）
-- [ ] T028 [P] 實作 `src/hooks/useEditorMode.ts` 編輯器模式管理 Hook
-  - 追蹤當前編輯器模式（rich_text / markdown）
-  - 偏好設定持久化
 
 ### 文字編輯功能完整性
 
@@ -186,22 +179,14 @@ Phase 8: 測試、文檔、優化
   - 文字格式化測試
   - 清單建立測試
   - 連結插入測試
-- [ ] T036 [P] 撰寫 `tests/components/EditorSwitcher.test.tsx`
-  - 編輯器切換測試
-  - 內容轉換驗證
-- [ ] T037 撰寫 `tests/integration/text-editing-flow.test.tsx`
+- [ ] T036 撰寫 `tests/integration/text-editing-flow.test.tsx`
   - 完整文字編輯流程測試
   - 儲存與恢復測試
-- [ ] T038 撰寫 `tests/integration/editor-mode-switching.test.tsx`
-  - 富文本與 Markdown 模式切換
-  - 內容保真度驗證（SC-010）
-- [ ] T039 驗證 SC-001: 10 分鐘內完成 500 字文章編輯
-- [ ] T040 驗證 SC-011: 編輯器切換 <2 秒
+- [ ] T037 驗證 SC-001: 10 分鐘內完成 500 字文章編輯
 
 **[US1] 完成標準**:
 ✅ 所有文字格式化功能可用
 ✅ 自動儲存正常運作
-✅ 可切換到 Markdown 編輯器且內容保留
 ✅ 所有相關測試通過
 
 ---
@@ -218,28 +203,28 @@ Phase 8: 測試、文檔、優化
 
 ### 媒體檔案資料層
 
-- [ ] T041 建立 Supabase 儲存 bucket 設定與 RLS 政策
+- [ ] T038 建立 Supabase 儲存 bucket 設定與 RLS 政策
   - 建立 `media` bucket
   - 配置公開讀取政策
   - 驗證 CORS 設定
-- [ ] T042 實作 `src/services/articleMediaManager.ts` 文章媒體管理
+- [ ] T039 實作 `src/services/articleMediaManager.ts` 文章媒體管理
   - addMediaToArticle(), removeMediaFromArticle()
   - getArticleMedia(), syncMediaReferences()
   - 孤立檔案追蹤
 
 ### 圖片上傳元件
 
-- [ ] T043 [P] 實作 `src/components/ImageUploader.tsx` 圖片上傳器
+- [ ] T040 [P] 實作 `src/components/ImageUploader.tsx` 圖片上傳器
   - 拖放支援
   - 檔案選擇器
   - 剪貼簿貼上支援
   - 進度指示器
-- [ ] T044 [P] 實作 `src/components/ImageEditor.tsx` 圖片編輯工具
+- [ ] T041 [P] 實作 `src/components/ImageEditor.tsx` 圖片編輯工具
   - 大小調整滑塊
   - 對齊方式選擇器（左、中、右）
   - 替代文字輸入
   - 標題輸入
-- [ ] T045 [P] 實作 `src/components/MediaLibrary.tsx` 媒體庫瀏覽器
+- [ ] T042 [P] 實作 `src/components/MediaLibrary.tsx` 媒體庫瀏覽器
   - 媒體檔案分頁列表
   - 搜尋功能
   - 排序選項（名稱、大小、日期）
@@ -247,50 +232,50 @@ Phase 8: 測試、文檔、優化
 
 ### TipTap 圖片節點整合
 
-- [ ] T046 建立 `src/adapters/TipTapImageNode.tsx` 自訂圖片節點
+- [ ] T043 建立 `src/adapters/TipTapImageNode.tsx` 自訂圖片節點
   - 擴展 @tiptap/extension-image
   - 支援 mediaId 屬性
   - 內聯圖片編輯控制項
-- [ ] T047 整合 ImageUploader 到 RichTextEditor
+- [ ] T044 整合 ImageUploader 到 RichTextEditor
   - 工具列「插入圖片」按鈕
   - 拖放圖片到編輯器
 
 ### 圖片最佳化與上傳流程
 
-- [ ] T048 [P] 實作 `src/hooks/useMediaUpload.ts` 媒體上傳 Hook
+- [ ] T045 [P] 實作 `src/hooks/useMediaUpload.ts` 媒體上傳 Hook
   - 驗證 → 優化 → 上傳三步驟
   - 進度回呼
   - 錯誤處理（SC-002 <5秒上傳，1-5MB檔案）
-- [ ] T049 驗證 FR-005: 圖片上傳支援（拖放、選擇器、剪貼簿）
-- [ ] T050 驗證 FR-006: 自動優化（格式轉換、壓縮、回應式）
-- [ ] T051 驗證 FR-007: 唯一識別碼與衝突避免
-- [ ] T052 驗證 FR-008: 儲存提供者切換（Supabase ↔ S3）
-- [ ] T053 驗證 FR-009: 圖片屬性編輯
-- [ ] T054 驗證 FR-018: 檔案類型驗證
-- [ ] T055 驗證 FR-019: 檔案大小限制 (10MB)
-- [ ] T056 驗證 FR-021: 孤立檔案追蹤
-- [ ] T057 驗證 FR-022: 媒體庫介面
+- [ ] T046 驗證 FR-005: 圖片上傳支援（拖放、選擇器、剪貼簿）
+- [ ] T047 驗證 FR-006: 自動優化（格式轉換、壓縮、回應式）
+- [ ] T048 驗證 FR-007: 唯一識別碼與衝突避免
+- [ ] T049 驗證 FR-008: 儲存提供者切換（Supabase ↔ S3）
+- [ ] T050 驗證 FR-009: 圖片屬性編輯
+- [ ] T051 驗證 FR-018: 檔案類型驗證
+- [ ] T052 驗證 FR-019: 檔案大小限制 (10MB)
+- [ ] T053 驗證 FR-021: 孤立檔案追蹤
+- [ ] T054 驗證 FR-022: 媒體庫介面
 
 ### [US2] 整合測試
 
-- [ ] T058 [P] 撰寫 `tests/components/ImageUploader.test.tsx`
+- [ ] T055 [P] 撰寫 `tests/components/ImageUploader.test.tsx`
   - 拖放上傳測試
   - 檔案選擇器測試
   - 進度指示測試
-- [ ] T059 [P] 撰寫 `tests/components/ImageEditor.test.tsx`
+- [ ] T056 [P] 撰寫 `tests/components/ImageEditor.test.tsx`
   - 大小調整測試
   - 對齊方式測試
   - 屬性編輯測試
-- [ ] T060 [P] 撰寫 `tests/components/MediaLibrary.test.tsx`
+- [ ] T057 [P] 撰寫 `tests/components/MediaLibrary.test.tsx`
   - 列表分頁測試
   - 搜尋功能測試
   - 重複使用測試
-- [ ] T061 撰寫 `tests/integration/image-upload-flow.test.tsx`
+- [ ] T058 撰寫 `tests/integration/image-upload-flow.test.tsx`
   - 完整上傳流程（驗證 → 優化 → 儲存）
   - 圖片顯示驗證
   - 屬性編輯驗證
-- [ ] T062 驗證 SC-002: 圖片上傳 <5 秒 (5MB檔案)
-- [ ] T063 驗證 SC-006: 90% 編輯者成功上傳（UX 測試）
+- [ ] T059 驗證 SC-002: 圖片上傳 <5 秒 (5MB檔案)
+- [ ] T060 驗證 SC-006: 90% 編輯者成功上傳（UX 測試）
 
 **[US2] 完成標準**:
 ✅ 圖片上傳功能完整（拖放、選擇器、剪貼簿）
@@ -312,38 +297,38 @@ Phase 8: 測試、文檔、優化
 
 ### YouTube 節點與轉換
 
-- [ ] T064 [P] 實作 `src/adapters/TipTapYoutubeNode.tsx` YouTube 自訂節點
+- [ ] T061 [P] 實作 `src/adapters/TipTapYoutubeNode.tsx` YouTube 自訂節點
   - 擴展 @tiptap/extension-youtube
   - 支援自訂寬度/高度
   - 自訂開始時間
-- [ ] T065 實作 YouTube URL 識別與轉換邏輯
+- [ ] T062 實作 YouTube URL 識別與轉換邏輯
   - extractYouTubeId() 函數
   - 支援多種 URL 格式 (youtube.com, youtu.be)
-- [ ] T066 整合 YouTube 節點到 RichTextEditor
+- [ ] T063 整合 YouTube 節點到 RichTextEditor
   - 工具列「插入影片」按鈕
   - URL 貼上自動偵測
 
 ### YouTube 播放器與回應式設計
 
-- [ ] T067 [P] 實作 `src/components/VideoEmbed.tsx` YouTube 嵌入元件
+- [ ] T064 [P] 實作 `src/components/VideoEmbed.tsx` YouTube 嵌入元件
   - 回應式 iframe
   - 長寬比保持
   - 行動裝置最佳化
-- [ ] T068 實作播放器刪除功能
+- [ ] T065 實作播放器刪除功能
   - 編輯器中的刪除按鈕
 
 ### 功能完整性驗證
 
-- [ ] T069 驗證 FR-010: YouTube URL 轉換
-- [ ] T070 驗證 FR-011: 嵌入式播放器與標準控制項
-- [ ] T071 驗證 SC-003: 95% 裝置相容性（桌面、平板、行動）
+- [ ] T066 驗證 FR-010: YouTube URL 轉換
+- [ ] T067 驗證 FR-011: 嵌入式播放器與標準控制項
+- [ ] T068 驗證 SC-003: 95% 裝置相容性（桌面、平板、行動）
 
 ### [US3] 整合測試
 
-- [ ] T072 [P] 撰寫 `tests/components/VideoEmbed.test.tsx`
+- [ ] T069 [P] 撰寫 `tests/components/VideoEmbed.test.tsx`
   - 回應式設計測試
   - 長寬比驗證
-- [ ] T073 撰寫 `tests/integration/youtube-embed-flow.test.tsx`
+- [ ] T070 撰寫 `tests/integration/youtube-embed-flow.test.tsx`
   - URL 貼上→轉換→播放流程
   - 行動裝置相容性測試
 
@@ -366,48 +351,48 @@ Phase 8: 測試、文檔、優化
 
 ### 音訊上傳與驗證
 
-- [ ] T074 [P] 實作 `src/components/AudioUploader.tsx` 音訊上傳器
+- [ ] T071 [P] 實作 `src/components/AudioUploader.tsx` 音訊上傳器
   - 檔案選擇器
   - 音訊格式驗證（MP3、WAV）
   - 檔案大小驗證（50MB）
   - 進度指示器
-- [ ] T075 擴展 `src/services/mediaService.ts`
+- [ ] T072 擴展 `src/services/mediaService.ts`
   - 音訊檔案驗證邏輯
   - 音訊時長檢測
 
 ### 音訊播放器元件
 
-- [ ] T076 [P] 實作 `src/components/AudioPlayer.tsx` 音訊播放器
+- [ ] T073 [P] 實作 `src/components/AudioPlayer.tsx` 音訊播放器
   - HTML5 audio 標籤
   - 標準控制項（播放、暫停、音量、進度）
   - 時長顯示
   - 響應式設計
-- [ ] T077 [P] 實作 `src/adapters/TipTapAudioNode.tsx` 自訂音訊節點
+- [ ] T074 [P] 實作 `src/adapters/TipTapAudioNode.tsx` 自訂音訊節點
   - 音訊播放器整合
   - 刪除功能
 
 ### TipTap 音訊節點整合
 
-- [ ] T078 整合 AudioUploader 到 RichTextEditor
+- [ ] T075 整合 AudioUploader 到 RichTextEditor
   - 工具列「插入音訊」按鈕
   - 上傳後自動插入節點
 
 ### 功能完整性驗證
 
-- [ ] T079 驗證 FR-012: 音訊上傳 (MP3、WAV、50MB)
-- [ ] T080 驗證 FR-013: HTML5 播放器與標準控制項
-- [ ] T081 驗證邊界情況：多個音訊檔案互不干擾
+- [ ] T076 驗證 FR-012: 音訊上傳 (MP3、WAV、50MB)
+- [ ] T077 驗證 FR-013: HTML5 播放器與標準控制項
+- [ ] T078 驗證邊界情況：多個音訊檔案互不干擾
 
 ### [US4] 整合測試
 
-- [ ] T082 [P] 撰寫 `tests/components/AudioUploader.test.tsx`
+- [ ] T079 [P] 撰寫 `tests/components/AudioUploader.test.tsx`
   - 檔案選擇測試
   - 格式驗證測試
   - 大小驗證測試
-- [ ] T083 [P] 撰寫 `tests/components/AudioPlayer.test.tsx`
+- [ ] T080 [P] 撰寫 `tests/components/AudioPlayer.test.tsx`
   - 播放控制項測試
   - 進度顯示測試
-- [ ] T084 撰寫 `tests/integration/audio-upload-flow.test.tsx`
+- [ ] T081 撰寫 `tests/integration/audio-upload-flow.test.tsx`
   - 完整上傳→播放流程
 
 **[US4] 完成標準**:
@@ -428,38 +413,28 @@ Phase 8: 測試、文檔、優化
 
 ### 內容轉換增強
 
-- [ ] T085 [P] 擴展 `src/services/contentConverter.ts`
+- [ ] T082 [P] 擴展 `src/services/contentConverter.ts`
   - 自訂節點處理（YouTube ID 保留、音訊 URL 保留）
   - 複雜格式処理（表格、程式碼塊等）
   - 邊界情況處理（Word 複製、特殊字元）
-- [ ] T086 實作 Markdown 驗證與修復
+- [ ] T083 實作 Markdown 驗證與修復
   - 修復不完整的 Markdown 語法
-
-### 編輯模式詳細實作
-
-- [ ] T087 [P] 增強 `src/components/EditorSwitcher.tsx`
-  - 轉換警告（如有格式損失）
-  - 轉換時間優化 (<2秒, SC-011)
-  - 內容保真度驗證
-- [ ] T088 [P] 建立 `src/components/MarkdownEditor.tsx`（可選，使用現有 ArticleEditor）
-  - 或整合現有的 @uiw/react-md-editor
 
 ### 功能完整性驗證
 
-- [ ] T089 驗證 FR-014: Markdown 編輯模式
-- [ ] T090 驗證 FR-015: 雙向轉換無資料遺失
-- [ ] T091 驗證 FR-016: HTML 清理（XSS 防護）
-- [ ] T092 驗證 SC-010: 100% 保真度 (標題、清單、連結、格式)
-- [ ] T093 驗證 SC-007: 零 XSS 漏洞
-- [ ] T094 驗證 SC-011: 轉換時間 <2秒
+- [ ] T084 驗證 FR-014: Markdown 編輯模式
+- [ ] T085 驗證 FR-015: 雙向轉換無資料遺失
+- [ ] T086 驗證 FR-016: HTML 清理（XSS 防護）
+- [ ] T087 驗證 SC-010: 100% 保真度 (標題、清單、連結、格式)
+- [ ] T088 驗證 SC-007: 零 XSS 漏洞
 
 ### [US5] 整合測試
 
-- [ ] T095 [P] 撰寫 `tests/integration/markdown-conversion-flow.test.tsx`
+- [ ] T089 [P] 撰寫 `tests/integration/markdown-conversion-flow.test.tsx`
   - 雙向轉換測試
   - 保真度驗證 (SC-010)
   - XSS 防護測試 (SC-007)
-- [ ] T096 [P] 撰寫 `tests/integration/complex-format-handling.test.tsx`
+- [ ] T090 [P] 撰寫 `tests/integration/complex-format-handling.test.tsx`
   - Word 複製→轉換
   - 特殊字元處理
   - 嵌套結構處理
@@ -479,58 +454,57 @@ Phase 8: 測試、文檔、優化
 
 ### 測試與品質保證
 
-- [ ] T097 執行完整測試套件 (`npm test -- --run`)
+- [ ] T091 執行完整測試套件 (`npm test -- --run`)
   - 驗證所有單元測試通過
   - 驗證所有整合測試通過
-- [ ] T098 測試覆蓋率檢查 (`npm run coverage`)
+- [ ] T092 測試覆蓋率檢查 (`npm run coverage`)
   - 目標 80%+ 覆蓋率（遵循憲法要求）
-- [ ] T099 效能測試與最佳化
+- [ ] T093 效能測試與最佳化
   - 頁面載入時間 <2秒 (SC-004)
   - 輸入延遲 <100ms (SC-004)
-  - 編輯器切換 <2秒 (SC-011)
   - 圖片上傳 <5秒 (SC-002)
-- [ ] T100 [P] 跨瀏覽器兼容性測試
+- [ ] T094 [P] 跨瀏覽器兼容性測試
   - Chrome、Firefox、Safari、Edge
   - 各裝置類型 (桌面、平板、行動)
 
 ### 文檔編寫
 
-- [ ] T101 [P] 更新 `CLAUDE.md` 專案指南
+- [ ] T095 [P] 更新 `CLAUDE.md` 專案指南
   - 新增編輯器相關技術資訊
   - 新增目錄結構說明
-- [ ] T102 [P] 撰寫 `specs/004-rich-text-editor/docs/SETUP.md`（已有 quickstart.md）
+- [ ] T096 [P] 撰寫 `specs/004-rich-text-editor/docs/SETUP.md`（已有 quickstart.md）
   - 本地開發指南
   - Supabase 設定步驟
-- [ ] T103 [P] 撰寫 `specs/004-rich-text-editor/docs/API-ENDPOINTS.md`
+- [ ] T097 [P] 撰寫 `specs/004-rich-text-editor/docs/API-ENDPOINTS.md`
   - 儲存 API 文檔
   - 編輯器 API 文檔
   - 媒體管理 API 文檔
 
 ### 優化與錯誤修復
 
-- [ ] T104 程式碼分割（Code Splitting）
+- [ ] T098 程式碼分割（Code Splitting）
   - 懶載入 RichTextEditor 元件
   - 動態 import TipTap 擴展
-- [ ] T105 [P] Bundle 大小優化
+- [ ] T099 [P] Bundle 大小優化
   - 分析和移除未使用的依賴
   - 樹搖（tree-shaking）驗證
-- [ ] T106 [P] 無障礙性改善（A11y）
+- [ ] T100 [P] 無障礙性改善（A11y）
   - 鍵盤導航支援
   - ARIA 標籤新增
   - 屏幕閱讀器測試
-- [ ] T107 最終錯誤修復與調整
+- [ ] T101 最終錯誤修復與調整
   - 根據測試結果修復缺陷
   - UX 改善（基於 SC-006 反饋）
 
 ### 版本與部署準備
 
-- [ ] T108 更新 `FUTURE-PLANS.md` 進度追蹤
+- [ ] T102 更新 `FUTURE-PLANS.md` 進度追蹤
   - 標記 004-rich-text-editor 為 "完成"
   - 更新 SpecKit 規劃進度
-- [ ] T109 編寫 `CHANGELOG.md` 更新
+- [ ] T103 編寫 `CHANGELOG.md` 更新
   - 新增功能摘要
   - 已知限制和注意事項
-- [ ] T110 準備生產部署
+- [ ] T104 準備生產部署
   - 建立生產環境設定
   - 資料庫遷移驗證
 

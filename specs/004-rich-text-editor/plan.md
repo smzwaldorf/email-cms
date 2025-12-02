@@ -108,7 +108,6 @@ src/
 ├── components/
 │   ├── ArticleEditor.tsx              # 現有 - 使用 @uiw/react-md-editor
 │   ├── RichTextEditor.tsx             # 新增 - WYSIWYG 主編輯器
-│   ├── EditorSwitcher.tsx             # 新增 - 編輯器模式切換器
 │   ├── MediaUploader.tsx              # 新增 - 圖片/音訊上傳元件
 │   ├── MediaLibrary.tsx               # 新增 - 媒體庫瀏覽器
 │   ├── VideoEmbed.tsx                 # 新增 - YouTube 影片嵌入
@@ -123,8 +122,7 @@ src/
 │
 ├── hooks/
 │   ├── useMediaUpload.ts              # 新增 - 媒體上傳 hook
-│   ├── useAutoSave.ts                 # 新增 - 自動儲存 hook
-│   └── useEditorMode.ts               # 新增 - 編輯器模式狀態管理
+│   └── useAutoSave.ts                 # 新增 - 自動儲存 hook
 │
 ├── adapters/                          # 新增 - 適配器層
 │   ├── SupabaseStorageAdapter.ts     # Supabase Storage 實作
@@ -148,12 +146,10 @@ tests/
 │
 ├── components/
 │   ├── RichTextEditor.test.tsx
-│   ├── EditorSwitcher.test.tsx
 │   ├── MediaUploader.test.tsx
 │   └── MediaLibrary.test.tsx
 │
 └── integration/
-    ├── editor-switching.test.tsx      # 編輯器切換整合測試
     ├── media-upload-flow.test.tsx     # 媒體上傳流程測試
     └── content-preservation.test.tsx  # 內容保真度測試
 ```

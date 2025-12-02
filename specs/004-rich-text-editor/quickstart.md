@@ -87,12 +87,8 @@ const result = await storage.upload(file, path)
 ### 2. 編輯器架構
 
 ```
-EditorSwitcher (切換器)
+RichTextEditor (TipTap)
     ↓
-┌────────────────────────────┬────────────────────────────┐
-│                            │                            │
-RichTextEditor (TipTap)      ArticleEditor (@uiw/react-md-editor)
-    ↓                            ↓
 ContentConverter (雙向轉換)
     ↓
 TipTap JSON ↔ Markdown
@@ -100,10 +96,9 @@ TipTap JSON ↔ Markdown
 
 **使用方式**:
 ```tsx
-import { EditorSwitcher } from '@/components/EditorSwitcher'
+import { RichTextEditor } from '@/components/RichTextEditor'
 
-<EditorSwitcher
-  initialMode="rich_text"
+<RichTextEditor
   content={article.content}
   onChange={handleContentChange}
 />
@@ -348,61 +343,6 @@ function ArticleEditor({ article }: { article: Article }) {
   }, [])
 
   return <Editor content={content} onChange={setContent} />
-}
-```
-
-### 模式 6: 編輯器模式切換
-
-```tsx
-// src/components/EditorSwitcher.tsx
-import { useState } from 'react'
-import { RichTextEditor } from './RichTextEditor'
-import { ArticleEditor } from './ArticleEditor'  // @uiw/react-md-editor
-import { ContentConverter } from '@/services/contentConverter'
-
-export function EditorSwitcher({ initialContent }: { initialContent: string }) {
-  const [mode, setMode] = useState<'rich' | 'markdown'>('rich')
-  const [content, setContent] = useState(initialContent)
-  const [tiptapDoc, setTiptapDoc] = useState<JSONContent>()
-
-  const switchToMarkdown = () => {
-    if (tiptapDoc) {
-      const markdown = ContentConverter.tiptapToMarkdown(tiptapDoc)
-      setContent(markdown)
-    }
-    setMode('markdown')
-  }
-
-  const switchToRich = async () => {
-    const doc = await ContentConverter.markdownToTiptap(content)
-    setTiptapDoc(doc)
-    setMode('rich')
-  }
-
-  return (
-    <div>
-      <div className="mode-switcher">
-        <button onClick={switchToRich} disabled={mode === 'rich'}>
-          富文本模式
-        </button>
-        <button onClick={switchToMarkdown} disabled={mode === 'markdown'}>
-          Markdown 模式
-        </button>
-      </div>
-
-      {mode === 'rich' ? (
-        <RichTextEditor
-          content={tiptapDoc}
-          onChange={setTiptapDoc}
-        />
-      ) : (
-        <ArticleEditor
-          value={content}
-          onChange={setContent}
-        />
-      )}
-    </div>
-  )
 }
 ```
 
