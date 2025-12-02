@@ -10,14 +10,12 @@ import {
   Italic,
   Strikethrough,
   Code,
-  ListOrdered,
   Undo,
   Redo,
 } from 'lucide-react'
 import { MarkButton } from './buttons/mark-button'
 import { HeadingButton } from './buttons/heading-button'
-import { ListButton } from './buttons/list-button'
-import { TaskListButton } from './buttons/task-list-button'
+import { ListDropdown } from './buttons/list-dropdown'
 import { BlockquoteButton } from './buttons/blockquote-button'
 import { LinkButton } from './buttons/link-button'
 import { TextAlignButton } from './buttons/text-align-button'
@@ -84,65 +82,16 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
 
       <div className="toolbar-divider" />
 
-      {/* 2. Heading */}
+      {/* 2. Heading & Lists & Blockquote */}
       <div className="toolbar-group">
         <HeadingButton editor={editor} />
-      </div>
-
-      <div className="toolbar-divider" />
-
-      {/* 3. Lists (Bullet & Numbered) */}
-      <div className="toolbar-group">
-        <ListButton editor={editor} />
-        <button
-          onClick={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            editor.chain().focus().toggleOrderedList().run()
-          }}
-          className={`toolbar-button ${editor.isActive('orderedList') ? 'active' : ''}`}
-          title="Ordered List"
-          type="button"
-        >
-          <ListOrdered size={18} />
-        </button>
-      </div>
-
-      <div className="toolbar-divider" />
-
-      {/* 4. Task List */}
-      <div className="toolbar-group">
-        <TaskListButton editor={editor} />
-      </div>
-
-      <div className="toolbar-divider" />
-
-      {/* 5. Blockquote */}
-      <div className="toolbar-group">
+        <ListDropdown editor={editor} />
         <BlockquoteButton editor={editor} />
       </div>
 
       <div className="toolbar-divider" />
 
-      {/* 6. Code Block */}
-      <div className="toolbar-group">
-        <button
-          onClick={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            editor.chain().focus().toggleCodeBlock().run()
-          }}
-          className={`toolbar-button ${editor.isActive('codeBlock') ? 'active' : ''}`}
-          title="Code Block"
-          type="button"
-        >
-          <Code size={18} />
-        </button>
-      </div>
-
-      <div className="toolbar-divider" />
-
-      {/* 7. Bold, Italic, Strikethrough, Underline */}
+      {/* 3. Bold, Italic, Strikethrough, Underline */}
       <div className="toolbar-group">
         <MarkButton
           editor={editor}
@@ -169,25 +118,19 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
           title="Inline Code"
         />
         <UnderlineButton editor={editor} />
-      </div>
-
-      <div className="toolbar-divider" />
-
-      {/* 8. Highlight */}
-      <div className="toolbar-group">
         <HighlightButton editor={editor} />
       </div>
 
       <div className="toolbar-divider" />
 
-      {/* 9. Link */}
+      {/* 4. Link */}
       <div className="toolbar-group">
         <LinkButton editor={editor} />
       </div>
 
       <div className="toolbar-divider" />
 
-      {/* 10. Subscript & Superscript */}
+      {/* 5. Subscript & Superscript */}
       <div className="toolbar-group">
         <SubscriptButton editor={editor} />
         <SuperscriptButton editor={editor} />
@@ -195,14 +138,14 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
 
       <div className="toolbar-divider" />
 
-      {/* 11. Text Alignment */}
+      {/* 6. Text Alignment */}
       <div className="toolbar-group">
         <TextAlignButton editor={editor} />
       </div>
 
       <div className="toolbar-divider" />
 
-      {/* 12. Add Image */}
+      {/* 7. Add Image */}
       <div className="toolbar-group">
         <InsertButton editor={editor} />
       </div>

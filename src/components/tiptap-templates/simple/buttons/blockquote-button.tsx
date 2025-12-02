@@ -13,7 +13,13 @@ interface BlockquoteButtonProps {
 export function BlockquoteButton({ editor }: BlockquoteButtonProps) {
   return (
     <button
-      onClick={() => editor.chain().focus().toggleBlockquote().run()}
+      onClick={() => {
+        if (editor.isActive('blockquote')) {
+          editor.chain().focus().toggleBlockquote().run()
+        } else {
+          editor.chain().focus().clearNodes().toggleBlockquote().run()
+        }
+      }}
       className={`toolbar-button ${editor.isActive('blockquote') ? 'active' : ''}`}
       title="Blockquote"
       type="button"

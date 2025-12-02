@@ -185,7 +185,7 @@ export function ArticleEditor({
         onSubmit={handleSubmit}
         className="flex-1 overflow-y-auto px-6 py-4 bg-white"
       >
-        <div className="max-w-4xl mx-auto space-y-4">
+        <div className="max-w-6xl mx-auto space-y-4">
           {/* 標題 */}
           <div>
             <label

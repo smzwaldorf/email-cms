@@ -61,6 +61,7 @@ export function LinkButton({ editor }: LinkButtonProps) {
     if (e.key === 'Enter') {
       handleSetLink()
     } else if (e.key === 'Escape') {
+      editor.chain().focus().run()
       setIsOpen(false)
     }
   }
@@ -68,9 +69,15 @@ export function LinkButton({ editor }: LinkButtonProps) {
   return (
     <div className="relative" ref={menuRef}>
       <button
-        onClick={() => {
-          setUrl(editor.getAttributes('link').href || '')
-          setIsOpen(!isOpen)
+        onClick={(e) => {
+          e.preventDefault()
+          if (isOpen) {
+            editor.chain().focus().run()
+            setIsOpen(false)
+          } else {
+            setUrl(editor.getAttributes('link').href || '')
+            setIsOpen(true)
+          }
         }}
         className={`toolbar-button ${
           editor.isActive('link') ? 'active' : ''

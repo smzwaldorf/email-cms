@@ -4,7 +4,7 @@
  */
 
 import { Editor } from '@tiptap/react'
-import { Heading, ChevronDown } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 
 interface HeadingButtonProps {
@@ -66,12 +66,13 @@ export function HeadingButton({ editor }: HeadingButtonProps) {
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="toolbar-button flex items-center gap-1"
+        className={`toolbar-button flex items-center gap-1 ${
+          currentHeading !== 'Text' ? 'active' : ''
+        }`}
         title={`Current: ${currentHeading}`}
         type="button"
       >
-        <Heading size={18} />
-        <span className="text-xs font-medium">{currentHeading}</span>
+        <span className="text-sm font-medium w-8">{currentHeading}</span>
         <ChevronDown size={14} />
       </button>
 
