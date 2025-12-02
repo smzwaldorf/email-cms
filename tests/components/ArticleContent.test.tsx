@@ -78,6 +78,16 @@ describe('ArticleContent Component', () => {
       const contentDiv = screen.getByText(/This is test content/)
       expect(contentDiv).toBeInTheDocument()
     })
+
+    it('should disable checkboxes in task lists', () => {
+      const contentWithCheckbox =
+        '<ul data-type="taskList"><li data-type="taskItem"><label><input type="checkbox"><span>Task 1</span></label></li></ul>'
+      const props = { ...defaultProps, content: contentWithCheckbox }
+      render(<ArticleContent {...props} />)
+
+      const checkbox = screen.getByRole('checkbox')
+      expect(checkbox).toBeDisabled()
+    })
   })
 
   describe('Loading State', () => {

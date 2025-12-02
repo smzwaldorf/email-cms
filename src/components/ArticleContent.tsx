@@ -39,7 +39,11 @@ function ArticleContentComponent({
 
   // 使用 useMemo 優化 HTML 內容，避免在非內容相關 props 變化時重新計算
   // content 已經是 HTML 格式（TipTap 直接輸出），無需轉換
-  const memoizedHtml = useMemo(() => content, [content])
+  // 為所有 checkbox 添加 disabled 屬性，確保閱讀模式下不可編輯
+  const memoizedHtml = useMemo(() => {
+    if (!content) return ''
+    return content.replace(/<input type="checkbox"/g, '<input type="checkbox" disabled')
+  }, [content])
 
   // 使用 useMemo 優化文章中繼資料，避免重複建立相同的 UI 結構
   const metadataSection = useMemo(
