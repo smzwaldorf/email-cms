@@ -258,9 +258,11 @@ Phase 8: 測試、文檔、優化
   - 支援 mediaId 屬性 ✅
   - 內聯圖片編輯控制項 ✅
   - **實作**: 294 行，包含屬性解析、HTML 轉換、鍵盤快捷鍵
-- [ ] T044 整合 ImageUploader 到 RichTextEditor
-  - 工具列「插入圖片」按鈕 (待實作)
-  - 拖放圖片到編輯器 (待實作)
+- [X] T044 整合 ImageUploader 到 RichTextEditor ✅ (2025-12-02)
+  - 工具列「插入圖片」按鈕 ✅ (InsertButton.tsx 增強)
+  - 拖放圖片到編輯器 ✅ (ImageUploader 支援)
+  - 進度追蹤和錯誤處理 ✅
+  - **實作**: 更新 insert-button.tsx (165 行)，整合 ImageUploader 和 useMediaUpload
 
 ### 圖片最佳化與上傳流程
 

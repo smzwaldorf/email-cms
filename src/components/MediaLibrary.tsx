@@ -188,9 +188,9 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
 
         {/* 媒體預覽 / Media preview */}
         <div className="aspect-square rounded-md bg-gray-100 mb-2 overflow-hidden">
-          {file.mediaType === 'image' && file.storageUrl ? (
+          {file.mediaType === 'image' && file.publicUrl ? (
             <img
-              src={file.storageUrl}
+              src={file.publicUrl}
               alt={file.fileName}
               className="w-full h-full object-cover"
             />
