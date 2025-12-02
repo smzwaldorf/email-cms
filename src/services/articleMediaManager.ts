@@ -3,7 +3,7 @@
  * Article Media Manager Service - Manages relationships between articles and media files
  */
 
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase'
 import type { MediaFile } from '@/types/media'
 
 /**
@@ -17,6 +17,7 @@ export class ArticleMediaManager {
    */
   async getArticleMedia(articleId: string): Promise<MediaFile[]> {
     try {
+      const supabase = getSupabaseClient()
       const { data, error } = await supabase
         .from('article_media_references')
         .select(
@@ -69,6 +70,7 @@ export class ArticleMediaManager {
     }
   ): Promise<{ success: boolean; error?: string }> {
     try {
+      const supabase = getSupabaseClient()
       // 檢查關聯是否已存在
       // Check if reference already exists
       const { data: existing } = await supabase
@@ -124,6 +126,7 @@ export class ArticleMediaManager {
     mediaId: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
+      const supabase = getSupabaseClient()
       const { error } = await supabase
         .from('article_media_references')
         .delete()
@@ -152,6 +155,7 @@ export class ArticleMediaManager {
     error?: string
   }> {
     try {
+      const supabase = getSupabaseClient()
       // 取得所有參考
       // Get all references
       const { data: references, error: selectError } = await supabase
@@ -168,7 +172,8 @@ export class ArticleMediaManager {
       // 檢查每個媒體檔案是否存在
       // Check if each media file exists
       const mediaIds = references.map((ref: any) => ref.media_id)
-      const { data: existingMedia, error: mediaError } = await supabase
+      const supabase2 = getSupabaseClient()
+      const { data: existingMedia, error: mediaError } = await supabase2
         .from('media_files')
         .select('id')
         .in('id', mediaIds)
@@ -181,7 +186,8 @@ export class ArticleMediaManager {
       // 刪除孤立的參考
       // Delete orphaned references
       if (orphanedIds.length > 0) {
-        const { error: deleteError } = await supabase
+        const supabase3 = getSupabaseClient()
+        const { error: deleteError } = await supabase3
           .from('article_media_references')
           .delete()
           .in('media_id', orphanedIds)
@@ -206,6 +212,7 @@ export class ArticleMediaManager {
    */
   async findOrphanedFiles(userId: string): Promise<MediaFile[]> {
     try {
+      const supabase = getSupabaseClient()
       // 找出未被參考的媒體檔案
       // Find unreferenced media files
       const { data: orphaned, error } = await supabase
@@ -257,6 +264,7 @@ export class ArticleMediaManager {
         return { success: true, deletedCount: 0 }
       }
 
+      const supabase = getSupabaseClient()
       // 刪除資料庫記錄
       // Delete database records
       const { error: dbError } = await supabase
@@ -297,6 +305,7 @@ export class ArticleMediaManager {
     }
   ): Promise<{ success: boolean; error?: string }> {
     try {
+      const supabase = getSupabaseClient()
       const { error } = await supabase
         .from('article_media_references')
         .update({

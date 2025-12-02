@@ -9,7 +9,7 @@ import { mediaService } from '@/services/mediaService'
 import { imageOptimizer } from '@/services/imageOptimizer'
 import { storageService } from '@/services/storageService'
 import { articleMediaManager } from '@/services/articleMediaManager'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase'
 
 /**
  * 媒體上傳狀態
@@ -89,7 +89,8 @@ export function useMediaUpload() {
           let optimizedFile = file
           if (mediaType === 'image') {
             try {
-              optimizedFile = await imageOptimizer.optimizeImage(file)
+              const result = await imageOptimizer.optimize(file)
+              optimizedFile = result.file
             } catch (error) {
               console.warn('Image optimization failed, using original:', error)
               // Fallback to original file
@@ -107,7 +108,8 @@ export function useMediaUpload() {
 
           // 步驟 3: 上傳
           // Step 3: Upload
-          const userId = (await supabase.auth.getUser()).data.user?.id
+          const supabaseClient = getSupabaseClient()
+          const userId = (await supabaseClient.auth.getUser()).data.user?.id
           if (!userId) {
             throw new Error('User not authenticated')
           }
@@ -128,7 +130,7 @@ export function useMediaUpload() {
 
           // 上傳到儲存提供者
           // Upload to storage provider
-          const storageProvider = storageService.getProvider()
+          const storageProvider = storageService.provider()
           const { success: uploadSuccess, publicUrl } = await storageProvider.upload(
             storagePath,
             optimizedFile,
@@ -147,7 +149,7 @@ export function useMediaUpload() {
 
           // 將元資料保存到資料庫
           // Save metadata to database
-          const { data: dbFile, error: dbError } = await supabase
+          const { data: dbFile, error: dbError } = await supabaseClient
             .from('media_files')
             .insert({
               id: mediaId,
