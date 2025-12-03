@@ -7,6 +7,7 @@
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { SecureImage } from './extensions/SecureImage'
+import { TipTapYoutubeNode } from '@/adapters/TipTapYoutubeNode'
 import Link from '@tiptap/extension-link'
 import Highlight from '@tiptap/extension-highlight'
 import { TextStyle } from '@tiptap/extension-text-style'
@@ -87,6 +88,7 @@ export function SimpleEditor({
       TaskItem.configure({
         nested: true,
       }),
+      TipTapYoutubeNode,
       Placeholder.configure({
         placeholder,
       }),

@@ -24,6 +24,7 @@ import { SubscriptButton } from './buttons/subscript-button'
 import { UnderlineButton } from './buttons/underline-button'
 import { HighlightButton } from './buttons/highlight-button'
 import { InsertButton } from './buttons/insert-button'
+import { YouTubeButton } from './buttons/youtube-button'
 
 interface EditorToolbarProps {
   editor: Editor
@@ -145,9 +146,10 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
 
       <div className="toolbar-divider" />
 
-      {/* 7. Add Image */}
+      {/* 7. Add Image & YouTube Video */}
       <div className="toolbar-group">
         <InsertButton editor={editor} />
+        <YouTubeButton editor={editor} />
       </div>
     </div>
   )
