@@ -7,12 +7,13 @@
 
 **任務總計**: 104 個
 **優先順序**: 5 個使用者故事 (P1: 2個, P2: 2個, P3: 1個)
-**進度**: Phase 1-4 完成, Phase 5-8 待實作 (60/104 任務 = 58% 完成) ✅
+**進度**: Phase 1-5 完成, Phase 6-8 待實作 (72/104 任務 = 69% 完成) ✅
   - Phase 1: 8/8 任務完成 ✅
   - Phase 2: 15/15 任務完成 ✅
   - Phase 3 [US1]: 18/18 任務完成 ✅ (2025-12-01)
   - Phase 4 [US2]: 20/20 任務完成 ✅ (2025-12-03，含 T046-T054 驗證，T058 整合測試)
-  - Phase 5-8: 待實作 (44 個任務)
+  - Phase 5 [US3]: 10/10 任務完成 ✅ (2025-12-03，含 T069-T070 整合測試)
+  - Phase 6-8: 待實作 (32 個任務)
 
 ---
 
@@ -345,38 +346,38 @@ Phase 8: 測試、文檔、優化
 
 ### YouTube 節點與轉換
 
-- [ ] T061 [P] 實作 `src/adapters/TipTapYoutubeNode.tsx` YouTube 自訂節點
+- [X] T061 [P] 實作 `src/adapters/TipTapYoutubeNode.tsx` YouTube 自訂節點
   - 擴展 @tiptap/extension-youtube
   - 支援自訂寬度/高度
   - 自訂開始時間
-- [ ] T062 實作 YouTube URL 識別與轉換邏輯
+- [X] T062 實作 YouTube URL 識別與轉換邏輯
   - extractYouTubeId() 函數
   - 支援多種 URL 格式 (youtube.com, youtu.be)
-- [ ] T063 整合 YouTube 節點到 RichTextEditor
+- [X] T063 整合 YouTube 節點到 RichTextEditor
   - 工具列「插入影片」按鈕
   - URL 貼上自動偵測
 
 ### YouTube 播放器與回應式設計
 
-- [ ] T064 [P] 實作 `src/components/VideoEmbed.tsx` YouTube 嵌入元件
+- [X] T064 [P] 實作 `src/components/VideoEmbed.tsx` YouTube 嵌入元件
   - 回應式 iframe
   - 長寬比保持
   - 行動裝置最佳化
-- [ ] T065 實作播放器刪除功能
+- [X] T065 實作播放器刪除功能
   - 編輯器中的刪除按鈕
 
 ### 功能完整性驗證
 
-- [ ] T066 驗證 FR-010: YouTube URL 轉換
-- [ ] T067 驗證 FR-011: 嵌入式播放器與標準控制項
-- [ ] T068 驗證 SC-003: 95% 裝置相容性（桌面、平板、行動）
+- [X] T066 驗證 FR-010: YouTube URL 轉換
+- [X] T067 驗證 FR-011: 嵌入式播放器與標準控制項
+- [X] T068 驗證 SC-003: 95% 裝置相容性（桌面、平板、行動）
 
 ### [US3] 整合測試
 
-- [ ] T069 [P] 撰寫 `tests/components/VideoEmbed.test.tsx`
+- [X] T069 [P] 撰寫 `tests/components/VideoEmbed.test.tsx`
   - 回應式設計測試
   - 長寬比驗證
-- [ ] T070 撰寫 `tests/integration/youtube-embed-flow.test.tsx`
+- [X] T070 撰寫 `tests/integration/youtube-embed-flow.test.tsx`
   - URL 貼上→轉換→播放流程
   - 行動裝置相容性測試
 
