@@ -199,19 +199,40 @@ export function ArticleEditor({
   return (
     <article className="h-full flex flex-col overflow-hidden">
       {/* 編輯器頭部 */}
-      <div className="px-6 py-4 border-b border-waldorf-cream-200 bg-waldorf-sage-50">
-        <h1 className="text-2xl font-bold text-waldorf-clay-800 mb-2">編輯文章</h1>
-        <div className="flex items-center gap-2 text-sm text-waldorf-clay-600">
-          <span>文章 ID: {article.id}</span>
-          <span>|</span>
-          <span>週次: {article.weekNumber}</span>
-          <span>|</span>
-          <span>順序: {article.order}</span>
+      <div className="px-6 py-4 border-b border-waldorf-cream-200 bg-waldorf-sage-50 flex justify-between items-start">
+        <div>
+          <h1 className="text-2xl font-bold text-waldorf-clay-800 mb-2">編輯文章</h1>
+          <div className="flex items-center gap-2 text-sm text-waldorf-clay-600">
+            <span>文章 ID: {article.id}</span>
+            <span>|</span>
+            <span>週次: {article.weekNumber}</span>
+            <span>|</span>
+            <span>順序: {article.order}</span>
+          </div>
+        </div>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={isSaving}
+            className="px-4 py-2 bg-white text-waldorf-clay-700 border border-waldorf-cream-300 rounded-md hover:bg-waldorf-cream-50 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            取消
+          </button>
+          <button
+            type="submit"
+            form="article-edit-form"
+            disabled={isSaving}
+            className="px-4 py-2 bg-waldorf-sage-600 text-white rounded-md hover:bg-waldorf-sage-700 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {isSaving ? '儲存中...' : '儲存'}
+          </button>
         </div>
       </div>
 
       {/* 編輯表單 */}
       <form
+        id="article-edit-form"
         onSubmit={handleSubmit}
         className="flex-1 overflow-y-auto px-6 py-4 bg-white"
       >
@@ -274,6 +295,24 @@ export function ArticleEditor({
             />
           </div>
 
+          {/* 發布狀態 */}
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="isPublished"
+              name="isPublished"
+              checked={formData.isPublished}
+              onChange={handleChange}
+              className="w-4 h-4 text-waldorf-sage-600 border-waldorf-cream-300 rounded focus:ring-2 focus:ring-waldorf-sage-500"
+            />
+            <label
+              htmlFor="isPublished"
+              className="text-sm font-medium text-waldorf-clay-700"
+            >
+              已發布
+            </label>
+          </div>
+
           {/* 內容 - 富文本編輯器 */}
           <div>
             <label
@@ -302,42 +341,7 @@ export function ArticleEditor({
             </p>
           </div>
 
-          {/* 發布狀態 */}
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="isPublished"
-              name="isPublished"
-              checked={formData.isPublished}
-              onChange={handleChange}
-              className="w-4 h-4 text-waldorf-sage-600 border-waldorf-cream-300 rounded focus:ring-2 focus:ring-waldorf-sage-500"
-            />
-            <label
-              htmlFor="isPublished"
-              className="text-sm font-medium text-waldorf-clay-700"
-            >
-              已發布
-            </label>
-          </div>
 
-          {/* 按鈕區 */}
-          <div className="flex gap-3 pt-4 border-t border-waldorf-cream-200">
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="px-6 py-2 bg-waldorf-sage-600 text-white rounded-md hover:bg-waldorf-sage-700 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {isSaving ? '儲存中...' : '儲存'}
-            </button>
-            <button
-              type="button"
-              onClick={onCancel}
-              disabled={isSaving}
-              className="px-6 py-2 bg-white text-waldorf-clay-700 border border-waldorf-cream-300 rounded-md hover:bg-waldorf-cream-50 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              取消
-            </button>
-          </div>
         </div>
       </form>
     </article>
