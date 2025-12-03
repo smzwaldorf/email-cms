@@ -154,6 +154,8 @@ export function WeeklyReaderPage() {
 
   // 處理上一篇導航
   const handlePrevious = () => {
+    if (isEditMode) return // Disable navigation while editing
+
     const currentOrder = navigation.navigationState.currentArticleOrder
     if (currentOrder <= 1) return
 
@@ -174,6 +176,8 @@ export function WeeklyReaderPage() {
 
   // 處理下一篇導航
   const handleNext = () => {
+    if (isEditMode) return // Disable navigation while editing
+
     const currentOrder = navigation.navigationState.currentArticleOrder
     if (currentOrder >= articles.length) return
 
@@ -196,6 +200,8 @@ export function WeeklyReaderPage() {
 
   // 處理文章選擇
   const handleSelectArticle = (articleId: string) => {
+    if (isEditMode) return // Disable navigation while editing
+
     const selectedArticle = articles.find((a) => a.id === articleId)
     if (selectedArticle) {
       navigation.setCurrentArticle(articleId, selectedArticle.order)
@@ -339,12 +345,14 @@ export function WeeklyReaderPage() {
       {/* 桌面版：側邊欄 + 內容區 */}
       <div className="hidden md:flex h-full">
         {/* 左側邊導航按鈕 */}
-        <SideButton
-          direction="left"
-          onClick={handlePrevious}
-          disabled={!canGoPrevious}
-          label="上一篇"
-        />
+        {!isEditMode && (
+          <SideButton
+            direction="left"
+            onClick={handlePrevious}
+            disabled={!canGoPrevious}
+            label="上一篇"
+          />
+        )}
 
         {/* 文章列表面板 */}
         <div className="w-72 bg-waldorf-cream-50 border-r border-waldorf-cream-200 flex flex-col">
@@ -354,6 +362,7 @@ export function WeeklyReaderPage() {
             selectedArticleId={navigation.navigationState.currentArticleId}
             onSelectArticle={handleSelectArticle}
             isLoading={isLoadingWeekly}
+            disabled={isEditMode}
           />
         </div>
 
@@ -400,21 +409,24 @@ export function WeeklyReaderPage() {
           )}
 
           {/* 底部導航欄 */}
+        {!isEditMode && (
           <NavigationBar
             navigationState={navigation.navigationState}
             onPrevious={handlePrevious}
             onNext={handleNext}
-            disabled={isEditMode}
           />
+        )}
         </div>
 
         {/* 右側邊導航按鈕 */}
-        <SideButton
-          direction="right"
-          onClick={handleNext}
-          disabled={!canGoNext}
-          label="下一篇"
-        />
+        {!isEditMode && (
+          <SideButton
+            direction="right"
+            onClick={handleNext}
+            disabled={!canGoNext}
+            label="下一篇"
+          />
+        )}
       </div>
 
       {/* 行動版：頁面式滑動 */}
@@ -475,12 +487,13 @@ export function WeeklyReaderPage() {
         </div>
 
         {/* 底部導航欄 */}
-        <NavigationBar
-          navigationState={navigation.navigationState}
-          onPrevious={handlePrevious}
-          onNext={handleNext}
-          disabled={isEditMode}
-        />
+        {!isEditMode && (
+          <NavigationBar
+            navigationState={navigation.navigationState}
+            onPrevious={handlePrevious}
+            onNext={handleNext}
+          />
+        )}
 
         {/* 邊緣導航按鈕 - 行動版 */}
         {!isEditMode && (
