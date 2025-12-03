@@ -57,7 +57,7 @@ export const ArticleListView = memo(function ArticleListView({
       {/* 週報頭部 */}
       <div className="px-4 py-3 border-b border-waldorf-cream-200 bg-waldorf-cream-100 space-y-3">
         <div className="flex items-center justify-between">
-          <WeekSelector />
+          <WeekSelector disabled={disabled} />
         </div>
         <p className="text-sm text-waldorf-clay-600">共 {articles.length} 篇文章</p>
       </div>
