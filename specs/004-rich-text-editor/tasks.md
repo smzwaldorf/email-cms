@@ -389,65 +389,101 @@ Phase 8: 測試、文檔、優化
 
 ---
 
-## Phase 6: [US4] 音訊上傳與播放
+## Phase 6: [US4] 音訊上傳與播放 ✅ COMPLETE
 
 **使用者故事**: 編輯者上傳音訊檔案（MP3、WAV），在文章中顯示播放器
 
 **獨立測試標準**:
-- 音訊檔案能上傳和驗證
-- 音訊播放器在編輯器和發佈檢視中都能運作
-- 多個音訊檔案互不干擾
+- ✅ 音訊檔案能上傳和驗證
+- ✅ 音訊播放器在編輯器和發佈檢視中都能運作
+- ✅ 多個音訊檔案互不干擾
 
 ### 音訊上傳與驗證
 
-- [ ] T071 [P] 實作 `src/components/AudioUploader.tsx` 音訊上傳器
-  - 檔案選擇器
-  - 音訊格式驗證（MP3、WAV）
-  - 檔案大小驗證（50MB）
-  - 進度指示器
-- [ ] T072 擴展 `src/services/mediaService.ts`
-  - 音訊檔案驗證邏輯
-  - 音訊時長檢測
+- [x] T071 [P] 實作 `src/components/AudioUploader.tsx` 音訊上傳器
+  - ✅ 檔案選擇器 (拖放 & 點擊)
+  - ✅ 音訊格式驗證（MP3、WAV、OGG、M4A、AAC、FLAC）
+  - ✅ 檔案大小驗證（50MB）
+  - ✅ 進度指示器
+- [x] T072 擴展 `src/services/mediaService.ts`
+  - ✅ 音訊檔案驗證邏輯
+  - ✅ 音訊時長檢測
 
 ### 音訊播放器元件
 
-- [ ] T073 [P] 實作 `src/components/AudioPlayer.tsx` 音訊播放器
-  - HTML5 audio 標籤
-  - 標準控制項（播放、暫停、音量、進度）
-  - 時長顯示
-  - 響應式設計
-- [ ] T074 [P] 實作 `src/adapters/TipTapAudioNode.tsx` 自訂音訊節點
-  - 音訊播放器整合
-  - 刪除功能
+- [x] T073 [P] 實作 `src/components/AudioPlayer.tsx` 音訊播放器
+  - ✅ HTML5 audio 標籤 (crossOrigin, preload)
+  - ✅ 標準控制項（播放、暫停、音量、進度）
+  - ✅ 時長顯示（MM:SS 格式）
+  - ✅ 響應式設計
+  - ✅ 靜音功能
+- [x] T074 [P] 實作 `src/adapters/TipTapAudioNode.tsx` 自訂音訊節點
+  - ✅ 音訊播放器整合
+  - ✅ 刪除功能 (Backspace)
+  - ✅ storage:// URL 簽署
+  - ✅ 事件傳播防止 (按鈕不觸發節點選擇)
 
 ### TipTap 音訊節點整合
 
-- [ ] T075 整合 AudioUploader 到 RichTextEditor
-  - 工具列「插入音訊」按鈕
-  - 上傳後自動插入節點
+- [x] T075 整合 AudioUploader 到 RichTextEditor
+  - ✅ 工具列「插入音訊」按鈕 (♪ 圖示)
+  - ✅ 上傳後自動插入節點
 
 ### 功能完整性驗證
 
-- [ ] T076 驗證 FR-012: 音訊上傳 (MP3、WAV、50MB)
-- [ ] T077 驗證 FR-013: HTML5 播放器與標準控制項
-- [ ] T078 驗證邊界情況：多個音訊檔案互不干擾
+- [x] T076 驗證 FR-012: 音訊上傳 (MP3、WAV、50MB)
+  - ✅ 支援 MP3、WAV、OGG、M4A、AAC、FLAC
+  - ✅ 50MB 檔案大小限制
+  - ✅ 檔案驗證與錯誤提示
+- [x] T077 驗證 FR-013: HTML5 播放器與標準控制項
+  - ✅ 播放/暫停控制
+  - ✅ 進度條拖曳
+  - ✅ 音量控制
+  - ✅ 靜音切換
+  - ✅ 時間顯示
+- [x] T078 驗證邊界情況：多個音訊檔案互不干擾
+  - ✅ 多個音訊節點獨立播放
+  - ✅ 音量控制互不影響
 
 ### [US4] 整合測試
 
-- [ ] T079 [P] 撰寫 `tests/components/AudioUploader.test.tsx`
-  - 檔案選擇測試
-  - 格式驗證測試
-  - 大小驗證測試
-- [ ] T080 [P] 撰寫 `tests/components/AudioPlayer.test.tsx`
-  - 播放控制項測試
-  - 進度顯示測試
-- [ ] T081 撰寫 `tests/integration/audio-upload-flow.test.tsx`
-  - 完整上傳→播放流程
+- [x] T079 [P] 撰寫 `tests/components/AudioUploader.test.tsx`
+  - ✅ 檔案選擇測試 (24 tests)
+  - ✅ 格式驗證測試
+  - ✅ 大小驗證測試
+  - ✅ 錯誤處理測試
+  - ✅ 雙語支援測試
+- [x] T080 [P] 撰寫 `tests/components/AudioPlayer.test.tsx`
+  - ✅ 播放控制項測試 (40 tests)
+  - ✅ 進度顯示測試
+  - ✅ 時間格式測試
+  - ✅ 響應式設計測試
+  - ✅ 無障礙測試
+- [x] T081 撰寫 `tests/integration/audio-upload-flow.test.tsx`
+  - ✅ 完整上傳→播放流程 (41 tests)
+  - ✅ 多個音訊檔案測試
+  - ✅ 內容持久化測試
+  - ✅ 編輯器與檢視器整合測試
 
 **[US4] 完成標準**:
-✅ 音訊檔案上傳和驗證正常
-✅ 播放器功能完整
-✅ 所有相關測試通過
+✅ 音訊檔案上傳和驗證正常 (105 tests passing)
+✅ 播放器功能完整 (編輯器和檢視器)
+✅ 所有相關測試通過 (1368/1368 tests)
+✅ 音訊在編輯器中可播放 (signed URLs)
+✅ 音訊在檢視器中可播放 (parseAndRenderContent)
+✅ 表單提交不受音訊控制影響 (type="button")
+
+**實裝清單**:
+- ✅ src/components/AudioUploader.tsx (270 lines)
+- ✅ src/components/AudioPlayer.tsx (248 lines)
+- ✅ src/adapters/TipTapAudioNode.tsx (285 lines)
+- ✅ src/components/tiptap-templates/simple/buttons/audio-button.tsx (145 lines)
+- ✅ src/components/ArticleContent.tsx (更新: 音訊節點渲染)
+- ✅ src/components/tiptap-templates/simple/simple-editor.tsx (整合)
+- ✅ src/components/tiptap-templates/simple/toolbar.tsx (整合)
+- ✅ tests/components/AudioUploader.test.tsx (294 lines, 24 tests)
+- ✅ tests/components/AudioPlayer.test.tsx (309 lines, 40 tests)
+- ✅ tests/integration/audio-upload-flow.test.tsx (439 lines, 41 tests)
 
 ---
 
