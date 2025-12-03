@@ -10,6 +10,7 @@ import StarterKit from '@tiptap/starter-kit'
 import { TipTapImageNode } from './extensions/TipTapImageNode'
 import { TipTapYoutubeNode } from '@/adapters/TipTapYoutubeNode'
 import { TipTapAudioNode } from '@/adapters/TipTapAudioNode'
+import { PasteDropHandler } from './extensions/PasteDropHandler'
 import Link from '@tiptap/extension-link'
 import Highlight from '@tiptap/extension-highlight'
 import { TextStyle } from '@tiptap/extension-text-style'
@@ -20,6 +21,7 @@ import Superscript from '@tiptap/extension-superscript'
 import Subscript from '@tiptap/extension-subscript'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
+import { useMediaUpload } from '@/hooks/useMediaUpload'
 
 import { EditorToolbar } from './toolbar'
 import './styles/editor.css'
@@ -30,6 +32,7 @@ interface SimpleEditorProps {
   onChange?: (content: string, format: 'html') => void // Always output HTML
   placeholder?: string
   className?: string
+  articleId?: string // Optional article ID for media associations
 }
 
 // Helper to sanitize content
@@ -83,8 +86,11 @@ export function SimpleEditor({
   onChange,
   placeholder = '輸入文章內容...',
   className = '',
+  articleId,
   readOnly = false,
 }: SimpleEditorProps & { readOnly?: boolean }) {
+  const { uploadFiles } = useMediaUpload()
+
   // Parse content based on type
   let initialContent: any = ''
   if (contentType === 'json' && content) {
@@ -142,6 +148,11 @@ export function SimpleEditor({
       TipTapAudioNode,
       Placeholder.configure({
         placeholder: readOnly ? undefined : placeholder,
+      }),
+      // Add paste and drop handler for automatic media upload
+      PasteDropHandler.configure({
+        uploadFiles,
+        articleId,
       }),
     ],
     content: initialContent,

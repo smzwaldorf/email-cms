@@ -18,7 +18,8 @@
       "WebFetch(domain:github.com)",
       "WebSearch",
       "Bash(perl -i -pe:*)",
-      "Bash(npx tsx:*)"
+      "Bash(npx tsx:*)",
+      "Bash(npx tsc:*)"
     ],
     "deny": [],
     "ask": []
