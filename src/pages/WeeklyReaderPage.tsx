@@ -109,7 +109,11 @@ export function WeeklyReaderPage() {
         }
       }
 
-      if (weekChanged || isFirstLoad) {
+      // Ensure the articles we have actually belong to the requested week
+      // This prevents using stale data from previous week before the new fetch completes
+      const isCorrectWeek = articles[0].weekNumber === weekNumber
+
+      if ((weekChanged || isFirstLoad) && isCorrectWeek) {
         const firstArticle = articles[0]
         navigation.setCurrentWeek(weekNumber)
         navigation.setCurrentArticle(firstArticle.id, 1)
@@ -121,7 +125,7 @@ export function WeeklyReaderPage() {
         } else {
           navigation.setNextArticleId(undefined)
         }
-      } else if (listChanged) {
+      } else if (listChanged && isCorrectWeek) {
         // Only update the list, preserve current selection
         navigation.setArticleList(articles)
       }
