@@ -8,6 +8,7 @@ import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { SecureImage } from './extensions/SecureImage'
 import { TipTapYoutubeNode } from '@/adapters/TipTapYoutubeNode'
+import { TipTapAudioNode } from '@/adapters/TipTapAudioNode'
 import Link from '@tiptap/extension-link'
 import Highlight from '@tiptap/extension-highlight'
 import { TextStyle } from '@tiptap/extension-text-style'
@@ -89,6 +90,7 @@ export function SimpleEditor({
         nested: true,
       }),
       TipTapYoutubeNode,
+      TipTapAudioNode,
       Placeholder.configure({
         placeholder,
       }),
