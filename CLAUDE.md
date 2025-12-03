@@ -228,6 +228,66 @@ Routes are defined in `src/App.tsx`:
 - Clear browser cache or do hard refresh (Cmd+Shift+R)
 - Restart dev server if issues persist
 
+## Rich Text Editor (Phase 004)
+
+### Overview
+The project now includes a TipTap-based rich text editor with multimedia support (images, YouTube videos, audio). This coexists with the existing @uiw/react-md-editor for backward compatibility.
+
+### Key Components & Services
+
+**Editor Components**:
+- `src/components/tiptap-templates/simple/SimpleEditor.tsx` - Main WYSIWYG editor
+- `src/components/RichTextEditor.tsx` - Wrapper for TipTap editor
+- `src/components/ImageUploader.tsx` - Drag-drop image upload
+- `src/components/AudioUploader.tsx` - Audio file upload
+- `src/components/MediaLibrary.tsx` - Media file browser
+
+**Media Adapters** (TipTap custom nodes):
+- `src/adapters/TipTapImageNode.tsx` - Image node with editing
+- `src/adapters/TipTapYoutubeNode.tsx` - YouTube iframe embed
+- `src/adapters/TipTapAudioNode.tsx` - Audio player node
+
+**Services**:
+- `src/services/contentConverter.ts` - Markdown ↔ HTML ↔ TipTap conversion
+- `src/services/htmlSanitizer.ts` - XSS protection via DOMPurify
+- `src/services/imageOptimizer.ts` - Image compression & WebP conversion
+- `src/services/mediaService.ts` - Media validation & metadata
+- `src/services/articleMediaManager.ts` - Media reference tracking
+- `src/services/storageService.ts` - Storage provider abstraction
+
+**Hooks**:
+- `src/hooks/useMediaUpload.ts` - Media upload with progress tracking
+- `src/hooks/useAutoSave.ts` - Debounced content autosave
+
+### Storage Providers
+The system supports pluggable storage backends:
+- **SupabaseStorageAdapter**: Default, uses Supabase Storage bucket
+- **MockStorageAdapter**: For testing in-memory uploads
+
+Switch providers via `storageService.ts` factory function based on environment variables.
+
+### Testing Rich Text Features
+- **Component tests**: `tests/components/ImageUploader.test.tsx`, `AudioUploader.test.tsx`
+- **Integration tests**: `tests/integration/image-upload-flow.test.tsx`, `audio-upload-flow.test.tsx`
+- **Conversion tests**: `tests/unit/services/contentConverter.test.ts`
+- **Security tests**: `tests/unit/services/htmlSanitizer.test.ts` (XSS prevention)
+
+### Type Definitions
+Media types are in `src/types/media.ts`:
+```typescript
+interface MediaFile {
+  id: string
+  articleId: string
+  mediaId: string
+  type: MediaFileType  // 'image' | 'audio' | 'video'
+  url: string
+  fileName: string
+  fileSize: number
+  mimeType: string
+  // ... other fields
+}
+```
+
 ## Tailwind CSS Theming
 
 The project uses a custom Waldorf color palette defined in `tailwind.config.ts`:
