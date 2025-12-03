@@ -12,6 +12,7 @@ import { storageService } from '@/services/storageService'
 import { articleMediaManager } from '@/services/articleMediaManager'
 import { getSupabaseClient } from '@/lib/supabase'
 import { checkRateLimit, recordUploadAttempt } from '@/services/rateLimiter'
+import { quotaManager } from '@/services/quotaManager'
 
 /**
  * 媒體上傳狀態
@@ -92,6 +93,34 @@ export function useMediaUpload() {
         // 記錄上傳嘗試
         // Record upload attempt
         recordUploadAttempt(userId)
+
+        // 檢查儲存配額
+        // Check storage quota
+        const totalFilesSize = files.reduce((sum, f) => sum + f.size, 0)
+        const quotaCheck = await quotaManager.checkQuota(userId, totalFilesSize)
+        if (!quotaCheck.allowed) {
+          const errorMsg = quotaCheck.message
+          setState((prev) => ({
+            ...prev,
+            isUploading: false,
+            error: errorMsg,
+          }))
+          throw new Error(errorMsg)
+        }
+
+        // 如果接近限制，記錄警告
+        // If near limit, log warning
+        if (quotaCheck.stats.isNearLimit && !quotaCheck.stats.isAtLimit) {
+          const isDev = process.env.NODE_ENV === 'development'
+          if (isDev) {
+            console.warn(
+              `%c⚠️ Storage quota warning: ${quotaCheck.message}`,
+              'color: orange; font-weight: bold'
+            )
+          } else {
+            console.warn('Storage quota warning:', quotaCheck.message)
+          }
+        }
 
         for (const file of files) {
           // 步驟 1: 驗證
