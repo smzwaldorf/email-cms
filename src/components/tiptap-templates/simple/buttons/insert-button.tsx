@@ -7,6 +7,7 @@
 import { Editor } from '@tiptap/react'
 import { Image as ImageIcon } from 'lucide-react'
 import { useState, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useMediaUpload } from '@/hooks/useMediaUpload'
 import ImageUploader from '@/components/ImageUploader'
 import type { UploadState } from '@/hooks/useMediaUpload'
@@ -89,61 +90,6 @@ export function InsertButton({ editor, articleId }: InsertButtonProps) {
     }
   }
 
-  if (showUploader) {
-    return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-8 max-w-2xl w-full mx-4">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-bold">上傳圖片 / Upload Images</h3>
-            <button
-              onClick={() => setShowUploader(false)}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              ✕
-            </button>
-          </div>
-
-          {uploadState.error ? (
-            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
-              {uploadState.error}
-            </div>
-          ) : null}
-
-          {uploadState.isUploading ? (
-            <div className="space-y-4">
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-blue-500 h-2 rounded-full transition-all"
-                  style={{ width: `${uploadState.progress}%` }}
-                />
-              </div>
-              <p className="text-sm text-gray-600 text-center">
-                上傳進度: {uploadState.progress}% / Upload progress: {uploadState.progress}%
-              </p>
-            </div>
-          ) : (
-            <ImageUploader
-              onFilesSelected={handleFilesSelected}
-              disabled={uploadState.isUploading}
-              maxFiles={5}
-              className="mb-4"
-            />
-          )}
-
-          <div className="flex gap-2 justify-end mt-4">
-            <button
-              onClick={() => setShowUploader(false)}
-              disabled={uploadState.isUploading}
-              className="px-4 py-2 rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-50"
-            >
-              取消 / Cancel
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <>
       <input
@@ -162,6 +108,62 @@ export function InsertButton({ editor, articleId }: InsertButtonProps) {
       >
         <ImageIcon size={18} />
       </button>
+
+      {/* Render modal in a portal to keep toolbar visible */}
+      {showUploader &&
+        createPortal(
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-8 max-w-2xl w-full mx-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold">上傳圖片 / Upload Images</h3>
+                <button
+                  onClick={() => setShowUploader(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {uploadState.error ? (
+                <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
+                  {uploadState.error}
+                </div>
+              ) : null}
+
+              {uploadState.isUploading ? (
+                <div className="space-y-4">
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-blue-500 h-2 rounded-full transition-all"
+                      style={{ width: `${uploadState.progress}%` }}
+                    />
+                  </div>
+                  <p className="text-sm text-gray-600 text-center">
+                    上傳進度: {uploadState.progress}% / Upload progress: {uploadState.progress}%
+                  </p>
+                </div>
+              ) : (
+                <ImageUploader
+                  onFilesSelected={handleFilesSelected}
+                  disabled={uploadState.isUploading}
+                  maxFiles={5}
+                  className="mb-4"
+                />
+              )}
+
+              <div className="flex gap-2 justify-end mt-4">
+                <button
+                  onClick={() => setShowUploader(false)}
+                  disabled={uploadState.isUploading}
+                  className="px-4 py-2 rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  取消 / Cancel
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </>
   )
 }
