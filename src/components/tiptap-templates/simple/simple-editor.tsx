@@ -5,6 +5,7 @@
  */
 
 import { useEditor, EditorContent } from '@tiptap/react'
+import { useEffect } from 'react'
 import StarterKit from '@tiptap/starter-kit'
 import { SecureImage } from './extensions/SecureImage'
 import { TipTapYoutubeNode } from '@/adapters/TipTapYoutubeNode'
@@ -37,7 +38,8 @@ export function SimpleEditor({
   onChange,
   placeholder = '輸入文章內容...',
   className = '',
-}: SimpleEditorProps) {
+  readOnly = false,
+}: SimpleEditorProps & { readOnly?: boolean }) {
   // Parse content based on type
   let initialContent: any = ''
   if (contentType === 'json' && content) {
@@ -64,6 +66,7 @@ export function SimpleEditor({
   }
 
   const editor = useEditor({
+    editable: !readOnly,
     extensions: [
       StarterKit.configure({
         link: false, // Disable Link from StarterKit to avoid duplication
@@ -92,7 +95,7 @@ export function SimpleEditor({
       TipTapYoutubeNode,
       TipTapAudioNode,
       Placeholder.configure({
-        placeholder,
+        placeholder: readOnly ? undefined : placeholder,
       }),
     ],
     content: initialContent,
@@ -103,9 +106,16 @@ export function SimpleEditor({
     },
   })
 
+  // Update editor editable state when readOnly prop changes
+  useEffect(() => {
+    if (editor) {
+      editor.setEditable(!readOnly)
+    }
+  }, [editor, readOnly])
+
   return (
-    <div className={`tiptap-editor ${className}`}>
-      {editor && <EditorToolbar editor={editor} />}
+    <div className={`tiptap-editor ${readOnly ? 'read-only' : ''} ${className}`}>
+      {editor && !readOnly && <EditorToolbar editor={editor} />}
       <EditorContent editor={editor} className="editor-content" />
     </div>
   )

@@ -22,6 +22,8 @@ function AudioView({ node, selected }: any) {
   useEffect(() => {
     if (!src) return
 
+    let isMounted = true
+
     // If it's already a signed URL or blob URL, use it as-is
     if (!src.startsWith('storage://')) {
       setSignedUrl(src)
@@ -39,16 +41,24 @@ function AudioView({ node, selected }: any) {
 
         if (bucket && path) {
           const signed = await storageService.getSignedUrl(bucket, path, 300) // 5 minutes validity
-          setSignedUrl(signed)
+          if (isMounted) {
+            setSignedUrl(signed)
+          }
         }
       } catch (error) {
         console.error('Failed to sign audio URL:', error)
         // Fallback to original URL
-        setSignedUrl(src)
+        if (isMounted) {
+          setSignedUrl(src)
+        }
       }
     }
 
     signUrl()
+
+    return () => {
+      isMounted = false
+    }
   }, [src])
 
   const handleNodeClick = (e: React.MouseEvent) => {
@@ -213,7 +223,7 @@ export const TipTapAudioNode = Node.create({
         ({ commands }: any) => {
           return commands.updateAttributes(this.name, options)
         },
-    }
+    } as any
   },
 
   addKeyboardShortcuts() {

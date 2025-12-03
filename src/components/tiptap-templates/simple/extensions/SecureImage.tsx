@@ -9,14 +9,16 @@ function SecureImageComponent({ node, updateAttributes, selected }: any) {
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
+    let isMounted = true
+
     const resolveUrl = async () => {
       const originalSrc = node.attrs.src
       if (!originalSrc || !originalSrc.startsWith('storage://')) {
-        setSrc(originalSrc)
+        if (isMounted) setSrc(originalSrc)
         return
       }
 
-      setIsLoading(true)
+      if (isMounted) setIsLoading(true)
       try {
         const pathWithoutProtocol = originalSrc.replace('storage://', '')
         const [bucket, ...pathParts] = pathWithoutProtocol.split('/')
@@ -28,20 +30,26 @@ function SecureImageComponent({ node, updateAttributes, selected }: any) {
             .from(bucket)
             .createSignedUrl(path, 300)
 
-          if (data?.signedUrl) {
-            setSrc(data.signedUrl)
-          } else {
-            console.error('Failed to sign URL:', error)
+          if (isMounted) {
+            if (data?.signedUrl) {
+              setSrc(data.signedUrl)
+            } else {
+              console.error('Failed to sign URL:', error)
+            }
           }
         }
       } catch (error) {
         console.error('Error resolving storage URL:', error)
       } finally {
-        setIsLoading(false)
+        if (isMounted) setIsLoading(false)
       }
     }
 
     resolveUrl()
+
+    return () => {
+      isMounted = false
+    }
   }, [node.attrs.src])
 
   return (

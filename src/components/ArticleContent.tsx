@@ -8,11 +8,11 @@
  * - 優化文章切換性能，減少重新渲染時間
  */
 
-import { memo, useMemo, useState, useEffect, useRef, ReactNode } from 'react'
+import { memo, useMemo, useState, useEffect, useRef } from 'react'
 import { useLoadingTimeout } from '@/components/LoadingTimeout'
 import { formatDate, formatViewCount } from '@/utils/formatters'
 import { replaceStorageTokens } from '@/utils/contentParser'
-import AudioPlayer from '@/components/AudioPlayer'
+import { SimpleEditor } from '@/components/tiptap-templates/simple/simple-editor'
 import './ArticleContent.css'
 
 interface ArticleContentProps {
@@ -22,51 +22,6 @@ interface ArticleContentProps {
   createdAt?: string
   viewCount?: number
   isLoading?: boolean
-}
-
-/**
- * Parse HTML content and render audio nodes as React components
- * Other content is rendered as HTML
- */
-function parseAndRenderContent(htmlString: string): ReactNode[] {
-  const container = document.createElement('div')
-  container.innerHTML = htmlString
-  const nodes: ReactNode[] = []
-  let key = 0
-
-  Array.from(container.childNodes).forEach((node) => {
-    // Check if it's an audio node and process specially
-    if (node.nodeType === Node.ELEMENT_NODE) {
-      const elem = node as HTMLElement
-      if (elem.hasAttribute('data-audio-node')) {
-        const src = elem.getAttribute('data-src') || ''
-        const title = elem.getAttribute('data-title') || ''
-        const duration = elem.getAttribute('data-duration')
-          ? parseFloat(elem.getAttribute('data-duration') || '0')
-          : 0
-
-        nodes.push(
-          <div key={`audio-${key++}`} className="my-4">
-            <AudioPlayer src={src} title={title} duration={duration} />
-          </div>
-        )
-        return
-      }
-    }
-
-    // For non-audio elements, render as HTML
-    if (node.nodeType === Node.ELEMENT_NODE) {
-      const elem = node as HTMLElement
-      nodes.push(
-        <div
-          key={`html-${key++}`}
-          dangerouslySetInnerHTML={{ __html: elem.outerHTML }}
-        />
-      )
-    }
-  })
-
-  return nodes
 }
 
 /**
@@ -85,9 +40,17 @@ function ArticleContentComponent({
   const { isTimedOut } = useLoadingTimeout(isLoading, 3000)
   const contentRef = useRef<HTMLDivElement>(null)
   const [processedContent, setProcessedContent] = useState('')
-  const [renderedNodes, setRenderedNodes] = useState<ReactNode[]>([])
+  const [isProcessing, setIsProcessing] = useState(true)
+  const [prevContent, setPrevContent] = useState(content)
 
-  // 處理內容中的 storage:// token 並轉換為簽署 URL，並解析音訊節點
+  // Reset state when content changes (Derived State Pattern)
+  if (content !== prevContent) {
+    setPrevContent(content)
+    setIsProcessing(true)
+    setProcessedContent('')
+  }
+
+  // 處理內容中的 storage:// token 並轉換為簽署 URL
   useEffect(() => {
     let isMounted = true
 
@@ -95,11 +58,12 @@ function ArticleContentComponent({
       if (!content) {
         if (isMounted) {
           setProcessedContent('')
-          setRenderedNodes([])
+          setIsProcessing(false)
         }
         return
       }
 
+      // setIsProcessing(true) // Removed because handled in render
       try {
         const htmlWithSignedUrls = await replaceStorageTokens(content)
 
@@ -108,17 +72,14 @@ function ArticleContentComponent({
 
         if (isMounted) {
           setProcessedContent(finalHtml)
-          // Parse and render audio nodes as React components
-          const nodes = parseAndRenderContent(finalHtml)
-          setRenderedNodes(nodes)
+          setIsProcessing(false)
         }
       } catch (error) {
         console.error('Failed to process content:', error)
         // Fallback to original content if processing fails
         if (isMounted) {
           setProcessedContent(content)
-          const nodes = parseAndRenderContent(content)
-          setRenderedNodes(nodes)
+          setIsProcessing(false)
         }
       }
     }
@@ -130,37 +91,52 @@ function ArticleContentComponent({
     }
   }, [content])
 
-  // Sanitize image URLs after loading
+  // Sanitize image URLs and disable checkboxes after loading
   useEffect(() => {
-    if (!contentRef.current) return
+    if (!contentRef.current || isProcessing) return
 
-    const images = contentRef.current.querySelectorAll('img')
-    images.forEach((img) => {
-      if (img.dataset.sanitized === 'true') return
+    // Wait for a brief moment for TipTap to render
+    const timer = setTimeout(() => {
+      if (!contentRef.current) return
+      
+      // Sanitize images
+      const images = contentRef.current.querySelectorAll('img')
+      images.forEach((img) => {
+        if (img.dataset.sanitized === 'true') return
 
-      const sanitize = async () => {
-        const currentSrc = img.getAttribute('src')
-        // Only sanitize if it has query parameters (likely a signed URL) and isn't already a blob
-        if (!currentSrc || currentSrc.startsWith('blob:') || !currentSrc.includes('?')) return
+        const sanitize = async () => {
+          const currentSrc = img.getAttribute('src')
+          // Only sanitize if it has query parameters (likely a signed URL) and isn't already a blob
+          if (!currentSrc || currentSrc.startsWith('blob:') || !currentSrc.includes('?')) return
 
-        try {
-          const response = await fetch(currentSrc)
-          const blob = await response.blob()
-          const objectUrl = URL.createObjectURL(blob)
-          img.src = objectUrl
-          img.dataset.sanitized = 'true'
-        } catch (error) {
-          console.error('Failed to sanitize image URL:', error)
+          try {
+            const response = await fetch(currentSrc)
+            const blob = await response.blob()
+            const objectUrl = URL.createObjectURL(blob)
+            img.src = objectUrl
+            img.dataset.sanitized = 'true'
+          } catch (error) {
+            console.error('Failed to sanitize image URL:', error)
+          }
         }
-      }
 
-      if (img.complete) {
-        sanitize()
-      } else {
-        img.addEventListener('load', sanitize, { once: true })
-      }
-    })
-  }, [processedContent])
+        if (img.complete) {
+          sanitize()
+        } else {
+          img.addEventListener('load', sanitize, { once: true })
+        }
+      })
+
+      // Disable all checkboxes in read-only mode
+      const checkboxes = contentRef.current.querySelectorAll('input[type="checkbox"]')
+      checkboxes.forEach((checkbox) => {
+        (checkbox as HTMLInputElement).disabled = true
+        ;(checkbox as HTMLInputElement).setAttribute('disabled', 'true') // Try attribute too
+      })
+    }, 100) // Small delay to ensure DOM is ready
+
+    return () => clearTimeout(timer)
+  }, [processedContent, isProcessing])
 
   // 使用 useMemo 優化文章中繼資料，避免重複建立相同的 UI 結構
   const metadataSection = useMemo(
@@ -223,10 +199,18 @@ function ArticleContentComponent({
           ref={contentRef}
           className="prose max-w-none text-waldorf-clay-700 leading-relaxed"
         >
-          {renderedNodes.length > 0 ? (
-            renderedNodes
+          {isProcessing ? (
+            <div className="animate-pulse space-y-4 p-4">
+              <div className="h-4 bg-waldorf-cream-200 rounded w-3/4"></div>
+              <div className="h-4 bg-waldorf-cream-200 rounded"></div>
+              <div className="h-4 bg-waldorf-cream-200 rounded w-5/6"></div>
+            </div>
           ) : (
-            <div dangerouslySetInnerHTML={{ __html: processedContent }} />
+            <SimpleEditor
+              content={processedContent}
+              readOnly={true}
+              className="min-h-[200px]"
+            />
           )}
         </div>
       </div>

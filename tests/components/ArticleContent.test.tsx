@@ -14,7 +14,7 @@ describe('ArticleContent Component', () => {
   const defaultProps = {
     title: 'Test Article Title',
     author: 'Test Author',
-    content: 'This is test content',
+    content: '<p>This is test content</p>',
     createdAt: '2025-11-16T10:00:00Z',
     viewCount: 1000,
   }
@@ -72,10 +72,13 @@ describe('ArticleContent Component', () => {
       expect(screen.queryByText(/瀏覽：/)).not.toBeInTheDocument()
     })
 
-    it('should render HTML content with dangerouslySetInnerHTML', async () => {
+    it('should render HTML content via SimpleEditor', async () => {
       render(<ArticleContent {...defaultProps} />)
 
-      const contentDiv = await waitFor(() => screen.getByText(/This is test content/))
+      // Wait for editor initialization
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      const contentDiv = await waitFor(() => screen.getByText(/This is test content/), { timeout: 3000 })
       expect(contentDiv).toBeInTheDocument()
     })
 
@@ -85,8 +88,10 @@ describe('ArticleContent Component', () => {
       const props = { ...defaultProps, content: contentWithCheckbox }
       render(<ArticleContent {...props} />)
 
-      const checkbox = await waitFor(() => screen.getByRole('checkbox'))
-      expect(checkbox).toBeDisabled()
+      await waitFor(() => {
+        const checkbox = screen.getByRole('checkbox')
+        expect(checkbox).toBeDisabled()
+      })
     })
   })
 
