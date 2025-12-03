@@ -5,52 +5,92 @@
  */
 
 import Youtube from '@tiptap/extension-youtube'
-import { ReactNodeViewRenderer } from '@tiptap/react'
-import { Node } from '@tiptap/core'
+import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react'
 
 /**
  * YouTube 節點視圖組件
  * YouTube node view component for rendering embedded videos
  */
-function YoutubeView({ node, selected }: any) {
-  const { src, width, height, startTime } = node.attrs
+function YoutubeView({ node, selected, deleteNode, editor }: any) {
+  const { src, width, height } = node.attrs
+  const isEditable = editor?.isEditable !== false
+
+  const handleDelete = () => {
+    deleteNode()
+  }
+
 
   return (
-    <div className="relative my-4 rounded-lg overflow-hidden shadow-md" data-testid="youtube-embed">
-      <div
-        className={`relative ${selected ? 'ring-2 ring-waldorf-sage-500' : ''}`}
-        style={{
-          paddingBottom: '56.25%', // 16:9 aspect ratio
-          position: 'relative',
-          width: '100%',
-        }}
+    <NodeViewWrapper className="youtube-node-view">
+      <div 
+        className={`relative my-4 rounded-lg overflow-visible shadow-md ${selected ? 'ring-4 ring-waldorf-sage-500' : ''}`} 
+        data-testid="youtube-embed"
       >
-        <iframe
-          src={src}
-          width={width || '100%'}
-          height={height || '100%'}
+        <div
+          className="relative"
           style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
+            paddingBottom: '56.25%', // 16:9 aspect ratio
+            position: 'relative',
             width: '100%',
-            height: '100%',
           }}
-          frameBorder="0"
-          allowFullScreen
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          title="YouTube video"
-          data-testid="youtube-iframe"
-        />
-      </div>
+        >
+          <iframe
+            src={src}
+            width={width || '100%'}
+            height={height || '100%'}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              pointerEvents: isEditable ? 'none' : 'auto',
+            }}
+            frameBorder="0"
+            allowFullScreen
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            title="YouTube video"
+            data-testid="youtube-iframe"
+          />
 
-      {/* 編輯提示 */}
-      {selected && (
-        <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
-          Delete: Press Backspace
+          {/* Semi-transparent overlay to capture clicks for selection in edit mode */}
+          {isEditable && (
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                backgroundColor: 'rgba(135, 153, 107, 0.2)',
+                cursor: 'pointer',
+                zIndex: 5,
+              }}
+              data-testid="youtube-overlay"
+            />
+          )}
+
+          {/* Delete button - always visible when editable */}
+          {isEditable && (
+            <button
+              onClick={handleDelete}
+              className="absolute top-2 right-2 flex items-center justify-center w-6 h-6 bg-red-500 text-white rounded-full shadow-md hover:bg-red-600 active:bg-red-700 transition-colors cursor-pointer z-10"
+              title="Delete video"
+              style={{ pointerEvents: 'auto' }}
+            >
+              ✕
+            </button>
+          )}
         </div>
-      )}
-    </div>
+
+        {/* 編輯提示 */}
+        {selected && isEditable && (
+          <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+            Delete: Press Backspace
+          </div>
+        )}
+      </div>
+    </NodeViewWrapper>
   )
 }
 
@@ -165,6 +205,10 @@ export const TipTapYoutubeNode = Youtube.extend({
         },
       ],
     ]
+  },
+
+  addNodeView() {
+    return ReactNodeViewRenderer(YoutubeView)
   },
 
   // 添加命令以插入 YouTube 視頻

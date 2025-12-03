@@ -14,8 +14,11 @@ import { storageService } from '@/services/storageService'
  * 音訊節點視圖組件
  * Audio node view component for rendering audio player
  */
-function AudioView({ node, selected }: any) {
+function AudioView({ node, selected, editor, deleteNode }: any) {
   const { src, title, mediaId, duration } = node.attrs
+  const isReadOnly = editor?.isEditable === false
+  const isEditable = editor?.isEditable !== false
+
   // Initialize with src only if it's NOT a storage URL
   // This prevents browser from trying to load storage:// URLs
   const [signedUrl, setSignedUrl] = useState<string>(
@@ -66,6 +69,13 @@ function AudioView({ node, selected }: any) {
   }, [src])
 
   const handleNodeClick = (e: React.MouseEvent) => {
+    // In read-only mode, prevent all selection
+    if (isReadOnly) {
+      e.preventDefault()
+      e.stopPropagation()
+      return
+    }
+
     // Allow clicks on interactive elements (buttons, inputs, ranges)
     const target = e.target as HTMLElement
     if (
@@ -79,10 +89,14 @@ function AudioView({ node, selected }: any) {
     }
   }
 
+  const handleDelete = () => {
+    deleteNode()
+  }
+
   return (
     <NodeViewWrapper
       className={`relative my-4 rounded-lg overflow-hidden ${
-        selected ? 'ring-2 ring-waldorf-sage-500' : ''
+        selected && !isReadOnly ? 'ring-2 ring-waldorf-sage-500' : ''
       }`}
       data-testid="audio-embed"
       data-audio-id={mediaId}
@@ -103,8 +117,19 @@ function AudioView({ node, selected }: any) {
         </div>
       )}
 
+      {/* Delete button - always visible when editable */}
+      {isEditable && (
+        <button
+          onClick={handleDelete}
+          className="absolute top-2 right-2 flex items-center justify-center w-6 h-6 bg-red-500 text-white rounded-full shadow-md hover:bg-red-600 active:bg-red-700 transition-colors cursor-pointer"
+          title="Delete audio"
+        >
+          ✕
+        </button>
+      )}
+
       {/* 編輯提示 */}
-      {selected && (
+      {selected && !isReadOnly && (
         <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
           Delete: Press Backspace
         </div>

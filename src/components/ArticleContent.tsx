@@ -41,14 +41,14 @@ function ArticleContentComponent({
 
 
 
-  // Sanitize image URLs and disable checkboxes after loading
+  // Sanitize image URLs, disable checkboxes, and disable selection of media nodes
   useEffect(() => {
     if (!contentRef.current) return
 
     // Wait for a brief moment for TipTap to render
     const timer = setTimeout(() => {
       if (!contentRef.current) return
-      
+
       // Sanitize images
       const images = contentRef.current.querySelectorAll('img')
       images.forEach((img) => {
@@ -82,6 +82,24 @@ function ArticleContentComponent({
       checkboxes.forEach((checkbox) => {
         (checkbox as HTMLInputElement).disabled = true
         ;(checkbox as HTMLInputElement).setAttribute('disabled', 'true') // Try attribute too
+      })
+
+      // Prevent click events and selection on image and audio node wrappers
+      const mediaClickHandler = (e: Event) => {
+        e.preventDefault()
+        e.stopPropagation()
+      }
+
+      const imageWrappers = contentRef.current.querySelectorAll('.secure-image-wrapper')
+      imageWrappers.forEach((wrapper) => {
+        ;(wrapper as HTMLElement).addEventListener('click', mediaClickHandler)
+        ;(wrapper as HTMLElement).addEventListener('mousedown', mediaClickHandler)
+      })
+
+      const audioWrappers = contentRef.current.querySelectorAll('[data-audio-node]')
+      audioWrappers.forEach((wrapper) => {
+        ;(wrapper as HTMLElement).addEventListener('click', mediaClickHandler)
+        ;(wrapper as HTMLElement).addEventListener('mousedown', mediaClickHandler)
       })
     }, 100) // Small delay to ensure DOM is ready
 

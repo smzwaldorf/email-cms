@@ -4,7 +4,7 @@ import Image from '@tiptap/extension-image'
 import { useEffect, useState } from 'react'
 import { getSupabaseClient } from '@/lib/supabase'
 
-function SecureImageComponent({ node, updateAttributes, selected }: any) {
+function SecureImageComponent({ node, updateAttributes, selected, deleteNode, editor }: any) {
   // Initialize with src only if it's NOT a storage URL
   const [src, setSrc] = useState(
     node.attrs.src && !node.attrs.src.startsWith('storage://') ? node.attrs.src : ''
@@ -13,6 +13,7 @@ function SecureImageComponent({ node, updateAttributes, selected }: any) {
 
   const [retryCount, setRetryCount] = useState(0)
   const [hasError, setHasError] = useState(false)
+  const isEditable = editor?.isEditable !== false
 
   useEffect(() => {
     let isMounted = true
@@ -75,6 +76,10 @@ function SecureImageComponent({ node, updateAttributes, selected }: any) {
     }
   }
 
+  const handleDelete = () => {
+    deleteNode()
+  }
+
   return (
     <NodeViewWrapper className="secure-image-wrapper" style={{ display: 'inline-block', lineHeight: 0 }}>
       <div className={`relative ${selected ? 'ring-2 ring-waldorf-sage-500' : ''}`}>
@@ -98,6 +103,17 @@ function SecureImageComponent({ node, updateAttributes, selected }: any) {
         ) : (
           // Placeholder while loading if src is empty
           <div className="w-full h-48 bg-gray-50 rounded-md"></div>
+        )}
+
+        {/* Delete button - always visible when editable */}
+        {isEditable && (
+          <button
+            onClick={handleDelete}
+            className="absolute top-2 right-2 flex items-center justify-center w-6 h-6 bg-red-500 text-white rounded-full shadow-md hover:bg-red-600 active:bg-red-700 transition-colors cursor-pointer"
+            title="Delete image"
+          >
+            ✕
+          </button>
         )}
       </div>
     </NodeViewWrapper>
