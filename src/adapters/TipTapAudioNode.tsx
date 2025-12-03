@@ -136,6 +136,21 @@ export const TipTapAudioNode = Node.create({
               src = audioElem.getAttribute('src')
             }
           }
+          
+          if (src && src.includes('/storage/v1/object/sign/')) {
+            try {
+              const url = new URL(src)
+              const pathParts = url.pathname.split('/storage/v1/object/sign/')
+              if (pathParts.length > 1) {
+                const fullPath = pathParts[1]
+                const decodedPath = decodeURIComponent(fullPath)
+                return `storage://${decodedPath}`
+              }
+            } catch (e) {
+              console.warn('Failed to parse signed audio URL:', e)
+            }
+          }
+          
           return src
         },
         renderHTML: (attributes) => ({

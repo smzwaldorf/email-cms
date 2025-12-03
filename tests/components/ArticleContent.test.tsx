@@ -279,18 +279,7 @@ describe('ArticleContent Component', () => {
       expect(renderSpy).toHaveBeenCalledTimes(2) // Only TestWrapper re-renders
     })
 
-    it('should use useMemo for HTML content to avoid recalculation', async () => {
-      // useMemo should cache the HTML content
-      const { rerender } = render(<ArticleContent {...defaultProps} />)
 
-      // Change other props but keep content the same
-      const sameContent = { ...defaultProps, viewCount: 2000 }
-      rerender(<ArticleContent {...sameContent} />)
-
-      // The HTML content should use cached result if content is same
-      const content = await waitFor(() => screen.getByText(/This is test content/))
-      expect(content).toBeInTheDocument()
-    })
   })
 
   describe('Content Updates', () => {

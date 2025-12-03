@@ -8,6 +8,9 @@ function SecureImageComponent({ node, updateAttributes, selected }: any) {
   const [src, setSrc] = useState(node.attrs.src)
   const [isLoading, setIsLoading] = useState(false)
 
+  const [retryCount, setRetryCount] = useState(0)
+  const [hasError, setHasError] = useState(false)
+
   useEffect(() => {
     let isMounted = true
 
@@ -18,7 +21,11 @@ function SecureImageComponent({ node, updateAttributes, selected }: any) {
         return
       }
 
-      if (isMounted) setIsLoading(true)
+      if (isMounted) {
+        setIsLoading(true)
+        setHasError(false)
+      }
+
       try {
         const pathWithoutProtocol = originalSrc.replace('storage://', '')
         const [bucket, ...pathParts] = pathWithoutProtocol.split('/')
@@ -35,11 +42,13 @@ function SecureImageComponent({ node, updateAttributes, selected }: any) {
               setSrc(data.signedUrl)
             } else {
               console.error('Failed to sign URL:', error)
+              setHasError(true)
             }
           }
         }
       } catch (error) {
         console.error('Error resolving storage URL:', error)
+        if (isMounted) setHasError(true)
       } finally {
         if (isMounted) setIsLoading(false)
       }
@@ -50,7 +59,17 @@ function SecureImageComponent({ node, updateAttributes, selected }: any) {
     return () => {
       isMounted = false
     }
-  }, [node.attrs.src])
+  }, [node.attrs.src, retryCount])
+
+  const handleError = () => {
+    // Only retry if it's a storage URL and we haven't retried too many times
+    if (node.attrs.src?.startsWith('storage://') && retryCount < 3) {
+      console.log('Image failed to load, retrying with new signed URL...')
+      setRetryCount(prev => prev + 1)
+    } else {
+      setHasError(true)
+    }
+  }
 
   return (
     <NodeViewWrapper className="secure-image-wrapper" style={{ display: 'inline-block', lineHeight: 0 }}>
@@ -60,18 +79,61 @@ function SecureImageComponent({ node, updateAttributes, selected }: any) {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-waldorf-sage-500"></div>
           </div>
         )}
-        <img
-          src={src}
-          alt={node.attrs.alt}
-          title={node.attrs.title}
-          className={`max-w-full h-auto rounded-md ${isLoading ? 'opacity-50' : ''}`}
-        />
+        {hasError ? (
+          <div className="flex items-center justify-center bg-gray-100 text-gray-400 p-4 rounded-md border border-gray-200">
+            <span className="text-sm">無法載入圖片</span>
+          </div>
+        ) : (
+          <img
+            src={src}
+            alt={node.attrs.alt}
+            title={node.attrs.title}
+            className={`max-w-full h-auto rounded-md ${isLoading ? 'opacity-50' : ''}`}
+            onError={handleError}
+          />
+        )}
       </div>
     </NodeViewWrapper>
   )
 }
 
 export const SecureImage = Image.extend({
+  addAttributes() {
+    return {
+      src: {
+        default: null,
+        parseHTML: (element) => {
+          const src = element.getAttribute('src')
+          if (!src) return null
+
+          // Check if it's a signed URL from our storage
+          // Pattern: .../storage/v1/object/sign/bucket/path...
+          if (src.includes('/storage/v1/object/sign/')) {
+            try {
+              const url = new URL(src)
+              const pathParts = url.pathname.split('/storage/v1/object/sign/')
+              if (pathParts.length > 1) {
+                const fullPath = pathParts[1] // e.g. media/user/file.jpg
+                // Decode URI components in case they are encoded
+                const decodedPath = decodeURIComponent(fullPath)
+                return `storage://${decodedPath}`
+              }
+            } catch (e) {
+              console.warn('Failed to parse signed URL:', e)
+            }
+          }
+          
+          return src
+        },
+      },
+      alt: {
+        default: null,
+      },
+      title: {
+        default: null,
+      },
+    }
+  },
   addNodeView() {
     return ReactNodeViewRenderer(SecureImageComponent)
   },

@@ -113,6 +113,20 @@ export function SimpleEditor({
     }
   }, [editor, readOnly])
 
+  // Update editor content when content prop changes
+  useEffect(() => {
+    if (editor && content !== undefined) {
+      // Check if content is actually different to avoid cursor jumps and loops
+      const currentContent = editor.getHTML()
+      if (currentContent !== content) {
+        // For read-only, always update. For editable, only if different.
+        // Note: This might still cause issues if Tiptap normalizes HTML differently than input
+        // But for switching articles (major change), it's necessary.
+        editor.commands.setContent(content)
+      }
+    }
+  }, [editor, content])
+
   return (
     <div className={`tiptap-editor ${readOnly ? 'read-only' : ''} ${className}`}>
       {editor && !readOnly && <EditorToolbar editor={editor} />}

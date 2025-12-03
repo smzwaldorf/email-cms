@@ -8,10 +8,9 @@
  * - 優化文章切換性能，減少重新渲染時間
  */
 
-import { memo, useMemo, useState, useEffect, useRef } from 'react'
+import { memo, useMemo, useEffect, useRef } from 'react'
 import { useLoadingTimeout } from '@/components/LoadingTimeout'
 import { formatDate, formatViewCount } from '@/utils/formatters'
-import { replaceStorageTokens } from '@/utils/contentParser'
 import { SimpleEditor } from '@/components/tiptap-templates/simple/simple-editor'
 import './ArticleContent.css'
 
@@ -39,61 +38,12 @@ function ArticleContentComponent({
 }: ArticleContentProps) {
   const { isTimedOut } = useLoadingTimeout(isLoading, 3000)
   const contentRef = useRef<HTMLDivElement>(null)
-  const [processedContent, setProcessedContent] = useState('')
-  const [isProcessing, setIsProcessing] = useState(true)
-  const [prevContent, setPrevContent] = useState(content)
 
-  // Reset state when content changes (Derived State Pattern)
-  if (content !== prevContent) {
-    setPrevContent(content)
-    setIsProcessing(true)
-    setProcessedContent('')
-  }
 
-  // 處理內容中的 storage:// token 並轉換為簽署 URL
-  useEffect(() => {
-    let isMounted = true
-
-    const processContent = async () => {
-      if (!content) {
-        if (isMounted) {
-          setProcessedContent('')
-          setIsProcessing(false)
-        }
-        return
-      }
-
-      // setIsProcessing(true) // Removed because handled in render
-      try {
-        const htmlWithSignedUrls = await replaceStorageTokens(content)
-
-        // 為所有 checkbox 添加 disabled 屬性，確保閱讀模式下不可編輯
-        const finalHtml = htmlWithSignedUrls.replace(/<input type="checkbox"/g, '<input type="checkbox" disabled')
-
-        if (isMounted) {
-          setProcessedContent(finalHtml)
-          setIsProcessing(false)
-        }
-      } catch (error) {
-        console.error('Failed to process content:', error)
-        // Fallback to original content if processing fails
-        if (isMounted) {
-          setProcessedContent(content)
-          setIsProcessing(false)
-        }
-      }
-    }
-
-    processContent()
-
-    return () => {
-      isMounted = false
-    }
-  }, [content])
 
   // Sanitize image URLs and disable checkboxes after loading
   useEffect(() => {
-    if (!contentRef.current || isProcessing) return
+    if (!contentRef.current) return
 
     // Wait for a brief moment for TipTap to render
     const timer = setTimeout(() => {
@@ -136,7 +86,7 @@ function ArticleContentComponent({
     }, 100) // Small delay to ensure DOM is ready
 
     return () => clearTimeout(timer)
-  }, [processedContent, isProcessing])
+  }, [content])
 
   // 使用 useMemo 優化文章中繼資料，避免重複建立相同的 UI 結構
   const metadataSection = useMemo(
@@ -199,19 +149,11 @@ function ArticleContentComponent({
           ref={contentRef}
           className="prose max-w-none text-waldorf-clay-700 leading-relaxed"
         >
-          {isProcessing ? (
-            <div className="animate-pulse space-y-4 p-4">
-              <div className="h-4 bg-waldorf-cream-200 rounded w-3/4"></div>
-              <div className="h-4 bg-waldorf-cream-200 rounded"></div>
-              <div className="h-4 bg-waldorf-cream-200 rounded w-5/6"></div>
-            </div>
-          ) : (
-            <SimpleEditor
-              content={processedContent}
-              readOnly={true}
-              className="min-h-[200px]"
-            />
-          )}
+          <SimpleEditor
+            content={content}
+            readOnly={true}
+            className="min-h-[200px]"
+          />
         </div>
       </div>
     </article>
