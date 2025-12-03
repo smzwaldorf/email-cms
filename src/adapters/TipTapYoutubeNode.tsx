@@ -66,7 +66,18 @@ export const TipTapYoutubeNode = Youtube.extend({
       // 繼承原始屬性
       src: {
         default: null,
-        parseHTML: (element) => element.getAttribute('src'),
+        parseHTML: (element) => {
+          // Try to get src from iframe directly
+          let src = element.getAttribute('src')
+          // If this is a wrapper div, look for iframe inside
+          if (!src) {
+            const iframe = element.querySelector('iframe')
+            if (iframe) {
+              src = iframe.getAttribute('src')
+            }
+          }
+          return src
+        },
         renderHTML: (attributes) => ({
           src: attributes.src,
         }),
@@ -106,12 +117,31 @@ export const TipTapYoutubeNode = Youtube.extend({
     return [
       {
         tag: 'div[data-youtube-video]',
+        getAttrs: (element) => {
+          const iframe = element.querySelector('iframe')
+          if (iframe) {
+            return {
+              src: iframe.getAttribute('src'),
+            }
+          }
+          return false
+        },
       },
       {
         tag: 'iframe[src*="youtube.com"]',
+        getAttrs: (element) => {
+          return {
+            src: element.getAttribute('src'),
+          }
+        },
       },
       {
         tag: 'iframe[src*="youtu.be"]',
+        getAttrs: (element) => {
+          return {
+            src: element.getAttribute('src'),
+          }
+        },
       },
     ]
   },
