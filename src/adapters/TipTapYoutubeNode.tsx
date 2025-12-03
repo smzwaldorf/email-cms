@@ -171,15 +171,13 @@ export const TipTapYoutubeNode = Youtube.extend({
     return {
       Backspace: ({ editor }: any) => {
         // 刪除選中的 YouTube 節點
-        const { state } = editor
-        const { selection } = state
+        const { selection } = editor.state
+        const { $from } = selection
 
         // 檢查當前節點是否為 YouTube 節點
-        state.doc.nodesBetween(selection.$from.pos, selection.$to.pos, (node: any) => {
-          if (node.type.name === 'youtube') {
-            return editor.commands.deleteNode(this.name)
-          }
-        })
+        if ($from.parent.type.name === 'youtube') {
+          return editor.commands.deleteNode(this.name)
+        }
 
         return false
       },
