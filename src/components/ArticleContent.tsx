@@ -8,10 +8,11 @@
  * - 優化文章切換性能，減少重新渲染時間
  */
 
-import { memo, useMemo, useState, useEffect, useRef } from 'react'
+import { memo, useMemo, useState, useEffect, useRef, ReactNode } from 'react'
 import { useLoadingTimeout } from '@/components/LoadingTimeout'
 import { formatDate, formatViewCount } from '@/utils/formatters'
 import { replaceStorageTokens } from '@/utils/contentParser'
+import AudioPlayer from '@/components/AudioPlayer'
 import './ArticleContent.css'
 
 interface ArticleContentProps {
@@ -21,6 +22,51 @@ interface ArticleContentProps {
   createdAt?: string
   viewCount?: number
   isLoading?: boolean
+}
+
+/**
+ * Parse HTML content and render audio nodes as React components
+ * Other content is rendered as HTML
+ */
+function parseAndRenderContent(htmlString: string): ReactNode[] {
+  const container = document.createElement('div')
+  container.innerHTML = htmlString
+  const nodes: ReactNode[] = []
+  let key = 0
+
+  Array.from(container.childNodes).forEach((node) => {
+    // Check if it's an audio node and process specially
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const elem = node as HTMLElement
+      if (elem.hasAttribute('data-audio-node')) {
+        const src = elem.getAttribute('data-src') || ''
+        const title = elem.getAttribute('data-title') || ''
+        const duration = elem.getAttribute('data-duration')
+          ? parseFloat(elem.getAttribute('data-duration') || '0')
+          : 0
+
+        nodes.push(
+          <div key={`audio-${key++}`} className="my-4">
+            <AudioPlayer src={src} title={title} duration={duration} />
+          </div>
+        )
+        return
+      }
+    }
+
+    // For non-audio elements, render as HTML
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const elem = node as HTMLElement
+      nodes.push(
+        <div
+          key={`html-${key++}`}
+          dangerouslySetInnerHTML={{ __html: elem.outerHTML }}
+        />
+      )
+    }
+  })
+
+  return nodes
 }
 
 /**
@@ -39,31 +85,40 @@ function ArticleContentComponent({
   const { isTimedOut } = useLoadingTimeout(isLoading, 3000)
   const contentRef = useRef<HTMLDivElement>(null)
   const [processedContent, setProcessedContent] = useState('')
+  const [renderedNodes, setRenderedNodes] = useState<ReactNode[]>([])
 
-  // 處理內容中的 storage:// token 並轉換為簽署 URL
+  // 處理內容中的 storage:// token 並轉換為簽署 URL，並解析音訊節點
   useEffect(() => {
     let isMounted = true
 
     const processContent = async () => {
       if (!content) {
-        if (isMounted) setProcessedContent('')
+        if (isMounted) {
+          setProcessedContent('')
+          setRenderedNodes([])
+        }
         return
       }
 
       try {
         const htmlWithSignedUrls = await replaceStorageTokens(content)
-        
+
         // 為所有 checkbox 添加 disabled 屬性，確保閱讀模式下不可編輯
         const finalHtml = htmlWithSignedUrls.replace(/<input type="checkbox"/g, '<input type="checkbox" disabled')
-        
+
         if (isMounted) {
           setProcessedContent(finalHtml)
+          // Parse and render audio nodes as React components
+          const nodes = parseAndRenderContent(finalHtml)
+          setRenderedNodes(nodes)
         }
       } catch (error) {
         console.error('Failed to process content:', error)
         // Fallback to original content if processing fails
         if (isMounted) {
           setProcessedContent(content)
+          const nodes = parseAndRenderContent(content)
+          setRenderedNodes(nodes)
         }
       }
     }
@@ -167,8 +222,13 @@ function ArticleContentComponent({
         <div
           ref={contentRef}
           className="prose max-w-none text-waldorf-clay-700 leading-relaxed"
-          dangerouslySetInnerHTML={{ __html: processedContent }}
-        />
+        >
+          {renderedNodes.length > 0 ? (
+            renderedNodes
+          ) : (
+            <div dangerouslySetInnerHTML={{ __html: processedContent }} />
+          )}
+        </div>
       </div>
     </article>
   )

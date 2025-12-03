@@ -7,13 +7,63 @@
 import { Node } from '@tiptap/core'
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react'
 import AudioPlayer from '@/components/AudioPlayer'
+import { useState, useEffect } from 'react'
+import { storageService } from '@/services/storageService'
 
 /**
  * 音訊節點視圖組件
  * Audio node view component for rendering audio player
  */
-function AudioView({ node, selected, deleteNode }: any) {
+function AudioView({ node, selected }: any) {
   const { src, title, mediaId, duration } = node.attrs
+  const [signedUrl, setSignedUrl] = useState<string>(src)
+
+  // Sign storage:// URLs for playback in editor
+  useEffect(() => {
+    if (!src) return
+
+    // If it's already a signed URL or blob URL, use it as-is
+    if (!src.startsWith('storage://')) {
+      setSignedUrl(src)
+      return
+    }
+
+    // Sign the storage:// URL
+    const signUrl = async () => {
+      try {
+        // Parse bucket and path from storage:// URL
+        // Format: storage://bucket/path/to/file
+        const pathWithoutProtocol = src.replace('storage://', '')
+        const [bucket, ...pathParts] = pathWithoutProtocol.split('/')
+        const path = pathParts.join('/')
+
+        if (bucket && path) {
+          const signed = await storageService.getSignedUrl(bucket, path, 300) // 5 minutes validity
+          setSignedUrl(signed)
+        }
+      } catch (error) {
+        console.error('Failed to sign audio URL:', error)
+        // Fallback to original URL
+        setSignedUrl(src)
+      }
+    }
+
+    signUrl()
+  }, [src])
+
+  const handleNodeClick = (e: React.MouseEvent) => {
+    // Allow clicks on interactive elements (buttons, inputs, ranges)
+    const target = e.target as HTMLElement
+    if (
+      target.tagName === 'BUTTON' ||
+      target.tagName === 'INPUT' ||
+      target.closest('button') ||
+      target.closest('input')
+    ) {
+      // Stop propagation to prevent node selection
+      e.stopPropagation()
+    }
+  }
 
   return (
     <NodeViewWrapper
@@ -22,9 +72,10 @@ function AudioView({ node, selected, deleteNode }: any) {
       }`}
       data-testid="audio-embed"
       data-audio-id={mediaId}
+      onClick={handleNodeClick}
     >
       <AudioPlayer
-        src={src}
+        src={signedUrl}
         title={title}
         duration={duration}
         onEnded={() => {

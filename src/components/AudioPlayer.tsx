@@ -176,6 +176,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
       <div className="flex items-center justify-between gap-3">
         {/* 播放/暫停按鈕 */}
         <button
+          type="button"
           onClick={handlePlayPause}
           disabled={isLoading || duration === 0}
           className={`
@@ -209,6 +210,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
         {/* 音量控制 */}
         <div className="flex items-center gap-2 flex-shrink-0">
           <button
+            type="button"
             onClick={handleToggleMute}
             className="p-1.5 rounded hover:bg-gray-200 transition-colors"
             title={isMuted ? '取消靜音 / Unmute' : '靜音 / Mute'}

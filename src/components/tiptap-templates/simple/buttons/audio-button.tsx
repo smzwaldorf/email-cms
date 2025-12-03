@@ -94,6 +94,7 @@ export function AudioButton({ editor, articleId }: AudioButtonProps) {
                 <button
                   onClick={() => setShowUploader(false)}
                   className="text-gray-500 hover:text-gray-700"
+                  type="button"
                 >
                   ✕
                 </button>
@@ -128,6 +129,7 @@ export function AudioButton({ editor, articleId }: AudioButtonProps) {
 
               <div className="flex gap-2 justify-end mt-4">
                 <button
+                  type="button"
                   onClick={() => setShowUploader(false)}
                   disabled={uploadState.isUploading}
                   className="px-4 py-2 rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-50"
