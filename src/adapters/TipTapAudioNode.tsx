@@ -5,7 +5,7 @@
  */
 
 import { Node } from '@tiptap/core'
-import { ReactNodeViewRenderer } from '@tiptap/react'
+import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react'
 import AudioPlayer from '@/components/AudioPlayer'
 
 /**
@@ -16,7 +16,7 @@ function AudioView({ node, selected, deleteNode }: any) {
   const { src, title, mediaId, duration } = node.attrs
 
   return (
-    <div
+    <NodeViewWrapper
       className={`relative my-4 rounded-lg overflow-hidden ${
         selected ? 'ring-2 ring-waldorf-sage-500' : ''
       }`}
@@ -38,7 +38,7 @@ function AudioView({ node, selected, deleteNode }: any) {
           Delete: Press Backspace
         </div>
       )}
-    </div>
+    </NodeViewWrapper>
   )
 }
 
