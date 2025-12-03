@@ -10,6 +10,7 @@ import { useAuth } from '@/context/AuthContext'
 import PermissionService, { PermissionError } from '@/services/PermissionService'
 import ArticleService from '@/services/ArticleService'
 import { SimpleEditor } from '@/components/tiptap-templates/simple/simple-editor'
+import { replaceStorageTokens } from '@/utils/contentParser'
 
 interface ArticleEditorProps {
   article: Article
@@ -39,10 +40,39 @@ export function ArticleEditor({
   const [localPermissionError, setLocalPermissionError] = useState<string>('')
   const [isCheckingPermission, setIsCheckingPermission] = useState(false)
   const [hasEditPermission, setHasEditPermission] = useState(canEdit ?? false)
+  const [editorContent, setEditorContent] = useState('')
+  const [isSigningUrls, setIsSigningUrls] = useState(true)
 
-  // article.content 已經是 HTML 格式（TipTap 直接輸出），直接使用
-  // Content is already in HTML format from the database
-  const editorContent = formData.content
+  // Sign storage:// URLs in content when loading into editor
+  // This allows media files to be accessible in the editor
+  // Show placeholder while signing to prevent browser from fetching storage:// URLs
+  useEffect(() => {
+    let isMounted = true
+
+    const loadSignedContent = async () => {
+      setIsSigningUrls(true)
+      try {
+        const signedContent = await replaceStorageTokens(formData.content)
+        if (isMounted) {
+          setEditorContent(signedContent)
+          setIsSigningUrls(false)
+        }
+      } catch (error) {
+        console.error('Failed to sign URLs in editor content:', error)
+        // Fallback to original content if signing fails
+        if (isMounted) {
+          setEditorContent(formData.content)
+          setIsSigningUrls(false)
+        }
+      }
+    }
+
+    loadSignedContent()
+
+    return () => {
+      isMounted = false
+    }
+  }, [formData.content])
 
   // 檢查編輯權限
   useEffect(() => {
@@ -252,12 +282,20 @@ export function ArticleEditor({
               內容 <span className="text-waldorf-rose-500">*</span>
             </label>
             <div className="border border-waldorf-cream-300 rounded-md overflow-hidden">
-              <SimpleEditor
-                content={editorContent}
-                contentType="html"
-                onChange={(html) => handleContentChange(html)}
-                placeholder="輸入文章內容..."
-              />
+              {isSigningUrls ? (
+                <div className="bg-waldorf-cream-50 p-12 flex flex-col items-center justify-center min-h-96">
+                  <div className="w-8 h-8 border-4 border-waldorf-sage-200 border-t-waldorf-sage-600 rounded-full animate-spin mb-4" />
+                  <p className="text-waldorf-clay-600 font-medium">正在載入編輯器...</p>
+                  <p className="text-xs text-waldorf-clay-500 mt-2">簽署媒體文件 URL 中</p>
+                </div>
+              ) : (
+                <SimpleEditor
+                  content={editorContent}
+                  contentType="html"
+                  onChange={(html) => handleContentChange(html)}
+                  placeholder="輸入文章內容..."
+                />
+              )}
             </div>
             <p className="text-xs text-waldorf-clay-500 mt-1">
               使用富文本編輯器編輯內容
