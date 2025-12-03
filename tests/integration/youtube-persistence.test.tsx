@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { TipTapYoutubeNode } from '@/adapters/TipTapYoutubeNode'
@@ -30,7 +30,7 @@ function EditorWithPersistentVideo({ htmlContent }: { htmlContent: string }) {
 
 describe('Integration: YouTube Video Persistence - Database Loading', () => {
   describe('Loading YouTube Videos from HTML Content', () => {
-    it('should load YouTube video from wrapped div structure', () => {
+    it('should load YouTube video from wrapped div structure', async () => {
       const htmlContent = `
         <p>Watch this tutorial:</p>
         <div data-youtube-video class="youtube-video-wrapper">
@@ -47,11 +47,13 @@ describe('Integration: YouTube Video Persistence - Database Loading', () => {
       const { container } = render(<EditorWithPersistentVideo htmlContent={htmlContent} />)
 
       // Check that the video wrapper exists
-      const youtubeWrappers = container.querySelectorAll('[data-youtube-video]')
-      expect(youtubeWrappers.length).toBeGreaterThan(0)
+      await waitFor(() => {
+        const youtubeWrappers = container.querySelectorAll('[data-youtube-video]')
+        expect(youtubeWrappers.length).toBeGreaterThan(0)
+      })
     })
 
-    it('should load YouTube video from plain iframe element', () => {
+    it('should load YouTube video from plain iframe element', async () => {
       const htmlContent = `
         <p>Check out this video:</p>
         <iframe src="https://www.youtube.com/embed/9bZkp7q19f0?rel=0&modestbranding=1"
@@ -64,17 +66,19 @@ describe('Integration: YouTube Video Persistence - Database Loading', () => {
 
       const { container } = render(<EditorWithPersistentVideo htmlContent={htmlContent} />)
 
-      // Check that the iframe exists
-      const iframes = container.querySelectorAll('iframe')
-      expect(iframes.length).toBeGreaterThan(0)
+      await waitFor(() => {
+        // Check that the iframe exists
+        const iframes = container.querySelectorAll('iframe')
+        expect(iframes.length).toBeGreaterThan(0)
 
-      // Verify the iframe has the correct src
-      const iframe = iframes[0]
-      const src = iframe.getAttribute('src') || ''
-      expect(src).toContain('youtube.com/embed/9bZkp7q19f0')
+        // Verify the iframe has the correct src
+        const iframe = iframes[0]
+        const src = iframe.getAttribute('src') || ''
+        expect(src).toContain('youtube.com/embed/9bZkp7q19f0')
+      })
     })
 
-    it('should preserve paragraph content around video', () => {
+    it('should preserve paragraph content around video', async () => {
       const htmlContent = `
         <p>Before video</p>
         <div data-youtube-video>
@@ -87,13 +91,15 @@ describe('Integration: YouTube Video Persistence - Database Loading', () => {
 
       const { container } = render(<EditorWithPersistentVideo htmlContent={htmlContent} />)
 
-      // Check text content
-      const textContent = container.textContent || ''
-      expect(textContent).toContain('Before video')
-      expect(textContent).toContain('After video')
+      await waitFor(() => {
+        // Check text content
+        const textContent = container.textContent || ''
+        expect(textContent).toContain('Before video')
+        expect(textContent).toContain('After video')
+      })
     })
 
-    it('should handle multiple videos in same content', () => {
+    it('should handle multiple videos in same content', async () => {
       const htmlContent = `
         <p>First video:</p>
         <div data-youtube-video>
@@ -111,12 +117,14 @@ describe('Integration: YouTube Video Persistence - Database Loading', () => {
 
       const { container } = render(<EditorWithPersistentVideo htmlContent={htmlContent} />)
 
-      // Should have multiple video wrappers
-      const youtubeWrappers = container.querySelectorAll('[data-youtube-video]')
-      expect(youtubeWrappers.length).toBeGreaterThanOrEqual(2)
+      await waitFor(() => {
+        // Should have multiple video wrappers
+        const youtubeWrappers = container.querySelectorAll('[data-youtube-video]')
+        expect(youtubeWrappers.length).toBeGreaterThanOrEqual(2)
+      })
     })
 
-    it('should handle video with start time parameter', () => {
+    it('should handle video with start time parameter', async () => {
       const htmlContent = `
         <div data-youtube-video>
           <iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ?rel=0&modestbranding=1&start=120"
@@ -127,14 +135,16 @@ describe('Integration: YouTube Video Persistence - Database Loading', () => {
 
       const { container } = render(<EditorWithPersistentVideo htmlContent={htmlContent} />)
 
-      const iframes = container.querySelectorAll('iframe')
-      expect(iframes.length).toBeGreaterThan(0)
+      await waitFor(() => {
+        const iframes = container.querySelectorAll('iframe')
+        expect(iframes.length).toBeGreaterThan(0)
 
-      const src = iframes[0].getAttribute('src') || ''
-      expect(src).toContain('start=120')
+        const src = iframes[0].getAttribute('src') || ''
+        expect(src).toContain('start=120')
+      })
     })
 
-    it('should handle video with autoplay parameter', () => {
+    it('should handle video with autoplay parameter', async () => {
       const htmlContent = `
         <div data-youtube-video>
           <iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ?rel=0&modestbranding=1&autoplay=1"
@@ -145,14 +155,16 @@ describe('Integration: YouTube Video Persistence - Database Loading', () => {
 
       const { container } = render(<EditorWithPersistentVideo htmlContent={htmlContent} />)
 
-      const iframes = container.querySelectorAll('iframe')
-      const src = iframes[0].getAttribute('src') || ''
-      expect(src).toContain('autoplay=1')
+      await waitFor(() => {
+        const iframes = container.querySelectorAll('iframe')
+        const src = iframes[0].getAttribute('src') || ''
+        expect(src).toContain('autoplay=1')
+      })
     })
   })
 
   describe('Persistence Round-Trip (Save and Load)', () => {
-    it('should correctly identify video in loaded HTML', () => {
+    it('should correctly identify video in loaded HTML', async () => {
       // Simulate saving and reloading from database
       const originalVideoUrl = 'https://www.youtube.com/embed/dQw4w9WgXcQ?rel=0&modestbranding=1'
       const htmlContent = `
@@ -169,15 +181,17 @@ describe('Integration: YouTube Video Persistence - Database Loading', () => {
 
       const { container } = render(<EditorWithPersistentVideo htmlContent={htmlContent} />)
 
-      // Verify the URL is preserved
-      const iframes = container.querySelectorAll('iframe')
-      expect(iframes.length).toBeGreaterThan(0)
+      await waitFor(() => {
+        // Verify the URL is preserved
+        const iframes = container.querySelectorAll('iframe')
+        expect(iframes.length).toBeGreaterThan(0)
 
-      const loadedUrl = iframes[0].getAttribute('src')
-      expect(loadedUrl).toBe(originalVideoUrl)
+        const loadedUrl = iframes[0].getAttribute('src')
+        expect(loadedUrl).toBe(originalVideoUrl)
+      })
     })
 
-    it('should handle complex content with videos, text, and formatting', () => {
+    it('should handle complex content with videos, text, and formatting', async () => {
       const htmlContent = `
         <h2>Tutorial Series</h2>
         <p>In this lesson, we'll learn:</p>
@@ -198,20 +212,22 @@ describe('Integration: YouTube Video Persistence - Database Loading', () => {
 
       const { container } = render(<EditorWithPersistentVideo htmlContent={htmlContent} />)
 
-      // All content should be preserved
-      const textContent = container.textContent || ''
-      expect(textContent).toContain('Tutorial Series')
-      expect(textContent).toContain('Video basics')
-      expect(textContent).toContain('Practice Exercise')
+      await waitFor(() => {
+        // All content should be preserved
+        const textContent = container.textContent || ''
+        expect(textContent).toContain('Tutorial Series')
+        expect(textContent).toContain('Video basics')
+        expect(textContent).toContain('Practice Exercise')
 
-      // Video should still be present
-      const youtubeWrappers = container.querySelectorAll('[data-youtube-video]')
-      expect(youtubeWrappers.length).toBeGreaterThan(0)
+        // Video should still be present
+        const youtubeWrappers = container.querySelectorAll('[data-youtube-video]')
+        expect(youtubeWrappers.length).toBeGreaterThan(0)
+      })
     })
   })
 
   describe('Error Recovery and Edge Cases', () => {
-    it('should handle iframe without src attribute gracefully', () => {
+    it('should handle iframe without src attribute gracefully', async () => {
       const htmlContent = `
         <p>Content before</p>
         <div data-youtube-video>
@@ -224,13 +240,15 @@ describe('Integration: YouTube Video Persistence - Database Loading', () => {
 
       const { container } = render(<EditorWithPersistentVideo htmlContent={htmlContent} />)
 
-      // Should still render without crashing
-      const textContent = container.textContent || ''
-      expect(textContent).toContain('Content before')
-      expect(textContent).toContain('Content after')
+      await waitFor(() => {
+        // Should still render without crashing
+        const textContent = container.textContent || ''
+        expect(textContent).toContain('Content before')
+        expect(textContent).toContain('Content after')
+      })
     })
 
-    it('should handle mixed iframe formats', () => {
+    it('should handle mixed iframe formats', async () => {
       const htmlContent = `
         <p>First format:</p>
         <div data-youtube-video>
@@ -247,22 +265,24 @@ describe('Integration: YouTube Video Persistence - Database Loading', () => {
 
       const { container } = render(<EditorWithPersistentVideo htmlContent={htmlContent} />)
 
-      // Both formats should coexist
-      const allIframes = container.querySelectorAll('iframe')
-      expect(allIframes.length).toBeGreaterThanOrEqual(2)
+      await waitFor(() => {
+        // Both formats should coexist
+        const allIframes = container.querySelectorAll('iframe')
+        expect(allIframes.length).toBeGreaterThanOrEqual(2)
 
-      // Verify both URLs are present
-      const urls = Array.from(allIframes)
-        .map((iframe) => iframe.getAttribute('src'))
-        .filter((src) => src)
+        // Verify both URLs are present
+        const urls = Array.from(allIframes)
+          .map((iframe) => iframe.getAttribute('src'))
+          .filter((src) => src)
 
-      expect(urls.some((url) => url?.includes('dQw4w9WgXcQ'))).toBe(true)
-      expect(urls.some((url) => url?.includes('9bZkp7q19f0'))).toBe(true)
+        expect(urls.some((url) => url?.includes('dQw4w9WgXcQ'))).toBe(true)
+        expect(urls.some((url) => url?.includes('9bZkp7q19f0'))).toBe(true)
+      })
     })
   })
 
   describe('Database Content Scenarios', () => {
-    it('should load content saved from ArticleEditor', () => {
+    it('should load content saved from ArticleEditor', async () => {
       // Simulate content structure saved by ArticleEditor
       const savedContent = `
         <p>Introduction to React</p>
@@ -274,13 +294,15 @@ describe('Integration: YouTube Video Persistence - Database Loading', () => {
 
       const { container } = render(<EditorWithPersistentVideo htmlContent={savedContent} />)
 
-      // Should display correctly
-      expect(container.querySelectorAll('[data-youtube-video]').length).toBeGreaterThan(0)
-      expect(container.textContent).toContain('Introduction to React')
-      expect(container.textContent).toContain('React hooks')
+      await waitFor(() => {
+        // Should display correctly
+        expect(container.querySelectorAll('[data-youtube-video]').length).toBeGreaterThan(0)
+        expect(container.textContent).toContain('Introduction to React')
+        expect(container.textContent).toContain('React hooks')
+      })
     })
 
-    it('should preserve iframe allow attributes', () => {
+    it('should preserve iframe allow attributes', async () => {
       const htmlContent = `
         <div data-youtube-video>
           <iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ?rel=0&modestbranding=1"
@@ -292,10 +314,12 @@ describe('Integration: YouTube Video Persistence - Database Loading', () => {
 
       const { container } = render(<EditorWithPersistentVideo htmlContent={htmlContent} />)
 
-      const iframe = container.querySelector('iframe')
-      expect(iframe).toBeInTheDocument()
-      expect(iframe?.getAttribute('allow')).toContain('autoplay')
-      expect(iframe?.getAttribute('allow')).toContain('encrypted-media')
+      await waitFor(() => {
+        const iframe = container.querySelector('iframe')
+        expect(iframe).toBeInTheDocument()
+        expect(iframe?.getAttribute('allow')).toContain('autoplay')
+        expect(iframe?.getAttribute('allow')).toContain('encrypted-media')
+      })
     })
   })
 })

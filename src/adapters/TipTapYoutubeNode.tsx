@@ -25,6 +25,7 @@ function YoutubeView({ node, selected, deleteNode, editor }: any) {
       <div 
         className={`relative my-4 rounded-lg overflow-visible shadow-md ${selected ? 'ring-4 ring-waldorf-sage-500' : ''}`} 
         data-testid="youtube-embed"
+        data-youtube-video=""
       >
         <div
           className="relative"
@@ -221,8 +222,8 @@ export const TipTapYoutubeNode = Youtube.extend({
             type: this.name,
             attrs: {
               src: options.src,
-              width: options.width || '100%',
-              height: options.height || '480',
+              width: (options.width || '100%') as any,
+              height: (options.height || '480') as any,
               startTime: options.startTime || null,
             },
           })
