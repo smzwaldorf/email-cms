@@ -11,6 +11,7 @@ import { imageOptimizer } from '@/services/imageOptimizer'
 import { storageService } from '@/services/storageService'
 import { articleMediaManager } from '@/services/articleMediaManager'
 import { getSupabaseClient } from '@/lib/supabase'
+import { checkRateLimit, recordUploadAttempt } from '@/services/rateLimiter'
 
 /**
  * 媒體上傳狀態
@@ -69,6 +70,29 @@ export function useMediaUpload() {
       let currentStep = 0
 
       try {
+        // 檢查速率限制
+        // Check rate limit before proceeding
+        const supabaseClient = getSupabaseClient()
+        const userId = (await supabaseClient.auth.getUser()).data.user?.id
+        if (!userId) {
+          throw new Error('User not authenticated')
+        }
+
+        const rateLimitStatus = checkRateLimit(userId)
+        if (!rateLimitStatus.allowed) {
+          const errorMsg = rateLimitStatus.message
+          setState((prev) => ({
+            ...prev,
+            isUploading: false,
+            error: errorMsg,
+          }))
+          throw new Error(errorMsg)
+        }
+
+        // 記錄上傳嘗試
+        // Record upload attempt
+        recordUploadAttempt(userId)
+
         for (const file of files) {
           // 步驟 1: 驗證
           // Step 1: Validation
@@ -109,12 +133,6 @@ export function useMediaUpload() {
 
           // 步驟 3: 上傳
           // Step 3: Upload
-          const supabaseClient = getSupabaseClient()
-          const userId = (await supabaseClient.auth.getUser()).data.user?.id
-          if (!userId) {
-            throw new Error('User not authenticated')
-          }
-
           const mediaId = mediaService.generateMediaId()
           const storagePath = mediaService.generateStoragePath(
             mediaId,
