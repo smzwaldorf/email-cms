@@ -5,7 +5,7 @@
  */
 
 import { useEditor, EditorContent } from '@tiptap/react'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import StarterKit from '@tiptap/starter-kit'
 import { SecureImage } from './extensions/SecureImage'
 import { TipTapYoutubeNode } from '@/adapters/TipTapYoutubeNode'
@@ -30,6 +30,51 @@ interface SimpleEditorProps {
   onChange?: (content: string, format: 'html') => void // Always output HTML
   placeholder?: string
   className?: string
+}
+
+// Helper to sanitize content
+const sanitizeContent = (content: string): string => {
+  if (!content) return ''
+  
+  try {
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(content, 'text/html')
+    
+    // Process images
+    const images = doc.querySelectorAll('img')
+    images.forEach(img => {
+      const src = img.getAttribute('src')
+      if (src && src.startsWith('storage://')) {
+        img.setAttribute('data-storage-src', src)
+        img.setAttribute('src', '') // Keep src attribute but empty to trigger parseHTML
+      }
+    })
+    
+    // Process audio
+    const audios = doc.querySelectorAll('audio')
+    audios.forEach(audio => {
+      const src = audio.getAttribute('src')
+      if (src && src.startsWith('storage://')) {
+        audio.setAttribute('data-storage-src', src)
+        audio.setAttribute('src', '')
+      }
+    })
+    
+    // Process custom audio divs (if any)
+    const audioDivs = doc.querySelectorAll('div[data-audio-node]')
+    audioDivs.forEach(div => {
+      const src = div.getAttribute('data-src')
+      if (src && src.startsWith('storage://')) {
+        div.setAttribute('data-storage-src', src)
+        div.setAttribute('data-src', '')
+      }
+    })
+
+    return doc.body.innerHTML
+  } catch (e) {
+    console.error('Failed to sanitize content:', e)
+    return content
+  }
 }
 
 export function SimpleEditor({
@@ -62,7 +107,8 @@ export function SimpleEditor({
       }
     }
   } else {
-    initialContent = content
+    // Sanitize HTML content to prevent browser from trying to load storage:// URLs
+    initialContent = typeof content === 'string' ? sanitizeContent(content) : content
   }
 
   const editor = useEditor({
@@ -114,15 +160,24 @@ export function SimpleEditor({
   }, [editor, readOnly])
 
   // Update editor content when content prop changes
+  const contentRef = useRef(content)
+
   useEffect(() => {
     if (editor && content !== undefined) {
       // Check if content is actually different to avoid cursor jumps and loops
       const currentContent = editor.getHTML()
-      if (currentContent !== content) {
+      if (currentContent !== content && contentRef.current !== content) {
         // For read-only, always update. For editable, only if different.
         // Note: This might still cause issues if Tiptap normalizes HTML differently than input
         // But for switching articles (major change), it's necessary.
-        editor.commands.setContent(content)
+        const sanitizedContent = typeof content === 'string' ? sanitizeContent(content) : content
+        // Use a microtask to defer the setContent call to avoid flushSync warning
+        Promise.resolve().then(() => {
+          if (editor) {
+            editor.commands.setContent(sanitizedContent)
+            contentRef.current = content
+          }
+        })
       }
     }
   }, [editor, content])

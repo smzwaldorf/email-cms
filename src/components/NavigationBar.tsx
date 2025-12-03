@@ -59,9 +59,7 @@ export function NavigationBar({
       // 編輯當前文章: e - Navigate to editor
       else if (key === 'e') {
         event.preventDefault()
-        // Navigate to editor page: /editor/{weekNumber}
-        const editPath = `/editor/${navigationState.currentWeekNumber}`
-        navigate(editPath)
+        navigate(`/editor/${navigationState.currentWeekNumber}`)
       }
     }
 

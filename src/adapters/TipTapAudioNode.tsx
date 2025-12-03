@@ -16,7 +16,11 @@ import { storageService } from '@/services/storageService'
  */
 function AudioView({ node, selected }: any) {
   const { src, title, mediaId, duration } = node.attrs
-  const [signedUrl, setSignedUrl] = useState<string>(src)
+  // Initialize with src only if it's NOT a storage URL
+  // This prevents browser from trying to load storage:// URLs
+  const [signedUrl, setSignedUrl] = useState<string>(
+    src && !src.startsWith('storage://') ? src : ''
+  )
 
   // Sign storage:// URLs for playback in editor
   useEffect(() => {
@@ -26,7 +30,7 @@ function AudioView({ node, selected }: any) {
 
     // If it's already a signed URL or blob URL, use it as-is
     if (!src.startsWith('storage://')) {
-      setSignedUrl(src)
+      if (isMounted) setSignedUrl(src)
       return
     }
 
@@ -84,14 +88,20 @@ function AudioView({ node, selected }: any) {
       data-audio-id={mediaId}
       onClick={handleNodeClick}
     >
-      <AudioPlayer
-        src={signedUrl}
-        title={title}
-        duration={duration}
-        onEnded={() => {
-          // Handle end of audio playback if needed
-        }}
-      />
+      {signedUrl ? (
+        <AudioPlayer
+          src={signedUrl}
+          title={title}
+          duration={duration}
+          onEnded={() => {
+            // Handle end of audio playback if needed
+          }}
+        />
+      ) : (
+        <div className="bg-gray-100 p-4 rounded flex items-center justify-center">
+          <span className="text-gray-500 text-sm">Loading audio...</span>
+        </div>
+      )}
 
       {/* 編輯提示 */}
       {selected && (
@@ -129,11 +139,11 @@ export const TipTapAudioNode = Node.create({
       src: {
         default: null,
         parseHTML: (element) => {
-          let src = element.getAttribute('data-src')
+          let src = element.getAttribute('data-src') || element.getAttribute('data-storage-src')
           if (!src) {
             const audioElem = element.querySelector('audio')
             if (audioElem) {
-              src = audioElem.getAttribute('src')
+              src = audioElem.getAttribute('src') || audioElem.getAttribute('data-storage-src')
             }
           }
           
@@ -153,9 +163,18 @@ export const TipTapAudioNode = Node.create({
           
           return src
         },
-        renderHTML: (attributes) => ({
-          'data-src': attributes.src,
-        }),
+        renderHTML: (attributes) => {
+          // If it's a storage URL, put it in data-storage-src and leave src empty
+          if (attributes.src && attributes.src.startsWith('storage://')) {
+            return {
+              'data-storage-src': attributes.src,
+              'data-src': '', // Clear data-src to prevent confusion
+            }
+          }
+          return {
+            'data-src': attributes.src,
+          }
+        },
       },
       title: {
         default: null,

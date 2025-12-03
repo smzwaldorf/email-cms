@@ -414,6 +414,7 @@ export function WeeklyReaderPage() {
             navigationState={navigation.navigationState}
             onPrevious={handlePrevious}
             onNext={handleNext}
+            onEdit={canEditArticle ? () => setIsEditMode(true) : undefined}
           />
         )}
         </div>
@@ -492,6 +493,7 @@ export function WeeklyReaderPage() {
             navigationState={navigation.navigationState}
             onPrevious={handlePrevious}
             onNext={handleNext}
+            onEdit={canEditArticle ? () => setIsEditMode(true) : undefined}
           />
         )}
 
