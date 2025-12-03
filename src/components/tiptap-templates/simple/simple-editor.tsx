@@ -7,7 +7,7 @@
 import { useEditor, EditorContent } from '@tiptap/react'
 import { useEffect, useRef } from 'react'
 import StarterKit from '@tiptap/starter-kit'
-import { SecureImage } from './extensions/SecureImage'
+import { TipTapImageNode } from './extensions/TipTapImageNode'
 import { TipTapYoutubeNode } from '@/adapters/TipTapYoutubeNode'
 import { TipTapAudioNode } from '@/adapters/TipTapAudioNode'
 import Link from '@tiptap/extension-link'
@@ -117,7 +117,7 @@ export function SimpleEditor({
       StarterKit.configure({
         link: false, // Disable Link from StarterKit to avoid duplication
       }),
-      SecureImage.configure({
+      TipTapImageNode.configure({
         allowBase64: true,
       }),
       Link.configure({

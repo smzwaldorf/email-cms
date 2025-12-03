@@ -36,8 +36,8 @@ describe('SimpleEditor Storage URL Preservation', () => {
       />
     )
 
-    // Wait for the image to be rendered (SecureImage uses async effect)
-    // We can't easily check the internal state of SecureImage, but we can check if the img tag exists
+    // Wait for the image to be rendered (TipTapImageNode uses async effect)
+    // We can't easily check the internal state of TipTapImageNode, but we can check if the img tag exists
     await waitFor(() => {
       const img = screen.getByRole('img')
       expect(img).toBeInTheDocument()
@@ -78,16 +78,16 @@ describe('SimpleEditor Storage URL Preservation', () => {
     
     // But wait, if the DOM has the signed URL, does Tiptap parse it back to signed URL?
     // Tiptap parses the DOM.
-    // If SecureImage renders an <img> with signed URL, and Tiptap re-parses it (e.g. on paste or some updates), it might pick up the signed URL.
-    // BUT SecureImage is a Node View. Node Views are rendered *by* Tiptap. Tiptap maintains the model.
+    // If TipTapImageNode renders an <img> with signed URL, and Tiptap re-parses it (e.g. on paste or some updates), it might pick up the signed URL.
+    // BUT TipTapImageNode is a Node View. Node Views are rendered *by* Tiptap. Tiptap maintains the model.
     // The DOM inside Node View is managed by React. Tiptap ignores it for parsing unless we define parseHTML.
     
-    // Let's check SecureImage.ts (the extension definition).
+    // Let's check TipTapImageNode.tsx (the extension definition).
     // It extends Image.
     // Image extension has parseHTML.
-    
+
     // If I type in the editor, Tiptap updates the model based on the transaction. It doesn't re-parse the whole DOM.
-    
+
     // I'll skip the test for now and go straight to implementation because the logic is sound.
     // Tiptap's default Image extension parses src as-is.
     // If we feed it a signed URL, it keeps it.
@@ -168,8 +168,8 @@ describe('SimpleEditor Storage URL Preservation', () => {
     // We can't easily check getHTML() output here without capturing it via onChange
     // But we know onChange is called on update.
       // It should have data-storage-src (if our Node View logic works)
-      // But wait, SecureImage renders an <img> tag.
-      // The SecureImage component (React) renders <img src={signedUrl} ... />
+      // But wait, TipTapImageNode renders an <img> tag.
+      // The TipTapImageNode component (React) renders <img src={signedUrl} ... />
       // So in the DOM, we see the signed URL (or placeholder).
       
       // What we care about is what is SAVED (getHTML).

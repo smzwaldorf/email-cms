@@ -104,7 +104,7 @@ function SecureImageComponent({ node, updateAttributes, selected }: any) {
   )
 }
 
-export const SecureImage = Image.extend({
+export const TipTapImageNode = Image.extend({
   addAttributes() {
     return {
       src: {

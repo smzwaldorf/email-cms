@@ -8,6 +8,10 @@
   overflow: hidden;
 }
 
+.tiptap-editor.read-only {
+  border: none;
+}
+
 /* Toolbar Styles */
 .toolbar {
   display: flex;
