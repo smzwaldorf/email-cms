@@ -758,6 +758,105 @@ class AdminService {
   }
 
   /**
+   * Add student to class
+   */
+  async addStudentToClass(classId: string, studentId: string): Promise<void> {
+    try {
+      const supabase = getSupabaseServiceClient()
+
+      // First, fetch the class to get existing students
+      const { data: classData, error: fetchError } = await supabase
+        .from('classes')
+        .select('student_ids')
+        .eq('id', classId)
+        .single()
+
+      if (fetchError) {
+        throw new AdminServiceError(
+          `Failed to fetch class: ${fetchError.message}`,
+          'FETCH_CLASS_ERROR',
+          fetchError as any
+        )
+      }
+
+      const studentIds = classData?.student_ids || []
+      if (!studentIds.includes(studentId)) {
+        studentIds.push(studentId)
+      }
+
+      // Update the class with new student list
+      const { error: updateError } = await supabase
+        .from('classes')
+        .update({ student_ids: studentIds, updated_at: new Date().toISOString() })
+        .eq('id', classId)
+
+      if (updateError) {
+        throw new AdminServiceError(
+          `Failed to add student to class: ${updateError.message}`,
+          'ADD_STUDENT_ERROR',
+          updateError as any
+        )
+      }
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error adding student to class: ${err instanceof Error ? err.message : String(err)}`,
+        'ADD_STUDENT_ERROR',
+        err as any
+      )
+    }
+  }
+
+  /**
+   * Remove student from class
+   */
+  async removeStudentFromClass(classId: string, studentId: string): Promise<void> {
+    try {
+      const supabase = getSupabaseServiceClient()
+
+      // First, fetch the class to get existing students
+      const { data: classData, error: fetchError } = await supabase
+        .from('classes')
+        .select('student_ids')
+        .eq('id', classId)
+        .single()
+
+      if (fetchError) {
+        throw new AdminServiceError(
+          `Failed to fetch class: ${fetchError.message}`,
+          'FETCH_CLASS_ERROR',
+          fetchError as any
+        )
+      }
+
+      const studentIds = (classData?.student_ids || []).filter(
+        (id: string) => id !== studentId
+      )
+
+      // Update the class with new student list
+      const { error: updateError } = await supabase
+        .from('classes')
+        .update({ student_ids: studentIds, updated_at: new Date().toISOString() })
+        .eq('id', classId)
+
+      if (updateError) {
+        throw new AdminServiceError(
+          `Failed to remove student from class: ${updateError.message}`,
+          'REMOVE_STUDENT_ERROR',
+          updateError as any
+        )
+      }
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error removing student from class: ${err instanceof Error ? err.message : String(err)}`,
+        'REMOVE_STUDENT_ERROR',
+        err as any
+      )
+    }
+  }
+
+  /**
    * ============ FAMILY OPERATIONS ============
    */
 
@@ -1244,6 +1343,45 @@ class AdminService {
       throw new AdminServiceError(
         `Error fetching parent's students: ${err instanceof Error ? err.message : String(err)}`,
         'FETCH_PARENT_STUDENTS_ERROR',
+        err as any
+      )
+    }
+  }
+
+  /**
+   * Get all parent-student relationships with performance optimization
+   */
+  async getParentStudentRelationships(): Promise<Array<{ parentId: string; studentId: string }>> {
+    try {
+      const supabase = getSupabaseServiceClient()
+      const startTime = Date.now()
+
+      const { data: relationships, error } = await supabase
+        .from('parent_student_relationships')
+        .select('parent_id, student_id')
+
+      if (error) {
+        throw new AdminServiceError(
+          `Failed to fetch relationships: ${error.message}`,
+          'FETCH_RELATIONSHIPS_ERROR',
+          error as any
+        )
+      }
+
+      const elapsedTime = Date.now() - startTime
+      if (elapsedTime > 500) {
+        console.warn(`Performance warning: getParentStudentRelationships took ${elapsedTime}ms`)
+      }
+
+      return (relationships || []).map((row: any) => ({
+        parentId: row.parent_id,
+        studentId: row.student_id,
+      }))
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error fetching relationships: ${err instanceof Error ? err.message : String(err)}`,
+        'FETCH_RELATIONSHIPS_ERROR',
         err as any
       )
     }

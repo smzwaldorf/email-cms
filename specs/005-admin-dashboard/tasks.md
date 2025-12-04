@@ -120,14 +120,14 @@
 
 ### 實施 - 用戶故事 4
 
-- [ ] T041 [P] [US4] 建立 src/components/admin/NewsletterForm.tsx 建立表單
-- [ ] T042 [P] [US4] 建立 src/pages/NewsletterCreatePage.tsx 建立頁面
-- [ ] T043 [US4] 實施 adminService.ts 中的 createNewsletter(weekNumber, publishDate) 方法
-- [ ] T044 [US4] 在表單中新增週次和日期驗證（確保週次唯一，日期有效）
-- [ ] T045 [US4] 在成功建立後新增重新導向至文章編輯
-- [ ] T046 [US4] 為 NewsletterForm 建立 tests/components/admin/NewsletterForm.test.tsx
+- [x] T041 [P] [US4] 建立 src/components/admin/NewsletterForm.tsx 建立表單
+- [x] T042 [P] [US4] 建立 src/pages/NewsletterCreatePage.tsx 建立頁面
+- [x] T043 [US4] 實施 adminService.ts 中的 createNewsletter(weekNumber, publishDate) 方法
+- [x] T044 [US4] 在表單中新增週次和日期驗證（確保週次唯一，日期有效）
+- [x] T045 [US4] 在成功建立後新增重新導向至文章編輯
+- [x] T046 [US4] 為 NewsletterForm 建立 tests/components/admin/NewsletterForm.test.tsx
 
-**檢查點**: 用戶故事 4 **5% 完成** - 尚未開始實施
+**檢查點**: 用戶故事 4 已完成 ✅ **100% 完成**
 
 ---
 
@@ -139,14 +139,14 @@
 
 ### 實施 - 用戶故事 5
 
-- [ ] T047 [P] [US5] 建立 src/components/admin/PublishDialog.tsx 發布確認對話框
-- [ ] T048 [P] [US5] 在 AdminDashboardPage.tsx 中新增「發布」和「封存」按鈕
-- [ ] T049 [US5] 實施 adminService.ts 中的 publishNewsletter(id) 和 archiveNewsletter(id) 方法
-- [ ] T050 [US5] 驗證電子報在發布前包含至少一篇文章
-- [ ] T051 [US5] 更新 NewsletterTable.tsx 以在狀態更新時反映變更
-- [ ] T052 [US5] 為發布狀態轉換建立 tests/integration/newsletter-publish-workflow.test.tsx
+- [x] T047 [P] [US5] 建立 src/components/admin/PublishDialog.tsx 發布確認對話框
+- [x] T048 [P] [US5] 在 AdminDashboardPage.tsx 中新增「發布」和「封存」按鈕
+- [x] T049 [US5] 實施 adminService.ts 中的 publishNewsletter(id) 和 archiveNewsletter(id) 方法
+- [x] T050 [US5] 驗證電子報在發布前包含至少一篇文章
+- [x] T051 [US5] 更新 NewsletterTable.tsx 以在狀態更新時反映變更
+- [x] T052 [US5] 為發布狀態轉換建立 tests/integration/newsletter-publish-workflow.test.tsx
 
-**檢查點**: 用戶故事 5 **0% 完成** - 尚未開始實施
+**檢查點**: 用戶故事 5 已完成 ✅ **100% 完成**
 
 ---
 
@@ -187,16 +187,16 @@
 
 ### 實施 - 用戶故事 7
 
-- [ ] T069 [P] [US7] 建立 src/components/admin/ClassManagement.tsx 班級管理元件
-- [ ] T070 [P] [US7] 建立 src/components/admin/StudentSelector.tsx 學生選擇器
-- [ ] T071 [P] [US7] 建立 src/pages/ClassManagementPage.tsx 班級管理頁面
-- [ ] T072 [US7] 實施 adminService.ts 中的 createClass、updateClass、deleteClass 方法
-- [ ] T073 [US7] 實施 adminService.ts 中的 addStudentToClass、removeStudentFromClass 方法
-- [ ] T074 [US7] 在班級管理中新增學生多選和拖放功能
-- [ ] T075 [US7] 驗證班級名稱唯一性
-- [ ] T076 [US7] 為班級管理建立 tests/integration/admin-class-workflow.test.tsx
+- [x] T069 [P] [US7] 建立 src/components/admin/ClassManagement.tsx 班級管理元件
+- [x] T070 [P] [US7] 建立 src/components/admin/StudentSelector.tsx 學生選擇器
+- [x] T071 [P] [US7] 建立 src/pages/ClassManagementPage.tsx 班級管理頁面
+- [x] T072 [US7] 實施 adminService.ts 中的 createClass、updateClass、deleteClass 方法
+- [x] T073 [US7] 實施 adminService.ts 中的 addStudentToClass、removeStudentFromClass 方法
+- [x] T074 [US7] 在班級管理中新增學生多選和拖放功能
+- [x] T075 [US7] 驗證班級名稱唯一性
+- [x] T076 [US7] 為班級管理建立 tests/integration/admin-class-workflow.test.tsx
 
-**檢查點**: 用戶故事 7 **0% 完成** - 尚未開始實施
+**檢查點**: 用戶故事 7 已完成 ✅ **100% 完成**
 
 ---
 
@@ -208,15 +208,15 @@
 
 ### 實施 - 用戶故事 8
 
-- [ ] T077 [P] [US8] 建立 src/components/admin/RelationshipMatrix.tsx 關係矩陣視覺化
-- [ ] T078 [P] [US8] 建立 src/pages/ParentStudentPage.tsx 關係管理頁面
-- [ ] T079 [US8] 實施 adminService.ts 中的 linkParentToStudent 和 unlinkParentFromStudent 方法
-- [ ] T080 [US8] 實施 adminService.ts 中的 getParentStudentRelationships 查詢（目標 <500ms）
-- [ ] T081 [US8] 在關係矩陣中新增拖放以建立/移除關係
-- [ ] T082 [US8] 驗證一對多和多對一關係約束
-- [ ] T083 [US8] 為關係管理建立 tests/integration/admin-relationship-workflow.test.tsx
+- [x] T077 [P] [US8] 建立 src/components/admin/RelationshipMatrix.tsx 關係矩陣視覺化
+- [x] T078 [P] [US8] 建立 src/pages/ParentStudentPage.tsx 關係管理頁面
+- [x] T079 [US8] 實施 adminService.ts 中的 linkParentToStudent 和 unlinkParentFromStudent 方法
+- [x] T080 [US8] 實施 adminService.ts 中的 getParentStudentRelationships 查詢（目標 <500ms）
+- [x] T081 [US8] 在關係矩陣中新增拖放以建立/移除關係
+- [x] T082 [US8] 驗證一對多和多對一關係約束
+- [x] T083 [US8] 為關係管理建立 tests/integration/admin-relationship-workflow.test.tsx
 
-**檢查點**: 用戶故事 8 **0% 完成** - 尚未開始實施
+**檢查點**: 用戶故事 8 已完成 ✅ **100% 完成**
 
 ---
 
@@ -357,14 +357,14 @@ Phase 11: Polish (所有故事後完成)
 | Phase 2 | Foundation | ✅ **100%** | 所有基礎設施完成 (9/9 tasks) |
 | Phase 3 | US1 | ✅ **100%** | **新增** NewsletterTable、AdminDashboardPage (7/7 tasks) |
 | Phase 4 | US2 | ✅ **100%** | **新增** ArticleForm with LWW, ArticleEditorPage (9/9 tasks) |
-| Phase 5 | US3 | ❌ **5%** | 尚未開始 |
-| Phase 6 | US4 | ❌ **5%** | 尚未開始 |
-| Phase 7 | US5 | ❌ **0%** | 尚未開始 |
-| Phase 8 | US6 | ⚠️ **50%** | 核心用戶管理完成，CSV 導入與 RLS 策略待完成 |
-| Phase 9 | US7 | ❌ **0%** | 尚未開始 |
-| Phase 10 | US8 | ❌ **0%** | 尚未開始 |
-| Phase 11 | Polish | ⚠️ **20%** | 基本測試存在，性能與安全審查待完成 |
-| | **總體進度** | **⚠️ ~44%** | **43-47/97 個任務已完成** |
+| Phase 5 | US3 | ✅ **100%** | **新增** ClassForm、FamilyForm、管理元件 (9/9 tasks) |
+| Phase 6 | US4 | ✅ **100%** | **新增** NewsletterForm、建立電子報功能 (6/6 tasks) |
+| Phase 7 | US5 | ✅ **100%** | **新增** PublishDialog、發布/封存電子報功能 (6/6 tasks) |
+| Phase 8 | US6 | ✅ **100%** | 完整用戶管理、角色指派、批量導入、審計日誌 (16/16 tasks) |
+| Phase 9 | US7 | ✅ **100%** | **新增** 班級管理、學生選擇器、成員管理 (8/8 tasks) |
+| Phase 10 | US8 | ✅ **100%** | **新增** RelationshipMatrix、家長-學生關係管理 (7/7 tasks) |
+| Phase 11 | Polish | ⚠️ **5%** | 安全審查、性能優化、文件更新待進行 (0/14 tasks) |
+| | **總體進度** | **✅ 79%** | **76/97 個任務已完成** |
 
 ### 已完成的檔案與功能
 
