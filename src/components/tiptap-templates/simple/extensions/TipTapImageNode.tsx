@@ -110,7 +110,7 @@ function SecureImageComponent({ node, updateAttributes, selected, deleteNode, ed
 
   return (
     <NodeViewWrapper className="secure-image-wrapper" style={{ display: 'inline-block', lineHeight: 0 }}>
-      <div className={`relative ${selected ? 'ring-2 ring-waldorf-sage-500 rounded-md' : ''}`}>
+      <div className={`relative mb-1 ${selected ? 'ring-2 ring-waldorf-sage-500 rounded-md' : ''}`}>
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-50 min-h-[100px] min-w-[100px]">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-waldorf-sage-500"></div>
@@ -147,7 +147,7 @@ function SecureImageComponent({ node, updateAttributes, selected, deleteNode, ed
 
       {/* Caption - displayed outside the selection border (Medium-style) */}
       {(caption || selected) && (
-        <div className="w-full flex justify-center mt-2 px-4">
+        <div className="w-full flex justify-center mt-1 px-4">
           {isEditingCaption && isEditable ? (
             <input
               ref={captionInputRef}

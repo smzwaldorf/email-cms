@@ -53,7 +53,7 @@ function YoutubeView({ node, selected, deleteNode, editor, updateAttributes }: a
       <div className="flex flex-col">
         {/* Video container with selection border */}
         <div
-          className={`relative my-4 rounded-lg overflow-visible shadow-md ${selected ? 'ring-4 ring-waldorf-sage-500' : ''}`}
+          className={`relative mt-4 mb-1 rounded-lg overflow-visible shadow-md ${selected ? 'ring-4 ring-waldorf-sage-500' : ''}`}
           data-testid="youtube-embed"
           data-youtube-video=""
         >
@@ -124,7 +124,7 @@ function YoutubeView({ node, selected, deleteNode, editor, updateAttributes }: a
 
         {/* Caption - displayed outside the selection border (Medium-style) */}
         {(captionText || (isEditable && selected)) && (
-          <div className="w-full flex justify-center mt-2 px-4">
+          <div className="w-full flex justify-center mt-1 px-4">
             {isEditingCaption && isEditable ? (
               <input
                 ref={captionInputRef}

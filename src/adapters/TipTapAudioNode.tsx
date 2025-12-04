@@ -128,7 +128,7 @@ function AudioView({ node, selected, editor, deleteNode, updateAttributes }: any
       onClick={handleNodeClick}
     >
       <div
-        className={`relative my-4 rounded-lg overflow-hidden ${
+        className={`relative mt-4 mb-1 rounded-lg overflow-hidden ${
           selected && !isReadOnly ? 'ring-2 ring-waldorf-sage-500' : ''
         }`}
       >
@@ -168,7 +168,7 @@ function AudioView({ node, selected, editor, deleteNode, updateAttributes }: any
 
       {/* Caption - displayed outside the selection border (Medium-style) */}
       {(captionText || selected) && (
-        <div className="w-full flex justify-center mt-2 px-4">
+        <div className="w-full flex justify-center mt-1 px-4">
           {isEditingCaption && isEditable ? (
             <input
               ref={captionInputRef}
