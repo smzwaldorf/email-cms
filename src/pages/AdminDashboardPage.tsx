@@ -10,7 +10,7 @@
  */
 
 import { useEffect, useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { AdminNewsletter, NewsletterFilterOptions } from '@/types/admin'
 import { adminService, AdminServiceError } from '@/services/adminService'
 import NewsletterTable from '@/components/admin/NewsletterTable'
@@ -22,6 +22,7 @@ import { UserRole } from '@/types/auth'
 import { ROLES } from '@/lib/rbac'
 import { AuditLogViewer } from '@/components/AuditLogViewer'
 import { adminSessionService } from '@/services/adminSessionService'
+import { AdminLayout } from '@/components/admin/AdminLayout'
 
 // --- Types ---
 
@@ -259,10 +260,12 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, userData
  */
 export function AdminDashboardPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { user } = useAuth()
   
-  // Tab state
-  const [activeTab, setActiveTab] = useState<'newsletters' | 'users' | 'audit'>('newsletters')
+  // Tab state derived from URL
+  const tabParam = searchParams.get('tab')
+  const activeTab = (tabParam === 'users' || tabParam === 'audit') ? tabParam : 'newsletters'
 
   // Newsletter state
   const [newsletters, setNewsletters] = useState<AdminNewsletter[]>([])
@@ -282,13 +285,7 @@ export function AdminDashboardPage() {
   // Shared state
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [suspiciousUsers, setSuspiciousUsers] = useState<Array<{ userId: string; failureCount: number }>>([])
-  const [latestWeek, setLatestWeek] = useState<number>(1)
 
-  // --- Effects ---
-
-  useEffect(() => {
-    fetchLatestWeek()
-  }, [])
 
   useEffect(() => {
     // Initial load based on active tab
@@ -324,24 +321,7 @@ export function AdminDashboardPage() {
 
   // --- Newsletter Functions ---
 
-  const fetchLatestWeek = async () => {
-    try {
-      const supabase = getSupabaseClient()
-      const { data, error } = await supabase
-        .from('newsletter_weeks')
-        .select('week_number')
-        .order('week_number', { ascending: false })
-        .limit(1)
-        .single()
 
-      if (error) throw error
-      if (data) {
-        setLatestWeek(data.week_number)
-      }
-    } catch (err: any) {
-      console.error('Error fetching latest week:', err)
-    }
-  }
 
   const loadNewsletters = async () => {
     try {
@@ -527,42 +507,22 @@ export function AdminDashboardPage() {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-gray-100 py-8 px-4">
-        <div className="max-w-7xl mx-auto">
-          {/* Navigation Toolbar */}
-          <div className="mb-6 flex items-center justify-between bg-white shadow-sm rounded-lg px-4 py-3 border border-gray-200">
-            <a
-              href={`/week/${latestWeek}`}
-              className="flex items-center text-gray-600 hover:text-blue-500 transition-colors"
+      <AdminLayout 
+        activeTab={activeTab}
+        headerAction={
+          activeTab === 'newsletters' ? (
+            <button
+              onClick={handleCreateNewsletter}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
+              data-testid="create-newsletter-btn"
             >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              Back to Weekly Articles
-            </a>
-            <div className="text-sm text-gray-500">
-              Admin Dashboard
-            </div>
-          </div>
+              + Create Newsletter
+            </button>
+          ) : null
+        }
+      >
 
-          {/* Page Header */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-                <p className="mt-1 text-gray-600">Manage newsletters, users, and system settings</p>
-              </div>
-              {activeTab === 'newsletters' && (
-                <button
-                  onClick={handleCreateNewsletter}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
-                  data-testid="create-newsletter-btn"
-                >
-                  + Create Newsletter
-                </button>
-              )}
-            </div>
-          </div>
+
 
           {/* Success Message */}
           {successMessage && (
@@ -594,59 +554,8 @@ export function AdminDashboardPage() {
             </div>
           )}
 
-          {/* Tab Navigation */}
-          <div className="mb-6 border-b border-gray-200 bg-white rounded-t-lg">
-            <nav className="flex space-x-8 px-6 flex-wrap" aria-label="Admin Navigation">
-              <button
-                onClick={() => setActiveTab('newsletters')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'newsletters'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Newsletters
-              </button>
-              <button
-                onClick={() => setActiveTab('users')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'users'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                User Management
-              </button>
-              <button
-                onClick={() => setActiveTab('audit')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'audit'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Audit Logs
-              </button>
-              <div className="border-l border-gray-200 mx-2"></div>
-              <Link
-                to="/admin/classes"
-                className="py-4 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors"
-                data-testid="classes-link"
-              >
-                Classes
-              </Link>
-              <Link
-                to="/admin/families"
-                className="py-4 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors"
-                data-testid="families-link"
-              >
-                Families
-              </Link>
-            </nav>
-          </div>
-
           {/* Content Area */}
-          <div className="bg-white shadow rounded-b-lg p-6 min-h-[500px]">
+          <div>
             {/* Newsletters Tab */}
             {activeTab === 'newsletters' && (
               <>
@@ -794,7 +703,7 @@ export function AdminDashboardPage() {
               <AuditLogViewer />
             )}
           </div>
-        </div>
+      </AdminLayout>
 
         <AddUserModal
           isOpen={isAddModalOpen}
@@ -811,7 +720,7 @@ export function AdminDashboardPage() {
           userData={editingUser}
           onUserUpdated={fetchUsers}
         />
-      </div>
+
     </ErrorBoundary>
   )
 }

@@ -19,6 +19,7 @@ import FamilyList from '@/components/admin/FamilyList'
 import FamilyForm from '@/components/admin/FamilyForm'
 import ConfirmDialog from '@/components/admin/ConfirmDialog'
 import NotificationToast from '@/components/admin/NotificationToast'
+import { AdminLayout } from '@/components/admin/AdminLayout'
 
 type PageState = 'list' | 'create' | 'edit'
 
@@ -149,20 +150,21 @@ export function FamilyManagementPage() {
   // Render loading state
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-        <span className="ml-2 text-gray-600">載入家族中...</span>
-      </div>
+      <AdminLayout activeTab="families">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+          <span className="ml-2 text-gray-600">載入家族中...</span>
+        </div>
+      </AdminLayout>
     )
   }
 
   // Render list view
   if (pageState === 'list') {
     return (
-      <div className="space-y-4">
-        {/* Header */}
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-gray-900">家族管理</h1>
+      <AdminLayout 
+        activeTab="families"
+        headerAction={
           <button
             onClick={() => setPageState('create')}
             className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors font-medium"
@@ -170,106 +172,112 @@ export function FamilyManagementPage() {
           >
             新增家族
           </button>
-        </div>
+        }
+      >
+        <div className="space-y-4">
+          {/* Error message */}
+          {error && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-800 font-medium">錯誤</p>
+              <p className="text-red-600 text-sm">{error}</p>
+            </div>
+          )}
 
-        {/* Error message */}
-        {error && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-800 font-medium">錯誤</p>
-            <p className="text-red-600 text-sm">{error}</p>
-          </div>
-        )}
-
-        {/* Family list */}
-        <FamilyList
-          families={families}
-          isLoading={false}
-          error={null}
-          onEdit={handleEditClick}
-          onDelete={handleDeleteClick}
-        />
-
-        {/* Notification */}
-        {notification && (
-          <NotificationToast
-            message={notification.message}
-            type={notification.type}
-            onClose={() => setNotification(null)}
+          {/* Family list */}
+          <FamilyList
+            families={families}
+            isLoading={false}
+            error={null}
+            onEdit={handleEditClick}
+            onDelete={handleDeleteClick}
           />
-        )}
 
-        {/* Delete confirmation dialog */}
-        <ConfirmDialog
-          isOpen={deleteConfirm.isOpen}
-          title="刪除家族"
-          message="確定要刪除這個家族嗎？此操作無法復原。"
-          confirmText="刪除"
-          cancelText="取消"
-          isDangerous={true}
-          isLoading={isSaving}
-          onConfirm={() => {
-            if (deleteConfirm.familyId) {
-              handleDeleteFamily(deleteConfirm.familyId)
-            }
-          }}
-          onCancel={() => setDeleteConfirm({ isOpen: false })}
-        />
-      </div>
+          {/* Notification */}
+          {notification && (
+            <NotificationToast
+              message={notification.message}
+              type={notification.type}
+              onClose={() => setNotification(null)}
+            />
+          )}
+
+          {/* Delete confirmation dialog */}
+          <ConfirmDialog
+            isOpen={deleteConfirm.isOpen}
+            title="刪除家族"
+            message="確定要刪除這個家族嗎？此操作無法復原。"
+            confirmText="刪除"
+            cancelText="取消"
+            isDangerous={true}
+            isLoading={isSaving}
+            onConfirm={() => {
+              if (deleteConfirm.familyId) {
+                handleDeleteFamily(deleteConfirm.familyId)
+              }
+            }}
+            onCancel={() => setDeleteConfirm({ isOpen: false })}
+          />
+        </div>
+      </AdminLayout>
     )
   }
 
   // Render create view
   if (pageState === 'create') {
     return (
-      <div className="space-y-4">
-        <button
-          onClick={() => setPageState('list')}
-          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-          data-testid="back-btn"
-        >
-          ← 返回
-        </button>
-        <FamilyForm
-          isNew={true}
-          onSave={handleCreateFamily}
-          onCancel={() => setPageState('list')}
-        />
-        {notification && (
-          <NotificationToast
-            message={notification.message}
-            type={notification.type}
-            onClose={() => setNotification(null)}
+      <AdminLayout activeTab="families">
+        <div className="space-y-4">
+          <button
+            onClick={() => setPageState('list')}
+            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+            data-testid="back-btn"
+          >
+            ← 返回
+          </button>
+          <FamilyForm
+            isNew={true}
+            onSave={handleCreateFamily}
+            onCancel={() => setPageState('list')}
           />
-        )}
-      </div>
+          {notification && (
+            <NotificationToast
+              message={notification.message}
+              type={notification.type}
+              onClose={() => setNotification(null)}
+            />
+          )}
+        </div>
+      </AdminLayout>
     )
   }
 
   // Render edit view
   if (pageState === 'edit' && selectedFamily) {
     return (
-      <div className="space-y-4">
-        <button
-          onClick={() => setPageState('list')}
-          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-          data-testid="back-btn"
-        >
-          ← 返回
-        </button>
-        <FamilyForm
-          family={selectedFamily}
-          isNew={false}
-          onSave={handleEditFamily}
-          onCancel={() => setPageState('list')}
-        />
-        {notification && (
-          <NotificationToast
-            message={notification.message}
-            type={notification.type}
-            onClose={() => setNotification(null)}
+      <AdminLayout activeTab="families">
+        <div className="space-y-4">
+          <button
+            onClick={() => setPageState('list')}
+            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+            data-testid="back-btn"
+          >
+            ← 返回
+          </button>
+          <FamilyForm
+            family={selectedFamily}
+            isNew={false}
+            onSave={handleEditFamily}
+            onCancel={() => setPageState('list')}
           />
-        )}
-      </div>
+          {notification && (
+            <NotificationToast
+              message={notification.message}
+              type={notification.type}
+              onClose={() => setNotification(null)}
+            />
+          )}
+        </div>
+      </AdminLayout>
     )
   }
 

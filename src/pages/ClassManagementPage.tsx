@@ -19,6 +19,7 @@ import ClassList from '@/components/admin/ClassList'
 import ClassForm from '@/components/admin/ClassForm'
 import ConfirmDialog from '@/components/admin/ConfirmDialog'
 import NotificationToast from '@/components/admin/NotificationToast'
+import { AdminLayout } from '@/components/admin/AdminLayout'
 
 type PageState = 'list' | 'create' | 'edit'
 
@@ -161,20 +162,21 @@ export function ClassManagementPage() {
   // Render loading state
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-        <span className="ml-2 text-gray-600">載入班級中...</span>
-      </div>
+      <AdminLayout activeTab="classes">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+          <span className="ml-2 text-gray-600">載入班級中...</span>
+        </div>
+      </AdminLayout>
     )
   }
 
   // Render list view
   if (pageState === 'list') {
     return (
-      <div className="space-y-4">
-        {/* Header */}
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-gray-900">班級管理</h1>
+      <AdminLayout
+        activeTab="classes"
+        headerAction={
           <button
             onClick={() => setPageState('create')}
             className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors font-medium"
@@ -182,108 +184,114 @@ export function ClassManagementPage() {
           >
             新增班級
           </button>
-        </div>
+        }
+      >
+        <div className="space-y-4">
+          {/* Error message */}
+          {error && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-800 font-medium">錯誤</p>
+              <p className="text-red-600 text-sm">{error}</p>
+            </div>
+          )}
 
-        {/* Error message */}
-        {error && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-800 font-medium">錯誤</p>
-            <p className="text-red-600 text-sm">{error}</p>
-          </div>
-        )}
-
-        {/* Class list */}
-        <ClassList
-          classes={classes}
-          isLoading={false}
-          error={null}
-          onEdit={handleEditClick}
-          onDelete={handleDeleteClick}
-        />
-
-        {/* Notification */}
-        {notification && (
-          <NotificationToast
-            message={notification.message}
-            type={notification.type}
-            onClose={() => setNotification(null)}
+          {/* Class list */}
+          <ClassList
+            classes={classes}
+            isLoading={false}
+            error={null}
+            onEdit={handleEditClick}
+            onDelete={handleDeleteClick}
           />
-        )}
 
-        {/* Delete confirmation dialog */}
-        <ConfirmDialog
-          isOpen={deleteConfirm.isOpen}
-          title="刪除班級"
-          message="確定要刪除這個班級嗎？此操作無法復原。"
-          confirmText="刪除"
-          cancelText="取消"
-          isDangerous={true}
-          isLoading={isSaving}
-          onConfirm={() => {
-            if (deleteConfirm.classId) {
-              handleDeleteClass(deleteConfirm.classId)
-            }
-          }}
-          onCancel={() => setDeleteConfirm({ isOpen: false })}
-        />
-      </div>
+          {/* Notification */}
+          {notification && (
+            <NotificationToast
+              message={notification.message}
+              type={notification.type}
+              onClose={() => setNotification(null)}
+            />
+          )}
+
+          {/* Delete confirmation dialog */}
+          <ConfirmDialog
+            isOpen={deleteConfirm.isOpen}
+            title="刪除班級"
+            message="確定要刪除這個班級嗎？此操作無法復原。"
+            confirmText="刪除"
+            cancelText="取消"
+            isDangerous={true}
+            isLoading={isSaving}
+            onConfirm={() => {
+              if (deleteConfirm.classId) {
+                handleDeleteClass(deleteConfirm.classId)
+              }
+            }}
+            onCancel={() => setDeleteConfirm({ isOpen: false })}
+          />
+        </div>
+      </AdminLayout>
     )
   }
 
   // Render create view
   if (pageState === 'create') {
     return (
-      <div className="space-y-4">
-        <button
-          onClick={() => setPageState('list')}
-          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-          data-testid="back-btn"
-        >
-          ← 返回
-        </button>
-        <ClassForm
-          isNew={true}
-          onSave={handleCreateClass}
-          onCancel={() => setPageState('list')}
-          availableStudents={students}
-        />
-        {notification && (
-          <NotificationToast
-            message={notification.message}
-            type={notification.type}
-            onClose={() => setNotification(null)}
+      <AdminLayout activeTab="classes">
+        <div className="space-y-4">
+          <button
+            onClick={() => setPageState('list')}
+            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+            data-testid="back-btn"
+          >
+            ← 返回
+          </button>
+          <ClassForm
+            isNew={true}
+            onSave={handleCreateClass}
+            onCancel={() => setPageState('list')}
+            availableStudents={students}
           />
-        )}
-      </div>
+          {notification && (
+            <NotificationToast
+              message={notification.message}
+              type={notification.type}
+              onClose={() => setNotification(null)}
+            />
+          )}
+        </div>
+      </AdminLayout>
     )
   }
 
   // Render edit view
   if (pageState === 'edit' && selectedClass) {
     return (
-      <div className="space-y-4">
-        <button
-          onClick={() => setPageState('list')}
-          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-          data-testid="back-btn"
-        >
-          ← 返回
-        </button>
-        <ClassForm
-          class={selectedClass}
-          isNew={false}
-          onSave={handleEditClass}
-          onCancel={() => setPageState('list')}
-          availableStudents={students}
-        />
-        {notification && (
-          <NotificationToast
-            message={notification.message}
-            type={notification.type}
-            onClose={() => setNotification(null)}
+      <AdminLayout activeTab="classes">
+        <div className="space-y-4">
+          <button
+            onClick={() => setPageState('list')}
+            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+            data-testid="back-btn"
+          >
+            ← 返回
+          </button>
+          <ClassForm
+            class={selectedClass}
+            isNew={false}
+            onSave={handleEditClass}
+            onCancel={() => setPageState('list')}
+            availableStudents={students}
           />
-        )}
-      </div>
+          {notification && (
+            <NotificationToast
+              message={notification.message}
+              type={notification.type}
+              onClose={() => setNotification(null)}
+            />
+          )}
+        </div>
+      </AdminLayout>
     )
   }
 

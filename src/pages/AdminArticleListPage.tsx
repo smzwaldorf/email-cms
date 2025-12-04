@@ -10,6 +10,7 @@ import { adminService, AdminServiceError } from '@/services/adminService'
 import type { AdminNewsletter, AdminArticle } from '@/types/admin'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { AdminLayout } from '@/components/admin/AdminLayout'
 
 export function AdminArticleListPage() {
   const { weekNumber } = useParams<{ weekNumber: string }>()
@@ -73,14 +74,31 @@ export function AdminArticleListPage() {
     }
   }
 
-  if (isLoading) return <LoadingSpinner />
+  if (isLoading) {
+    return (
+      <AdminLayout activeTab="newsletters">
+        <LoadingSpinner />
+      </AdminLayout>
+    )
+  }
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-gray-100 py-8 px-4">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="mb-8">
+      <AdminLayout 
+        activeTab="newsletters"
+        headerAction={
+          <button
+            onClick={() => navigate(`/admin/articles/${weekNumber}/create`)}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+            disabled
+          >
+            + Add Article
+          </button>
+        }
+      >
+        <div className="bg-white shadow rounded-lg overflow-hidden">
+          {/* Header Info */}
+          <div className="p-6 border-b border-gray-200 bg-gray-50">
             <button
               onClick={handleBack}
               className="text-blue-500 hover:text-blue-600 text-sm font-medium mb-4 flex items-center"
@@ -93,7 +111,7 @@ export function AdminArticleListPage() {
 
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">
+                <h1 className="text-2xl font-bold text-gray-900">
                   Week {newsletter?.weekNumber} Articles
                 </h1>
                 <div className="mt-2 flex items-center space-x-4">
@@ -120,26 +138,19 @@ export function AdminArticleListPage() {
                   )}
                 </div>
               </div>
-              <button
-                onClick={() => navigate(`/admin/articles/${weekNumber}/create`)} // Assuming create route exists or will be handled
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-                disabled // Disable for now as create route might need adjustment
-              >
-                + Add Article
-              </button>
             </div>
           </div>
 
           {/* Error */}
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="p-6 bg-red-50 border-b border-red-200">
               <p className="text-red-800 font-medium">Error</p>
               <p className="text-red-600 text-sm">{error}</p>
             </div>
           )}
 
           {/* Article List */}
-          <div className="bg-white shadow rounded-lg overflow-hidden">
+          <div>
             {articles.length === 0 ? (
               <div className="p-8 text-center text-gray-500">
                 No articles found for this week.
@@ -193,7 +204,7 @@ export function AdminArticleListPage() {
             )}
           </div>
         </div>
-      </div>
+      </AdminLayout>
     </ErrorBoundary>
   )
 }
