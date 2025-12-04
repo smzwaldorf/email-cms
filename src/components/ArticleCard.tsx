@@ -14,6 +14,7 @@ interface ArticleCardProps {
   onClick: () => void
   userId?: string  // For permission checking (optional)
   showPermissionStatus?: boolean  // Show permission badges (default: false)
+  disabled?: boolean
 }
 
 export const ArticleCard = memo(function ArticleCard({
@@ -21,7 +22,8 @@ export const ArticleCard = memo(function ArticleCard({
   isSelected,
   onClick,
   userId,
-  showPermissionStatus = false
+  showPermissionStatus = false,
+  disabled = false
 }: ArticleCardProps) {
   const [permissions, setPermissions] = useState({
     canView: true,
@@ -54,10 +56,10 @@ export const ArticleCard = memo(function ArticleCard({
 
   // Memoize onClick to prevent unnecessary re-renders
   const handleClick = useCallback(() => {
-    if (permissions.canView) {
+    if (permissions.canView && !disabled) {
       onClick()
     }
-  }, [onClick, permissions.canView])
+  }, [onClick, permissions.canView, disabled])
 
   // Don't render if user can't view this article
   if (!permissions.canView && !permissions.isLoading && userId) {
@@ -69,7 +71,7 @@ export const ArticleCard = memo(function ArticleCard({
       onClick={handleClick}
       className={`
         p-4 rounded-lg border transition-all
-        ${!permissions.canView ? 'opacity-50' : 'cursor-pointer'}
+        ${!permissions.canView || disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
         ${
           isSelected
             ? 'border-waldorf-sage-500 bg-waldorf-sage-50 shadow-sm'

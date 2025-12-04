@@ -180,6 +180,34 @@ describe('ArticleList Component', () => {
         expect(mockOnSelect).toHaveBeenCalledTimes(2)
       }
     })
+
+    it('should not call onSelectArticle when disabled', () => {
+      const mockOnSelect = vi.fn()
+      renderWithRouter(
+        <ArticleListView
+          weekNumber="2025-W43"
+          articles={mockArticles}
+          selectedArticleId="article-001"
+          onSelectArticle={mockOnSelect}
+          disabled={true}
+        />
+      )
+
+      // Try to find the element that handles the click. 
+      // ArticleCard renders a div with an onClick handler.
+      // We search for the text and get the closest div that is likely the card.
+      const articleText = screen.getByText('TypeScript Advanced Types')
+      const articleItem = articleText.closest('div.border') // ArticleCard has 'border' class
+
+      if (articleItem) {
+        fireEvent.click(articleItem)
+        expect(mockOnSelect).not.toHaveBeenCalled()
+      } else {
+        // Fallback if class selection fails, just click the text which bubbles up
+        fireEvent.click(articleText)
+        expect(mockOnSelect).not.toHaveBeenCalled()
+      }
+    })
   })
 
   describe('Quick Navigation Performance', () => {

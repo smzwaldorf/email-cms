@@ -5,13 +5,11 @@
  */
 
 import { useState, useEffect } from 'react'
-import MDEditor from '@uiw/react-md-editor'
-import '@uiw/react-md-editor/markdown-editor.css'
-import '@uiw/react-markdown-preview/markdown.css'
 import { Article } from '@/types'
 import { useAuth } from '@/context/AuthContext'
 import PermissionService, { PermissionError } from '@/services/PermissionService'
 import ArticleService from '@/services/ArticleService'
+import { SimpleEditor } from '@/components/tiptap-templates/simple/simple-editor'
 
 interface ArticleEditorProps {
   article: Article
@@ -41,6 +39,9 @@ export function ArticleEditor({
   const [localPermissionError, setLocalPermissionError] = useState<string>('')
   const [isCheckingPermission, setIsCheckingPermission] = useState(false)
   const [hasEditPermission, setHasEditPermission] = useState(canEdit ?? false)
+
+
+
 
   // 檢查編輯權限
   useEffect(() => {
@@ -103,11 +104,14 @@ export function ArticleEditor({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Save HTML content directly (TipTap output)
+    // No conversion needed - store HTML directly in database
     onSave({
       title: formData.title,
       author: formData.author || undefined,
       summary: formData.summary || undefined,
-      content: formData.content,
+      content: formData.content,  // Already HTML from editor
       isPublished: formData.isPublished,
     })
   }
@@ -164,23 +168,44 @@ export function ArticleEditor({
   return (
     <article className="h-full flex flex-col overflow-hidden">
       {/* 編輯器頭部 */}
-      <div className="px-6 py-4 border-b border-waldorf-cream-200 bg-waldorf-sage-50">
-        <h1 className="text-2xl font-bold text-waldorf-clay-800 mb-2">編輯文章</h1>
-        <div className="flex items-center gap-2 text-sm text-waldorf-clay-600">
-          <span>文章 ID: {article.id}</span>
-          <span>|</span>
-          <span>週次: {article.weekNumber}</span>
-          <span>|</span>
-          <span>順序: {article.order}</span>
+      <div className="px-6 py-4 border-b border-waldorf-cream-200 bg-waldorf-sage-50 flex justify-between items-start">
+        <div>
+          <h1 className="text-2xl font-bold text-waldorf-clay-800 mb-2">編輯文章</h1>
+          <div className="flex items-center gap-2 text-sm text-waldorf-clay-600">
+            <span>文章 ID: {article.id}</span>
+            <span>|</span>
+            <span>週次: {article.weekNumber}</span>
+            <span>|</span>
+            <span>順序: {article.order}</span>
+          </div>
+        </div>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={isSaving}
+            className="px-4 py-2 bg-white text-waldorf-clay-700 border border-waldorf-cream-300 rounded-md hover:bg-waldorf-cream-50 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            取消
+          </button>
+          <button
+            type="submit"
+            form="article-edit-form"
+            disabled={isSaving}
+            className="px-4 py-2 bg-waldorf-sage-600 text-white rounded-md hover:bg-waldorf-sage-700 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {isSaving ? '儲存中...' : '儲存'}
+          </button>
         </div>
       </div>
 
       {/* 編輯表單 */}
       <form
+        id="article-edit-form"
         onSubmit={handleSubmit}
         className="flex-1 overflow-y-auto px-6 py-4 bg-white"
       >
-        <div className="max-w-4xl mx-auto space-y-4">
+        <div className="max-w-6xl mx-auto space-y-4">
           {/* 標題 */}
           <div>
             <label
@@ -239,32 +264,6 @@ export function ArticleEditor({
             />
           </div>
 
-          {/* 內容 - 富文本編輯器 */}
-          <div>
-            <label
-              className="block text-sm font-medium text-waldorf-clay-700 mb-2"
-            >
-              內容 <span className="text-waldorf-rose-500">*</span>
-            </label>
-            <div className="border border-waldorf-cream-300 rounded-md overflow-hidden" data-color-mode="light">
-              <MDEditor
-                value={formData.content}
-                onChange={handleContentChange}
-                height={500}
-                preview="live"
-                hideToolbar={false}
-                enableScroll={true}
-                visibleDragbar={true}
-                textareaProps={{
-                  placeholder: '輸入文章內容，支援 Markdown 格式...',
-                }}
-              />
-            </div>
-            <p className="text-xs text-waldorf-clay-500 mt-1">
-              使用富文本編輯器編輯內容，內容將以 Markdown 格式儲存
-            </p>
-          </div>
-
           {/* 發布狀態 */}
           <div className="flex items-center gap-2">
             <input
@@ -283,24 +282,27 @@ export function ArticleEditor({
             </label>
           </div>
 
-          {/* 按鈕區 */}
-          <div className="flex gap-3 pt-4 border-t border-waldorf-cream-200">
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="px-6 py-2 bg-waldorf-sage-600 text-white rounded-md hover:bg-waldorf-sage-700 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          {/* 內容 - 富文本編輯器 */}
+          <div>
+            <label
+              className="block text-sm font-medium text-waldorf-clay-700 mb-2"
             >
-              {isSaving ? '儲存中...' : '儲存'}
-            </button>
-            <button
-              type="button"
-              onClick={onCancel}
-              disabled={isSaving}
-              className="px-6 py-2 bg-white text-waldorf-clay-700 border border-waldorf-cream-300 rounded-md hover:bg-waldorf-cream-50 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              取消
-            </button>
+              內容 <span className="text-waldorf-rose-500">*</span>
+            </label>
+            <div className="border border-waldorf-cream-300 rounded-md overflow-hidden">
+              <SimpleEditor
+                content={formData.content}
+                contentType="html"
+                onChange={(html) => handleContentChange(html)}
+                placeholder="輸入文章內容..."
+              />
+            </div>
+            <p className="text-xs text-waldorf-clay-500 mt-1">
+              使用富文本編輯器編輯內容
+            </p>
           </div>
+
+
         </div>
       </form>
     </article>

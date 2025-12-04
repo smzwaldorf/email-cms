@@ -119,21 +119,18 @@ const testArticles = [
     week_number: '2025-W47',
     short_id: 'a00001',
     title: '週報開刊致詞 (Weekly Opening)',
-    content: `# 歡迎閱讀本週電子報
-
-Dear Parents and Students,
-
-Welcome to Week 47 of our newsletter. This week we have exciting updates from all classes.
-
-## Highlights
-- School event announcements
-- Academic updates
-- Upcoming activities
-
----
-
-**Published on:** 2025-11-17
-**Week:** 2025-W47`,
+    content: `<h1>歡迎閱讀本週電子報</h1>
+<p>Dear Parents and Students,</p>
+<p>Welcome to Week 47 of our newsletter. This week we have exciting updates from all classes.</p>
+<h2>Highlights</h2>
+<ul>
+<li>School event announcements</li>
+<li>Academic updates</li>
+<li>Upcoming activities</li>
+</ul>
+<hr>
+<p><strong>Published on:</strong> 2025-11-17<br>
+<strong>Week:</strong> 2025-W47</p>`,
     author: 'Principal',
     article_order: 1,
     is_published: true,
@@ -144,25 +141,26 @@ Welcome to Week 47 of our newsletter. This week we have exciting updates from al
     week_number: '2025-W47',
     short_id: 'a00002',
     title: 'Grade 1A Class Updates (一年級甲班班級大小事)',
-    content: `# 一年級甲班班級大小事
-
-This week in Grade 1A:
-
-## Academic Updates
-- **Math:** Introduction to addition and subtraction
-- **Reading:** New story time sessions every afternoon
-- **Art:** Seasonal craft projects with fall themes
-
-## Activities
-- Class field trip to local museum (Nov 22)
-- Show and tell event (Nov 24)
-- Parent-teacher conference (Nov 23 at 3:00 PM)
-
-## Homework
-- Math worksheets (30 minutes)
-- Reading journal entries (2 pages)
-
-**Note:** This article is visible only to parents with children in Grade 1A.`,
+    content: `<h1>一年級甲班班級大小事</h1>
+<p>This week in Grade 1A:</p>
+<h2>Academic Updates</h2>
+<ul>
+<li><strong>Math:</strong> Introduction to addition and subtraction</li>
+<li><strong>Reading:</strong> New story time sessions every afternoon</li>
+<li><strong>Art:</strong> Seasonal craft projects with fall themes</li>
+</ul>
+<h2>Activities</h2>
+<ul>
+<li>Class field trip to local museum (Nov 22)</li>
+<li>Show and tell event (Nov 24)</li>
+<li>Parent-teacher conference (Nov 23 at 3:00 PM)</li>
+</ul>
+<h2>Homework</h2>
+<ul>
+<li>Math worksheets (30 minutes)</li>
+<li>Reading journal entries (2 pages)</li>
+</ul>
+<p><strong>Note:</strong> This article is visible only to parents with children in Grade 1A.</p>`,
     author: 'Ms. Chen',
     article_order: 2,
     is_published: true,
@@ -173,25 +171,26 @@ This week in Grade 1A:
     week_number: '2025-W47',
     short_id: 'a00003',
     title: 'Grade 1B Class Updates (一年級乙班班級大小事)',
-    content: `# 一年級乙班班級大小事
-
-This week in Grade 1B:
-
-## Academic Updates
-- **Music:** Learning new songs and instruments
-- **PE:** Team sports activities and cooperative games
-- **Science:** Exploring nature and seasons
-
-## Class Events
-- Music performance practice (Friday)
-- Sports day competition (upcoming)
-- Class election for student council
-
-## Important Dates
-- Parent conference: Nov 23 at 2:00 PM
-- Holiday celebration: Dec 15
-
-**Note:** This article is visible only to parents with children in Grade 1B.`,
+    content: `<h1>一年級乙班班級大小事</h1>
+<p>This week in Grade 1B:</p>
+<h2>Academic Updates</h2>
+<ul>
+<li><strong>Music:</strong> Learning new songs and instruments</li>
+<li><strong>PE:</strong> Team sports activities and cooperative games</li>
+<li><strong>Science:</strong> Exploring nature and seasons</li>
+</ul>
+<h2>Class Events</h2>
+<ul>
+<li>Music performance practice (Friday)</li>
+<li>Sports day competition (upcoming)</li>
+<li>Class election for student council</li>
+</ul>
+<h2>Important Dates</h2>
+<ul>
+<li>Parent conference: Nov 23 at 2:00 PM</li>
+<li>Holiday celebration: Dec 15</li>
+</ul>
+<p><strong>Note:</strong> This article is visible only to parents with children in Grade 1B.</p>`,
     author: 'Mr. Wang',
     article_order: 3,
     is_published: true,
@@ -202,26 +201,27 @@ This week in Grade 1B:
     week_number: '2025-W47',
     short_id: 'a00004',
     title: 'Grade 2A Class Updates (二年級甲班班級大小事)',
-    content: `# 二年級甲班班級大小事
-
-This week in Grade 2A:
-
-## Learning Highlights
-- **Mathematics:** Multiplication basics and strategies
-- **Literature:** Classic story appreciation and discussion
-- **Social Studies:** Community helpers and professions
-
-## Field Trip
-- Planned for Dec 5
-- Destination: Local nature preserve
-- Permission slips due: Nov 30
-
-## Student Achievements
-- Math competition scores announced
-- Science fair projects starting
-- Reading club selections announced
-
-**Note:** This article is visible only to parents with children in Grade 2A.`,
+    content: `<h1>二年級甲班班級大小事</h1>
+<p>This week in Grade 2A:</p>
+<h2>Learning Highlights</h2>
+<ul>
+<li><strong>Mathematics:</strong> Multiplication basics and strategies</li>
+<li><strong>Literature:</strong> Classic story appreciation and discussion</li>
+<li><strong>Social Studies:</strong> Community helpers and professions</li>
+</ul>
+<h2>Field Trip</h2>
+<ul>
+<li>Planned for Dec 5</li>
+<li>Destination: Local nature preserve</li>
+<li>Permission slips due: Nov 30</li>
+</ul>
+<h2>Student Achievements</h2>
+<ul>
+<li>Math competition scores announced</li>
+<li>Science fair projects starting</li>
+<li>Reading club selections announced</li>
+</ul>
+<p><strong>Note:</strong> This article is visible only to parents with children in Grade 2A.</p>`,
     author: 'Ms. Liu',
     article_order: 4,
     is_published: true,
@@ -232,26 +232,27 @@ This week in Grade 2A:
     week_number: '2025-W47',
     short_id: 'a00005',
     title: 'Grade 2B Class Updates (二年級乙班班級大小事)',
-    content: `# 二年級乙班班級大小事
-
-This week in Grade 2B:
-
-## Academic Focus
-- **Division Practice:** Solving word problems
-- **Writing:** Short story composition and editing
-- **Computer Lab:** Introduction to typing and digital literacy
-
-## Upcoming Events
-- Technology showcase (Dec 10)
-- Writing workshop with guest author (Nov 28)
-- Computer skills assessment (Dec 1-5)
-
-## Reminders
-- Library books due Friday
-- Project submission deadline: next Thursday
-- Parent volunteer sign-up: please help with field trip
-
-**Note:** This article is visible only to parents with children in Grade 2B.`,
+    content: `<h1>二年級乙班班級大小事</h1>
+<p>This week in Grade 2B:</p>
+<h2>Academic Focus</h2>
+<ul>
+<li><strong>Division Practice:</strong> Solving word problems</li>
+<li><strong>Writing:</strong> Short story composition and editing</li>
+<li><strong>Computer Lab:</strong> Introduction to typing and digital literacy</li>
+</ul>
+<h2>Upcoming Events</h2>
+<ul>
+<li>Technology showcase (Dec 10)</li>
+<li>Writing workshop with guest author (Nov 28)</li>
+<li>Computer skills assessment (Dec 1-5)</li>
+</ul>
+<h2>Reminders</h2>
+<ul>
+<li>Library books due Friday</li>
+<li>Project submission deadline: next Thursday</li>
+<li>Parent volunteer sign-up: please help with field trip</li>
+</ul>
+<p><strong>Note:</strong> This article is visible only to parents with children in Grade 2B.</p>`,
     author: 'Mr. Lee',
     article_order: 5,
     is_published: true,
@@ -262,34 +263,35 @@ This week in Grade 2B:
     week_number: '2025-W47',
     short_id: 'a00006',
     title: 'Important Announcements (重要公告)',
-    content: `# 重要公告 - Important Announcements
-
-## School-Wide Updates
-
-### Parent-Teacher Conferences
-- **Dates:** November 22-24, 2025
-- **Time:** 1:00 PM - 5:00 PM each day
-- **Sign-up:** See class teachers for time slots
-- **Location:** Classroom and multipurpose room
-
-### School Assembly
-- **When:** Monday, November 17 at 8:30 AM
-- **Where:** Gymnasium
-- **Topic:** Annual awards and recognition ceremony
-
-### Field Trip Permission Slips
-- **Deadline:** November 19, 2025
-- **Details:** Check your child's backpack for forms
-- **Questions:** Contact the main office
-
-### Holiday Celebration Planning
-- School holiday party: December 19
-- Student performances, games, and refreshments
-- Family invitation event
-
----
-
-**Visibility:** This article is visible to all parents and visitors.`,
+    content: `<h1>重要公告 - Important Announcements</h1>
+<h2>School-Wide Updates</h2>
+<h3>Parent-Teacher Conferences</h3>
+<ul>
+<li><strong>Dates:</strong> November 22-24, 2025</li>
+<li><strong>Time:</strong> 1:00 PM - 5:00 PM each day</li>
+<li><strong>Sign-up:</strong> See class teachers for time slots</li>
+<li><strong>Location:</strong> Classroom and multipurpose room</li>
+</ul>
+<h3>School Assembly</h3>
+<ul>
+<li><strong>When:</strong> Monday, November 17 at 8:30 AM</li>
+<li><strong>Where:</strong> Gymnasium</li>
+<li><strong>Topic:</strong> Annual awards and recognition ceremony</li>
+</ul>
+<h3>Field Trip Permission Slips</h3>
+<ul>
+<li><strong>Deadline:</strong> November 19, 2025</li>
+<li><strong>Details:</strong> Check your child's backpack for forms</li>
+<li><strong>Questions:</strong> Contact the main office</li>
+</ul>
+<h3>Holiday Celebration Planning</h3>
+<ul>
+<li>School holiday party: December 19</li>
+<li>Student performances, games, and refreshments</li>
+<li>Family invitation event</li>
+</ul>
+<hr>
+<p><strong>Visibility:</strong> This article is visible to all parents and visitors.</p>`,
     author: 'Admin',
     article_order: 6,
     is_published: true,
@@ -301,26 +303,24 @@ This week in Grade 2B:
     week_number: '2025-W48',
     short_id: 'a00007',
     title: '週報開刊致詞 (Weekly Opening - Week 48)',
-    content: `# 歡迎閱讀第 48 週電子報
-
-Dear Parents and Students,
-
-Welcome to Week 48 of our newsletter. As we enter the final stretch before the holiday season, we want to share exciting updates from our school community.
-
-## Holiday Season Planning
-- Thanksgiving celebration week (Nov 24-28)
-- Holiday performances planning (upcoming)
-- Winter break schedule announcement
-
-## Academic Updates
-- End of quarter assessments
-- Progress reports distribution
-- Achievement recognitions
-
----
-
-**Published on:** 2025-11-24
-**Week:** 2025-W48`,
+    content: `<h1>歡迎閱讀第 48 週電子報</h1>
+<p>Dear Parents and Students,</p>
+<p>Welcome to Week 48 of our newsletter. As we enter the final stretch before the holiday season, we want to share exciting updates from our school community.</p>
+<h2>Holiday Season Planning</h2>
+<ul>
+<li>Thanksgiving celebration week (Nov 24-28)</li>
+<li>Holiday performances planning (upcoming)</li>
+<li>Winter break schedule announcement</li>
+</ul>
+<h2>Academic Updates</h2>
+<ul>
+<li>End of quarter assessments</li>
+<li>Progress reports distribution</li>
+<li>Achievement recognitions</li>
+</ul>
+<hr>
+<p><strong>Published on:</strong> 2025-11-24<br>
+<strong>Week:</strong> 2025-W48</p>`,
     author: 'Principal',
     article_order: 1,
     is_published: true,
@@ -331,30 +331,29 @@ Welcome to Week 48 of our newsletter. As we enter the final stretch before the h
     week_number: '2025-W48',
     short_id: 'a00008',
     title: 'Thanksgiving Activities & Gratitude (感恩節活動)',
-    content: `# 感恩節特別活動
-
-Dear Families,
-
-This week we celebrate gratitude and thankfulness with special activities across all grades.
-
-## Grade 1 Activities
-- Gratitude chain craft project
-- Thanksgiving story time
-- Food sharing day preparation
-
-## Grade 2 Activities
-- Community helpers appreciation event
-- Gratitude journal writing
-- Potluck celebration planning
-
-## Family Engagement
-- Share your gratitude: Send us your family's thankfulness message
-- Join us for the school-wide gratitude assembly on Friday at 10:00 AM
-- Bring dishes for the potluck: Sign-up sheet sent separately
-
----
-
-**Note:** All grades participating in special Thanksgiving programming.`,
+    content: `<h1>感恩節特別活動</h1>
+<p>Dear Families,</p>
+<p>This week we celebrate gratitude and thankfulness with special activities across all grades.</p>
+<h2>Grade 1 Activities</h2>
+<ul>
+<li>Gratitude chain craft project</li>
+<li>Thanksgiving story time</li>
+<li>Food sharing day preparation</li>
+</ul>
+<h2>Grade 2 Activities</h2>
+<ul>
+<li>Community helpers appreciation event</li>
+<li>Gratitude journal writing</li>
+<li>Potluck celebration planning</li>
+</ul>
+<h2>Family Engagement</h2>
+<ul>
+<li>Share your gratitude: Send us your family's thankfulness message</li>
+<li>Join us for the school-wide gratitude assembly on Friday at 10:00 AM</li>
+<li>Bring dishes for the potluck: Sign-up sheet sent separately</li>
+</ul>
+<hr>
+<p><strong>Note:</strong> All grades participating in special Thanksgiving programming.</p>`,
     author: 'Ms. Chen & Mr. Wang',
     article_order: 2,
     is_published: true,
@@ -365,33 +364,34 @@ This week we celebrate gratitude and thankfulness with special activities across
     week_number: '2025-W48',
     short_id: 'a00009',
     title: 'Winter Break Logistics & Holiday Closure',
-    content: `# 冬季假期說明與校園關閉
-
-Dear Parents,
-
-## Winter Break Schedule
-- **Last day of school:** December 19, 2025
-- **Winter break:** December 20, 2025 - January 4, 2026
-- **School resumes:** January 5, 2026 (Monday)
-
-## Campus Closure
-- Administrative offices closed Dec 20 - Jan 4
-- Emergency contact for urgent matters: (123) 456-7890
-- All facilities closed except for scheduled maintenance
-
-## Before Holiday Break
-- Return all borrowed books and materials
-- Clear out lockers and cubbies
-- Take home all seasonal decorations and projects
-
-## Winter Break Activities (Optional)
-- Reading challenge: Log 10 hours of reading
-- Math practice: Complete learning packets (available online)
-- Art project: Create holiday greeting card for classmates
-
----
-
-**Questions?** Contact the main office by December 12.`,
+    content: `<h1>冬季假期說明與校園關閉</h1>
+<p>Dear Parents,</p>
+<h2>Winter Break Schedule</h2>
+<ul>
+<li><strong>Last day of school:</strong> December 19, 2025</li>
+<li><strong>Winter break:</strong> December 20, 2025 - January 4, 2026</li>
+<li><strong>School resumes:</strong> January 5, 2026 (Monday)</li>
+</ul>
+<h2>Campus Closure</h2>
+<ul>
+<li>Administrative offices closed Dec 20 - Jan 4</li>
+<li>Emergency contact for urgent matters: (123) 456-7890</li>
+<li>All facilities closed except for scheduled maintenance</li>
+</ul>
+<h2>Before Holiday Break</h2>
+<ul>
+<li>Return all borrowed books and materials</li>
+<li>Clear out lockers and cubbies</li>
+<li>Take home all seasonal decorations and projects</li>
+</ul>
+<h2>Winter Break Activities (Optional)</h2>
+<ul>
+<li>Reading challenge: Log 10 hours of reading</li>
+<li>Math practice: Complete learning packets (available online)</li>
+<li>Art project: Create holiday greeting card for classmates</li>
+</ul>
+<hr>
+<p><strong>Questions?</strong> Contact the main office by December 12.</p>`,
     author: 'Admin',
     article_order: 3,
     is_published: true,

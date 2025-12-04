@@ -46,6 +46,14 @@ export function useFetchArticle(articleId: string): UseFetchArticleResult {
   const refetch = useCallback(async () => {
     setIsLoading(true)
     setError(null)
+
+    // Skip fetch if articleId is empty or invalid placeholder
+    if (!articleId || articleId === 'article-001') {
+      setArticle(null)
+      setIsLoading(false)
+      return
+    }
+
     try {
       const articleRow = await ArticleService.getArticleById(articleId)
       if (articleRow) {

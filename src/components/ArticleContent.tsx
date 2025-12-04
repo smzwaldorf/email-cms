@@ -8,10 +8,11 @@
  * - 優化文章切換性能，減少重新渲染時間
  */
 
-import { memo, useMemo } from 'react'
-import { useMarkdownConverter } from '@/hooks/useMarkdownConverter'
+import { memo, useMemo, useEffect, useRef } from 'react'
 import { useLoadingTimeout } from '@/components/LoadingTimeout'
 import { formatDate, formatViewCount } from '@/utils/formatters'
+import { SimpleEditor } from '@/components/tiptap-templates/simple/simple-editor'
+import './ArticleContent.css'
 
 interface ArticleContentProps {
   title: string
@@ -35,11 +36,75 @@ function ArticleContentComponent({
   viewCount,
   isLoading = false,
 }: ArticleContentProps) {
-  const { html, isConverting } = useMarkdownConverter(content)
-  const { isTimedOut } = useLoadingTimeout(isLoading || isConverting, 3000)
+  const { isTimedOut } = useLoadingTimeout(isLoading, 3000)
+  const contentRef = useRef<HTMLDivElement>(null)
 
-  // 使用 useMemo 優化 HTML 內容，避免在非內容相關 props 變化時重新計算
-  const memoizedHtml = useMemo(() => html, [html])
+
+
+  // Sanitize image URLs, disable checkboxes, and disable selection of media nodes
+  useEffect(() => {
+    if (!contentRef.current) return
+
+    // Wait for a brief moment for TipTap to render
+    const timer = setTimeout(() => {
+      if (!contentRef.current) return
+
+      // Sanitize images
+      const images = contentRef.current.querySelectorAll('img')
+      images.forEach((img) => {
+        if (img.dataset.sanitized === 'true') return
+
+        const sanitize = async () => {
+          const currentSrc = img.getAttribute('src')
+          // Only sanitize if it has query parameters (likely a signed URL) and isn't already a blob
+          if (!currentSrc || currentSrc.startsWith('blob:') || !currentSrc.includes('?')) return
+
+          try {
+            const response = await fetch(currentSrc)
+            const blob = await response.blob()
+            const objectUrl = URL.createObjectURL(blob)
+            img.src = objectUrl
+            img.dataset.sanitized = 'true'
+          } catch (error) {
+            console.error('Failed to sanitize image URL:', error)
+          }
+        }
+
+        if (img.complete) {
+          sanitize()
+        } else {
+          img.addEventListener('load', sanitize, { once: true })
+        }
+      })
+
+      // Disable all checkboxes in read-only mode
+      const checkboxes = contentRef.current.querySelectorAll('input[type="checkbox"]')
+      checkboxes.forEach((checkbox) => {
+        (checkbox as HTMLInputElement).disabled = true
+        ;(checkbox as HTMLInputElement).setAttribute('disabled', 'true') // Try attribute too
+      })
+
+      // Prevent click events and selection on image and audio node wrappers
+      const mediaClickHandler = (e: Event) => {
+        e.preventDefault()
+        e.stopPropagation()
+      }
+
+      const imageWrappers = contentRef.current.querySelectorAll('.secure-image-wrapper')
+      imageWrappers.forEach((wrapper) => {
+        ;(wrapper as HTMLElement).addEventListener('click', mediaClickHandler)
+        ;(wrapper as HTMLElement).addEventListener('mousedown', mediaClickHandler)
+      })
+
+      const audioWrappers = contentRef.current.querySelectorAll('[data-audio-node]')
+      audioWrappers.forEach((wrapper) => {
+        ;(wrapper as HTMLElement).addEventListener('click', mediaClickHandler)
+        ;(wrapper as HTMLElement).addEventListener('mousedown', mediaClickHandler)
+      })
+    }, 100) // Small delay to ensure DOM is ready
+
+    return () => clearTimeout(timer)
+  }, [content])
 
   // 使用 useMemo 優化文章中繼資料，避免重複建立相同的 UI 結構
   const metadataSection = useMemo(
@@ -55,7 +120,7 @@ function ArticleContentComponent({
     [author, createdAt, viewCount]
   )
 
-  if (isLoading || isConverting) {
+  if (isLoading) {
     // Show timeout warning if loading takes > 3 seconds
     if (isTimedOut) {
       return (
@@ -99,9 +164,15 @@ function ArticleContentComponent({
       {/* 文章內容 */}
       <div className="flex-1 overflow-y-auto px-6 py-4 bg-white">
         <div
-          className="prose prose-sm max-w-none text-waldorf-clay-700 leading-relaxed"
-          dangerouslySetInnerHTML={{ __html: memoizedHtml }}
-        />
+          ref={contentRef}
+          className="prose max-w-none text-waldorf-clay-700 leading-relaxed"
+        >
+          <SimpleEditor
+            content={content}
+            readOnly={true}
+            className="min-h-[200px]"
+          />
+        </div>
       </div>
     </article>
   )
