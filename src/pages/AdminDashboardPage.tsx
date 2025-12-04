@@ -101,35 +101,35 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserAdde
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-        <h2 className="text-2xl font-bold mb-4">Add New User</h2>
-        
+    <div className="fixed inset-0 bg-waldorf-clay-900/40 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
+      <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl shadow-waldorf-clay-200/50 border border-waldorf-cream-200 animate-scale-in">
+        <h2 className="font-display text-2xl font-semibold text-waldorf-clay-800 mb-6">Add New User</h2>
+
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+          <div className="bg-waldorf-rose-50 border border-waldorf-rose-200 text-waldorf-rose-700 px-4 py-3 rounded-xl mb-6">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+          <div className="mb-5">
+            <label className="block text-sm font-medium text-waldorf-clay-600 mb-2">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-waldorf-peach-500"
+              className="w-full px-4 py-3 border border-waldorf-cream-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-waldorf-peach-300 focus:border-waldorf-peach-400 transition-all duration-200 bg-waldorf-cream-50/50"
             />
-            <p className="text-xs text-gray-500 mt-1">User will receive a magic link to set up their account</p>
+            <p className="text-xs text-waldorf-clay-400 mt-2">User will receive a magic link to set up their account</p>
           </div>
 
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
+          <div className="mb-8">
+            <label className="block text-sm font-medium text-waldorf-clay-600 mb-2">Role</label>
             <select
               value={role}
               onChange={(e) => setRole(e.target.value as UserRole)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-waldorf-peach"
+              className="w-full px-4 py-3 border border-waldorf-cream-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-waldorf-peach-300 focus:border-waldorf-peach-400 transition-all duration-200 bg-waldorf-cream-50/50"
             >
               {Object.values(ROLES).map((r) => (
                 <option key={r} value={r}>{r}</option>
@@ -142,14 +142,14 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserAdde
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 disabled:opacity-50"
+              className="px-5 py-2.5 text-waldorf-clay-600 bg-waldorf-cream-100 rounded-xl hover:bg-waldorf-cream-200 disabled:opacity-50 transition-all duration-200 font-medium"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-4 py-2 text-white bg-waldorf-peach-500 rounded-md hover:bg-opacity-90 disabled:opacity-50"
+              className="px-5 py-2.5 text-white bg-gradient-to-r from-waldorf-peach-500 to-waldorf-peach-600 rounded-xl hover:from-waldorf-peach-600 hover:to-waldorf-peach-700 disabled:opacity-50 transition-all duration-200 font-medium shadow-lg shadow-waldorf-peach-200/50"
             >
               {isSubmitting ? 'Creating...' : 'Create User'}
             </button>
@@ -201,34 +201,34 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, userData
   if (!isOpen || !userData) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-        <h2 className="text-2xl font-bold mb-4">Edit User</h2>
-        
+    <div className="fixed inset-0 bg-waldorf-clay-900/40 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
+      <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl shadow-waldorf-clay-200/50 border border-waldorf-cream-200 animate-scale-in">
+        <h2 className="font-display text-2xl font-semibold text-waldorf-clay-800 mb-6">Edit User</h2>
+
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+          <div className="bg-waldorf-rose-50 border border-waldorf-rose-200 text-waldorf-rose-700 px-4 py-3 rounded-xl mb-6">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+          <div className="mb-5">
+            <label className="block text-sm font-medium text-waldorf-clay-600 mb-2">Email</label>
             <input
               type="email"
               value={userData.email}
               disabled
-              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
+              className="w-full px-4 py-3 border border-waldorf-cream-300 rounded-xl bg-waldorf-cream-100 cursor-not-allowed text-waldorf-clay-400"
             />
           </div>
 
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Display Name</label>
+          <div className="mb-8">
+            <label className="block text-sm font-medium text-waldorf-clay-600 mb-2">Display Name</label>
             <input
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-waldorf-peach"
+              className="w-full px-4 py-3 border border-waldorf-cream-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-waldorf-peach-300 focus:border-waldorf-peach-400 transition-all duration-200 bg-waldorf-cream-50/50"
             />
           </div>
 
@@ -237,14 +237,14 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, userData
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 disabled:opacity-50"
+              className="px-5 py-2.5 text-waldorf-clay-600 bg-waldorf-cream-100 rounded-xl hover:bg-waldorf-cream-200 disabled:opacity-50 transition-all duration-200 font-medium"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-4 py-2 text-white bg-waldorf-peach-500 rounded-md hover:bg-opacity-90 disabled:opacity-50"
+              className="px-5 py-2.5 text-white bg-gradient-to-r from-waldorf-peach-500 to-waldorf-peach-600 rounded-xl hover:from-waldorf-peach-600 hover:to-waldorf-peach-700 disabled:opacity-50 transition-all duration-200 font-medium shadow-lg shadow-waldorf-peach-200/50"
             >
               {isSubmitting ? 'Updating...' : 'Update'}
             </button>
@@ -255,6 +255,13 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, userData
   )
 }
 
+// Role badge colors using Waldorf palette
+const ROLE_COLORS: Record<string, string> = {
+  admin: 'bg-waldorf-lavender-100 text-waldorf-lavender-700 border-waldorf-lavender-200',
+  teacher: 'bg-waldorf-sage-100 text-waldorf-sage-700 border-waldorf-sage-200',
+  parent: 'bg-waldorf-peach-100 text-waldorf-peach-700 border-waldorf-peach-200',
+}
+
 /**
  * Admin Dashboard Page Component
  */
@@ -262,7 +269,7 @@ export function AdminDashboardPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { user } = useAuth()
-  
+
   // Tab state derived from URL
   const tabParam = searchParams.get('tab')
   const activeTab = (tabParam === 'users' || tabParam === 'audit') ? tabParam : 'newsletters'
@@ -271,7 +278,7 @@ export function AdminDashboardPage() {
   const [newsletters, setNewsletters] = useState<AdminNewsletter[]>([])
   const [isNewsletterLoading, setIsNewsletterLoading] = useState(true)
   const [newsletterError, setNewsletterError] = useState<string | null>(null)
-  
+
   // User state
   const [users, setUsers] = useState<UserData[]>([])
   const [isUserLoading, setIsUserLoading] = useState(false)
@@ -281,7 +288,7 @@ export function AdminDashboardPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<UserData | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  
+
   // Shared state
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [suspiciousUsers, setSuspiciousUsers] = useState<Array<{ userId: string; failureCount: number }>>([])
@@ -507,42 +514,60 @@ export function AdminDashboardPage() {
 
   return (
     <ErrorBoundary>
-      <AdminLayout 
+      <AdminLayout
         activeTab={activeTab}
         headerAction={
           activeTab === 'newsletters' ? (
             <button
               onClick={handleCreateNewsletter}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
+              className="group px-5 py-2.5 bg-gradient-to-r from-waldorf-peach-500 to-waldorf-peach-600 text-white rounded-xl hover:from-waldorf-peach-600 hover:to-waldorf-peach-700 transition-all duration-300 font-medium shadow-lg shadow-waldorf-peach-200/50 flex items-center space-x-2"
               data-testid="create-newsletter-btn"
             >
-              + Create Newsletter
+              <svg className="w-5 h-5 transform group-hover:rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span>Create Newsletter</span>
+            </button>
+          ) : activeTab === 'users' ? (
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="group px-5 py-2.5 bg-gradient-to-r from-waldorf-peach-500 to-waldorf-peach-600 text-white rounded-xl hover:from-waldorf-peach-600 hover:to-waldorf-peach-700 transition-all duration-300 font-medium shadow-lg shadow-waldorf-peach-200/50 flex items-center space-x-2"
+            >
+              <svg className="w-5 h-5 transform group-hover:rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span>Add User</span>
             </button>
           ) : null
         }
       >
 
-
-
           {/* Success Message */}
           {successMessage && (
-            <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-green-800 font-medium">{successMessage}</p>
+            <div className="mb-6 p-4 bg-waldorf-sage-50 border border-waldorf-sage-200 rounded-xl animate-fade-in-up">
+              <div className="flex items-center">
+                <svg className="w-5 h-5 text-waldorf-sage-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-waldorf-sage-700 font-medium">{successMessage}</p>
+              </div>
             </div>
           )}
 
           {/* Suspicious Activity Alert */}
           {suspiciousUsers.length > 0 && (
-            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="mb-6 p-4 bg-waldorf-rose-50 border border-waldorf-rose-200 rounded-xl animate-fade-in-up">
               <div className="flex">
                 <div className="flex-shrink-0">
-                  <span className="text-red-400">⚠️</span>
+                  <svg className="w-6 h-6 text-waldorf-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
                 </div>
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-red-800">
+                <div className="ml-4">
+                  <p className="text-sm font-semibold text-waldorf-rose-800">
                     Suspicious activity detected: {suspiciousUsers.length} user(s) with multiple failed login attempts
                   </p>
-                  <ul className="mt-2 list-disc list-inside text-sm text-red-700">
+                  <ul className="mt-2 list-disc list-inside text-sm text-waldorf-rose-700">
                     {suspiciousUsers.map((su) => (
                       <li key={su.userId}>
                         User {su.userId.substring(0, 8)}... has {su.failureCount} failed attempts
@@ -555,14 +580,14 @@ export function AdminDashboardPage() {
           )}
 
           {/* Content Area */}
-          <div>
+          <div className="animate-fade-in">
             {/* Newsletters Tab */}
             {activeTab === 'newsletters' && (
               <>
                 {newsletterError && (
-                  <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-red-800 font-medium">Error</p>
-                    <p className="text-red-600 text-sm">{newsletterError}</p>
+                  <div className="mb-6 p-4 bg-waldorf-rose-50 border border-waldorf-rose-200 rounded-xl">
+                    <p className="text-waldorf-rose-800 font-semibold">Error</p>
+                    <p className="text-waldorf-rose-600 text-sm mt-1">{newsletterError}</p>
                   </div>
                 )}
                 <NewsletterTable
@@ -581,90 +606,94 @@ export function AdminDashboardPage() {
             {/* Users Tab */}
             {activeTab === 'users' && (
               <>
-                <div className="flex justify-between items-center mb-6">
+                <div className="flex justify-between items-center mb-8">
                   <div>
-                    <h2 className="text-lg font-medium text-gray-900">User Management</h2>
-                    <p className="text-sm text-gray-500 mt-1">{users.length} users found</p>
+                    <h2 className="font-display text-2xl font-semibold text-waldorf-clay-800">User Management</h2>
+                    <p className="text-waldorf-clay-500 mt-1">{users.length} users found</p>
                   </div>
-                  <button
-                    onClick={() => setIsAddModalOpen(true)}
-                    className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
-                  >
-                    + Add User
-                  </button>
                 </div>
 
                 {userError && (
-                  <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-red-800 font-medium">Error</p>
-                    <p className="text-red-600 text-sm">{userError}</p>
+                  <div className="mb-6 p-4 bg-waldorf-rose-50 border border-waldorf-rose-200 rounded-xl">
+                    <p className="text-waldorf-rose-800 font-semibold">Error</p>
+                    <p className="text-waldorf-rose-600 text-sm mt-1">{userError}</p>
                   </div>
                 )}
 
                 {isUserLoading ? (
-                  <LoadingSpinner />
+                  <div className="flex items-center justify-center py-16">
+                    <LoadingSpinner />
+                  </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
+                  <div className="overflow-hidden rounded-xl border border-waldorf-cream-200 shadow-sm">
+                    <table className="min-w-full">
+                      <thead className="bg-gradient-to-r from-waldorf-cream-100 to-waldorf-cream-50">
                         <tr>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Change Role</th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                          <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">User</th>
+                          <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">Role</th>
+                          <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">Status</th>
+                          <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">Change Role</th>
+                          <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {users.map((userData) => (
-                          <tr key={userData.id}>
+                      <tbody className="bg-white divide-y divide-waldorf-cream-100">
+                        {users.map((userData, index) => (
+                          <tr
+                            key={userData.id}
+                            className="hover:bg-waldorf-cream-50/50 transition-colors duration-200"
+                            style={{ animationDelay: `${index * 50}ms` }}
+                          >
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="flex items-center">
-                                <div className="flex-shrink-0 h-10 w-10">
-                                  <div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">
+                                <div className="flex-shrink-0 h-11 w-11">
+                                  <div className="h-11 w-11 rounded-full bg-gradient-to-br from-waldorf-peach-400 to-waldorf-clay-400 flex items-center justify-center text-white font-semibold text-lg shadow-md">
                                     {userData.display_name?.[0] || userData.email?.[0]?.toUpperCase() || '?'}
                                   </div>
                                 </div>
                                 <div className="ml-4">
-                                  <div className="text-sm font-medium text-gray-900">{userData.display_name || 'No Name'}</div>
-                                  <div className="text-sm text-gray-500">{userData.email}</div>
+                                  <div className="text-sm font-semibold text-waldorf-clay-800">{userData.display_name || 'No Name'}</div>
+                                  <div className="text-sm text-waldorf-clay-400">{userData.email}</div>
                                 </div>
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                ${userData.role === 'admin' ? 'bg-purple-100 text-purple-800' : 
-                                  userData.role === 'teacher' ? 'bg-green-100 text-green-800' : 
-                                  userData.role === 'parent' ? 'bg-blue-100 text-blue-800' : 
-                                  'bg-gray-100 text-gray-800'}`}>
+                              <span className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full border ${
+                                ROLE_COLORS[userData.role] || 'bg-waldorf-cream-100 text-waldorf-clay-600 border-waldorf-cream-200'
+                              }`}>
                                 {userData.role}
                               </span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
                               {userData.id === user?.id ? (
-                                <span className="text-green-600 font-medium">Current User</span>
+                                <span className="flex items-center text-waldorf-sage-600 font-medium">
+                                  <span className="w-2 h-2 rounded-full bg-waldorf-sage-400 mr-2 animate-pulse" />
+                                  Current User
+                                </span>
                               ) : userData.hasActiveSessions ? (
-                                <span className="text-green-600 font-medium">Active Session</span>
+                                <span className="flex items-center text-waldorf-sage-600 font-medium">
+                                  <span className="w-2 h-2 rounded-full bg-waldorf-sage-400 mr-2 animate-pulse" />
+                                  Active Session
+                                </span>
                               ) : (
-                                <span className="text-gray-400">No Active Session</span>
+                                <span className="text-waldorf-clay-400">No Active Session</span>
                               )}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
                               <select
                                 value={userData.role}
                                 onChange={(e) => updateUserRole(userData.id, e.target.value as UserRole)}
                                 disabled={updatingId === userData.id || userData.id === user?.id}
-                                className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                                className="block w-full px-3 py-2 text-sm border border-waldorf-cream-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-waldorf-peach-300 focus:border-waldorf-peach-400 disabled:bg-waldorf-cream-100 disabled:cursor-not-allowed transition-all duration-200"
                               >
                                 {Object.values(ROLES).map((role) => (
                                   <option key={role} value={role}>{role}</option>
                                 ))}
                               </select>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
                               <button
                                 onClick={() => handleEditUser(userData)}
-                                className="text-blue-600 hover:text-blue-900"
+                                className="text-waldorf-clay-500 hover:text-waldorf-clay-700 transition-colors duration-200"
                               >
                                 Edit
                               </button>
@@ -674,7 +703,7 @@ export function AdminDashboardPage() {
                                     <button
                                       onClick={() => handleForceLogout(userData.id)}
                                       disabled={deletingId === userData.id}
-                                      className="text-orange-600 hover:text-orange-900 disabled:opacity-50"
+                                      className="text-waldorf-peach-600 hover:text-waldorf-peach-700 disabled:opacity-50 transition-colors duration-200"
                                     >
                                       {deletingId === userData.id ? 'Logging out...' : 'Force Logout'}
                                     </button>
@@ -682,7 +711,7 @@ export function AdminDashboardPage() {
                                   <button
                                     onClick={() => handleDeleteUser(userData.id)}
                                     disabled={deletingId === userData.id}
-                                    className="text-red-600 hover:text-red-900 disabled:opacity-50"
+                                    className="text-waldorf-rose-500 hover:text-waldorf-rose-700 disabled:opacity-50 transition-colors duration-200"
                                   >
                                     {deletingId === userData.id ? 'Deleting...' : 'Delete'}
                                   </button>

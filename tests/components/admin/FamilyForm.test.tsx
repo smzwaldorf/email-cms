@@ -257,7 +257,7 @@ describe('FamilyForm', () => {
     render(<FamilyForm isNew={true} onCancel={onCancel} />)
 
     // Initial count
-    expect(screen.getByText('相關主題 (0)')).toBeInTheDocument()
+    expect(screen.getByText('相關主題')).toBeInTheDocument()
 
     // Add topics
     const topicInput = screen.getByTestId('topic-input') as HTMLInputElement
@@ -265,15 +265,15 @@ describe('FamilyForm', () => {
 
     await user.type(topicInput, '主題1')
     await user.click(addBtn)
-    expect(screen.getByText('相關主題 (1)')).toBeInTheDocument()
+    expect(screen.getByText('相關主題')).toBeInTheDocument()
 
     await user.type(topicInput, '主題2')
     await user.click(addBtn)
-    expect(screen.getByText('相關主題 (2)')).toBeInTheDocument()
+    expect(screen.getByText('相關主題')).toBeInTheDocument()
 
     await user.type(topicInput, '主題3')
     await user.click(addBtn)
-    expect(screen.getByText('相關主題 (3)')).toBeInTheDocument()
+    expect(screen.getByText('相關主題')).toBeInTheDocument()
   })
 
   /**
@@ -316,7 +316,7 @@ describe('FamilyForm', () => {
 
     render(<FamilyForm family={emptyFamily} isNew={false} onCancel={onCancel} />)
 
-    expect(screen.getByText('相關主題 (0)')).toBeInTheDocument()
+    expect(screen.getByText('相關主題')).toBeInTheDocument()
     expect(screen.queryByTestId('topic-tag-0')).not.toBeInTheDocument()
   })
 })

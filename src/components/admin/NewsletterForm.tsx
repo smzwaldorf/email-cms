@@ -49,21 +49,27 @@ export function NewsletterForm() {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow p-6 max-w-2xl mx-auto">
-      <h2 className="text-2xl font-bold mb-6 text-gray-900">建立新電子報</h2>
+    <div className="bg-white/50 backdrop-blur-sm rounded-2xl shadow-xl shadow-waldorf-clay-200/20 p-8 border border-waldorf-cream-200/50 animate-fade-in-up">
+      <h2 className="text-3xl font-display font-bold mb-2 text-waldorf-clay-800 tracking-tight">建立新電子報</h2>
+      <p className="text-waldorf-clay-500 mb-8 font-medium">輸入週次和發布日期以建立新的電子報</p>
 
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-          {error}
+        <div className="mb-6 p-4 bg-waldorf-rose-50 border border-waldorf-rose-200 rounded-xl text-waldorf-rose-700 font-medium animate-fade-in">
+          <div className="flex items-start">
+            <svg className="w-5 h-5 mr-3 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {error}
+          </div>
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <label htmlFor="weekNumber" className="block text-sm font-medium text-gray-700 mb-1">
-            週次 (Week Number) <span className="text-red-500">*</span>
+        <div className="animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+          <label htmlFor="weekNumber" className="block text-sm font-semibold text-waldorf-clay-700 mb-2">
+            週次 (Week Number) <span className="text-waldorf-rose-500">*</span>
           </label>
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             <input
               type="text"
               id="weekNumber"
@@ -71,22 +77,22 @@ export function NewsletterForm() {
               onChange={(e) => setWeekNumber(e.target.value)}
               placeholder="2025-W48"
               required
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 px-4 py-3 border border-waldorf-cream-300 rounded-xl bg-waldorf-cream-50 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-300 focus:border-waldorf-sage-400 text-waldorf-clay-700 placeholder-waldorf-clay-400 transition-all duration-200"
             />
             <button
               type="button"
               onClick={handleSetNextWeek}
-              className="px-3 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm"
+              className="px-4 py-3 bg-waldorf-peach-100 text-waldorf-peach-700 rounded-xl hover:bg-waldorf-peach-200 text-sm font-medium transition-all duration-200 whitespace-nowrap"
             >
               自動填寫下週
             </button>
           </div>
-          <p className="mt-1 text-xs text-gray-500">格式: YYYY-Www</p>
+          <p className="mt-2 text-xs text-waldorf-clay-500 font-medium">格式: YYYY-Www (例如: 2025-W48)</p>
         </div>
 
-        <div>
-          <label htmlFor="releaseDate" className="block text-sm font-medium text-gray-700 mb-1">
-            預計發布日期 (Release Date) <span className="text-red-500">*</span>
+        <div className="animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+          <label htmlFor="releaseDate" className="block text-sm font-semibold text-waldorf-clay-700 mb-2">
+            預計發布日期 (Release Date) <span className="text-waldorf-rose-500">*</span>
           </label>
           <input
             type="date"
@@ -94,25 +100,28 @@ export function NewsletterForm() {
             value={releaseDate}
             onChange={(e) => setReleaseDate(e.target.value)}
             required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-3 border border-waldorf-cream-300 rounded-xl bg-waldorf-cream-50 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-300 focus:border-waldorf-sage-400 text-waldorf-clay-700 transition-all duration-200"
           />
         </div>
 
-
-
-        <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+        <div className="flex justify-end gap-3 pt-6 border-t border-waldorf-cream-200/50 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
           <button
             type="button"
             onClick={() => navigate('/admin')}
-            className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+            className="px-6 py-2.5 text-waldorf-clay-700 bg-waldorf-cream-100 border border-waldorf-cream-300 rounded-xl hover:bg-waldorf-cream-200 font-medium transition-all duration-200"
           >
             取消
           </button>
           <button
             type="submit"
             disabled={isSubmitting}
-            className="px-4 py-2 text-white bg-blue-500 rounded-md hover:bg-blue-600 disabled:opacity-50"
+            className="px-6 py-2.5 text-white bg-gradient-to-r from-waldorf-sage-500 to-waldorf-sage-600 hover:from-waldorf-sage-600 hover:to-waldorf-sage-700 rounded-xl font-medium transition-all duration-200 shadow-lg shadow-waldorf-sage-200/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
+            {isSubmitting && (
+              <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            )}
             {isSubmitting ? '建立中...' : '建立電子報'}
           </button>
         </div>

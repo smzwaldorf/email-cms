@@ -50,10 +50,10 @@ function StudentFilterDropdown({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-left hover:bg-gray-50 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+        className="w-full px-4 py-3 border border-waldorf-cream-300 rounded-xl bg-white text-left hover:bg-waldorf-cream-50 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-300 focus:border-waldorf-sage-400 transition-all duration-200"
         disabled={filteredStudents.length === 0}
       >
-        <span className="text-gray-700">
+        <span className="text-waldorf-clay-600">
           {filteredStudents.length > 0
             ? '+ 添加學生'
             : '所有學生已選擇'}
@@ -61,15 +61,15 @@ function StudentFilterDropdown({
       </button>
 
       {isOpen && filteredStudents.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-10">
+        <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-waldorf-cream-200 rounded-xl shadow-lg z-10 animate-scale-in">
           {/* Search Input */}
-          <div className="p-2 border-b border-gray-200">
+          <div className="p-3 border-b border-waldorf-cream-200">
             <input
               type="text"
               placeholder="搜尋學生名稱或電子郵件..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500"
+              className="w-full px-4 py-2 border border-waldorf-cream-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-waldorf-sage-300 focus:border-waldorf-sage-400 transition-all duration-200"
               autoFocus
             />
           </div>
@@ -82,14 +82,14 @@ function StudentFilterDropdown({
                   key={student.id}
                   type="button"
                   onClick={() => handleAddStudent(student.id)}
-                  className="w-full text-left px-3 py-2 hover:bg-blue-50 border-b border-gray-100 last:border-b-0"
+                  className="w-full text-left px-4 py-3 hover:bg-waldorf-sage-50 border-b border-waldorf-cream-100 last:border-b-0 transition-colors duration-200"
                 >
-                  <div className="text-sm font-medium text-gray-900">{student.name}</div>
-                  <div className="text-xs text-gray-500">{student.email}</div>
+                  <div className="text-sm font-medium text-waldorf-clay-800">{student.name}</div>
+                  <div className="text-xs text-waldorf-clay-400">{student.email}</div>
                 </button>
               ))
             ) : (
-              <div className="p-3 text-sm text-gray-500 text-center">
+              <div className="p-4 text-sm text-waldorf-clay-500 text-center">
                 沒有符合的學生
               </div>
             )}
@@ -137,10 +137,10 @@ function TeacherFilterDropdown({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-left hover:bg-gray-50 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+        className="w-full px-4 py-3 border border-waldorf-cream-300 rounded-xl bg-white text-left hover:bg-waldorf-cream-50 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-300 focus:border-waldorf-sage-400 transition-all duration-200"
         disabled={filteredTeachers.length === 0}
       >
-        <span className="text-gray-700">
+        <span className="text-waldorf-clay-600">
           {filteredTeachers.length > 0
             ? '+ 指定教師'
             : '所有教師已指定'}
@@ -148,15 +148,15 @@ function TeacherFilterDropdown({
       </button>
 
       {isOpen && filteredTeachers.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-10">
+        <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-waldorf-cream-200 rounded-xl shadow-lg z-10 animate-scale-in">
           {/* Search Input */}
-          <div className="p-2 border-b border-gray-200">
+          <div className="p-3 border-b border-waldorf-cream-200">
             <input
               type="text"
               placeholder="搜尋教師名稱或電子郵件..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500"
+              className="w-full px-4 py-2 border border-waldorf-cream-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-waldorf-sage-300 focus:border-waldorf-sage-400 transition-all duration-200"
               autoFocus
             />
           </div>
@@ -169,14 +169,14 @@ function TeacherFilterDropdown({
                   key={teacher.id}
                   type="button"
                   onClick={() => handleAddTeacher(teacher.id)}
-                  className="w-full text-left px-3 py-2 hover:bg-blue-50 border-b border-gray-100 last:border-b-0"
+                  className="w-full text-left px-4 py-3 hover:bg-waldorf-sage-50 border-b border-waldorf-cream-100 last:border-b-0 transition-colors duration-200"
                 >
-                  <div className="text-sm font-medium text-gray-900">{teacher.name}</div>
-                  <div className="text-xs text-gray-500">{teacher.email}</div>
+                  <div className="text-sm font-medium text-waldorf-clay-800">{teacher.name}</div>
+                  <div className="text-xs text-waldorf-clay-400">{teacher.email}</div>
                 </button>
               ))
             ) : (
-              <div className="p-3 text-sm text-gray-500 text-center">
+              <div className="p-4 text-sm text-waldorf-clay-500 text-center">
                 沒有符合的教師
               </div>
             )}
@@ -312,16 +312,16 @@ export function ClassForm({
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6">
-      <h2 className="text-2xl font-bold mb-4 text-gray-900">
+    <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg shadow-waldorf-clay-100/50 p-8 border border-waldorf-cream-200 animate-fade-in-up">
+      <h2 className="font-display text-2xl font-semibold text-waldorf-clay-800 mb-6">
         {isNew ? '新增班級' : '編輯班級'}
       </h2>
 
       {/* Error Message */}
       {saveError && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg" data-testid="save-error">
-          <p className="text-red-900 font-medium">錯誤</p>
-          <p className="text-red-700 text-sm">{saveError}</p>
+        <div className="mb-6 p-4 bg-waldorf-rose-50 border border-waldorf-rose-200 rounded-xl" data-testid="save-error">
+          <p className="text-waldorf-rose-800 font-semibold">錯誤</p>
+          <p className="text-waldorf-rose-600 text-sm mt-1">{saveError}</p>
         </div>
       )}
 
@@ -329,22 +329,24 @@ export function ClassForm({
       <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
         {/* Name */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            班級名稱 <span className="text-red-500">*</span>
+          <label className="block text-sm font-medium text-waldorf-clay-600 mb-2">
+            班級名稱 <span className="text-waldorf-rose-500">*</span>
           </label>
           <input
             type="text"
             value={formData.name || ''}
             onChange={handleNameChange}
             placeholder="例如：6年級A班、高二英文班"
-            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
-              validationErrors.name ? 'border-red-500' : 'border-gray-300'
+            className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all duration-200 bg-waldorf-cream-50/50 ${
+              validationErrors.name
+                ? 'border-waldorf-rose-400 focus:ring-waldorf-rose-300 focus:border-waldorf-rose-400'
+                : 'border-waldorf-cream-300 focus:ring-waldorf-sage-300 focus:border-waldorf-sage-400'
             }`}
             data-testid="name-input"
             required
           />
           {validationErrors.name && (
-            <p className="mt-2 text-sm text-red-600" data-testid="name-error">
+            <p className="mt-2 text-sm text-waldorf-rose-600" data-testid="name-error">
               {validationErrors.name}
             </p>
           )}
@@ -352,12 +354,12 @@ export function ClassForm({
 
         {/* Description */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">描述</label>
+          <label className="block text-sm font-medium text-waldorf-clay-600 mb-2">描述</label>
           <textarea
             value={formData.description || ''}
             onChange={handleDescriptionChange}
             placeholder="班級描述或特殊說明"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-4 py-3 border border-waldorf-cream-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-waldorf-sage-300 focus:border-waldorf-sage-400 transition-all duration-200 bg-waldorf-cream-50/50"
             rows={4}
             data-testid="description-input"
           />
@@ -365,12 +367,12 @@ export function ClassForm({
 
         {/* Teachers */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-3">
+          <label className="block text-sm font-medium text-waldorf-clay-600 mb-3">
             班級教師 ({(formData.teacherIds || []).length} / {availableTeachers.length})
           </label>
 
           {availableTeachers.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {/* Add Teacher Dropdown */}
               <TeacherFilterDropdown
                 availableTeachers={availableTeachers}
@@ -380,24 +382,24 @@ export function ClassForm({
 
               {/* Selected Teachers List */}
               {(formData.teacherIds || []).length > 0 && (
-                <div className="border border-gray-300 rounded-md p-3 bg-gray-50">
-                  <div className="text-sm font-medium text-gray-700 mb-2">已指定的教師</div>
+                <div className="border border-waldorf-cream-200 rounded-xl p-4 bg-waldorf-cream-50/50">
+                  <div className="text-sm font-medium text-waldorf-clay-600 mb-3">已指定的教師</div>
                   <div className="space-y-2">
                     {(formData.teacherIds || []).map((teacherId) => {
                       const teacher = availableTeachers.find((t) => t.id === teacherId)
                       return teacher ? (
                         <div
                           key={teacherId}
-                          className="flex items-center justify-between bg-white p-2 rounded border border-gray-200"
+                          className="flex items-center justify-between bg-white p-3 rounded-lg border border-waldorf-cream-200"
                         >
                           <div>
-                            <div className="text-sm font-medium text-gray-900">{teacher.name}</div>
-                            <div className="text-xs text-gray-500">{teacher.email}</div>
+                            <div className="text-sm font-medium text-waldorf-clay-800">{teacher.name}</div>
+                            <div className="text-xs text-waldorf-clay-400">{teacher.email}</div>
                           </div>
                           <button
                             type="button"
                             onClick={() => handleTeacherToggle(teacherId)}
-                            className="px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded"
+                            className="px-3 py-1.5 text-xs text-waldorf-rose-600 hover:bg-waldorf-rose-50 rounded-lg border border-waldorf-rose-200 transition-all duration-200"
                             data-testid={`remove-teacher-${teacherId}`}
                           >
                             移除
@@ -410,8 +412,8 @@ export function ClassForm({
               )}
             </div>
           ) : (
-            <div className="border border-gray-300 rounded-md p-4 bg-gray-50 text-center">
-              <p className="text-sm text-gray-600">
+            <div className="border border-waldorf-cream-200 rounded-xl p-6 bg-waldorf-cream-50/50 text-center">
+              <p className="text-sm text-waldorf-clay-500">
                 沒有可用的教師帳戶。請先在用戶管理中建立教師帳戶。
               </p>
             </div>
@@ -420,12 +422,12 @@ export function ClassForm({
 
         {/* Students */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-3">
+          <label className="block text-sm font-medium text-waldorf-clay-600 mb-3">
             班級學生 ({(formData.studentIds || []).length} / {availableStudents.length})
           </label>
 
           {availableStudents.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {/* Add Student Dropdown */}
               <StudentFilterDropdown
                 availableStudents={availableStudents}
@@ -435,24 +437,24 @@ export function ClassForm({
 
               {/* Selected Students List */}
               {(formData.studentIds || []).length > 0 && (
-                <div className="border border-gray-300 rounded-md p-3 bg-gray-50">
-                  <div className="text-sm font-medium text-gray-700 mb-2">已選擇的學生</div>
+                <div className="border border-waldorf-cream-200 rounded-xl p-4 bg-waldorf-cream-50/50">
+                  <div className="text-sm font-medium text-waldorf-clay-600 mb-3">已選擇的學生</div>
                   <div className="space-y-2">
                     {(formData.studentIds || []).map((studentId) => {
                       const student = availableStudents.find((s) => s.id === studentId)
                       return student ? (
                         <div
                           key={studentId}
-                          className="flex items-center justify-between bg-white p-2 rounded border border-gray-200"
+                          className="flex items-center justify-between bg-white p-3 rounded-lg border border-waldorf-cream-200"
                         >
                           <div>
-                            <div className="text-sm font-medium text-gray-900">{student.name}</div>
-                            <div className="text-xs text-gray-500">{student.email}</div>
+                            <div className="text-sm font-medium text-waldorf-clay-800">{student.name}</div>
+                            <div className="text-xs text-waldorf-clay-400">{student.email}</div>
                           </div>
                           <button
                             type="button"
                             onClick={() => handleStudentToggle(studentId)}
-                            className="px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded"
+                            className="px-3 py-1.5 text-xs text-waldorf-rose-600 hover:bg-waldorf-rose-50 rounded-lg border border-waldorf-rose-200 transition-all duration-200"
                             data-testid={`remove-student-${studentId}`}
                           >
                             移除
@@ -465,8 +467,8 @@ export function ClassForm({
               )}
             </div>
           ) : (
-            <div className="border border-gray-300 rounded-md p-4 bg-gray-50 text-center">
-              <p className="text-sm text-gray-600">
+            <div className="border border-waldorf-cream-200 rounded-xl p-6 bg-waldorf-cream-50/50 text-center">
+              <p className="text-sm text-waldorf-clay-500">
                 沒有可用的學生帳戶。請先在用戶管理中建立學生帳戶。
               </p>
             </div>
@@ -474,18 +476,18 @@ export function ClassForm({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-2 pt-6 border-t border-gray-200">
+        <div className="flex gap-3 pt-6 border-t border-waldorf-cream-200">
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-5 py-2.5 text-white bg-gradient-to-r from-waldorf-sage-500 to-waldorf-sage-600 rounded-xl hover:from-waldorf-sage-600 hover:to-waldorf-sage-700 transition-all duration-200 font-medium shadow-lg shadow-waldorf-sage-200/50 disabled:opacity-50 disabled:cursor-not-allowed"
             data-testid="save-btn"
           >
             {isSaving ? '保存中...' : '保存'}
           </button>
           <button
             onClick={onCancel}
-            className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors font-medium"
+            className="px-5 py-2.5 text-waldorf-clay-600 bg-waldorf-cream-100 rounded-xl hover:bg-waldorf-cream-200 transition-all duration-200 font-medium"
             data-testid="cancel-btn"
           >
             取消

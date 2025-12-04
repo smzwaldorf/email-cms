@@ -203,9 +203,11 @@ export function ClassManagementPage() {
   if (isLoading) {
     return (
       <AdminLayout activeTab="classes">
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-          <span className="ml-2 text-gray-600">載入班級中...</span>
+        <div className="flex flex-col items-center justify-center h-64">
+          <div className="relative">
+            <div className="w-12 h-12 rounded-full border-4 border-waldorf-cream-200 border-t-waldorf-sage-500 animate-spin"></div>
+          </div>
+          <span className="mt-4 text-waldorf-clay-500 font-medium">載入班級中...</span>
         </div>
       </AdminLayout>
     )
@@ -219,26 +221,34 @@ export function ClassManagementPage() {
         headerAction={
           <button
             onClick={() => setPageState('create')}
-            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors font-medium"
+            className="group px-5 py-2.5 bg-gradient-to-r from-waldorf-sage-500 to-waldorf-sage-600 text-white rounded-xl hover:from-waldorf-sage-600 hover:to-waldorf-sage-700 transition-all duration-300 font-medium shadow-lg shadow-waldorf-sage-200/50 flex items-center space-x-2"
             data-testid="create-btn"
           >
-            新增班級
+            <svg className="w-5 h-5 transform group-hover:rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            <span>新增班級</span>
           </button>
         }
       >
-        <div className="space-y-4">
+        <div className="space-y-6">
           {/* Info message */}
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-blue-900 text-sm">
-              班級: <strong>{classes.length}</strong> | 學生: <strong>{students.length}</strong>
-            </p>
+          <div className="p-4 bg-waldorf-sage-50 border border-waldorf-sage-200 rounded-xl animate-fade-in">
+            <div className="flex items-center">
+              <svg className="w-5 h-5 text-waldorf-sage-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-waldorf-sage-800">
+                班級: <strong className="font-semibold">{classes.length}</strong> | 學生: <strong className="font-semibold">{students.length}</strong>
+              </p>
+            </div>
           </div>
 
           {/* Error message */}
           {error && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-800 font-medium">錯誤</p>
-              <p className="text-red-600 text-sm">{error}</p>
+            <div className="p-4 bg-waldorf-rose-50 border border-waldorf-rose-200 rounded-xl animate-fade-in">
+              <p className="text-waldorf-rose-800 font-semibold">錯誤</p>
+              <p className="text-waldorf-rose-600 text-sm mt-1">{error}</p>
             </div>
           )}
 
@@ -285,13 +295,16 @@ export function ClassManagementPage() {
   if (pageState === 'create') {
     return (
       <AdminLayout activeTab="classes">
-        <div className="space-y-4">
+        <div className="space-y-6">
           <button
             onClick={() => setPageState('list')}
-            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+            className="group flex items-center text-waldorf-clay-500 hover:text-waldorf-peach-600 transition-all duration-300 font-medium"
             data-testid="back-btn"
           >
-            ← 返回
+            <svg className="w-5 h-5 mr-2 transform group-hover:-translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            返回
           </button>
           <ClassForm
             isNew={true}
@@ -316,13 +329,16 @@ export function ClassManagementPage() {
   if (pageState === 'edit' && selectedClass) {
     return (
       <AdminLayout activeTab="classes">
-        <div className="space-y-4">
+        <div className="space-y-6">
           <button
             onClick={() => setPageState('list')}
-            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+            className="group flex items-center text-waldorf-clay-500 hover:text-waldorf-peach-600 transition-all duration-300 font-medium"
             data-testid="back-btn"
           >
-            ← 返回
+            <svg className="w-5 h-5 mr-2 transform group-hover:-translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            返回
           </button>
           <ClassForm
             class={selectedClass}
