@@ -98,17 +98,17 @@
 
 ### 實施 - 用戶故事 3
 
-- [ ] T032 [P] [US3] 建立 src/components/admin/ClassList.tsx 分類列表元件
-- [ ] T033 [P] [US3] 建立 src/components/admin/ClassForm.tsx 分類編輯表單
-- [ ] T034 [P] [US3] 建立 src/components/admin/FamilyList.tsx 家族列表元件
-- [ ] T035 [P] [US3] 建立 src/components/admin/FamilyForm.tsx 家族編輯表單
-- [ ] T036 [P] [US3] 建立 src/pages/ClassManagementPage.tsx 和 FamilyManagementPage.tsx
-- [ ] T037 [US3] 實施 adminService.ts 中的 CRUD 方法（createClass、updateClass、deleteClass 等）
-- [ ] T038 [US3] 在刪除前新增確認對話框 src/components/admin/ConfirmDialog.tsx
-- [ ] T039 [US3] 新增成功/失敗訊息通知 src/components/admin/NotificationToast.tsx
-- [ ] T040 [US3] 為分類和家族管理建立 tests/components/admin/ClassForm.test.tsx、FamilyForm.test.tsx
+- [x] T032 [P] [US3] 建立 src/components/admin/ClassList.tsx 分類列表元件
+- [x] T033 [P] [US3] 建立 src/components/admin/ClassForm.tsx 分類編輯表單
+- [x] T034 [P] [US3] 建立 src/components/admin/FamilyList.tsx 家族列表元件
+- [x] T035 [P] [US3] 建立 src/components/admin/FamilyForm.tsx 家族編輯表單
+- [x] T036 [P] [US3] 建立 src/pages/ClassManagementPage.tsx 和 FamilyManagementPage.tsx
+- [x] T037 [US3] 實施 adminService.ts 中的 CRUD 方法（createClass、updateClass、deleteClass 等）
+- [x] T038 [US3] 在刪除前新增確認對話框 src/components/admin/ConfirmDialog.tsx
+- [x] T039 [US3] 新增成功/失敗訊息通知 src/components/admin/NotificationToast.tsx
+- [x] T040 [US3] 為分類和家族管理建立 tests/components/admin/ClassForm.test.tsx、FamilyForm.test.tsx
 
-**檢查點**: 用戶故事 3 **5% 完成** - 尚未開始實施
+**檢查點**: 用戶故事 3 已完成 ✅ **100% 完成** (9/9 tasks)
 
 ---
 
