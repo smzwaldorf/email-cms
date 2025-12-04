@@ -1235,7 +1235,7 @@ class AdminService {
   /**
    * Get family members (parents and students)
    */
-  async getFamilyMembers(familyId: string): Promise<Array<{ id: string; name: string; email: string; type: 'parent' | 'student'; relationship?: 'father' | 'mother' | 'guardian' }>> {
+  async getFamilyMembers(familyId: string): Promise<Array<{ id: string; name: string; email: string; type: 'parent' | 'student'; relationship?: 'father' | 'mother' | 'guardian'; classes?: Array<{ id: string; name: string }> }>> {
     try {
       const supabase = getSupabaseServiceClient()
 
@@ -1307,6 +1307,48 @@ class AdminService {
         }
       }
 
+      // Fetch student-class enrollments for all students in this family
+      const studentClassMap = new Map<string, Array<{ id: string; name: string }>>()
+      if (studentIds.length > 0) {
+        const { data: enrollmentData, error: classError } = await supabase
+          .from('student_class_enrollment')
+          .select('student_id, class_id')
+          .in('student_id', studentIds)
+
+        if (classError) {
+          console.error('Failed to fetch student-class enrollments:', classError)
+        }
+
+        if (enrollmentData && enrollmentData.length > 0) {
+          // Get unique class IDs
+          const classIds = [...new Set(enrollmentData.map((e: any) => e.class_id))]
+
+          // Fetch class data
+          const { data: classData, error: classFetchError } = await supabase
+            .from('classes')
+            .select('id, class_name')
+            .in('id', classIds)
+
+          if (classFetchError) {
+            console.error('Failed to fetch class data:', classFetchError)
+          } else if (classData) {
+            // Build map of student_id -> classes
+            enrollmentData.forEach((enrollment: any) => {
+              const classInfo = classData.find((c: any) => c.id === enrollment.class_id)
+              if (classInfo) {
+                if (!studentClassMap.has(enrollment.student_id)) {
+                  studentClassMap.set(enrollment.student_id, [])
+                }
+                studentClassMap.get(enrollment.student_id)!.push({
+                  id: classInfo.id,
+                  name: classInfo.class_name,
+                })
+              }
+            })
+          }
+        }
+      }
+
       // Map enrollment records to family members
       const members = enrollments.map((enrollment: any) => {
         if (enrollment.parent_id) {
@@ -1325,6 +1367,7 @@ class AdminService {
             name: student?.name || 'Unknown',
             email: student?.email || 'Unknown',
             type: 'student' as const,
+            classes: studentClassMap.get(enrollment.student_id) || [],
           }
         }
       })

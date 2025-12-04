@@ -20,6 +20,7 @@ export interface FamilyMember {
   email: string
   type: 'parent' | 'student' // Type of family member
   relationship?: 'father' | 'mother' | 'guardian' // Only for parents
+  classes?: Array<{ id: string; name: string }> // Classes student belongs to
 }
 
 export interface FamilyRelationshipEditorProps {
@@ -442,6 +443,18 @@ export function FamilyRelationshipEditor({
                 <div className="flex-1">
                   <div className="text-sm font-medium text-gray-900">{student.name}</div>
                   <div className="text-xs text-gray-500">{student.email}</div>
+                  {student.classes && student.classes.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {student.classes.map((classItem) => (
+                        <span
+                          key={classItem.id}
+                          className="inline-block px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full"
+                        >
+                          {classItem.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <button
