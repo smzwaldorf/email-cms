@@ -54,8 +54,8 @@ class AdminService {
       const supabase = getSupabaseServiceClient()
 
       let query = supabase
-        .from('newsletters')
-        .select('*')
+        .from('newsletter_weeks')
+        .select('*, articles(count)')
         .order('week_number', { ascending: false })
 
       // Apply status filter
@@ -74,7 +74,7 @@ class AdminService {
       // Apply search filter
       if (filters?.searchTerm) {
         query = query.or(
-          `week_number.ilike.%${filters.searchTerm}%,title.ilike.%${filters.searchTerm}%`
+          `week_number.ilike.%${filters.searchTerm}%`
         )
       }
 
@@ -101,14 +101,15 @@ class AdminService {
       }
 
       return (data || []).map((row: any) => ({
-        id: row.id,
+        id: row.week_number,
         weekNumber: row.week_number,
         releaseDate: row.release_date,
-        status: row.status,
-        articleCount: row.article_count || 0,
+        status: row.is_published ? 'published' : 'draft',
+        articleCount: row.articles?.[0]?.count || 0,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
         publishedAt: row.published_at,
+        isPublished: row.is_published,
       }))
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
@@ -128,7 +129,7 @@ class AdminService {
       const supabase = getSupabaseServiceClient()
 
       const { data, error } = await supabase
-        .from('newsletters')
+        .from('newsletter_weeks')
         .select('*')
         .eq('id', id)
         .single()
@@ -142,14 +143,57 @@ class AdminService {
       }
 
       return {
-        id: data.id,
+        id: data.week_number,
         weekNumber: data.week_number,
         releaseDate: data.release_date,
-        status: data.status,
+        status: data.is_published ? 'published' : 'draft',
         articleCount: data.article_count || 0,
         createdAt: data.created_at,
         updatedAt: data.updated_at,
         publishedAt: data.published_at,
+        isPublished: data.is_published,
+      }
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error fetching newsletter: ${err instanceof Error ? err.message : String(err)}`,
+        'FETCH_NEWSLETTER_ERROR',
+        err as any
+      )
+    }
+  }
+
+  /**
+   * Fetch single newsletter by Week Number
+   */
+  async fetchNewsletterByWeek(weekNumber: string): Promise<AdminNewsletter> {
+    try {
+      const supabase = getSupabaseServiceClient()
+
+      const { data, error } = await supabase
+        .from('newsletter_weeks')
+        .select('*, articles(count)')
+        .eq('week_number', weekNumber)
+        .single()
+
+      if (error) {
+        throw new AdminServiceError(
+          `Newsletter not found for week: ${weekNumber}`,
+          'NEWSLETTER_NOT_FOUND',
+          error as any
+        )
+      }
+
+      return {
+        id: data.week_number,
+        weekNumber: data.week_number,
+        releaseDate: data.release_date,
+        status: data.is_published ? 'published' : 'draft',
+        articleCount: data.articles?.[0]?.count || 0,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+        publishedAt: data.published_at,
+        isPublished: data.is_published,
       }
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
@@ -166,20 +210,17 @@ class AdminService {
    */
   async createNewsletter(
     weekNumber: string,
-    releaseDate: string,
-    title?: string
+    releaseDate: string
   ): Promise<AdminNewsletter> {
     try {
       const supabase = getSupabaseServiceClient()
 
       const { data, error } = await supabase
-        .from('newsletters')
+        .from('newsletter_weeks')
         .insert({
           week_number: weekNumber,
           release_date: releaseDate,
-          title: title || null,
-          status: 'draft',
-          article_count: 0,
+          is_published: false,
         })
         .select()
         .single()
@@ -193,17 +234,28 @@ class AdminService {
       }
 
       return {
-        id: data.id,
+        id: data.week_number, // Use week_number as ID since it's the primary key
         weekNumber: data.week_number,
         releaseDate: data.release_date,
-        status: data.status,
+        status: data.is_published ? 'published' : 'draft',
         articleCount: data.article_count || 0,
         createdAt: data.created_at,
         updatedAt: data.updated_at,
         publishedAt: data.published_at,
+        isPublished: data.is_published,
       }
-    } catch (err) {
+    } catch (err: any) {
       if (err instanceof AdminServiceError) throw err
+      
+      // Handle duplicate key error (Postgres code 23505)
+      if (err?.code === '23505') {
+        throw new AdminServiceError(
+          `Newsletter for week ${weekNumber} already exists`,
+          'DUPLICATE_NEWSLETTER_ERROR',
+          err
+        )
+      }
+
       throw new AdminServiceError(
         `Error creating newsletter: ${err instanceof Error ? err.message : String(err)}`,
         'CREATE_NEWSLETTER_ERROR',
@@ -243,9 +295,9 @@ class AdminService {
 
       // Update status to published
       const { data, error } = await supabase
-        .from('newsletters')
+        .from('newsletter_weeks')
         .update({
-          status: 'published',
+          is_published: true,
           published_at: new Date().toISOString(),
         })
         .eq('id', id)
@@ -261,14 +313,15 @@ class AdminService {
       }
 
       return {
-        id: data.id,
+        id: data.week_number,
         weekNumber: data.week_number,
         releaseDate: data.release_date,
-        status: data.status,
+        status: data.is_published ? 'published' : 'draft',
         articleCount: data.article_count || 0,
         createdAt: data.created_at,
         updatedAt: data.updated_at,
         publishedAt: data.published_at,
+        isPublished: data.is_published,
       }
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
@@ -288,8 +341,8 @@ class AdminService {
       const supabase = getSupabaseServiceClient()
 
       const { data, error } = await supabase
-        .from('newsletters')
-        .update({ status: 'archived' })
+        .from('newsletter_weeks')
+        .update({ is_published: false })
         .eq('id', id)
         .select()
         .single()
@@ -303,14 +356,15 @@ class AdminService {
       }
 
       return {
-        id: data.id,
+        id: data.week_number,
         weekNumber: data.week_number,
         releaseDate: data.release_date,
-        status: data.status,
+        status: data.is_published ? 'published' : 'draft',
         articleCount: data.article_count || 0,
         createdAt: data.created_at,
         updatedAt: data.updated_at,
         publishedAt: data.published_at,
+        isPublished: data.is_published,
       }
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
@@ -330,7 +384,7 @@ class AdminService {
       const supabase = getSupabaseServiceClient()
 
       const { error } = await supabase
-        .from('newsletters')
+        .from('newsletter_weeks')
         .delete()
         .eq('id', id)
 
@@ -359,7 +413,7 @@ class AdminService {
    * Fetch articles by newsletter
    */
   async fetchArticlesByNewsletter(
-    newsletterId: string
+    weekNumber: string
   ): Promise<AdminArticle[]> {
     try {
       const supabase = getSupabaseServiceClient()
@@ -367,7 +421,7 @@ class AdminService {
       const { data, error } = await supabase
         .from('articles')
         .select('*')
-        .eq('newsletter_id', newsletterId)
+        .eq('week_number', weekNumber)
         .order('article_order', { ascending: true })
 
       if (error) {

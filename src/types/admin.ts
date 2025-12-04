@@ -105,6 +105,7 @@ export interface AdminNewsletter {
   createdAt: string
   updatedAt: string
   publishedAt?: string | null
+  isPublished: boolean
 }
 
 /**

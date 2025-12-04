@@ -12,6 +12,7 @@
  */
 
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import type { AdminNewsletter, NewsletterFilterOptions } from '@/types/admin'
 
 export interface NewsletterTableProps {
@@ -176,53 +177,18 @@ export function NewsletterTable({
     <div className="space-y-4">
       {/* Filters */}
       <div className="bg-white p-4 rounded-lg shadow flex items-center gap-4">
-        <label className="text-sm font-medium text-gray-700">按狀態篩選:</label>
-        <div className="flex gap-2">
-          <button
-            onClick={() => handleStatusFilterChange(null)}
-            className={`px-3 py-1 rounded text-sm font-medium ${
-              statusFilter === null
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-            data-testid="filter-all"
-          >
-            全部
-          </button>
-          <button
-            onClick={() => handleStatusFilterChange('draft')}
-            className={`px-3 py-1 rounded text-sm font-medium ${
-              statusFilter === 'draft'
-                ? 'bg-yellow-500 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-            data-testid="filter-draft"
-          >
-            草稿
-          </button>
-          <button
-            onClick={() => handleStatusFilterChange('published')}
-            className={`px-3 py-1 rounded text-sm font-medium ${
-              statusFilter === 'published'
-                ? 'bg-green-500 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-            data-testid="filter-published"
-          >
-            已發布
-          </button>
-          <button
-            onClick={() => handleStatusFilterChange('archived')}
-            className={`px-3 py-1 rounded text-sm font-medium ${
-              statusFilter === 'archived'
-                ? 'bg-gray-500 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-            data-testid="filter-archived"
-          >
-            已封存
-          </button>
-        </div>
+        <label htmlFor="status-filter" className="text-sm font-medium text-gray-700">按狀態篩選:</label>
+        <select
+          id="status-filter"
+          value={statusFilter || 'all'}
+          onChange={(e) => handleStatusFilterChange(e.target.value === 'all' ? null : e.target.value)}
+          className="block w-40 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+        >
+          <option value="all">全部</option>
+          <option value="draft">草稿</option>
+          <option value="published">已發布</option>
+          <option value="archived">已封存</option>
+        </select>
         <div className="ml-auto text-sm text-gray-600">
           顯示 {sortedAndFiltered.length} / {newsletters.length} 個電子報
         </div>
@@ -254,6 +220,9 @@ export function NewsletterTable({
               >
                 文章數{renderSortIndicator('articleCount')}
               </th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
+                Is Published
+              </th>
               <th
                 className="px-6 py-3 text-left text-sm font-semibold text-gray-900 cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort('status')}
@@ -265,9 +234,9 @@ export function NewsletterTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {sortedAndFiltered.map((newsletter) => (
+            {sortedAndFiltered.map((newsletter, index) => (
               <tr
-                key={newsletter.id}
+                key={`${newsletter.id}-${index}`}
                 className="hover:bg-gray-50 transition-colors"
                 data-testid={`newsletter-row-${newsletter.id}`}
               >
@@ -281,8 +250,27 @@ export function NewsletterTable({
                     day: '2-digit',
                   })}
                 </td>
-                <td className="px-6 py-4 text-sm text-gray-600">{newsletter.articleCount}</td>
-                <td className="px-6 py-4 text-sm">
+                <td className="px-6 py-4 text-sm text-gray-600">
+                  <Link
+                    to={`/admin/articles/${newsletter.weekNumber}`}
+                    className="text-blue-600 hover:text-blue-800 hover:underline focus:outline-none"
+                    title="View Articles"
+                  >
+                    {newsletter.articleCount}
+                  </Link>
+                </td>
+                <td className="px-6 py-4 text-sm text-center">
+                  {newsletter.isPublished ? (
+                    <span className="text-green-500" title="Published">
+                      ✓
+                    </span>
+                  ) : (
+                    <span className="text-gray-300" title="Not Published">
+                      -
+                    </span>
+                  )}
+                </td>
+                <td className="px-6 py-4 text-sm flex items-center gap-2">
                   <span
                     className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${
                       STATUS_COLORS[newsletter.status] || 'bg-gray-100 text-gray-800'
@@ -291,6 +279,19 @@ export function NewsletterTable({
                   >
                     {STATUS_LABELS[newsletter.status] || newsletter.status}
                   </span>
+                  {newsletter.status === 'published' && (
+                    <a
+                      href={`/week/${newsletter.weekNumber}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-gray-400 hover:text-blue-500 transition-colors"
+                      title="View Public Newsletter"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+                  )}
                 </td>
                 <td className="px-6 py-4 text-sm space-x-2">
                   {newsletter.status === 'draft' && (

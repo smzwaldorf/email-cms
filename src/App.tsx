@@ -14,7 +14,9 @@ import '@/styles/globals.css'
 // Reduces initial bundle size and improves Time to Interactive (TTI)
 const LazyEditorPage = lazy(() => import('@/pages/EditorPage').then(m => ({ default: m.EditorPage })))
 const LazyAdminDashboard = lazy(() => import('@/pages/AdminDashboardPage').then(m => ({ default: m.AdminDashboardPage })))
+const LazyAdminArticleList = lazy(() => import('@/pages/AdminArticleListPage').then(m => ({ default: m.AdminArticleListPage })))
 const LazyArticleEditorPage = lazy(() => import('@/pages/ArticleEditorPage').then(m => ({ default: m.ArticleEditorPage })))
+const LazyNewsletterCreatePage = lazy(() => import('@/pages/NewsletterCreatePage').then(m => ({ default: m.NewsletterCreatePage })))
 
 // Loading component shown while lazy route is loading
 const RouteLoader = () => (
@@ -100,6 +102,26 @@ export default function App() {
                   <ProtectedRoute requiredRole="admin">
                     <Suspense fallback={<RouteLoader />}>
                       <LazyAdminDashboard />
+                    </Suspense>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/newsletter/create"
+                element={
+                  <ProtectedRoute requiredRole="admin">
+                    <Suspense fallback={<RouteLoader />}>
+                      <LazyNewsletterCreatePage />
+                    </Suspense>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/articles/:weekNumber"
+                element={
+                  <ProtectedRoute requiredRole="admin">
+                    <Suspense fallback={<RouteLoader />}>
+                      <LazyAdminArticleList />
                     </Suspense>
                   </ProtectedRoute>
                 }
