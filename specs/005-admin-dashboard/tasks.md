@@ -41,7 +41,7 @@
 - [x] T011 實施 useAdminAuth.ts 鉤子，檢查 RLS 角色並重新導向非管理員使用者
 - [x] T012 [P] 實施 adminService.ts 基本 CRUD 方法（create、read、update、delete）
 - [x] T013 [P] 實施 auditService.ts 記錄和清除操作（1 個月保留）
-- [ ] T014 [P] 實施 batchImportService.ts CSV 驗證（全部或無策略）
+- [x] T014 [P] 實施 batchImportService.ts CSV 驗證（全部或無策略）
 - [x] T015 設定錯誤邊界元件 src/components/admin/ErrorBoundary.tsx 用於錯誤處理
 - [x] T016 設定載入狀態元件 src/components/admin/LoadingSpinner.tsx
 
@@ -354,7 +354,7 @@ Phase 11: Polish (所有故事後完成)
 | Phase | 故事 | 進度 | 說明 |
 |-------|------|------|------|
 | Phase 1 | Setup | ✅ **100%** | 所有基礎設施完成 |
-| Phase 2 | Foundation | ⚠️ **90%** | 9 個任務中 8 個完成 (T014 CSV 驗證待完成) |
+| Phase 2 | Foundation | ✅ **100%** | 所有基礎設施完成 |
 | Phase 3 | US1 | ⚠️ **40%** | 基本結構就位，完整 CRUD 與測試待完成 |
 | Phase 4 | US2 | ⚠️ **30%** | 編輯頁面存在，LWW 衝突解決待完成 |
 | Phase 5 | US3 | ❌ **5%** | 尚未開始 |
