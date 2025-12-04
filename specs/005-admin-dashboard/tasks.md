@@ -78,7 +78,7 @@
 ### 實施 - 用戶故事 2
 
 - [x] T024 [P] [US2] 建立 src/components/admin/ArticleForm.tsx 編輯表單元件
-- [ ] T025 [P] [US2] 建立 src/pages/ArticleEditorPage.tsx 文章編輯頁面
+- [x] T025 [P] [US2] 建立 src/pages/ArticleEditorPage.tsx 文章編輯頁面
 - [x] T026 [US2] 實施 adminService.ts 中的 updateArticle(id, data) 方法
 - [x] T027 [US2] 在 ArticleForm.tsx 中新增分類選擇器（可從可用分類中選擇）
 - [x] T028 [US2] 在 ArticleForm.tsx 中新增家族附件多選
@@ -86,7 +86,7 @@
 - [x] T030 [US2] 在表單提交時新增 Last-Write-Wins 時間戳記檢查
 - [x] T031 [US2] 為 ArticleForm 元件建立 tests/components/admin/ArticleForm.test.tsx 單元測試
 
-**檢查點**: 用戶故事 2 已完成 ✅ **87% 完成** (8/9 tasks, T025 待完成)
+**檢查點**: 用戶故事 2 已完成 ✅ **100% 完成** (9/9 tasks)
 
 ---
 
@@ -356,7 +356,7 @@ Phase 11: Polish (所有故事後完成)
 | Phase 1 | Setup | ✅ **100%** | 所有基礎設施完成 (7/7 tasks) |
 | Phase 2 | Foundation | ✅ **100%** | 所有基礎設施完成 (9/9 tasks) |
 | Phase 3 | US1 | ✅ **100%** | **新增** NewsletterTable、AdminDashboardPage (7/7 tasks) |
-| Phase 4 | US2 | ✅ **87%** | **新增** ArticleForm with LWW (8/9 tasks, T025 待完成) |
+| Phase 4 | US2 | ✅ **100%** | **新增** ArticleForm with LWW, ArticleEditorPage (9/9 tasks) |
 | Phase 5 | US3 | ❌ **5%** | 尚未開始 |
 | Phase 6 | US4 | ❌ **5%** | 尚未開始 |
 | Phase 7 | US5 | ❌ **0%** | 尚未開始 |
@@ -364,7 +364,7 @@ Phase 11: Polish (所有故事後完成)
 | Phase 9 | US7 | ❌ **0%** | 尚未開始 |
 | Phase 10 | US8 | ❌ **0%** | 尚未開始 |
 | Phase 11 | Polish | ⚠️ **20%** | 基本測試存在，性能與安全審查待完成 |
-| | **總體進度** | **⚠️ ~42%** | **40-44/97 個任務已完成** |
+| | **總體進度** | **⚠️ ~44%** | **43-47/97 個任務已完成** |
 
 ### 已完成的檔案與功能
 
@@ -382,6 +382,7 @@ Phase 11: Polish (所有故事後完成)
 - ✅ **NewsletterTable.tsx** (576 行) - **新增** 電子報列表、排序、篩選、狀態徽章
 - ✅ **AdminDashboardPage.tsx** (210 行) - **新增** 儀表板頁面、整合 NewsletterTable、CRUD 操作
 - ✅ **ArticleForm.tsx** (332 行) - **新增** 文章編輯表單、LWW 衝突偵測、分類/家族選擇
+- ✅ **ArticleEditorPage.tsx** (165 行) - **新增** 文章編輯頁面、整合 ArticleForm、載入相關資料
 
 **測試覆蓋** (516 行測試):
 - ✅ admin-session-management.test.ts (322 行) - 6 個 E2E 測試
