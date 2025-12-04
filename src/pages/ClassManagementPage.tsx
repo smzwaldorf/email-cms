@@ -15,6 +15,7 @@
 import { useEffect, useState } from 'react'
 import type { Class, AdminUser } from '@/types/admin'
 import { adminService, AdminServiceError } from '@/services/adminService'
+import { getSupabaseServiceClient } from '@/lib/supabase'
 import ClassList from '@/components/admin/ClassList'
 import ClassForm from '@/components/admin/ClassForm'
 import ConfirmDialog from '@/components/admin/ConfirmDialog'
@@ -73,12 +74,32 @@ export function ClassManagementPage() {
    */
   const loadStudents = async () => {
     try {
-      const allUsers = await adminService.fetchUsers()
-      // Filter for students only
-      const studentList = allUsers.filter((user) => user.role === 'student')
+      const supabase = getSupabaseServiceClient()
+      const { data, error } = await supabase
+        .from('students')
+        .select('id, name')
+        .order('name', { ascending: true })
+
+      if (error) {
+        throw new Error(`Failed to fetch students: ${error.message}`)
+      }
+
+      // Convert students table format to AdminUser format
+      const studentList: AdminUser[] = (data || []).map((student: any) => ({
+        id: student.id,
+        name: student.name,
+        email: '',
+        role: 'student' as const,
+        status: 'active' as const,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }))
+
       setStudents(studentList)
+      console.log(`Loaded ${studentList.length} students:`, studentList)
     } catch (err) {
       console.error('Failed to load students:', err)
+      setError(`無法加載學生列表: ${err instanceof Error ? err.message : String(err)}`)
     }
   }
 
@@ -187,6 +208,13 @@ export function ClassManagementPage() {
         }
       >
         <div className="space-y-4">
+          {/* Info message */}
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-blue-900 text-sm">
+              班級: <strong>{classes.length}</strong> | 學生: <strong>{students.length}</strong>
+            </p>
+          </div>
+
           {/* Error message */}
           {error && (
             <div className="p-4 bg-red-50 border border-red-200 rounded-lg">

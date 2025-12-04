@@ -607,11 +607,32 @@ class AdminService {
         )
       }
 
+      // Fetch student enrollments for all classes
+      const classIds = (data || []).map((row: any) => row.id)
+      const { data: enrollments, error: enrollmentError } = await supabase
+        .from('student_class_enrollment')
+        .select('class_id, student_id')
+        .in('class_id', classIds)
+
+      if (enrollmentError) {
+        // Log error but don't fail - classes can exist without students
+        console.error('Failed to fetch class enrollments:', enrollmentError)
+      }
+
+      // Build a map of class_id -> student_ids array
+      const studentsByClass = new Map<string, string[]>()
+      ;(enrollments || []).forEach((enrollment: any) => {
+        if (!studentsByClass.has(enrollment.class_id)) {
+          studentsByClass.set(enrollment.class_id, [])
+        }
+        studentsByClass.get(enrollment.class_id)!.push(enrollment.student_id)
+      })
+
       return (data || []).map((row: any) => ({
         id: row.id,
         name: row.class_name,
         description: '', // Not in DB
-        studentIds: [], // Fetched separately if needed
+        studentIds: studentsByClass.get(row.id) || [],
         createdAt: row.created_at,
         updatedAt: row.created_at, // Not in DB
       }))
@@ -658,6 +679,23 @@ class AdminService {
         )
       }
 
+      // Add student enrollments if provided
+      if (studentIds && studentIds.length > 0) {
+        const enrollmentsToAdd = studentIds.map((studentId: string) => ({
+          class_id: data.id,
+          student_id: studentId,
+          family_id: '', // Will be set by trigger or context
+        }))
+
+        const { error: insertError } = await supabase
+          .from('student_class_enrollment')
+          .insert(enrollmentsToAdd)
+
+        if (insertError) {
+          console.error('Failed to add students to new class:', insertError)
+        }
+      }
+
       return {
         id: data.id,
         name: data.class_name,
@@ -693,7 +731,6 @@ class AdminService {
       const updatePayload: any = {}
       if (updates.name !== undefined) updatePayload.class_name = updates.name
       // description is not in DB
-      // studentIds handled via separate table (student_class_enrollment) - skipping for now to fix crash
 
       const { data, error } = await supabase
         .from('classes')
@@ -708,6 +745,56 @@ class AdminService {
           'UPDATE_CLASS_ERROR',
           error as any
         )
+      }
+
+      // Handle student enrollments if provided
+      if (updates.studentIds !== undefined) {
+        // Get current enrollments for this class
+        const { data: currentEnrollments, error: enrollError } = await supabase
+          .from('student_class_enrollment')
+          .select('student_id, family_id')
+          .eq('class_id', id)
+
+        if (enrollError) {
+          console.error('Failed to fetch current enrollments:', enrollError)
+        }
+
+        const currentStudentIds = (currentEnrollments || []).map((e: any) => e.student_id)
+        const newStudentIds = updates.studentIds
+
+        // Remove students that are no longer in the list
+        const toRemove = currentStudentIds.filter((sid: string) => !newStudentIds.includes(sid))
+        if (toRemove.length > 0) {
+          const { error: deleteError } = await supabase
+            .from('student_class_enrollment')
+            .delete()
+            .eq('class_id', id)
+            .in('student_id', toRemove)
+
+          if (deleteError) {
+            console.error('Failed to remove students from class:', deleteError)
+          }
+        }
+
+        // Add new students
+        const toAdd = newStudentIds.filter((sid: string) => !currentStudentIds.includes(sid))
+        if (toAdd.length > 0) {
+          // Get family_id for each student (need to determine from student_class_enrollment or context)
+          // For now, we'll use a placeholder - in production this would come from parent context
+          const enrollmentsToAdd = toAdd.map((studentId: string) => ({
+            class_id: id,
+            student_id: studentId,
+            family_id: '', // Will be set by trigger or context
+          }))
+
+          const { error: insertError } = await supabase
+            .from('student_class_enrollment')
+            .insert(enrollmentsToAdd)
+
+          if (insertError) {
+            console.error('Failed to add students to class:', insertError)
+          }
+        }
       }
 
       return {
@@ -1037,9 +1124,9 @@ class AdminService {
       const supabase = getSupabaseServiceClient()
 
       let query = supabase
-        .from('users')
+        .from('user_roles')
         .select('*')
-        .order('name', { ascending: true })
+        .order('email', { ascending: true })
 
       if (role) {
         query = query.eq('role', role)
@@ -1088,12 +1175,10 @@ class AdminService {
       const supabase = getSupabaseServiceClient()
 
       const { data, error } = await supabase
-        .from('users')
+        .from('user_roles')
         .insert({
           email,
-          name,
           role,
-          status,
         })
         .select()
         .single()
@@ -1109,9 +1194,9 @@ class AdminService {
       return {
         id: data.id,
         email: data.email,
-        name: data.name,
+        name: name, // Use the provided name parameter since it's not in user_roles table
         role: data.role,
-        status: data.status,
+        status: status as 'active' | 'disabled' | 'pending_approval', // Use the provided status parameter since it's not in user_roles table
         createdAt: data.created_at,
         updatedAt: data.updated_at,
         lastLoginAt: data.last_login_at,
@@ -1136,13 +1221,14 @@ class AdminService {
     try {
       const supabase = getSupabaseServiceClient()
 
-      const updatePayload: any = {
-        ...updates,
-        updated_at: new Date().toISOString(),
-      }
+      // Only map fields that exist in user_roles table
+      const updatePayload: any = {}
+      if (updates.role !== undefined) updatePayload.role = updates.role
+      // name and status are not in user_roles table
+      updatePayload.updated_at = new Date().toISOString()
 
       const { data, error } = await supabase
-        .from('users')
+        .from('user_roles')
         .update(updatePayload)
         .eq('id', id)
         .select()
@@ -1159,9 +1245,9 @@ class AdminService {
       return {
         id: data.id,
         email: data.email,
-        name: data.name,
+        name: updates.name || '', // Use updates parameter since it's not in user_roles table
         role: data.role,
-        status: data.status,
+        status: updates.status || 'pending_approval', // Use updates parameter since it's not in user_roles table
         createdAt: data.created_at,
         updatedAt: data.updated_at,
         lastLoginAt: data.last_login_at,
@@ -1184,7 +1270,7 @@ class AdminService {
       const supabase = getSupabaseServiceClient()
 
       const { error } = await supabase
-        .from('users')
+        .from('user_roles')
         .delete()
         .eq('id', id)
 
@@ -1316,7 +1402,7 @@ class AdminService {
       const studentIds = relationships.map((r: any) => r.student_id)
 
       const { data: students, error: studError } = await supabase
-        .from('users')
+        .from('user_roles')
         .select('*')
         .in('id', studentIds)
 

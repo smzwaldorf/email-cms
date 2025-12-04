@@ -13,6 +13,90 @@
 import { useState } from 'react'
 import type { Class, AdminUser } from '@/types/admin'
 
+/**
+ * Student Filter and Add Component
+ */
+function StudentFilterDropdown({
+  availableStudents,
+  selectedStudentIds,
+  onAddStudent,
+}: {
+  availableStudents: AdminUser[]
+  selectedStudentIds: string[]
+  onAddStudent: (studentId: string) => void
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+
+  // Filter available students (exclude already selected)
+  const filteredStudents = availableStudents.filter(
+    (student) =>
+      !selectedStudentIds.includes(student.id) &&
+      (student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.email.toLowerCase().includes(searchTerm.toLowerCase()))
+  )
+
+  const handleAddStudent = (studentId: string) => {
+    onAddStudent(studentId)
+    setSearchTerm('')
+    setIsOpen(false)
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-left hover:bg-gray-50 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+        disabled={filteredStudents.length === 0}
+      >
+        <span className="text-gray-700">
+          {filteredStudents.length > 0
+            ? '+ 添加學生'
+            : '所有學生已選擇'}
+        </span>
+      </button>
+
+      {isOpen && filteredStudents.length > 0 && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-10">
+          {/* Search Input */}
+          <div className="p-2 border-b border-gray-200">
+            <input
+              type="text"
+              placeholder="搜尋學生名稱或電子郵件..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500"
+              autoFocus
+            />
+          </div>
+
+          {/* Student List */}
+          <div className="max-h-64 overflow-y-auto">
+            {filteredStudents.length > 0 ? (
+              filteredStudents.map((student) => (
+                <button
+                  key={student.id}
+                  type="button"
+                  onClick={() => handleAddStudent(student.id)}
+                  className="w-full text-left px-3 py-2 hover:bg-blue-50 border-b border-gray-100 last:border-b-0"
+                >
+                  <div className="text-sm font-medium text-gray-900">{student.name}</div>
+                  <div className="text-xs text-gray-500">{student.email}</div>
+                </button>
+              ))
+            ) : (
+              <div className="p-3 text-sm text-gray-500 text-center">
+                沒有符合的學生
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export interface ClassFormProps {
   class?: Class
   isNew?: boolean
@@ -175,29 +259,59 @@ export function ClassForm({
         </div>
 
         {/* Students */}
-        {availableStudents.length > 0 && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              學生 ({(formData.studentIds || []).length} / {availableStudents.length})
-            </label>
-            <div className="border border-gray-300 rounded-md p-4 max-h-64 overflow-y-auto space-y-2">
-              {availableStudents.map((student) => (
-                <label key={student.id} className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={(formData.studentIds || []).includes(student.id)}
-                    onChange={() => handleStudentToggle(student.id)}
-                    className="rounded border-gray-300"
-                    data-testid={`student-checkbox-${student.id}`}
-                  />
-                  <span className="ml-2 text-sm text-gray-700">
-                    {student.name} ({student.email})
-                  </span>
-                </label>
-              ))}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-3">
+            班級學生 ({(formData.studentIds || []).length} / {availableStudents.length})
+          </label>
+
+          {availableStudents.length > 0 ? (
+            <div className="space-y-3">
+              {/* Add Student Dropdown */}
+              <StudentFilterDropdown
+                availableStudents={availableStudents}
+                selectedStudentIds={formData.studentIds || []}
+                onAddStudent={handleStudentToggle}
+              />
+
+              {/* Selected Students List */}
+              {(formData.studentIds || []).length > 0 && (
+                <div className="border border-gray-300 rounded-md p-3 bg-gray-50">
+                  <div className="text-sm font-medium text-gray-700 mb-2">已選擇的學生</div>
+                  <div className="space-y-2">
+                    {(formData.studentIds || []).map((studentId) => {
+                      const student = availableStudents.find((s) => s.id === studentId)
+                      return student ? (
+                        <div
+                          key={studentId}
+                          className="flex items-center justify-between bg-white p-2 rounded border border-gray-200"
+                        >
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">{student.name}</div>
+                            <div className="text-xs text-gray-500">{student.email}</div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleStudentToggle(studentId)}
+                            className="px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded"
+                            data-testid={`remove-student-${studentId}`}
+                          >
+                            移除
+                          </button>
+                        </div>
+                      ) : null
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="border border-gray-300 rounded-md p-4 bg-gray-50 text-center">
+              <p className="text-sm text-gray-600">
+                沒有可用的學生帳戶。請先在用戶管理中建立學生帳戶。
+              </p>
+            </div>
+          )}
+        </div>
 
         {/* Action Buttons */}
         <div className="flex gap-2 pt-6 border-t border-gray-200">
