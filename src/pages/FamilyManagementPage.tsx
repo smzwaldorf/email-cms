@@ -13,10 +13,11 @@
  */
 
 import { useEffect, useState } from 'react'
-import type { Family } from '@/types/admin'
+import type { Family, AdminUser } from '@/types/admin'
 import { adminService, AdminServiceError } from '@/services/adminService'
 import FamilyList from '@/components/admin/FamilyList'
 import FamilyForm from '@/components/admin/FamilyForm'
+import FamilyRelationshipEditor, { type FamilyMember } from '@/components/admin/FamilyRelationshipEditor'
 import ConfirmDialog from '@/components/admin/ConfirmDialog'
 import NotificationToast from '@/components/admin/NotificationToast'
 import { AdminLayout } from '@/components/admin/AdminLayout'
@@ -41,6 +42,10 @@ export function FamilyManagementPage() {
     message: string
     type: 'success' | 'error' | 'info'
   } | null>(null)
+  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([])
+  const [availableParents, setAvailableParents] = useState<AdminUser[]>([])
+  const [availableStudents, setAvailableStudents] = useState<AdminUser[]>([])
+  const [isLoadingRelationships, setIsLoadingRelationships] = useState(false)
 
   /**
    * Load families on mount
@@ -137,6 +142,8 @@ export function FamilyManagementPage() {
     if (familyToEdit) {
       setSelectedFamily(familyToEdit)
       setPageState('edit')
+      // Load family relationships when entering edit mode
+      loadFamilyRelationships(familyToEdit)
     }
   }
 
@@ -145,6 +152,118 @@ export function FamilyManagementPage() {
    */
   const handleDeleteClick = (familyId: string) => {
     setDeleteConfirm({ isOpen: true, familyId })
+  }
+
+  /**
+   * Load family members and available users when editing
+   */
+  const loadFamilyRelationships = async (family: Family) => {
+    try {
+      setIsLoadingRelationships(true)
+      const [members, parents, students] = await Promise.all([
+        adminService.getFamilyMembers(family.id),
+        adminService.getAvailableParents(family.id),
+        adminService.getAvailableStudents(family.id),
+      ])
+      setFamilyMembers(members as FamilyMember[])
+      setAvailableParents(parents)
+      setAvailableStudents(students)
+    } catch (err: any) {
+      const message = err instanceof AdminServiceError ? err.message : 'Failed to load family relationships'
+      setNotification({ message, type: 'error' })
+    } finally {
+      setIsLoadingRelationships(false)
+    }
+  }
+
+  /**
+   * Handle add parent to family
+   */
+  const handleAddParent = async (parentId: string, relationship: 'father' | 'mother' | 'guardian') => {
+    if (!selectedFamily) return
+    try {
+      setIsSaving(true)
+      await adminService.addParentToFamily(selectedFamily.id, parentId, relationship)
+      await loadFamilyRelationships(selectedFamily)
+      setNotification({ message: '家長已成功新增', type: 'success' })
+    } catch (err: any) {
+      const message = err instanceof AdminServiceError ? err.message : 'Failed to add parent'
+      setNotification({ message, type: 'error' })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  /**
+   * Handle remove parent from family
+   */
+  const handleRemoveParent = async (parentId: string) => {
+    if (!selectedFamily) return
+    try {
+      setIsSaving(true)
+      await adminService.removeParentFromFamily(selectedFamily.id, parentId)
+      await loadFamilyRelationships(selectedFamily)
+      setNotification({ message: '家長已成功移除', type: 'success' })
+    } catch (err: any) {
+      const message = err instanceof AdminServiceError ? err.message : 'Failed to remove parent'
+      setNotification({ message, type: 'error' })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  /**
+   * Handle update parent relationship
+   */
+  const handleUpdateParentRelationship = async (parentId: string, relationship: 'father' | 'mother' | 'guardian') => {
+    if (!selectedFamily) return
+    try {
+      setIsSaving(true)
+      await adminService.updateParentRelationship(selectedFamily.id, parentId, relationship)
+      await loadFamilyRelationships(selectedFamily)
+      setNotification({ message: '家長關係已成功更新', type: 'success' })
+    } catch (err: any) {
+      const message = err instanceof AdminServiceError ? err.message : 'Failed to update parent relationship'
+      setNotification({ message, type: 'error' })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  /**
+   * Handle add student to family
+   */
+  const handleAddStudent = async (studentId: string) => {
+    if (!selectedFamily) return
+    try {
+      setIsSaving(true)
+      await adminService.addStudentToFamily(selectedFamily.id, studentId)
+      await loadFamilyRelationships(selectedFamily)
+      setNotification({ message: '學生已成功新增', type: 'success' })
+    } catch (err: any) {
+      const message = err instanceof AdminServiceError ? err.message : 'Failed to add student'
+      setNotification({ message, type: 'error' })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  /**
+   * Handle remove student from family
+   */
+  const handleRemoveStudent = async (studentId: string) => {
+    if (!selectedFamily) return
+    try {
+      setIsSaving(true)
+      await adminService.removeStudentFromFamily(selectedFamily.id, studentId)
+      await loadFamilyRelationships(selectedFamily)
+      setNotification({ message: '學生已成功移除', type: 'success' })
+    } catch (err: any) {
+      const message = err instanceof AdminServiceError ? err.message : 'Failed to remove student'
+      setNotification({ message, type: 'error' })
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   // Render loading state
@@ -263,12 +382,34 @@ export function FamilyManagementPage() {
           >
             ← 返回
           </button>
+
+          {/* Family Relationship Editor */}
+          {isLoadingRelationships ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+              <span className="ml-2 text-gray-600">載入家族成員中...</span>
+            </div>
+          ) : (
+            <FamilyRelationshipEditor
+              familyCode={selectedFamily.name}
+              familyMembers={familyMembers}
+              availableParents={availableParents}
+              availableStudents={availableStudents}
+              onAddParent={handleAddParent}
+              onRemoveParent={handleRemoveParent}
+              onUpdateParentRelationship={handleUpdateParentRelationship}
+              onAddStudent={handleAddStudent}
+              onRemoveStudent={handleRemoveStudent}
+            />
+          )}
+
           <FamilyForm
             family={selectedFamily}
             isNew={false}
             onSave={handleEditFamily}
             onCancel={() => setPageState('list')}
           />
+
           {notification && (
             <NotificationToast
               message={notification.message}

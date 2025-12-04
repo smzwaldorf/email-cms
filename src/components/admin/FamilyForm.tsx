@@ -228,7 +228,7 @@ export function FamilyForm({
           {/* Topic Tags */}
           {(formData.relatedTopics || []).length > 0 && (
             <div className="flex flex-wrap gap-2">
-              {formData.relatedTopics.map((topic, i) => (
+              {(formData.relatedTopics || []).map((topic, i) => (
                 <div
                   key={i}
                   className="inline-flex items-center gap-2 bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full"
