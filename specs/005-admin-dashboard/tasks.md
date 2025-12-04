@@ -57,15 +57,15 @@
 
 ### 實施 - 用戶故事 1
 
-- [x] T017 [P] [US1] 建立 src/components/admin/NewsletterTable.tsx 元件，以表格形式顯示電子報 ⚠️ **部分完成**
+- [x] T017 [P] [US1] 建立 src/components/admin/NewsletterTable.tsx 元件，以表格形式顯示電子報
 - [x] T018 [P] [US1] 建立 src/pages/AdminDashboardPage.tsx 主儀表板頁面
-- [x] T019 [US1] 實施 adminService.ts 中的 fetchNewsletters() 方法查詢所有電子報 ⚠️ **部分完成**
+- [x] T019 [US1] 實施 adminService.ts 中的 fetchNewsletters() 方法查詢所有電子報
 - [x] T020 [US1] 在 NewsletterTable.tsx 中新增狀態徽章（草稿、已發布、已封存）
-- [x] T021 [US1] 在 NewsletterTable.tsx 中新增排序和篩選功能（按週次、狀態） ⚠️ **部分完成**
+- [x] T021 [US1] 在 NewsletterTable.tsx 中新增排序和篩選功能（按週次、狀態）
 - [x] T022 [US1] 在 AdminDashboardPage.tsx 中新增錯誤處理和載入狀態
 - [x] T023 [US1] 為 NewsletterTable 元件建立 tests/components/admin/NewsletterTable.test.tsx 單元測試
 
-**檢查點**: 用戶故事 1 已完成 ⚠️ **40% 完成**
+**檢查點**: 用戶故事 1 已完成 ✅ **100% 完成**
 
 ---
 
@@ -77,16 +77,16 @@
 
 ### 實施 - 用戶故事 2
 
-- [x] T024 [P] [US2] 建立 src/components/admin/ArticleForm.tsx 編輯表單元件 ⚠️ **部分完成**
-- [x] T025 [P] [US2] 建立 src/pages/ArticleEditorPage.tsx 文章編輯頁面
-- [x] T026 [US2] 實施 adminService.ts 中的 updateArticle(id, data) 方法 ⚠️ **部分完成**
-- [x] T027 [US2] 在 ArticleForm.tsx 中新增分類選擇器（可從可用分類中選擇） ⚠️ **部分完成**
-- [x] T028 [US2] 在 ArticleForm.tsx 中新增家族附件多選 ⚠️ **部分完成**
-- [x] T029 [US2] 在 ArticleForm.tsx 中實施最後寫入獲勝 (LWW) 並發衝突解決 ⚠️ **部分完成**
-- [x] T030 [US2] 在表單提交時新增 Last-Write-Wins 時間戳記檢查 ⚠️ **部分完成**
+- [x] T024 [P] [US2] 建立 src/components/admin/ArticleForm.tsx 編輯表單元件
+- [ ] T025 [P] [US2] 建立 src/pages/ArticleEditorPage.tsx 文章編輯頁面
+- [x] T026 [US2] 實施 adminService.ts 中的 updateArticle(id, data) 方法
+- [x] T027 [US2] 在 ArticleForm.tsx 中新增分類選擇器（可從可用分類中選擇）
+- [x] T028 [US2] 在 ArticleForm.tsx 中新增家族附件多選
+- [x] T029 [US2] 在 ArticleForm.tsx 中實施最後寫入獲勝 (LWW) 並發衝突解決
+- [x] T030 [US2] 在表單提交時新增 Last-Write-Wins 時間戳記檢查
 - [x] T031 [US2] 為 ArticleForm 元件建立 tests/components/admin/ArticleForm.test.tsx 單元測試
 
-**檢查點**: 用戶故事 2 已完成 ⚠️ **30% 完成**
+**檢查點**: 用戶故事 2 已完成 ✅ **87% 完成** (8/9 tasks, T025 待完成)
 
 ---
 
@@ -354,9 +354,9 @@ Phase 11: Polish (所有故事後完成)
 | Phase | 故事 | 進度 | 說明 |
 |-------|------|------|------|
 | Phase 1 | Setup | ✅ **100%** | 所有基礎設施完成 (7/7 tasks) |
-| Phase 2 | Foundation | ✅ **100%** | 所有基礎設施完成 (9/9 tasks) - **新增** adminService.ts, batchImportService.ts, admin.ts |
-| Phase 3 | US1 | ⚠️ **40%** | 基本結構就位，完整 CRUD 與測試待完成 |
-| Phase 4 | US2 | ⚠️ **30%** | 編輯頁面存在，LWW 衝突解決待完成 |
+| Phase 2 | Foundation | ✅ **100%** | 所有基礎設施完成 (9/9 tasks) |
+| Phase 3 | US1 | ✅ **100%** | **新增** NewsletterTable、AdminDashboardPage (7/7 tasks) |
+| Phase 4 | US2 | ✅ **87%** | **新增** ArticleForm with LWW (8/9 tasks, T025 待完成) |
 | Phase 5 | US3 | ❌ **5%** | 尚未開始 |
 | Phase 6 | US4 | ❌ **5%** | 尚未開始 |
 | Phase 7 | US5 | ❌ **0%** | 尚未開始 |
@@ -364,11 +364,11 @@ Phase 11: Polish (所有故事後完成)
 | Phase 9 | US7 | ❌ **0%** | 尚未開始 |
 | Phase 10 | US8 | ❌ **0%** | 尚未開始 |
 | Phase 11 | Polish | ⚠️ **20%** | 基本測試存在，性能與安全審查待完成 |
-| | **總體進度** | **⚠️ ~32%** | **31-35/97 個任務已完成** |
+| | **總體進度** | **⚠️ ~42%** | **40-44/97 個任務已完成** |
 
 ### 已完成的檔案與功能
 
-**核心實施** (4,869 行程式碼):
+**核心實施** (6,277 行程式碼):
 - ✅ AdminDashboard.tsx (656 行) - 用戶管理、角色變更、強制登出、可疑活動偵測
 - ✅ AdminSessionService.ts (170 行) - 工作階段管理、強制登出、可疑活動偵測
 - ✅ AuditLogger.ts (105 行) - 完整審計日誌記錄
@@ -379,6 +379,9 @@ Phase 11: Polish (所有故事後完成)
 - ✅ **adminService.ts** (1,195 行) - **新增** 完整 CRUD 操作、LWW 衝突解決、關係管理
 - ✅ **batchImportService.ts** (474 行) - **新增** CSV 驗證、全部或無策略
 - ✅ **src/types/admin.ts** (329 行) - **新增** 管理員類型定義、權限模型
+- ✅ **NewsletterTable.tsx** (576 行) - **新增** 電子報列表、排序、篩選、狀態徽章
+- ✅ **AdminDashboardPage.tsx** (210 行) - **新增** 儀表板頁面、整合 NewsletterTable、CRUD 操作
+- ✅ **ArticleForm.tsx** (332 行) - **新增** 文章編輯表單、LWW 衝突偵測、分類/家族選擇
 
 **測試覆蓋** (516 行測試):
 - ✅ admin-session-management.test.ts (322 行) - 6 個 E2E 測試
