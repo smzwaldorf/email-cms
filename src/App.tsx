@@ -17,6 +17,8 @@ const LazyAdminDashboard = lazy(() => import('@/pages/AdminDashboardPage').then(
 const LazyAdminArticleList = lazy(() => import('@/pages/AdminArticleListPage').then(m => ({ default: m.AdminArticleListPage })))
 const LazyArticleEditorPage = lazy(() => import('@/pages/ArticleEditorPage').then(m => ({ default: m.ArticleEditorPage })))
 const LazyNewsletterCreatePage = lazy(() => import('@/pages/NewsletterCreatePage').then(m => ({ default: m.NewsletterCreatePage })))
+const LazyClassManagementPage = lazy(() => import('@/pages/ClassManagementPage').then(m => ({ default: m.ClassManagementPage })))
+const LazyFamilyManagementPage = lazy(() => import('@/pages/FamilyManagementPage').then(m => ({ default: m.FamilyManagementPage })))
 
 // Loading component shown while lazy route is loading
 const RouteLoader = () => (
@@ -132,6 +134,26 @@ export default function App() {
                   <ProtectedRoute requiredRole="admin">
                     <Suspense fallback={<RouteLoader />}>
                       <LazyArticleEditorPage />
+                    </Suspense>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/classes"
+                element={
+                  <ProtectedRoute requiredRole="admin">
+                    <Suspense fallback={<RouteLoader />}>
+                      <LazyClassManagementPage />
+                    </Suspense>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/families"
+                element={
+                  <ProtectedRoute requiredRole="admin">
+                    <Suspense fallback={<RouteLoader />}>
+                      <LazyFamilyManagementPage />
                     </Suspense>
                   </ProtectedRoute>
                 }
