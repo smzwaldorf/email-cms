@@ -14,6 +14,7 @@ import '@/styles/globals.css'
 // Reduces initial bundle size and improves Time to Interactive (TTI)
 const LazyEditorPage = lazy(() => import('@/pages/EditorPage').then(m => ({ default: m.EditorPage })))
 const LazyAdminDashboard = lazy(() => import('@/pages/AdminDashboardPage').then(m => ({ default: m.AdminDashboardPage })))
+const LazyArticleEditorPage = lazy(() => import('@/pages/ArticleEditorPage').then(m => ({ default: m.ArticleEditorPage })))
 
 // Loading component shown while lazy route is loading
 const RouteLoader = () => (
@@ -99,6 +100,16 @@ export default function App() {
                   <ProtectedRoute requiredRole="admin">
                     <Suspense fallback={<RouteLoader />}>
                       <LazyAdminDashboard />
+                    </Suspense>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/articles/:weekNumber/:articleId"
+                element={
+                  <ProtectedRoute requiredRole="admin">
+                    <Suspense fallback={<RouteLoader />}>
+                      <LazyArticleEditorPage />
                     </Suspense>
                   </ProtectedRoute>
                 }
