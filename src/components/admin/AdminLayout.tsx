@@ -88,7 +88,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, activeTab, h
 
       <div className="relative max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {/* Navigation Toolbar */}
-        <div className="mb-8 animate-fade-in-up" style={{ animationDelay: '0ms' }}>
+        <div className="mb-8">
           <div className="flex items-center justify-between bg-white/70 backdrop-blur-sm shadow-sm rounded-2xl px-6 py-4 border border-waldorf-cream-200">
             <a
               href={`/week/${latestWeek}`}
@@ -107,7 +107,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, activeTab, h
         </div>
 
         {/* Page Header */}
-        <div className="mb-10 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+        <div className="mb-10">
           <div className="flex items-end justify-between">
             <div>
               <h1 className="font-display text-4xl sm:text-5xl font-semibold text-waldorf-clay-800 tracking-tight">
@@ -118,7 +118,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, activeTab, h
               </p>
             </div>
             {headerAction && (
-              <div className="animate-scale-in" style={{ animationDelay: '300ms' }}>
+              <div>
                 {headerAction}
               </div>
             )}
@@ -126,7 +126,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, activeTab, h
         </div>
 
         {/* Tab Navigation */}
-        <div className="mb-8 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+        <div className="mb-8">
           <div className="bg-white/60 backdrop-blur-sm rounded-2xl border border-waldorf-cream-200 shadow-sm">
             <nav className="flex space-x-8 px-8" aria-label="Admin Navigation">
               <TabButton
@@ -161,10 +161,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, activeTab, h
         </div>
 
         {/* Content Area */}
-        <div
-          className="bg-white/80 backdrop-blur-sm shadow-lg shadow-waldorf-clay-100/50 rounded-2xl p-8 min-h-[500px] border border-waldorf-cream-200 animate-fade-in-up"
-          style={{ animationDelay: '300ms' }}
-        >
+        <div className="bg-white/80 backdrop-blur-sm shadow-lg shadow-waldorf-clay-100/50 rounded-2xl p-8 min-h-[500px] border border-waldorf-cream-200">
           {children}
         </div>
 
