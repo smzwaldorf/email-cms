@@ -73,10 +73,10 @@ export function ClassManagementPage() {
    */
   const loadStudents = async () => {
     try {
-      const data = await adminService.fetchUsers?.('student')
-      if (data) {
-        setStudents(data)
-      }
+      const allUsers = await adminService.fetchUsers()
+      // Filter for students only
+      const studentList = allUsers.filter((user) => user.role === 'student')
+      setStudents(studentList)
     } catch (err) {
       console.error('Failed to load students:', err)
     }
