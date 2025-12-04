@@ -102,74 +102,90 @@ export default function App() {
               <Route
                 path="/admin"
                 element={
-                  <ProtectedRoute requiredRole="admin">
-                    <Suspense fallback={<RouteLoader />}>
-                      <LazyAdminDashboard />
-                    </Suspense>
-                  </ProtectedRoute>
+                  <ErrorBoundary>
+                    <ProtectedRoute requiredRole="admin">
+                      <Suspense fallback={<RouteLoader />}>
+                        <LazyAdminDashboard />
+                      </Suspense>
+                    </ProtectedRoute>
+                  </ErrorBoundary>
                 }
               />
               <Route
                 path="/admin/newsletter/create"
                 element={
-                  <ProtectedRoute requiredRole="admin">
-                    <Suspense fallback={<RouteLoader />}>
-                      <LazyNewsletterCreatePage />
-                    </Suspense>
-                  </ProtectedRoute>
+                  <ErrorBoundary>
+                    <ProtectedRoute requiredRole="admin">
+                      <Suspense fallback={<RouteLoader />}>
+                        <LazyNewsletterCreatePage />
+                      </Suspense>
+                    </ProtectedRoute>
+                  </ErrorBoundary>
                 }
               />
               <Route
                 path="/admin/articles/:weekNumber"
                 element={
-                  <ProtectedRoute requiredRole="admin">
-                    <Suspense fallback={<RouteLoader />}>
-                      <LazyAdminArticleList />
-                    </Suspense>
-                  </ProtectedRoute>
+                  <ErrorBoundary>
+                    <ProtectedRoute requiredRole="admin">
+                      <Suspense fallback={<RouteLoader />}>
+                        <LazyAdminArticleList />
+                      </Suspense>
+                    </ProtectedRoute>
+                  </ErrorBoundary>
                 }
               />
               <Route
                 path="/admin/articles/:weekNumber/:articleId"
                 element={
-                  <ProtectedRoute requiredRole="admin">
-                    <Suspense fallback={<RouteLoader />}>
-                      <LazyArticleEditorPage />
-                    </Suspense>
-                  </ProtectedRoute>
+                  <ErrorBoundary>
+                    <ProtectedRoute requiredRole="admin">
+                      <Suspense fallback={<RouteLoader />}>
+                        <LazyArticleEditorPage />
+                      </Suspense>
+                    </ProtectedRoute>
+                  </ErrorBoundary>
                 }
               />
               <Route
                 path="/admin/classes"
                 element={
-                  <ProtectedRoute requiredRole="admin">
-                    <Suspense fallback={<RouteLoader />}>
-                      <LazyClassManagementPage />
-                    </Suspense>
-                  </ProtectedRoute>
+                  <ErrorBoundary>
+                    <ProtectedRoute requiredRole="admin">
+                      <Suspense fallback={<RouteLoader />}>
+                        <LazyClassManagementPage />
+                      </Suspense>
+                    </ProtectedRoute>
+                  </ErrorBoundary>
                 }
               />
               <Route
                 path="/admin/families"
                 element={
-                  <ProtectedRoute requiredRole="admin">
-                    <Suspense fallback={<RouteLoader />}>
-                      <LazyFamilyManagementPage />
-                    </Suspense>
-                  </ProtectedRoute>
+                  <ErrorBoundary>
+                    <ProtectedRoute requiredRole="admin">
+                      <Suspense fallback={<RouteLoader />}>
+                        <LazyFamilyManagementPage />
+                      </Suspense>
+                    </ProtectedRoute>
+                  </ErrorBoundary>
                 }
               />
               <Route
                 path="/admin/relationships"
                 element={
-                  <ProtectedRoute requiredRole="admin">
-                    <Suspense fallback={<RouteLoader />}>
-                      <LazyParentStudentPage />
-                    </Suspense>
-                  </ProtectedRoute>
+                  <ErrorBoundary>
+                    <ProtectedRoute requiredRole="admin">
+                      <Suspense fallback={<RouteLoader />}>
+                        <LazyParentStudentPage />
+                      </Suspense>
+                    </ProtectedRoute>
+                  </ErrorBoundary>
                 }
               />
               <Route path="/error" element={<ErrorPage />} />
+              {/* 404 Catch-all Route - Must be last */}
+              <Route path="*" element={<ErrorPage errorCode="NOT_FOUND" errorMessage="頁面不存在" title="404 - 找不到頁面" />} />
             </Routes>
           </Router>
         </NavigationProvider>
