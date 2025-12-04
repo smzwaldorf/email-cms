@@ -16,12 +16,26 @@ import Image from '@tiptap/extension-image'
  * - src: 圖片 URL
  * - alt: 替代文字
  * - title: 圖片標題
+ * - caption: 圖片標題 (可選，顯示在圖片下方中間)
  * - data-media-id: 媒體檔案 ID (用於追蹤)
  * - data-align: 對齐方式 (left, center, right)
  * - width: 圖片寬度
  * - height: 圖片高度
  */
-export const TipTapImageNode = Image.configure({
+export const TipTapImageNode = Image.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      caption: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-caption'),
+        renderHTML: (attributes) => ({
+          'data-caption': attributes.caption,
+        }),
+      },
+    }
+  },
+}).configure({
   allowBase64: true,
   HTMLAttributes: {
     class: 'tiptap-image',

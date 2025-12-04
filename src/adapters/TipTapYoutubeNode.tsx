@@ -6,88 +6,156 @@
 
 import Youtube from '@tiptap/extension-youtube'
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react'
+import { useState, useEffect, useRef } from 'react'
 
 /**
  * YouTube 節點視圖組件
  * YouTube node view component for rendering embedded videos
  */
-function YoutubeView({ node, selected, deleteNode, editor }: any) {
-  const { src, width, height } = node.attrs
+function YoutubeView({ node, selected, deleteNode, editor, updateAttributes }: any) {
+  const { src, width, height, caption } = node.attrs
   const isEditable = editor?.isEditable !== false
+  const [isEditingCaption, setIsEditingCaption] = useState(false)
+  const [captionText, setCaptionText] = useState(caption || '')
+  const [isCaptionFocused, setIsCaptionFocused] = useState(false)
+  const captionInputRef = useRef<HTMLInputElement>(null)
+
+  // Sync caption text when node.attrs.caption changes
+  useEffect(() => {
+    if (!isEditingCaption) {
+      setCaptionText(caption || '')
+    }
+  }, [caption, isEditingCaption])
 
   const handleDelete = () => {
     deleteNode()
   }
 
+  const handleCaptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newCaption = e.target.value
+    setCaptionText(newCaption)
+    updateAttributes({ caption: newCaption || null })
+  }
+
+  const handleCaptionBlur = () => {
+    setIsEditingCaption(false)
+  }
+
+  useEffect(() => {
+    if (isEditingCaption && captionInputRef.current) {
+      captionInputRef.current.focus()
+      captionInputRef.current.setSelectionRange(0, 0)
+    }
+  }, [isEditingCaption])
 
   return (
     <NodeViewWrapper className="youtube-node-view">
-      <div 
-        className={`relative my-4 rounded-lg overflow-visible shadow-md ${selected ? 'ring-4 ring-waldorf-sage-500' : ''}`} 
-        data-testid="youtube-embed"
-        data-youtube-video=""
-      >
+      <div className="flex flex-col">
+        {/* Video container with selection border */}
         <div
-          className="relative"
-          style={{
-            paddingBottom: '56.25%', // 16:9 aspect ratio
-            position: 'relative',
-            width: '100%',
-          }}
+          className={`relative mt-4 mb-1 rounded-lg overflow-visible shadow-md ${selected ? 'ring-4 ring-waldorf-sage-500' : ''}`}
+          data-testid="youtube-embed"
+          data-youtube-video=""
         >
-          <iframe
-            src={src}
-            width={width || '100%'}
-            height={height || '100%'}
+          <div
+            className="relative"
             style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
+              paddingBottom: '56.25%', // 16:9 aspect ratio
+              position: 'relative',
               width: '100%',
-              height: '100%',
-              pointerEvents: isEditable ? 'none' : 'auto',
             }}
-            frameBorder="0"
-            allowFullScreen
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            title="YouTube video"
-            data-testid="youtube-iframe"
-          />
-
-          {/* Semi-transparent overlay to capture clicks for selection in edit mode */}
-          {isEditable && (
-            <div
+          >
+            <iframe
+              src={src}
+              width={width || '100%'}
+              height={height || '100%'}
               style={{
                 position: 'absolute',
                 top: 0,
                 left: 0,
                 width: '100%',
                 height: '100%',
-                backgroundColor: 'rgba(135, 153, 107, 0.2)',
-                cursor: 'pointer',
-                zIndex: 5,
+                pointerEvents: isEditable ? 'none' : 'auto',
               }}
-              data-testid="youtube-overlay"
+              frameBorder="0"
+              allowFullScreen
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              title="YouTube video"
+              data-testid="youtube-iframe"
             />
-          )}
 
-          {/* Delete button - always visible when editable */}
-          {isEditable && (
-            <button
-              onClick={handleDelete}
-              className="absolute top-2 right-2 flex items-center justify-center w-6 h-6 bg-red-500 text-white rounded-full shadow-md hover:bg-red-600 active:bg-red-700 transition-colors cursor-pointer z-10"
-              title="Delete video"
-              style={{ pointerEvents: 'auto' }}
-            >
-              ✕
-            </button>
+            {/* Semi-transparent overlay to capture clicks for selection in edit mode */}
+            {isEditable && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  backgroundColor: 'rgba(135, 153, 107, 0.2)',
+                  cursor: 'pointer',
+                  zIndex: 5,
+                }}
+                data-testid="youtube-overlay"
+              />
+            )}
+
+            {/* Delete button - always visible when editable */}
+            {isEditable && (
+              <button
+                onClick={handleDelete}
+                className="absolute top-2 right-2 flex items-center justify-center w-6 h-6 bg-red-500 text-white rounded-full shadow-md hover:bg-red-600 active:bg-red-700 transition-colors cursor-pointer z-10"
+                title="Delete video"
+                style={{ pointerEvents: 'auto' }}
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          {/* 編輯提示 */}
+          {selected && isEditable && (
+            <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+              Delete: Press Backspace
+            </div>
           )}
         </div>
 
-        {/* 編輯提示 */}
-        {selected && isEditable && (
-          <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
-            Delete: Press Backspace
+        {/* Caption - displayed outside the selection border (Medium-style) */}
+        {(captionText || (isEditable && selected)) && (
+          <div className="w-full flex justify-center mt-1 px-4">
+            {isEditingCaption && isEditable ? (
+              <input
+                ref={captionInputRef}
+                type="text"
+                value={captionText}
+                onChange={handleCaptionChange}
+                onBlur={() => {
+                  handleCaptionBlur()
+                  setIsCaptionFocused(false)
+                }}
+                onFocus={() => setIsCaptionFocused(true)}
+                placeholder={isCaptionFocused ? '' : 'Add caption...'}
+                className="text-sm text-gray-600 italic px-0 py-1 focus:outline-none max-w-xs text-center bg-transparent"
+              />
+            ) : captionText ? (
+              <p
+                onClick={() => isEditable && setIsEditingCaption(true)}
+                className={`text-sm text-gray-600 italic px-0 py-1 max-w-xs text-center ${
+                  isEditable ? 'cursor-text' : ''
+                }`}
+              >
+                {captionText}
+              </p>
+            ) : isEditable && selected ? (
+              <button
+                onClick={() => setIsEditingCaption(true)}
+                className="text-sm text-gray-400 italic px-0 py-1 cursor-text hover:text-gray-500"
+              >
+                Add a caption
+              </button>
+            ) : null}
           </div>
         )}
       </div>
@@ -158,6 +226,13 @@ export const TipTapYoutubeNode = Youtube.extend({
           'data-video-id': attributes.videoId,
         }),
       },
+      caption: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-caption'),
+        renderHTML: (attributes) => ({
+          'data-caption': attributes.caption,
+        }),
+      },
     }
   },
 
@@ -170,6 +245,8 @@ export const TipTapYoutubeNode = Youtube.extend({
           if (iframe) {
             return {
               src: iframe.getAttribute('src'),
+              // Check caption on wrapper first, then fallback to iframe
+              caption: element.getAttribute('data-caption') || iframe.getAttribute('data-caption'),
             }
           }
           return false
@@ -178,16 +255,20 @@ export const TipTapYoutubeNode = Youtube.extend({
       {
         tag: 'iframe[src*="youtube.com"]',
         getAttrs: (element) => {
+          const parent = element.parentElement
           return {
             src: element.getAttribute('src'),
+            caption: parent?.getAttribute('data-caption'),
           }
         },
       },
       {
         tag: 'iframe[src*="youtu.be"]',
         getAttrs: (element) => {
+          const parent = element.parentElement
           return {
             src: element.getAttribute('src'),
+            caption: parent?.getAttribute('data-caption'),
           }
         },
       },
@@ -195,16 +276,20 @@ export const TipTapYoutubeNode = Youtube.extend({
   },
 
   renderHTML({ HTMLAttributes }) {
+    // Extract caption from HTMLAttributes
+    const { caption, ...iframeAttrs } = HTMLAttributes
+
     return [
       'div',
       {
         'data-youtube-video': true,
         class: 'youtube-video-wrapper',
+        ...(caption && { 'data-caption': caption }),
       },
       [
         'iframe',
         {
-          ...HTMLAttributes,
+          ...iframeAttrs,
           class: 'youtube-iframe',
           frameborder: '0',
           allowfullscreen: true,

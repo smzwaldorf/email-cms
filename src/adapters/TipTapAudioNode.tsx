@@ -7,23 +7,34 @@
 import { Node } from '@tiptap/core'
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react'
 import AudioPlayer from '@/components/AudioPlayer'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { storageService } from '@/services/storageService'
 
 /**
  * 音訊節點視圖組件
  * Audio node view component for rendering audio player
  */
-function AudioView({ node, selected, editor, deleteNode }: any) {
-  const { src, title, mediaId, duration } = node.attrs
+function AudioView({ node, selected, editor, deleteNode, updateAttributes }: any) {
+  const { src, title, mediaId, duration, caption } = node.attrs
   const isReadOnly = editor?.isEditable === false
   const isEditable = editor?.isEditable !== false
+  const [isEditingCaption, setIsEditingCaption] = useState(false)
+  const [captionText, setCaptionText] = useState(caption || '')
+  const [isCaptionFocused, setIsCaptionFocused] = useState(false)
+  const captionInputRef = useRef<HTMLInputElement>(null)
 
   // Initialize with src only if it's NOT a storage URL
   // This prevents browser from trying to load storage:// URLs
   const [signedUrl, setSignedUrl] = useState<string>(
     src && !src.startsWith('storage://') ? src : ''
   )
+
+  // Sync caption text when node.attrs.caption changes
+  useEffect(() => {
+    if (!isEditingCaption) {
+      setCaptionText(caption || '')
+    }
+  }, [caption, isEditingCaption])
 
   // Sign storage:// URLs for playback in editor
   useEffect(() => {
@@ -93,45 +104,102 @@ function AudioView({ node, selected, editor, deleteNode }: any) {
     deleteNode()
   }
 
+  const handleCaptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newCaption = e.target.value
+    setCaptionText(newCaption)
+    updateAttributes({ caption: newCaption || null })
+  }
+
+  const handleCaptionBlur = () => {
+    setIsEditingCaption(false)
+  }
+
+  useEffect(() => {
+    if (isEditingCaption && captionInputRef.current) {
+      captionInputRef.current.focus()
+      captionInputRef.current.setSelectionRange(0, 0)
+    }
+  }, [isEditingCaption])
+
   return (
     <NodeViewWrapper
-      className={`relative my-4 rounded-lg overflow-hidden ${
-        selected && !isReadOnly ? 'ring-2 ring-waldorf-sage-500' : ''
-      }`}
       data-testid="audio-embed"
       data-audio-id={mediaId}
       onClick={handleNodeClick}
     >
-      {signedUrl ? (
-        <AudioPlayer
-          src={signedUrl}
-          title={title}
-          duration={duration}
-          onEnded={() => {
-            // Handle end of audio playback if needed
-          }}
-        />
-      ) : (
-        <div className="bg-gray-100 p-4 rounded flex items-center justify-center">
-          <span className="text-gray-500 text-sm">Loading audio...</span>
-        </div>
-      )}
+      <div
+        className={`relative mt-4 mb-1 rounded-lg overflow-hidden ${
+          selected && !isReadOnly ? 'ring-2 ring-waldorf-sage-500' : ''
+        }`}
+      >
+        {signedUrl ? (
+          <AudioPlayer
+            src={signedUrl}
+            title={title}
+            duration={duration}
+            onEnded={() => {
+              // Handle end of audio playback if needed
+            }}
+          />
+        ) : (
+          <div className="bg-gray-100 p-4 rounded flex items-center justify-center">
+            <span className="text-gray-500 text-sm">Loading audio...</span>
+          </div>
+        )}
 
-      {/* Delete button - always visible when editable */}
-      {isEditable && (
-        <button
-          onClick={handleDelete}
-          className="absolute top-2 right-2 flex items-center justify-center w-6 h-6 bg-red-500 text-white rounded-full shadow-md hover:bg-red-600 active:bg-red-700 transition-colors cursor-pointer"
-          title="Delete audio"
-        >
-          ✕
-        </button>
-      )}
+        {/* Delete button - always visible when editable */}
+        {isEditable && (
+          <button
+            onClick={handleDelete}
+            className="absolute top-2 right-2 flex items-center justify-center w-6 h-6 bg-red-500 text-white rounded-full shadow-md hover:bg-red-600 active:bg-red-700 transition-colors cursor-pointer"
+            title="Delete audio"
+          >
+            ✕
+          </button>
+        )}
 
-      {/* 編輯提示 */}
-      {selected && !isReadOnly && (
-        <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
-          Delete: Press Backspace
+        {/* 編輯提示 */}
+        {selected && !isReadOnly && (
+          <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+            Delete: Press Backspace
+          </div>
+        )}
+      </div>
+
+      {/* Caption - displayed outside the selection border (Medium-style) */}
+      {(captionText || selected) && (
+        <div className="w-full flex justify-center mt-1 px-4">
+          {isEditingCaption && isEditable ? (
+            <input
+              ref={captionInputRef}
+              type="text"
+              value={captionText}
+              onChange={handleCaptionChange}
+              onBlur={() => {
+                handleCaptionBlur()
+                setIsCaptionFocused(false)
+              }}
+              onFocus={() => setIsCaptionFocused(true)}
+              placeholder={isCaptionFocused ? '' : 'Add caption...'}
+              className="text-sm text-gray-600 italic px-0 py-1 focus:outline-none max-w-xs text-center bg-transparent"
+            />
+          ) : captionText ? (
+            <p
+              onClick={() => isEditable && setIsEditingCaption(true)}
+              className={`text-sm text-gray-600 italic px-0 py-1 max-w-xs text-center ${
+                isEditable ? 'cursor-text' : ''
+              }`}
+            >
+              {captionText}
+            </p>
+          ) : selected && isEditable ? (
+            <button
+              onClick={() => setIsEditingCaption(true)}
+              className="text-sm text-gray-400 italic px-0 py-1 cursor-text hover:text-gray-500"
+            >
+              Add a caption
+            </button>
+          ) : null}
         </div>
       )}
     </NodeViewWrapper>
@@ -171,7 +239,7 @@ export const TipTapAudioNode = Node.create({
               src = audioElem.getAttribute('src') || audioElem.getAttribute('data-storage-src')
             }
           }
-          
+
           if (src && src.includes('/storage/v1/object/sign/')) {
             try {
               const url = new URL(src)
@@ -185,7 +253,7 @@ export const TipTapAudioNode = Node.create({
               console.warn('Failed to parse signed audio URL:', e)
             }
           }
-          
+
           return src
         },
         renderHTML: (attributes) => {
@@ -225,6 +293,13 @@ export const TipTapAudioNode = Node.create({
           'data-duration': attributes.duration,
         }),
       },
+      caption: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-caption'),
+        renderHTML: (attributes) => ({
+          'data-caption': attributes.caption,
+        }),
+      },
     }
   },
 
@@ -240,6 +315,7 @@ export const TipTapAudioNode = Node.create({
             duration: element.getAttribute('data-duration')
               ? parseFloat(element.getAttribute('data-duration') || '0')
               : 0,
+            caption: element.getAttribute('data-caption'),
           }
         },
       },
