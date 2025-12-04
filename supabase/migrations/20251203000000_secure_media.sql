@@ -5,20 +5,7 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('media', 'media', false)
 ON CONFLICT (id) DO UPDATE SET public = false;
 
--- 2. Enable RLS on storage.objects (Skipped to avoid permission errors, usually enabled by default)
--- ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
-
--- 3. Drop existing policies for media bucket to avoid conflicts/duplication
-DROP POLICY IF EXISTS "Authenticated users can upload media" ON storage.objects;
-DROP POLICY IF EXISTS "Authenticated users can read media" ON storage.objects;
-DROP POLICY IF EXISTS "Users can update own media" ON storage.objects;
-DROP POLICY IF EXISTS "Users can delete own media" ON storage.objects;
-DROP POLICY IF EXISTS "Give users access to own folder 1oj01k_0" ON storage.objects;
-DROP POLICY IF EXISTS "Give users access to own folder 1oj01k_1" ON storage.objects;
-DROP POLICY IF EXISTS "Give users access to own folder 1oj01k_2" ON storage.objects;
-DROP POLICY IF EXISTS "Give users access to own folder 1oj01k_3" ON storage.objects;
-
--- 4. Create comprehensive RLS policies
+-- 2. Create comprehensive RLS policies
 
 -- Allow authenticated users to upload files to the media bucket
 -- They can upload to any path, but conventionally we use user-specific paths
