@@ -31,6 +31,7 @@ export function ClassManagementPage() {
   // State management
   const [classes, setClasses] = useState<Class[]>([])
   const [students, setStudents] = useState<AdminUser[]>([])
+  const [teachers, setTeachers] = useState<AdminUser[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pageState, setPageState] = useState<PageState>('list')
@@ -50,6 +51,7 @@ export function ClassManagementPage() {
   useEffect(() => {
     loadClasses()
     loadStudents()
+    loadTeachers()
   }, [])
 
   /**
@@ -104,12 +106,28 @@ export function ClassManagementPage() {
   }
 
   /**
+   * Load all teachers
+   */
+  const loadTeachers = async () => {
+    try {
+      const allUsers = await adminService.fetchUsers()
+      // Filter for teachers only
+      const teacherList = allUsers.filter((user) => user.role === 'teacher')
+      setTeachers(teacherList)
+      console.log(`Loaded ${teacherList.length} teachers:`, teacherList)
+    } catch (err) {
+      console.error('Failed to load teachers:', err)
+      setError(`無法加載教師列表: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+
+  /**
    * Handle create class
    */
   const handleCreateClass = async (classData: Class) => {
     try {
       setIsSaving(true)
-      await adminService.createClass(classData.name, classData.description, classData.studentIds)
+      await adminService.createClass(classData.name, classData.description, classData.studentIds, classData.teacherIds)
       setNotification({ message: '班級已成功新增', type: 'success' })
       setPageState('list')
       await loadClasses()
@@ -131,6 +149,7 @@ export function ClassManagementPage() {
         name: classData.name,
         description: classData.description,
         studentIds: classData.studentIds,
+        teacherIds: classData.teacherIds,
       })
       setNotification({ message: '班級已成功更新', type: 'success' })
       setPageState('list')
@@ -279,6 +298,7 @@ export function ClassManagementPage() {
             onSave={handleCreateClass}
             onCancel={() => setPageState('list')}
             availableStudents={students}
+            availableTeachers={teachers}
           />
           {notification && (
             <NotificationToast
@@ -310,6 +330,7 @@ export function ClassManagementPage() {
             onSave={handleEditClass}
             onCancel={() => setPageState('list')}
             availableStudents={students}
+            availableTeachers={teachers}
           />
           {notification && (
             <NotificationToast

@@ -28,6 +28,7 @@ export interface Class {
   name: string // 班級名稱（例如：6年級A班、高二英文班）
   description?: string
   studentIds: string[] // 學生 ID 列表
+  teacherIds: string[] // 教師 ID 列表
   createdAt: string
   updatedAt: string
 }

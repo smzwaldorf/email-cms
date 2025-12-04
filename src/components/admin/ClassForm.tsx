@@ -29,8 +29,11 @@ function StudentFilterDropdown({
   const [searchTerm, setSearchTerm] = useState('')
 
   // Filter available students (exclude already selected)
-  const filteredStudents = availableStudents.filter(
+  const filteredStudents = (availableStudents || []).filter(
     (student) =>
+      student &&
+      student.name &&
+      student.email &&
       !selectedStudentIds.includes(student.id) &&
       (student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         student.email.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -97,6 +100,93 @@ function StudentFilterDropdown({
   )
 }
 
+/**
+ * Teacher Filter and Add Component
+ */
+function TeacherFilterDropdown({
+  availableTeachers,
+  selectedTeacherIds,
+  onAddTeacher,
+}: {
+  availableTeachers: AdminUser[]
+  selectedTeacherIds: string[]
+  onAddTeacher: (teacherId: string) => void
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+
+  // Filter available teachers (exclude already selected)
+  const filteredTeachers = (availableTeachers || []).filter(
+    (teacher) =>
+      teacher &&
+      teacher.name &&
+      teacher.email &&
+      !selectedTeacherIds.includes(teacher.id) &&
+      (teacher.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        teacher.email.toLowerCase().includes(searchTerm.toLowerCase()))
+  )
+
+  const handleAddTeacher = (teacherId: string) => {
+    onAddTeacher(teacherId)
+    setSearchTerm('')
+    setIsOpen(false)
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-left hover:bg-gray-50 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+        disabled={filteredTeachers.length === 0}
+      >
+        <span className="text-gray-700">
+          {filteredTeachers.length > 0
+            ? '+ 指定教師'
+            : '所有教師已指定'}
+        </span>
+      </button>
+
+      {isOpen && filteredTeachers.length > 0 && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-10">
+          {/* Search Input */}
+          <div className="p-2 border-b border-gray-200">
+            <input
+              type="text"
+              placeholder="搜尋教師名稱或電子郵件..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500"
+              autoFocus
+            />
+          </div>
+
+          {/* Teacher List */}
+          <div className="max-h-64 overflow-y-auto">
+            {filteredTeachers.length > 0 ? (
+              filteredTeachers.map((teacher) => (
+                <button
+                  key={teacher.id}
+                  type="button"
+                  onClick={() => handleAddTeacher(teacher.id)}
+                  className="w-full text-left px-3 py-2 hover:bg-blue-50 border-b border-gray-100 last:border-b-0"
+                >
+                  <div className="text-sm font-medium text-gray-900">{teacher.name}</div>
+                  <div className="text-xs text-gray-500">{teacher.email}</div>
+                </button>
+              ))
+            ) : (
+              <div className="p-3 text-sm text-gray-500 text-center">
+                沒有符合的教師
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export interface ClassFormProps {
   class?: Class
   isNew?: boolean
@@ -104,6 +194,7 @@ export interface ClassFormProps {
   onError?: (error: Error) => void
   onCancel?: () => void
   availableStudents?: AdminUser[]
+  availableTeachers?: AdminUser[]
 }
 
 /**
@@ -116,12 +207,14 @@ export function ClassForm({
   onError,
   onCancel,
   availableStudents = [],
+  availableTeachers = [],
 }: ClassFormProps) {
   const [formData, setFormData] = useState<Partial<Class>>(
     initialClass || {
       name: '',
       description: '',
       studentIds: [],
+      teacherIds: [],
     }
   )
   const [isSaving, setIsSaving] = useState(false)
@@ -175,6 +268,17 @@ export function ClassForm({
   }
 
   /**
+   * Handle teacher selection
+   */
+  const handleTeacherToggle = (teacherId: string) => {
+    const teacherIds = formData.teacherIds || []
+    const newTeacherIds = teacherIds.includes(teacherId)
+      ? teacherIds.filter((id) => id !== teacherId)
+      : [...teacherIds, teacherId]
+    setFormData({ ...formData, teacherIds: newTeacherIds })
+  }
+
+  /**
    * Handle save
    */
   const handleSave = async () => {
@@ -192,6 +296,7 @@ export function ClassForm({
         name: formData.name || '',
         description: formData.description,
         studentIds: formData.studentIds || [],
+        teacherIds: formData.teacherIds || [],
         createdAt: initialClass?.createdAt || now,
         updatedAt: now,
       }
@@ -256,6 +361,61 @@ export function ClassForm({
             rows={4}
             data-testid="description-input"
           />
+        </div>
+
+        {/* Teachers */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-3">
+            班級教師 ({(formData.teacherIds || []).length} / {availableTeachers.length})
+          </label>
+
+          {availableTeachers.length > 0 ? (
+            <div className="space-y-3">
+              {/* Add Teacher Dropdown */}
+              <TeacherFilterDropdown
+                availableTeachers={availableTeachers}
+                selectedTeacherIds={formData.teacherIds || []}
+                onAddTeacher={handleTeacherToggle}
+              />
+
+              {/* Selected Teachers List */}
+              {(formData.teacherIds || []).length > 0 && (
+                <div className="border border-gray-300 rounded-md p-3 bg-gray-50">
+                  <div className="text-sm font-medium text-gray-700 mb-2">已指定的教師</div>
+                  <div className="space-y-2">
+                    {(formData.teacherIds || []).map((teacherId) => {
+                      const teacher = availableTeachers.find((t) => t.id === teacherId)
+                      return teacher ? (
+                        <div
+                          key={teacherId}
+                          className="flex items-center justify-between bg-white p-2 rounded border border-gray-200"
+                        >
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">{teacher.name}</div>
+                            <div className="text-xs text-gray-500">{teacher.email}</div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleTeacherToggle(teacherId)}
+                            className="px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded"
+                            data-testid={`remove-teacher-${teacherId}`}
+                          >
+                            移除
+                          </button>
+                        </div>
+                      ) : null
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="border border-gray-300 rounded-md p-4 bg-gray-50 text-center">
+              <p className="text-sm text-gray-600">
+                沒有可用的教師帳戶。請先在用戶管理中建立教師帳戶。
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Students */}

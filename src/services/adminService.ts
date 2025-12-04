@@ -607,8 +607,9 @@ class AdminService {
         )
       }
 
-      // Fetch student enrollments for all classes
+      // Fetch student enrollments and teacher assignments for all classes
       const classIds = (data || []).map((row: any) => row.id)
+
       const { data: enrollments, error: enrollmentError } = await supabase
         .from('student_class_enrollment')
         .select('class_id, student_id')
@@ -617,6 +618,16 @@ class AdminService {
       if (enrollmentError) {
         // Log error but don't fail - classes can exist without students
         console.error('Failed to fetch class enrollments:', enrollmentError)
+      }
+
+      const { data: teacherAssignments, error: teacherError } = await supabase
+        .from('teacher_class_assignment')
+        .select('class_id, teacher_id')
+        .in('class_id', classIds)
+
+      if (teacherError) {
+        // Log error but don't fail - classes can exist without teachers
+        console.error('Failed to fetch teacher assignments:', teacherError)
       }
 
       // Build a map of class_id -> student_ids array
@@ -628,11 +639,21 @@ class AdminService {
         studentsByClass.get(enrollment.class_id)!.push(enrollment.student_id)
       })
 
+      // Build a map of class_id -> teacher_ids array
+      const teachersByClass = new Map<string, string[]>()
+      ;(teacherAssignments || []).forEach((assignment: any) => {
+        if (!teachersByClass.has(assignment.class_id)) {
+          teachersByClass.set(assignment.class_id, [])
+        }
+        teachersByClass.get(assignment.class_id)!.push(assignment.teacher_id)
+      })
+
       return (data || []).map((row: any) => ({
         id: row.id,
         name: row.class_name,
         description: '', // Not in DB
         studentIds: studentsByClass.get(row.id) || [],
+        teacherIds: teachersByClass.get(row.id) || [],
         createdAt: row.created_at,
         updatedAt: row.created_at, // Not in DB
       }))
@@ -652,7 +673,8 @@ class AdminService {
   async createClass(
     name: string,
     description?: string,
-    studentIds?: string[]
+    studentIds?: string[],
+    teacherIds?: string[]
   ): Promise<Class> {
     try {
       const supabase = getSupabaseServiceClient()
@@ -696,11 +718,28 @@ class AdminService {
         }
       }
 
+      // Add teacher assignments if provided
+      if (teacherIds && teacherIds.length > 0) {
+        const assignmentsToAdd = teacherIds.map((teacherId: string) => ({
+          class_id: data.id,
+          teacher_id: teacherId,
+        }))
+
+        const { error: teacherError } = await supabase
+          .from('teacher_class_assignment')
+          .insert(assignmentsToAdd)
+
+        if (teacherError) {
+          console.error('Failed to add teachers to new class:', teacherError)
+        }
+      }
+
       return {
         id: data.id,
         name: data.class_name,
         description: description,
         studentIds: studentIds || [],
+        teacherIds: teacherIds || [],
         createdAt: data.created_at,
         updatedAt: data.created_at,
       }
@@ -722,7 +761,8 @@ class AdminService {
     updates: {
       name?: string,
       description?: string,
-      studentIds?: string[]
+      studentIds?: string[],
+      teacherIds?: string[]
     }
   ): Promise<Class> {
     try {
@@ -797,11 +837,59 @@ class AdminService {
         }
       }
 
+      // Handle teacher assignments if provided
+      if (updates.teacherIds !== undefined) {
+        // Get current teacher assignments for this class
+        const { data: currentAssignments, error: assignError } = await supabase
+          .from('teacher_class_assignment')
+          .select('teacher_id')
+          .eq('class_id', id)
+
+        if (assignError) {
+          console.error('Failed to fetch current teacher assignments:', assignError)
+        }
+
+        const currentTeacherIds = (currentAssignments || []).map((a: any) => a.teacher_id)
+        const newTeacherIds = updates.teacherIds
+
+        // Remove teachers that are no longer in the list
+        const toRemove = currentTeacherIds.filter((tid: string) => !newTeacherIds.includes(tid))
+        if (toRemove.length > 0) {
+          const { error: deleteError } = await supabase
+            .from('teacher_class_assignment')
+            .delete()
+            .eq('class_id', id)
+            .in('teacher_id', toRemove)
+
+          if (deleteError) {
+            console.error('Failed to remove teachers from class:', deleteError)
+          }
+        }
+
+        // Add new teachers
+        const toAdd = newTeacherIds.filter((tid: string) => !currentTeacherIds.includes(tid))
+        if (toAdd.length > 0) {
+          const assignmentsToAdd = toAdd.map((teacherId: string) => ({
+            class_id: id,
+            teacher_id: teacherId,
+          }))
+
+          const { error: insertError } = await supabase
+            .from('teacher_class_assignment')
+            .insert(assignmentsToAdd)
+
+          if (insertError) {
+            console.error('Failed to add teachers to class:', insertError)
+          }
+        }
+      }
+
       return {
         id: data.id,
         name: data.class_name,
         description: updates.description,
         studentIds: updates.studentIds || [],
+        teacherIds: updates.teacherIds || [],
         createdAt: data.created_at,
         updatedAt: data.created_at,
       }
