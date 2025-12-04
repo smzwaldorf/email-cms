@@ -128,7 +128,7 @@ export function SimpleEditor({
       }),
       Link.configure({
         openOnClick: true,
-        autolink: true,
+        autolink: false,
       }),
       Highlight.configure({
         multicolor: true,

@@ -102,6 +102,13 @@ function YoutubeView({ node, selected, deleteNode, editor }: any) {
 export const TipTapYoutubeNode = Youtube.extend({
   name: 'youtube',
 
+  addOptions() {
+    return {
+      ...this.parent?.(),
+      addPasteHandler: false, // Disable automatic paste detection for YouTube URLs
+    } as any
+  },
+
   addAttributes() {
     return {
       // 繼承原始屬性
