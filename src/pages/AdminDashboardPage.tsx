@@ -10,7 +10,7 @@
  */
 
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import type { AdminNewsletter, NewsletterFilterOptions } from '@/types/admin'
 import { adminService, AdminServiceError } from '@/services/adminService'
 import NewsletterTable from '@/components/admin/NewsletterTable'
@@ -596,7 +596,7 @@ export function AdminDashboardPage() {
 
           {/* Tab Navigation */}
           <div className="mb-6 border-b border-gray-200 bg-white rounded-t-lg">
-            <nav className="flex space-x-8 px-6" aria-label="Tabs">
+            <nav className="flex space-x-8 px-6 flex-wrap" aria-label="Admin Navigation">
               <button
                 onClick={() => setActiveTab('newsletters')}
                 className={`py-4 px-1 border-b-2 font-medium text-sm ${
@@ -627,6 +627,21 @@ export function AdminDashboardPage() {
               >
                 Audit Logs
               </button>
+              <div className="border-l border-gray-200 mx-2"></div>
+              <Link
+                to="/admin/classes"
+                className="py-4 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors"
+                data-testid="classes-link"
+              >
+                Classes
+              </Link>
+              <Link
+                to="/admin/families"
+                className="py-4 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors"
+                data-testid="families-link"
+              >
+                Families
+              </Link>
             </nav>
           </div>
 
