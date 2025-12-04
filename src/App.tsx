@@ -13,7 +13,7 @@ import '@/styles/globals.css'
 // Lazy load editor and admin pages - only loaded when route is accessed
 // Reduces initial bundle size and improves Time to Interactive (TTI)
 const LazyEditorPage = lazy(() => import('@/pages/EditorPage').then(m => ({ default: m.EditorPage })))
-const LazyAdminDashboard = lazy(() => import('@/components/AdminDashboard').then(m => ({ default: m.AdminDashboard })))
+const LazyAdminDashboard = lazy(() => import('@/pages/AdminDashboardPage').then(m => ({ default: m.AdminDashboardPage })))
 
 // Loading component shown while lazy route is loading
 const RouteLoader = () => (
