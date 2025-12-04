@@ -98,7 +98,10 @@ describe('Admin Parent-Student Relationship Workflow', () => {
       )
 
       // Should show checkmarks for existing relationships
-      const checkmarks = container.querySelectorAll('button:contains("✓")')
+      const buttons = container.querySelectorAll('button')
+      const checkmarks = Array.from(buttons).filter(btn =>
+        btn.textContent?.includes('✓')
+      )
       expect(checkmarks.length).toBeGreaterThan(0)
     })
 
@@ -237,8 +240,11 @@ describe('Admin Parent-Student Relationship Workflow', () => {
       // Click multiple buttons to create relationships
       if (buttons.length >= 2) {
         fireEvent.click(buttons[0])
-        fireEvent.click(buttons[1])
+        await waitFor(() => {
+          expect(onLink).toHaveBeenCalledTimes(1)
+        })
 
+        fireEvent.click(buttons[1])
         await waitFor(() => {
           expect(onLink).toHaveBeenCalledTimes(2)
         })
@@ -263,8 +269,11 @@ describe('Admin Parent-Student Relationship Workflow', () => {
       // Click multiple buttons to create relationships
       if (buttons.length >= 2) {
         fireEvent.click(buttons[0])
-        fireEvent.click(buttons[1])
+        await waitFor(() => {
+          expect(onLink).toHaveBeenCalledTimes(1)
+        })
 
+        fireEvent.click(buttons[1])
         await waitFor(() => {
           expect(onLink).toHaveBeenCalledTimes(2)
         })

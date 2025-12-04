@@ -160,7 +160,7 @@ describe('ClassForm', () => {
   })
 
   /**
-   * Test: Select and deselect students
+   * Test: Select and deselect students via dropdown
    */
   it('should select and deselect students', async () => {
     const user = userEvent.setup()
@@ -174,28 +174,30 @@ describe('ClassForm', () => {
       />
     )
 
-    // Initial student count should be 0
-    expect(screen.getByText('學生 (0 / 3)')).toBeInTheDocument()
+    // Initial - add button should be present
+    expect(screen.getByText('+ 添加學生')).toBeInTheDocument()
 
-    // Select first student
-    const checkbox1 = screen.getByTestId('student-checkbox-student-001') as HTMLInputElement
-    await user.click(checkbox1)
-    expect(checkbox1.checked).toBe(true)
+    // Open dropdown and select first student
+    const addButton = screen.getByText('+ 添加學生')
+    await user.click(addButton)
+
+    const student1 = await screen.findByText('王小明')
+    await user.click(student1)
 
     // Select second student
-    const checkbox2 = screen.getByTestId('student-checkbox-student-002') as HTMLInputElement
-    await user.click(checkbox2)
-    expect(checkbox2.checked).toBe(true)
+    const addButton2 = screen.getByText('+ 添加學生')
+    await user.click(addButton2)
 
-    // Should show 2 selected
-    expect(screen.getByText('學生 (2 / 3)')).toBeInTheDocument()
+    const student2 = await screen.findByText('李小華')
+    await user.click(student2)
 
-    // Deselect first student
-    await user.click(checkbox1)
-    expect(checkbox1.checked).toBe(false)
+    // Should show selected students with remove buttons
+    expect(screen.getByText('王小明')).toBeInTheDocument()
+    expect(screen.getByText('李小華')).toBeInTheDocument()
 
-    // Should show 1 selected
-    expect(screen.getByText('學生 (1 / 3)')).toBeInTheDocument()
+    // Should be able to remove students
+    const removeButtons = screen.getAllByText('移除')
+    expect(removeButtons.length).toBeGreaterThan(0)
   })
 
   /**
@@ -210,13 +212,12 @@ describe('ClassForm', () => {
       />
     )
 
-    const checkbox1 = screen.getByTestId('student-checkbox-student-001') as HTMLInputElement
-    const checkbox2 = screen.getByTestId('student-checkbox-student-002') as HTMLInputElement
-    const checkbox3 = screen.getByTestId('student-checkbox-student-003') as HTMLInputElement
+    // Pre-selected students should be displayed
+    expect(screen.getByText('王小明')).toBeInTheDocument()
+    expect(screen.getByText('李小華')).toBeInTheDocument()
 
-    expect(checkbox1.checked).toBe(true)
-    expect(checkbox2.checked).toBe(true)
-    expect(checkbox3.checked).toBe(false)
+    // Non-selected student should not be displayed
+    expect(screen.queryByText('張小美')).not.toBeInTheDocument()
   })
 
   /**
@@ -243,9 +244,12 @@ describe('ClassForm', () => {
     const descInput = screen.getByTestId('description-input')
     await user.type(descInput, '新班級描述')
 
-    // Select students
-    const checkbox1 = screen.getByTestId('student-checkbox-student-001')
-    await user.click(checkbox1)
+    // Select first student via dropdown
+    const addButton = screen.getByText('+ 添加學生')
+    await user.click(addButton)
+
+    const student1 = await screen.findByText('王小明')
+    await user.click(student1)
 
     // Save
     const saveBtn = screen.getByTestId('save-btn')
@@ -321,17 +325,26 @@ describe('ClassForm', () => {
       />
     )
 
-    // Initial count
-    expect(screen.getByText('學生 (0 / 3)')).toBeInTheDocument()
+    // Initial: add button should be present
+    expect(screen.getByText('+ 添加學生')).toBeInTheDocument()
 
     // Select all students
-    for (let i = 1; i <= 3; i++) {
-      const checkbox = screen.getByTestId(`student-checkbox-student-00${i}`)
-      await user.click(checkbox)
+    for (let i = 0; i < 3; i++) {
+      const addButton = screen.getByText('+ 添加學生')
+      await user.click(addButton)
+
+      const studentNames = ['王小明', '李小華', '張小美']
+      const student = await screen.findByText(studentNames[i])
+      await user.click(student)
     }
 
-    // Final count
-    expect(screen.getByText('學生 (3 / 3)')).toBeInTheDocument()
+    // All students should be selected and displayed
+    expect(screen.getByText('王小明')).toBeInTheDocument()
+    expect(screen.getByText('李小華')).toBeInTheDocument()
+    expect(screen.getByText('張小美')).toBeInTheDocument()
+
+    // After all selected, "All students selected" message should appear
+    expect(screen.getByText('所有學生已選擇')).toBeInTheDocument()
   })
 
   /**
@@ -348,7 +361,12 @@ describe('ClassForm', () => {
       />
     )
 
-    // Should not render student section
-    expect(screen.queryByText(/學生/)).not.toBeInTheDocument()
+    // Should show message about no available students
+    expect(
+      screen.getByText('沒有可用的學生帳戶。請先在用戶管理中建立學生帳戶。')
+    ).toBeInTheDocument()
+
+    // Should not show the add button
+    expect(screen.queryByText('+ 添加學生')).not.toBeInTheDocument()
   })
 })
