@@ -19,7 +19,6 @@ import type {
   AdminUser,
   ParentStudentRelationship,
   NewsletterFilterOptions,
-  LWWMetadata,
 } from '@/types/admin'
 
 /**
@@ -420,7 +419,7 @@ class AdminService {
       // Check for concurrent edits using LWW
       const { data: existing, error: fetchError } = await supabase
         .from('articles')
-        .select('edited_at')
+        .select('edited_at, created_at')
         .eq('id', id)
         .single()
 
@@ -433,7 +432,7 @@ class AdminService {
       }
 
       // LWW: If server version is newer, update anyway (last write wins)
-      const serverEditedAt = existing?.edited_at || existing?.created_at
+      const serverEditedAt = (existing?.edited_at as string) || (existing?.created_at as string)
       if (
         serverEditedAt &&
         new Date(serverEditedAt) > new Date(currentEditedAt)
