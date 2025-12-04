@@ -6,24 +6,52 @@
 
 import Youtube from '@tiptap/extension-youtube'
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react'
+import { useState, useEffect, useRef } from 'react'
 
 /**
  * YouTube 節點視圖組件
  * YouTube node view component for rendering embedded videos
  */
-function YoutubeView({ node, selected, deleteNode, editor }: any) {
-  const { src, width, height } = node.attrs
+function YoutubeView({ node, selected, deleteNode, editor, updateAttributes }: any) {
+  const { src, width, height, caption } = node.attrs
   const isEditable = editor?.isEditable !== false
+  const [isEditingCaption, setIsEditingCaption] = useState(false)
+  const [captionText, setCaptionText] = useState(caption || '')
+  const [isCaptionFocused, setIsCaptionFocused] = useState(false)
+  const captionInputRef = useRef<HTMLInputElement>(null)
+
+  // Sync caption text when node.attrs.caption changes
+  useEffect(() => {
+    if (!isEditingCaption) {
+      setCaptionText(caption || '')
+    }
+  }, [caption, isEditingCaption])
 
   const handleDelete = () => {
     deleteNode()
   }
 
+  const handleCaptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newCaption = e.target.value
+    setCaptionText(newCaption)
+    updateAttributes({ caption: newCaption || null })
+  }
+
+  const handleCaptionBlur = () => {
+    setIsEditingCaption(false)
+  }
+
+  useEffect(() => {
+    if (isEditingCaption && captionInputRef.current) {
+      captionInputRef.current.focus()
+      captionInputRef.current.setSelectionRange(0, 0)
+    }
+  }, [isEditingCaption])
 
   return (
     <NodeViewWrapper className="youtube-node-view">
-      <div 
-        className={`relative my-4 rounded-lg overflow-visible shadow-md ${selected ? 'ring-4 ring-waldorf-sage-500' : ''}`} 
+      <div
+        className={`relative my-4 rounded-lg overflow-visible shadow-md ${selected ? 'ring-4 ring-waldorf-sage-500' : ''}`}
         data-testid="youtube-embed"
         data-youtube-video=""
       >
@@ -91,6 +119,43 @@ function YoutubeView({ node, selected, deleteNode, editor }: any) {
           </div>
         )}
       </div>
+
+      {/* Caption - displayed outside the selection border (Medium-style) */}
+      {(captionText || selected) && (
+        <div className="w-full flex justify-center mt-2 px-4">
+          {isEditingCaption && isEditable ? (
+            <input
+              ref={captionInputRef}
+              type="text"
+              value={captionText}
+              onChange={handleCaptionChange}
+              onBlur={() => {
+                handleCaptionBlur()
+                setIsCaptionFocused(false)
+              }}
+              onFocus={() => setIsCaptionFocused(true)}
+              placeholder={isCaptionFocused ? '' : 'Add caption...'}
+              className="text-sm text-gray-600 italic px-0 py-1 focus:outline-none max-w-xs text-center bg-transparent"
+            />
+          ) : captionText ? (
+            <p
+              onClick={() => isEditable && setIsEditingCaption(true)}
+              className={`text-sm text-gray-600 italic px-0 py-1 max-w-xs text-center ${
+                isEditable ? 'cursor-text' : ''
+              }`}
+            >
+              {captionText}
+            </p>
+          ) : selected && isEditable ? (
+            <button
+              onClick={() => setIsEditingCaption(true)}
+              className="text-sm text-gray-400 italic px-0 py-1 cursor-text hover:text-gray-500"
+            >
+              Add a caption
+            </button>
+          ) : null}
+        </div>
+      )}
     </NodeViewWrapper>
   )
 }
@@ -158,6 +223,13 @@ export const TipTapYoutubeNode = Youtube.extend({
           'data-video-id': attributes.videoId,
         }),
       },
+      caption: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-caption'),
+        renderHTML: (attributes) => ({
+          'data-caption': attributes.caption,
+        }),
+      },
     }
   },
 
@@ -170,6 +242,7 @@ export const TipTapYoutubeNode = Youtube.extend({
           if (iframe) {
             return {
               src: iframe.getAttribute('src'),
+              caption: element.getAttribute('data-caption'),
             }
           }
           return false
@@ -178,16 +251,20 @@ export const TipTapYoutubeNode = Youtube.extend({
       {
         tag: 'iframe[src*="youtube.com"]',
         getAttrs: (element) => {
+          const parent = element.parentElement
           return {
             src: element.getAttribute('src'),
+            caption: parent?.getAttribute('data-caption'),
           }
         },
       },
       {
         tag: 'iframe[src*="youtu.be"]',
         getAttrs: (element) => {
+          const parent = element.parentElement
           return {
             src: element.getAttribute('src'),
+            caption: parent?.getAttribute('data-caption'),
           }
         },
       },
@@ -195,16 +272,20 @@ export const TipTapYoutubeNode = Youtube.extend({
   },
 
   renderHTML({ HTMLAttributes }) {
+    // Extract caption from HTMLAttributes
+    const { caption, ...iframeAttrs } = HTMLAttributes
+
     return [
       'div',
       {
         'data-youtube-video': true,
         class: 'youtube-video-wrapper',
+        ...(caption && { 'data-caption': caption }),
       },
       [
         'iframe',
         {
-          ...HTMLAttributes,
+          ...iframeAttrs,
           class: 'youtube-iframe',
           frameborder: '0',
           allowfullscreen: true,
