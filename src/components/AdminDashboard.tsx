@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { getSupabaseClient, getSupabaseServiceClient } from '@/lib/supabase'
-import { AuditLogViewer } from './AuditLogViewer'
+import { UserAuditLog } from './UserAuditLog'
 import { UserTable } from './admin/UserTable'
 import { UserForm, type UserFormData } from './admin/UserForm'
 import { adminSessionService } from '@/services/adminSessionService'
@@ -363,7 +363,7 @@ export const AdminDashboard: React.FC = () => {
             <p className="text-sm text-gray-500 mt-1">View all authentication events for security auditing</p>
           </div>
           <div className="p-6">
-            <AuditLogViewer />
+            <UserAuditLog />
           </div>
         </div>
       )}

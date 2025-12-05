@@ -20,7 +20,7 @@ import { getSupabaseClient, getSupabaseServiceClient } from '@/lib/supabase'
 import { useAuth } from '@/context/AuthContext'
 import { UserRole } from '@/types/auth'
 import { ROLES } from '@/lib/rbac'
-import { AuditLogViewer } from '@/components/AuditLogViewer'
+import { UserAuditLog } from '@/components/UserAuditLog'
 import { AuditLog } from '@/components/admin/AuditLog'
 import { adminSessionService } from '@/services/adminSessionService'
 import { AdminLayout } from '@/components/admin/AdminLayout'
@@ -801,7 +801,7 @@ export function AdminDashboardPage() {
                       <p className="text-sm text-gray-500 mt-1">Track user login, logout, and OAuth events for security auditing</p>
                     </div>
                     <div className="p-6">
-                      <AuditLogViewer />
+                      <UserAuditLog />
                     </div>
                   </div>
                 )}
