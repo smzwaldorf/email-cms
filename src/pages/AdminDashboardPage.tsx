@@ -617,7 +617,7 @@ export function AdminDashboardPage() {
                     {userManagementMode === 'table' && (
                       <button
                         onClick={() => setUserManagementMode('batch-import')}
-                        className="px-4 py-2 border border-waldorf-clay-300 text-waldorf-clay-600 rounded-lg font-medium hover:bg-waldorf-cream-50 transition-colors"
+                        className="px-4 py-2 border border-waldorf-peach-300 text-waldorf-peach-600 rounded-lg font-medium hover:bg-waldorf-peach-50 hover:border-waldorf-peach-400 transition-colors duration-200"
                         title="Import multiple users from CSV file"
                       >
                         📥 Batch Import
@@ -626,7 +626,7 @@ export function AdminDashboardPage() {
                     {userManagementMode === 'batch-import' && (
                       <button
                         onClick={() => setUserManagementMode('table')}
-                        className="px-4 py-2 bg-waldorf-sage-600 text-white rounded-lg font-medium hover:bg-waldorf-sage-700 transition-colors"
+                        className="px-4 py-2 bg-gradient-to-r from-waldorf-peach-500 to-waldorf-peach-600 text-white rounded-lg font-medium hover:from-waldorf-peach-600 hover:to-waldorf-peach-700 transition-colors duration-200"
                       >
                         ← Back to User List
                       </button>
