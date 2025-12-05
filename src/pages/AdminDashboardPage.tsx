@@ -21,6 +21,7 @@ import { useAuth } from '@/context/AuthContext'
 import { UserRole } from '@/types/auth'
 import { ROLES } from '@/lib/rbac'
 import { AuditLogViewer } from '@/components/AuditLogViewer'
+import { AuditLog } from '@/components/admin/AuditLog'
 import { adminSessionService } from '@/services/adminSessionService'
 import { AdminLayout } from '@/components/admin/AdminLayout'
 import { BatchImportForm } from '@/components/admin/BatchImportForm'
@@ -290,6 +291,9 @@ export function AdminDashboardPage() {
   const [editingUser, setEditingUser] = useState<UserData | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [userManagementMode, setUserManagementMode] = useState<'table' | 'batch-import'>('table')
+
+  // Audit log sub-tab state
+  const [auditLogSubTab, setAuditLogSubTab] = useState<'auth' | 'operations'>('auth')
 
   // Shared state
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
@@ -762,7 +766,63 @@ export function AdminDashboardPage() {
 
             {/* Audit Logs Tab */}
             {activeTab === 'audit' && (
-              <AuditLogViewer />
+              <>
+                {/* Audit Logs Sub-tab Navigation */}
+                <div className="mb-6 border-b border-gray-200 bg-white rounded-t-lg">
+                  <nav className="flex space-x-8 px-6" aria-label="Audit Log Tabs">
+                    <button
+                      onClick={() => setAuditLogSubTab('auth')}
+                      className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                        auditLogSubTab === 'auth'
+                          ? 'border-waldorf-peach-500 text-waldorf-peach-600'
+                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      }`}
+                    >
+                      Authentication Events
+                    </button>
+                    <button
+                      onClick={() => setAuditLogSubTab('operations')}
+                      className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                        auditLogSubTab === 'operations'
+                          ? 'border-waldorf-peach-500 text-waldorf-peach-600'
+                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      }`}
+                    >
+                      Operation Logs
+                    </button>
+                  </nav>
+                </div>
+
+                {/* Authentication Audit Logs */}
+                {auditLogSubTab === 'auth' && (
+                  <div className="bg-white shadow rounded-lg overflow-hidden">
+                    <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                      <h3 className="text-lg font-medium text-gray-900">Authentication Events</h3>
+                      <p className="text-sm text-gray-500 mt-1">Track user login, logout, and OAuth events for security auditing</p>
+                    </div>
+                    <div className="p-6">
+                      <AuditLogViewer />
+                    </div>
+                  </div>
+                )}
+
+                {/* Operation Audit Logs */}
+                {auditLogSubTab === 'operations' && (
+                  <div className="bg-white shadow rounded-lg overflow-hidden">
+                    <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                      <h3 className="text-lg font-medium text-gray-900">Operation Audit Logs</h3>
+                      <p className="text-sm text-gray-500 mt-1">Track all administrative operations including create, read, update, and delete actions</p>
+                    </div>
+                    <div className="p-6">
+                      <AuditLog
+                        logs={[]}
+                        isLoading={false}
+                        error={null}
+                      />
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
       </AdminLayout>
