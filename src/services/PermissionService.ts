@@ -69,10 +69,10 @@ export class PermissionService {
     }
 
     try {
-      const { data, error } = await table<UserRoleRow>('user_roles')
+      const { data, error } = (await table('user_roles')
         .select('role')
         .eq('id', userId)
-        .single()
+        .single()) as { data: UserRoleRow | null; error: any }
 
       if (error) {
         console.error(`Failed to fetch user role for ${userId}:`, error)
@@ -102,9 +102,9 @@ export class PermissionService {
     }
 
     try {
-      const { data, error } = await table<TeacherClassAssignmentRow>('teacher_class_assignment')
+      const { data, error } = (await table('teacher_class_assignment')
         .select('class_id')
-        .eq('teacher_id', teacherId)
+        .eq('teacher_id', teacherId)) as { data: TeacherClassAssignmentRow[] | null; error: any }
 
       if (error) {
         console.error(`Failed to fetch teacher classes for ${teacherId}:`, error)

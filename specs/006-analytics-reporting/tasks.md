@@ -186,35 +186,35 @@
 
 ### 令牌服務實現
 
-- [ ] **T016** [P] 建立 `src/services/trackingTokenService.ts`
+- [x] **T016** [P] 建立 `src/services/trackingTokenService.ts`
   - 函數: generateToken(), verifyToken(), revokeToken()
   - 驗收: 基本函數實現並可測試
 
-- [ ] **T017** 實現 `generateToken()` 函數
+- [x] **T017** 實現 `generateToken()` 函數
   - 功能: 生成 JWT，包含 userId, newsletterId, classIds, issuedAt, expiresAt
   - 簽名算法: HS256
   - 過期時間: 14 天
   - 驗收: 生成的令牌可驗證
 
-- [ ] **T018** 實現 `verifyToken()` 函數
+- [x] **T018** 實現 `verifyToken()` 函數
   - 功能: 驗證 JWT 簽名、檢查過期時間、檢查撤銷狀態
   - 驗收: 有效令牌驗證通過，無效令牌拒絕
 
-- [ ] **T019** 實現 `revokeToken()` 函數
+- [x] **T019** 實現 `revokeToken()` 函數
   - 功能: 標記令牌為已撤銷，更新 `is_revoked = true`
   - 驗收: 已撤銷令牌驗證失敗
 
-- [ ] **T020** [P] 實現 `getTokenHash()` 輔助函數
+- [x] **T020** [P] 實現 `getTokenHash()` 輔助函數
   - 功能: 生成令牌的 SHA256 哈希用於快速查找
   - 驗收: 哈希值可重複生成且一致
 
 ### 令牌存儲與管理
 
-- [ ] **T021** 實現 `storeToken()` 函數
+- [x] **T021** 實現 `storeToken()` 函數
   - 功能: 將令牌哈希和有效載荷存儲到 Supabase
   - 驗收: 令牌儲存成功，可查詢
 
-- [ ] **T022** 實現 `checkTokenRevoked()` 函數
+- [x] **T022** 實現 `checkTokenRevoked()` 函數
   - 功能: 查詢 Supabase 檢查令牌撤銷狀態
   - 驗收: 準確反映撤銷狀態
 
@@ -224,7 +224,7 @@
 
 ### 安全性與測試
 
-- [ ] **T024** 建立 `tests/unit/services/trackingTokenService.test.ts`
+- [x] **T024** 建立 `tests/unit/services/trackingTokenService.test.ts`
   - 測試: 令牌生成、驗證、撤銷、過期檢查
   - 涵蓋率目標: 95%+
   - 驗收: 所有測試通過
@@ -233,7 +233,7 @@
   - 檢查: 令牌簽名強度、防止重放攻擊、時間驗證
   - 驗收: 無已知漏洞
 
-- [ ] **T026** 集成環境變數管理
+- [x] **T026** 集成環境變數管理
   - 功能: 從 `.env.local` 讀取 `JWT_SECRET`
   - 驗收: 配置可靠且安全
 
@@ -249,33 +249,33 @@
 
 ### 追蹤 Hook 實現
 
-- [ ] **T028** [P] 建立 `src/hooks/useAnalyticsTracking.ts`
+- [x] **T028** [P] 建立 `src/hooks/useAnalyticsTracking.ts`
   - 功能: 令牌驗證、會話初始化、事件發送設置
   - 驗收: Hook 可在任何組件中使用
 
-- [ ] **T029** 實現會話管理邏輯
+- [x] **T029** 實現會話管理邏輯
   - 功能: 生成唯一 sessionId，儲存到 sessionStorage
   - 驗收: 每次頁面加載生成新 session ID
 
-- [ ] **T030** 實現令牌提取和驗證
+- [x] **T030** 實現令牌提取和驗證
   - 功能: 從 URL 查詢參數提取 `?t=TOKEN`，驗證簽名
   - 驗收: 無效令牌導致重定向到登入
 
-- [ ] **T031** 實現會話開始事件
+- [x] **T031** 實現會話開始事件
   - 功能: 令牌驗證後立即記錄 `page_view` 事件
   - 驗收: 事件記錄到 Supabase
 
 ### 事件追蹤邏輯
 
-- [ ] **T032** [P] 建立 `src/services/analyticsService.ts`
+- [x] **T032** [P] 建立 `src/services/analyticsService.ts`
   - 函數: trackEvent(), recordScrollDepth(), recordSessionEnd()
   - 驗收: 服務可在應用中使用
 
-- [ ] **T033** 實現 `trackEvent()` 函數
+- [x] **T033** 實現 `trackEvent()` 函數
   - 功能: 發送事件到 API，包含 sessionId, event_type, article_id, metadata
   - 驗收: 事件成功發送
 
-- [ ] **T034** [P] 實現滾動追蹤
+- [x] **T034** [P] 實現滾動追蹤
   - 功能: 監聽滾動事件，在 50% 和 90% 時記錄
   - 節流: 防止過度觸發（最多 1 次/50%，1 次/90%）
   - 驗收: 滾動事件准確記錄
@@ -295,27 +295,35 @@
   - 修改: 添加 `useAnalyticsTracking()` 和滾動監聽
   - 驗收: 文章訪問被追蹤
 
-- [ ] **T038** [P] 在 `WeeklyReaderPage.tsx` 中集成追蹤
+- [x] **T038** [P] 在 `WeeklyReaderPage.tsx` 中集成追蹤
   - 修改: 添加追蹤 Hook
   - 驗收: 週報訪問被追蹤
 
 ### 閱讀狀態顯示 (Read Status)
 
-- [ ] **T038a** [P] 實現 `getReadArticles` 服務方法
+- [x] **T038a** [P] 實現 `getReadArticles` 服務方法
   - 功能: 查詢當前用戶在特定週次或班級已閱讀的文章 ID 列表
   - 查詢: `SELECT article_id FROM analytics_events WHERE event_type = 'page_view' AND user_id = ?`
   - 驗收: 返回準確的已讀文章 ID 集合
 
-- [ ] **T038b** [P] 建立 `useReadStatus` Hook
+- [x] **T038b** [P] 建立 `useReadStatus` Hook
   - 功能: 獲取並緩存已讀狀態，支援即時更新 (Optimistic UI)
   - 驗收: 進入文章後，列表狀態立即更新為已讀
 
-- [ ] **T038c** [P] 更新文章列表 UI
+- [x] **T038c** [P] 更新文章列表 UI
   - 修改: 在文章卡片/列表項顯示「已讀」勾選框或視覺提示
   - 樣式: 綠色勾選或變灰標題
   - 驗收: 已讀文章有明顯視覺區別
 
-- [ ] **T039** 建立 `tests/unit/hooks/useAnalyticsTracking.test.ts`
+### 基本追蹤集成 (Basic Tracking Integration)
+
+- [x] **T040** [P] 實作 `src/components/AnalyticsFooter.tsx`
+  - 功能: 通用頁腳組件，用於嵌入外部追蹤腳本 (如 Hotjar, Google Analytics)
+  - 實作: 包含 `useEffect` 或是 `<script>` 注入邏輯
+  - 整合: 在 `App.tsx` 或主要頁面中引入
+  - 驗收: 外部腳本被正確加載，且只需在此處修改即可更換提供商
+
+- [x] **T039** 建立 `tests/unit/hooks/useAnalyticsTracking.test.ts`
   - 測試: 令牌驗證、會話初始化、事件發送
   - 驗收: 所有測試通過
 

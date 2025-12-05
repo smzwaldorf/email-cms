@@ -11,6 +11,8 @@ import { useAuth } from '@/context/AuthContext'
 import { useFetchWeekly } from '@/hooks/useFetchWeekly'
 import { useFetchArticle } from '@/hooks/useFetchArticle'
 import { useLoadingTimeout } from '@/components/LoadingTimeout'
+import { useAnalyticsTracking } from '@/hooks/useAnalyticsTracking'
+import { useReadStatus } from '@/hooks/useReadStatus'
 import { ArticleListView } from '@/components/ArticleListView'
 import { ArticleContent } from '@/components/ArticleContent'
 import { ArticleEditor } from '@/components/ArticleEditor'
@@ -43,6 +45,23 @@ export function WeeklyReaderPage() {
   } = useFetchArticle(
     currentArticleId
   )
+
+  // Tracking Hooks
+  useAnalyticsTracking({
+    articleId: article?.id,
+    weekNumber: weekNumber,
+    // Add classId if available in user context or params? 
+    // For now omitting classId as it's not readily available in url params usually
+  });
+
+  const { readArticleIds, markAsRead } = useReadStatus(weekNumber);
+
+  // Mark current article as read when loaded
+  useEffect(() => {
+    if (article?.id) {
+      markAsRead(article.id);
+    }
+  }, [article?.id, markAsRead]);
 
   const touchStartX = useRef<number | null>(null)
   const [dragOffset, setDragOffset] = useState(0)
@@ -367,6 +386,7 @@ export function WeeklyReaderPage() {
             onSelectArticle={handleSelectArticle}
             isLoading={isLoadingWeekly}
             disabled={isEditMode}
+            readArticleIds={readArticleIds}
           />
         </div>
 

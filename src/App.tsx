@@ -8,6 +8,7 @@ import { WeeklyReaderPage } from '@/pages/WeeklyReaderPage'
 import { ErrorPage } from '@/pages/ErrorPage'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { AnalyticsFooter } from '@/components/AnalyticsFooter'
 import '@/styles/globals.css'
 
 // Lazy load editor and admin pages - only loaded when route is accessed
@@ -187,6 +188,7 @@ export default function App() {
               {/* 404 Catch-all Route - Must be last */}
               <Route path="*" element={<ErrorPage errorCode="NOT_FOUND" errorMessage="頁面不存在" title="404 - 找不到頁面" />} />
             </Routes>
+            <AnalyticsFooter />
           </Router>
         </NavigationProvider>
       </AuthProvider>
