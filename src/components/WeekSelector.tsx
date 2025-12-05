@@ -8,7 +8,11 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useFetchAllWeeks } from '@/hooks/useFetchAllWeeks'
 import { formatWeekNumber } from '@/utils/formatters'
 
-export const WeekSelector: React.FC = () => {
+interface WeekSelectorProps {
+  disabled?: boolean
+}
+
+export const WeekSelector: React.FC<WeekSelectorProps> = ({ disabled = false }) => {
   const navigate = useNavigate()
   const { weekNumber: paramWeekNumber } = useParams<{ weekNumber: string }>()
   const currentWeekNumber = paramWeekNumber || '2025-W47'
@@ -50,11 +54,11 @@ export const WeekSelector: React.FC = () => {
       {/* Selector Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        disabled={isLoading || weeks.length === 0}
+        disabled={disabled || isLoading || weeks.length === 0}
         className={`
           flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all
           ${
-            isLoading
+            isLoading || disabled
               ? 'bg-waldorf-cream-100 text-waldorf-clay-400 cursor-not-allowed'
               : 'bg-waldorf-peach-100 text-waldorf-clay-800 hover:bg-waldorf-peach-200 active:bg-waldorf-peach-300'
           }
@@ -72,7 +76,7 @@ export const WeekSelector: React.FC = () => {
       </button>
 
       {/* Dropdown Menu */}
-      {isOpen && (
+      {isOpen && !disabled && (
         <>
           {/* Backdrop */}
           <div className="fixed inset-0 z-30" onClick={() => setIsOpen(false)} />

@@ -6,7 +6,7 @@
  * All queries use proper indexes for efficient filtering
  */
 
-import { getSupabaseClient, table } from '@/lib/supabase'
+import { table } from '@/lib/supabase'
 import type { ArticleRow } from '@/types/database'
 
 /**

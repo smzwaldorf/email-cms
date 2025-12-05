@@ -5,9 +5,6 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import ArticleService from '@/services/ArticleService'
-import ArticleRepository from '@/repositories/ArticleRepository'
-import WeekService from '@/services/WeekService'
 import type { ArticleRow, NewsletterWeekRow } from '@/types/database'
 
 // Mock database
@@ -29,14 +26,6 @@ vi.mock('@/lib/supabase', () => ({
 
 describe('Article Creation Workflow - User Story 1', () => {
   // Test data fixtures
-  const testWeek: NewsletterWeekRow = {
-    week_number: '2025-W48',
-    release_date: '2025-11-24',
-    is_published: false,
-    created_at: '2025-11-17T10:00:00Z',
-    updated_at: '2025-11-17T10:00:00Z',
-  }
-
   const testArticleData = {
     weekNumber: '2025-W48',
     title: 'School Announcement',
@@ -369,7 +358,6 @@ describe('Article Creation Workflow - User Story 1', () => {
 
     it('should validate week number format', async () => {
       const validWeeks = ['2025-W01', '2025-W47', '2026-W52']
-      const invalidWeeks = ['invalid', 'W47', '2025-13']
 
       expect(validWeeks[0]).toMatch(/^\d{4}-W\d{2}$/)
       expect(validWeeks[2]).toMatch(/^\d{4}-W\d{2}$/)

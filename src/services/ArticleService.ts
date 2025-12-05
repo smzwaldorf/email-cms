@@ -6,8 +6,8 @@
  * Performance Target (SC-001): <500ms for 100 articles
  */
 
-import { getSupabaseClient, table } from '@/lib/supabase'
-import type { ArticleRow, NewsletterWeekRow, AuditLogMetadata } from '@/types/database'
+import { table } from '@/lib/supabase'
+import type { ArticleRow } from '@/types/database'
 import PermissionService, { PermissionError } from './PermissionService'
 
 /**
@@ -578,6 +578,160 @@ export class ArticleService {
       throw new ArticleServiceError(
         `Unexpected error removing class restriction: ${err instanceof Error ? err.message : String(err)}`,
         'UPDATE_ARTICLE_ERROR',
+        err instanceof Error ? err : undefined,
+      )
+    }
+  }
+
+  /**
+   * 更新文章內容
+   * Update article content with content format tracking
+   * @param articleId Article ID to update
+   * @param content New content
+   * @param contentFormat Content format (markdown or rich_text) - for future use with content_format column
+   * @param userId Optional user ID for permission checking
+   */
+  static async updateArticleContent(
+    articleId: string,
+    content: string,
+    _contentFormat: 'markdown' | 'rich_text' = 'markdown',
+    userId?: string,
+  ): Promise<ArticleRow> {
+    try {
+      // 驗證權限如果提供了 userId
+      // Verify permissions if userId provided
+      if (userId) {
+        const article = await this.getArticleById(articleId)
+        await PermissionService.assertCanEditArticle(userId, article)
+      }
+
+      const { data, error } = await table('articles')
+        .update({
+          content,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', articleId)
+        .select()
+        .single()
+
+      if (error) {
+        throw new ArticleServiceError(
+          `Failed to update article content: ${error.message}`,
+          'UPDATE_CONTENT_ERROR',
+          error as Error,
+        )
+      }
+
+      if (!data) {
+        throw new ArticleServiceError(
+          `Article ${articleId} not found`,
+          'ARTICLE_NOT_FOUND',
+        )
+      }
+
+      return data
+    } catch (err) {
+      if (err instanceof ArticleServiceError) throw err
+      throw new ArticleServiceError(
+        `Unexpected error updating article content: ${err instanceof Error ? err.message : String(err)}`,
+        'UPDATE_CONTENT_ERROR',
+        err instanceof Error ? err : undefined,
+      )
+    }
+  }
+
+  /**
+   * 取得文章詳細資訊
+   * Get article details (wrapper for consistency)
+   */
+  static async getArticleDetails(articleId: string): Promise<ArticleRow> {
+    return this.getArticleById(articleId)
+  }
+
+  /**
+   * 驗證文章是否可編輯
+   * Validate if article is editable
+   */
+  static async validateArticleEditable(articleId: string, userId: string): Promise<boolean> {
+    try {
+      const article = await this.getArticleById(articleId)
+      await PermissionService.assertCanEditArticle(userId, article)
+      return true
+    } catch (err) {
+      console.warn('文章編輯驗證失敗 / Article edit validation failed:', err)
+      return false
+    }
+  }
+
+  /**
+   * 驗證文章是否可刪除
+   * Validate if article is deletable
+   */
+  static async validateArticleDeletable(articleId: string, userId: string): Promise<boolean> {
+    try {
+      const article = await this.getArticleById(articleId)
+      await PermissionService.assertCanDeleteArticle(userId, article)
+      return true
+    } catch (err) {
+      console.warn('文章刪除驗證失敗 / Article delete validation failed:', err)
+      return false
+    }
+  }
+
+  /**
+   * 取得文章編輯權限檢查
+   * Check if user has edit permission for article
+   */
+  static async checkEditPermission(articleId: string, userId: string): Promise<boolean> {
+    try {
+      const article = await this.getArticleById(articleId)
+      return await PermissionService.canEditArticle(userId, article)
+    } catch (err) {
+      console.error('權限檢查失敗 / Permission check failed:', err)
+      return false
+    }
+  }
+
+  /**
+   * 軟刪除文章並記錄時間戳
+   * Soft delete article with timestamp
+   */
+  static async softDeleteArticle(articleId: string, userId?: string): Promise<ArticleRow> {
+    try {
+      if (userId) {
+        const article = await this.getArticleById(articleId)
+        await PermissionService.assertCanDeleteArticle(userId, article)
+      }
+
+      const { data, error } = await table('articles')
+        .update({
+          deleted_at: new Date().toISOString(),
+        })
+        .eq('id', articleId)
+        .select()
+        .single()
+
+      if (error) {
+        throw new ArticleServiceError(
+          `Failed to soft delete article: ${error.message}`,
+          'DELETE_ERROR',
+          error as Error,
+        )
+      }
+
+      if (!data) {
+        throw new ArticleServiceError(
+          `Article ${articleId} not found`,
+          'ARTICLE_NOT_FOUND',
+        )
+      }
+
+      return data
+    } catch (err) {
+      if (err instanceof ArticleServiceError) throw err
+      throw new ArticleServiceError(
+        `Unexpected error deleting article: ${err instanceof Error ? err.message : String(err)}`,
+        'DELETE_ERROR',
         err instanceof Error ? err : undefined,
       )
     }

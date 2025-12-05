@@ -7,7 +7,6 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import type { ClassRow, ArticleRow } from '@/types/database'
 import { ClassArticleFilter } from '@/components/ClassArticleFilter'
 
@@ -42,6 +41,7 @@ describe('ClassArticleFilter Component', () => {
   const mockArticles: ArticleRow[] = [
     {
       id: 'article-1',
+      short_id: 'a001',
       week_number: '2025-W47',
       title: 'Article 1',
       content: '# Content',
@@ -175,7 +175,7 @@ describe('ClassArticleFilter Component', () => {
   describe('Manual Class Selection', () => {
     it('should toggle class selection', async () => {
       const { FamilyService } = await import('@/services/FamilyService')
-      const { getArticlesForFamily, getArticlesForClass } = await import(
+      const { getArticlesForClass } = await import(
         '@/services/queries/classArticleQueries'
       )
 

@@ -7,7 +7,6 @@ import { memo, useCallback } from 'react'
 import { Article } from '@/types'
 import { ArticleCard } from './ArticleCard'
 import { WeekSelector } from './WeekSelector'
-import { formatWeekNumber } from '@/utils/formatters'
 
 interface ArticleListViewProps {
   weekNumber: string
@@ -15,21 +14,24 @@ interface ArticleListViewProps {
   selectedArticleId: string
   onSelectArticle: (articleId: string) => void
   isLoading?: boolean
+  disabled?: boolean
 }
 
 export const ArticleListView = memo(function ArticleListView({
-  weekNumber,
   articles,
   selectedArticleId,
   onSelectArticle,
   isLoading = false,
+  disabled = false,
 }: ArticleListViewProps) {
   // Memoize the select handler to prevent unnecessary re-renders
   const handleSelectArticle = useCallback(
     (articleId: string) => {
-      onSelectArticle(articleId)
+      if (!disabled) {
+        onSelectArticle(articleId)
+      }
     },
-    [onSelectArticle]
+    [onSelectArticle, disabled]
   )
   if (isLoading) {
     return (
@@ -55,7 +57,7 @@ export const ArticleListView = memo(function ArticleListView({
       {/* 週報頭部 */}
       <div className="px-4 py-3 border-b border-waldorf-cream-200 bg-waldorf-cream-100 space-y-3">
         <div className="flex items-center justify-between">
-          <WeekSelector />
+          <WeekSelector disabled={disabled} />
         </div>
         <p className="text-sm text-waldorf-clay-600">共 {articles.length} 篇文章</p>
       </div>
@@ -69,6 +71,7 @@ export const ArticleListView = memo(function ArticleListView({
               article={article}
               isSelected={article.id === selectedArticleId}
               onClick={() => handleSelectArticle(article.id)}
+              disabled={disabled}
             />
           ))}
         </div>

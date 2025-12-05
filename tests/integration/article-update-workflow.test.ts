@@ -12,8 +12,6 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import type { ArticleRow } from '@/types/database'
-import { ArticleUpdateService } from '@/services/ArticleUpdateService'
-import { ArticleServiceError } from '@/services/ArticleService'
 
 // Mock Supabase for integration testing
 vi.mock('@/lib/supabase', () => ({
@@ -27,6 +25,7 @@ describe('Article Update Workflow (US4)', () => {
 
   const mockArticle: ArticleRow = {
     id: mockArticleId,
+    short_id: 'a001',
     week_number: mockWeekNumber,
     title: 'Original Article Title',
     content: '# Original Content\n\nSome text here',

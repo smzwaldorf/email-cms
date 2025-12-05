@@ -668,6 +668,284 @@ Validated performance against success criteria:
 
 ---
 
+## 🔐 Phase 11: Passwordless Authentication & Session Management
+
+### Current Implementation Status: ✅ COMPLETE
+
+**Authentication Features**:
+- ✅ **Google OAuth 2.0** - Secure OAuth flow with PKCE
+- ✅ **Magic Link (Email OTP)** - Passwordless email-based authentication
+- ✅ **Session Management** - 30-day persistent sessions with auto token refresh
+- ✅ **Multi-Device Support** - Simultaneous logins across devices with per-device logout
+- ✅ **Role-Based Access Control (RBAC)** - Admin, Teacher, Parent, Student roles
+- ✅ **Audit Logging** - Comprehensive authentication event tracking
+- ✅ **Admin Dashboard** - User/role management with suspicious activity detection
+
+### Authentication Methods
+
+#### 1. Google OAuth (Recommended)
+**Fastest and most secure login method**
+
+```bash
+# 1. Click "Login with Google" button
+# 2. You'll be redirected to Google login
+# 3. Select or authorize your account
+# 4. Automatically redirected back to dashboard
+```
+
+**Benefits**:
+- No password to remember
+- Google handles security
+- One-click login
+- Cross-platform consistency
+
+#### 2. Magic Link (Email-based)
+**Privacy-focused passwordless login**
+
+```bash
+# 1. Click "Login with Magic Link"
+# 2. Enter your email address
+# 3. Check your email for login link
+# 4. Click the link - auto-login!
+```
+
+**Features**:
+- No password needed
+- Works on any email
+- Links expire after 15 minutes
+- One-time use tokens
+- Rate limited: 5 emails per hour
+
+### User Roles & Capabilities
+
+| Role | Dashboard Access | Permissions |
+|------|---|---|
+| **Admin** | ✅ Full access | • Manage users & roles<br>• View all audit logs<br>• Force logout sessions<br>• Manage content visibility |
+| **Teacher** | ✅ Limited | • View class newsletters<br>• Manage own profile<br>• Access audit logs (own events) |
+| **Parent** | ✅ Limited | • View children's newsletters<br>• Manage family accounts<br>• Access enrollment |
+| **Student** | ✅ Read-only | • View assigned articles<br>• Cannot modify content<br>• Class-based visibility |
+
+### Admin Dashboard Features
+
+#### User Management
+- View all users with roles
+- Assign/revoke roles
+- Force logout sessions
+- View user activity history
+
+#### Audit Logging
+- Complete authentication event history
+- Filter by event type, auth method, time range
+- Export logs to CSV
+- Search and pagination
+
+#### Suspicious Activity Detection
+- Automatic detection of >5 failed logins in 15 minutes
+- Red alert banner with affected users
+- One-click force logout
+- Real-time monitoring every 5 minutes
+
+### Security Features
+
+#### Event Logging
+All authentication events are logged:
+- Login success/failure (email + password)
+- Magic link sent/verified/expired
+- OAuth started/completed/failed
+- Token refresh success/failure
+- Session expiration
+- Logout (manual & forced)
+- Admin actions
+
+#### Rate Limiting (Built-in)
+- Magic links: 5 per email per hour
+- Password login: Managed by Supabase
+- Prevents brute force attacks
+- Automatic 429 (Too Many Requests) response
+
+#### Data Protection
+- 30-day automatic audit log cleanup (GDPR-compliant)
+- No passwords stored (passwordless authentication)
+- No sensitive data in logs
+- Row-Level Security (RLS) enforcement
+- HTTPS/SSL encryption
+
+### Quick Start with Authentication
+
+#### Step 1: Installation
+```bash
+# Clone and install
+git clone https://github.com/smzwaldorf/email-cms.git
+cd email-cms
+npm install
+
+# Create .env.local with credentials
+cp .env.local.example .env.local
+# Edit with your Supabase URL and keys
+```
+
+#### Step 2: Configure Supabase
+```bash
+# 1. Go to https://supabase.com
+# 2. Create a project
+# 3. Get your Project URL and API keys
+# 4. Enable Google OAuth:
+#    - Authentication → Providers → Google
+#    - Add your Google OAuth credentials
+# 5. Set authorized domain in Authentication → CORS
+```
+
+#### Step 3: Run Development Server
+```bash
+npm run dev
+# Opens http://localhost:5173
+
+# You can now:
+# - Click "Login with Google" to OAuth
+# - Click "Login with Magic Link" for email login
+# - View dashboard after login
+```
+
+#### Step 4: Test Admin Features (Optional)
+```bash
+# In Supabase SQL Editor:
+# Grant admin role to test user
+INSERT INTO user_roles (user_id, role)
+VALUES ('<your-user-id>', 'admin');
+
+# View audit logs
+SELECT * FROM auth_events
+ORDER BY created_at DESC
+LIMIT 20;
+
+# Check for suspicious activity
+SELECT user_id, COUNT(*) as failures
+FROM auth_events
+WHERE event_type = 'login_failure'
+  AND created_at > NOW() - INTERVAL '15 minutes'
+GROUP BY user_id
+HAVING COUNT(*) > 5;
+```
+
+### Frequently Asked Questions (FAQ)
+
+#### Q: What if I forget to check email for magic link?
+**A**: The link expires after 15 minutes for security. Just request a new link!
+
+#### Q: Can I use multiple auth methods?
+**A**: Yes! You can login with Google and Magic Link using the same email.
+
+#### Q: How do I reset my sessions?
+**A**: Admin can force logout on Users tab. You can also logout manually.
+
+#### Q: Who can see audit logs?
+**A**: Admins see all events. Users see only their own events.
+
+#### Q: Is my password stored?
+**A**: No! Both Google OAuth and Magic Link are passwordless - no passwords stored anywhere.
+
+#### Q: How long do sessions last?
+**A**: 30 days for refresh tokens. Access tokens auto-refresh every 45 minutes.
+
+#### Q: Can I logout from one device only?
+**A**: Yes! Logout button on your device. Admins can also force logout specific sessions.
+
+#### Q: What happens if >5 logins fail?
+**A**: Automatic alert appears for admin. Account isn't locked - admin can investigate.
+
+#### Q: How often are audit logs deleted?
+**A**: Automatically deleted after 30 days. Important for GDPR compliance.
+
+#### Q: Can I export audit logs?
+**A**: Yes! CSV export in Admin Dashboard → Audit Logs tab.
+
+### Complete Documentation
+
+Comprehensive documentation is available:
+
+| Document | Purpose | Location |
+|----------|---------|----------|
+| [SETUP.md](./specs/003-passwordless-auth/docs/SETUP.md) | Local development setup | Development guide |
+| [API-ENDPOINTS.md](./specs/003-passwordless-auth/docs/API-ENDPOINTS.md) | Authentication API reference | API integration |
+| [DEPLOYMENT.md](./specs/003-passwordless-auth/docs/DEPLOYMENT.md) | Production deployment guide | DevOps guide |
+| [SECURITY.md](./specs/003-passwordless-auth/docs/SECURITY.md) | Security & audit logging | Security details |
+
+### Architecture Overview
+
+```
+┌─────────────────────────────────────┐
+│     Frontend (React + TypeScript)    │
+│  - Login pages (Google OAuth)        │
+│  - Magic Link handler                │
+│  - Admin Dashboard                   │
+│  - User/Role Management              │
+│  - Audit Log Viewer                  │
+└──────────────┬──────────────────────┘
+               │
+┌──────────────▼──────────────────────┐
+│    Authentication Services          │
+│  - authService (OAuth, sessions)    │
+│  - tokenManager (token refresh)     │
+│  - auditLogger (event logging)      │
+│  - adminSessionService (admin ops)  │
+└──────────────┬──────────────────────┘
+               │
+┌──────────────▼──────────────────────┐
+│   Supabase Auth & PostgreSQL         │
+│  - User authentication               │
+│  - Session management                │
+│  - auth_events table (audit logs)   │
+│  - user_roles table (RBAC)          │
+│  - RLS policies (access control)    │
+└─────────────────────────────────────┘
+```
+
+### Test Coverage
+
+**Authentication Testing**: 828 tests passing (100%)
+- ✅ OAuth flow (sign-in, redirect, callback)
+- ✅ Magic link generation and verification
+- ✅ Session persistence and refresh
+- ✅ Multi-device support
+- ✅ Role-based access control
+- ✅ Audit event logging
+- ✅ Suspicious activity detection
+- ✅ Admin force logout functionality
+
+```bash
+# Run all tests
+npm test
+
+# Run authentication tests only
+npm test -- auth
+
+# Generate coverage report
+npm run coverage
+```
+
+### Deployment
+
+Production deployment to Zeabur (hosting) + Supabase (database):
+
+```bash
+# 1. Build for production
+npm run build
+
+# 2. Set production environment variables
+#    VITE_SUPABASE_URL=https://your-project.supabase.co
+#    VITE_SUPABASE_ANON_KEY=your-anon-key
+
+# 3. Deploy to Zeabur
+#    Connect GitHub repo
+#    Zeabur auto-deploys on push
+
+# Full deployment guide: DEPLOYMENT.md
+```
+
+See [DEPLOYMENT.md](./specs/003-passwordless-auth/docs/DEPLOYMENT.md) for complete production setup.
+
+---
+
 ## 📄 許可證
 
 本項目採用 **MIT 許可證**。詳見 [LICENSE](LICENSE) 文件。
@@ -689,7 +967,8 @@ Validated performance against success criteria:
 
 ---
 
-**最後更新**: 2025-11-17
-**Phase**: 7 - Polish & Cross-Cutting Concerns (Complete)
+**最後更新**: 2025-11-29
+**Phase**: 11 - Documentation & Delivery (Complete)
+**Total Progress**: 11 phases completed | 828 tests passing | 95%+ code coverage
 
 Made with ❤️ for Email Newsletter Readers

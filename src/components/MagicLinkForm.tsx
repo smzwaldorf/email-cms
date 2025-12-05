@@ -4,20 +4,32 @@
  * Sends a time-limited link to user's email address
  */
 
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useAuth } from '@/context/AuthContext'
 
 interface MagicLinkFormProps {
   onSuccess: () => void
   isLoading?: boolean
+  redirectTo?: string
 }
 
-export const MagicLinkForm: React.FC<MagicLinkFormProps> = ({ onSuccess, isLoading = false }) => {
+export const MagicLinkForm: React.FC<MagicLinkFormProps> = ({ onSuccess, isLoading = false, redirectTo }) => {
   const { sendMagicLink } = useAuth()
   const [email, setEmail] = useState('')
   const [step, setStep] = useState<'email-input' | 'confirm'>('email-input')
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Determine redirect URL: use provided redirectTo, localStorage cache, or current pathname
+  const finalRedirectTo = useMemo(() => {
+    if (redirectTo) return redirectTo
+    const cachedShortId = localStorage.getItem('pending_short_id')
+    const cachedWeekNumber = localStorage.getItem('pending_week_number')
+    if (cachedShortId && cachedWeekNumber) {
+      return `/week/${cachedWeekNumber}/${cachedShortId}`
+    }
+    return undefined
+  }, [redirectTo])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -36,8 +48,11 @@ export const MagicLinkForm: React.FC<MagicLinkFormProps> = ({ onSuccess, isLoadi
     try {
       setIsSubmitting(true)
       console.log('📧 Sending magic link to:', email)
+      if (finalRedirectTo) {
+        console.log('📍 Will redirect to:', finalRedirectTo)
+      }
 
-      const success = await sendMagicLink(email)
+      const success = await sendMagicLink(email, finalRedirectTo)
 
       if (success) {
         // Show confirmation step

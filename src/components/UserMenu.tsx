@@ -5,11 +5,9 @@
  */
 
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 
 export const UserMenu: React.FC = () => {
-  const navigate = useNavigate()
   const { user, signOut, isLoading } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
 
@@ -63,6 +61,17 @@ export const UserMenu: React.FC = () => {
 
           {/* Menu Items */}
           <div className="py-2">
+            {/* Admin Dashboard Link */}
+            {user.role === 'admin' && (
+              <a
+                href="/admin"
+                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                onClick={() => setIsOpen(false)}
+              >
+                Admin Dashboard
+              </a>
+            )}
+
             {/* Sign Out Button */}
             <button
               onClick={handleSignOut}

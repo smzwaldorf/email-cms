@@ -7,19 +7,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { ArticleContent } from '@/components/ArticleContent'
 
-// Mock useMarkdownConverter hook
-vi.mock('@/hooks/useMarkdownConverter', () => ({
-  useMarkdownConverter: vi.fn((content: string) => ({
-    html: `<p>${content}</p>`,
-    isConverting: false,
-  })),
-}))
+// contentConverter is no longer needed since content is already HTML
+// No mocking needed - ArticleContent receives HTML directly from the database
 
 describe('ArticleContent Component', () => {
   const defaultProps = {
     title: 'Test Article Title',
     author: 'Test Author',
-    content: 'This is test content',
+    content: '<p>This is test content</p>',
     createdAt: '2025-11-16T10:00:00Z',
     viewCount: 1000,
   }
@@ -77,11 +72,26 @@ describe('ArticleContent Component', () => {
       expect(screen.queryByText(/瀏覽：/)).not.toBeInTheDocument()
     })
 
-    it('should render markdown content with dangerouslySetInnerHTML', () => {
+    it('should render HTML content via SimpleEditor', async () => {
       render(<ArticleContent {...defaultProps} />)
 
-      const contentDiv = screen.getByText(/This is test content/)
+      // Wait for editor initialization
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      const contentDiv = await waitFor(() => screen.getByText(/This is test content/), { timeout: 3000 })
       expect(contentDiv).toBeInTheDocument()
+    })
+
+    it('should disable checkboxes in task lists', async () => {
+      const contentWithCheckbox =
+        '<ul data-type="taskList"><li data-type="taskItem"><label><input type="checkbox"><span>Task 1</span></label></li></ul>'
+      const props = { ...defaultProps, content: contentWithCheckbox }
+      render(<ArticleContent {...props} />)
+
+      await waitFor(() => {
+        const checkbox = screen.getByRole('checkbox')
+        expect(checkbox).toBeDisabled()
+      })
     })
   })
 
@@ -93,12 +103,11 @@ describe('ArticleContent Component', () => {
       expect(screen.getByText('載入文章中...')).toBeInTheDocument()
     })
 
-    it('should show loading spinner when content is converting', () => {
+    it('should show article when isLoading is false (conversion is synchronous)', () => {
       const props = { ...defaultProps, isLoading: false }
-      // The mock will need to be updated to return isConverting: true
       render(<ArticleContent {...props} />)
 
-      // When not loading, article should be visible
+      // When not loading, article should be visible (conversion happens immediately)
       expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
     })
 
@@ -148,12 +157,13 @@ describe('ArticleContent Component', () => {
 
       const proseDiv = container.querySelector('div.prose')
       expect(proseDiv).toBeInTheDocument()
-      expect(proseDiv?.className).toContain('prose-sm')
+      expect(proseDiv?.className).toContain('prose')
+      expect(proseDiv?.className).toContain('max-w-none')
     })
   })
 
   describe('Props Variations', () => {
-    it('should handle minimal props (title and content only)', () => {
+    it('should handle minimal props (title and content only)', async () => {
       const props = {
         title: 'Minimal Article',
         content: 'Content',
@@ -161,7 +171,8 @@ describe('ArticleContent Component', () => {
       render(<ArticleContent {...props} />)
 
       expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
-      expect(screen.getByText(/Content/)).toBeInTheDocument()
+      const content = await waitFor(() => screen.getByText(/Content/))
+      expect(content).toBeInTheDocument()
     })
 
     it('should handle all props provided', () => {
@@ -268,17 +279,7 @@ describe('ArticleContent Component', () => {
       expect(renderSpy).toHaveBeenCalledTimes(2) // Only TestWrapper re-renders
     })
 
-    it('should use useMemo for markdown conversion to avoid recalculation', () => {
-      // The useMarkdownConverter hook should use useMemo internally
-      const { rerender } = render(<ArticleContent {...defaultProps} />)
 
-      // Change other props but keep content the same
-      const sameContent = { ...defaultProps, viewCount: 2000 }
-      rerender(<ArticleContent {...sameContent} />)
-
-      // The markdown conversion should use cached result if content is same
-      expect(screen.getByText(/This is test content/)).toBeInTheDocument()
-    })
   })
 
   describe('Content Updates', () => {

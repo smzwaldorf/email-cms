@@ -5,7 +5,7 @@
  */
 
 import { useState, useCallback, useRef } from 'react'
-import ArticleService, { CreateArticleDTO, UpdateArticleDTO } from '@/services/ArticleService'
+import ArticleService, { CreateArticleDTO } from '@/services/ArticleService'
 import type { ArticleRow } from '@/types/database'
 
 /**

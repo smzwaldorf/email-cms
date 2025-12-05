@@ -22,7 +22,7 @@ const NavigationContext = createContext<NavigationContextType | undefined>(undef
 // 預設值
 const defaultNavigationState: NavigationState = {
   currentWeekNumber: '2025-W43',
-  currentArticleId: 'article-001',
+  currentArticleId: '',
   currentArticleOrder: 1,
   totalArticlesInWeek: 0,
   articleList: [],

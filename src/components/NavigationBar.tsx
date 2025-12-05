@@ -27,6 +27,7 @@ interface NavigationBarProps {
   onPrevious: () => void
   onNext: () => void
   disabled?: boolean
+  onEdit?: () => void
 }
 
 export function NavigationBar({
@@ -34,6 +35,7 @@ export function NavigationBar({
   onPrevious,
   onNext,
   disabled = false,
+  onEdit,
 }: NavigationBarProps) {
   const navigate = useNavigate()
   const canGoPrevious = navigationState.currentArticleOrder > 1
@@ -56,12 +58,14 @@ export function NavigationBar({
         event.preventDefault()
         onNext()
       }
-      // 編輯當前文章: e - Navigate to editor
+      // 編輯當前文章: e - Call onEdit callback or navigate to editor
       else if (key === 'e') {
         event.preventDefault()
-        // Navigate to editor page: /editor/{weekNumber}
-        const editPath = `/editor/${navigationState.currentWeekNumber}`
-        navigate(editPath)
+        if (onEdit) {
+          onEdit()
+        } else {
+          navigate(`/editor/${navigationState.currentWeekNumber}`)
+        }
       }
     }
 
@@ -70,7 +74,7 @@ export function NavigationBar({
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [canGoPrevious, canGoNext, onPrevious, onNext, navigationState, navigate, disabled])
+  }, [canGoPrevious, canGoNext, onPrevious, onNext, navigationState, navigate, disabled, onEdit])
 
   return (
     <div className="border-t border-waldorf-cream-200 bg-waldorf-cream-50 px-6 py-4">

@@ -42,6 +42,14 @@ function createSupabaseClient(): SupabaseClient {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
+      // Explicitly use PKCE flow for OAuth (required for Google sign-in)
+      flowType: 'pkce',
+      // Ensure localStorage is used for storing PKCE code verifier
+      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+      // Detect session from URL on page load (important for OAuth callbacks)
+      detectSessionInUrl: true,
+      // Storage key for session data
+      storageKey: 'supabase.auth.token',
     },
     global: {
       headers: {
@@ -64,7 +72,12 @@ function createSupabaseClient(): SupabaseClient {
  * Singleton Supabase client instance
  * Initialize lazily on first access
  */
+/**
+ * Singleton Supabase client instance
+ * Initialize lazily on first access
+ */
 let supabaseClient: SupabaseClient | null = null
+let supabaseServiceClient: SupabaseClient | null = null
 
 /**
  * Get the singleton Supabase client instance
@@ -83,10 +96,40 @@ export function getSupabaseClient(): SupabaseClient {
 }
 
 /**
+ * Get Supabase client with service role key for admin operations
+ * WARNING: Only use this for admin operations that require elevated privileges
+ */
+export function getSupabaseServiceClient(): SupabaseClient {
+  if (!supabaseServiceClient) {
+    validateEnvironment()
+
+    const url = import.meta.env.VITE_SUPABASE_URL
+    const serviceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY
+
+    if (!serviceKey) {
+      throw new Error(
+        'Missing VITE_SUPABASE_SERVICE_ROLE_KEY environment variable. ' +
+        'This is required for admin operations.'
+      )
+    }
+
+    supabaseServiceClient = createClient(url, serviceKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    })
+  }
+
+  return supabaseServiceClient
+}
+
+/**
  * Reset the Supabase client (useful for testing)
  */
 export function resetSupabaseClient(): void {
   supabaseClient = null
+  supabaseServiceClient = null
 }
 
 /**

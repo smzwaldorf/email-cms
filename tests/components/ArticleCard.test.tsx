@@ -11,6 +11,7 @@ import { Article } from '@/types'
 describe('ArticleCard', () => {
   const mockArticle: Article = {
     id: 'article-001',
+    shortId: 'a001',
     title: '測試文章標題',
     content: '測試內容',
     author: '作者名稱',
@@ -106,5 +107,37 @@ describe('ArticleCard', () => {
     const card = container.firstChild
     expect(card).toHaveClass('bg-waldorf-cream-50')
     expect(card).toHaveClass('border-waldorf-cream-200')
+  })
+
+  it('should not call onClick when disabled', async () => {
+    const handleClick = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <ArticleCard
+        article={mockArticle}
+        isSelected={false}
+        onClick={handleClick}
+        disabled={true}
+      />
+    )
+
+    await user.click(screen.getByText('測試文章標題'))
+    expect(handleClick).not.toHaveBeenCalled()
+  })
+
+  it('should have disabled style when disabled is true', () => {
+    const handleClick = vi.fn()
+    const { container } = render(
+      <ArticleCard
+        article={mockArticle}
+        isSelected={false}
+        onClick={handleClick}
+        disabled={true}
+      />
+    )
+
+    const card = container.firstChild
+    expect(card).toHaveClass('opacity-50')
+    expect(card).toHaveClass('cursor-not-allowed')
   })
 })

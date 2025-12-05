@@ -6,7 +6,11 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { authService } from '@/services/authService'
-import type { AuthUser } from '@/services/authService'
+import { tokenManager } from '@/services/tokenManager'
+import { getSupabaseClient } from '@/lib/supabase'
+import { clearPermissionCache } from '@/services/PermissionService'
+import type { AuthUser } from '@/types/auth'
+import type { RealtimePostgresInsertPayload } from '@supabase/supabase-js'
 
 export interface AuthContextType {
   user: AuthUser | null
@@ -14,7 +18,7 @@ export interface AuthContextType {
   isLoading: boolean
   signIn: (email: string, password: string) => Promise<boolean>
   signInWithGoogle: () => Promise<void>
-  sendMagicLink: (email: string) => Promise<boolean>
+  sendMagicLink: (email: string, redirectTo?: string) => Promise<boolean>
   verifyMagicLink: (token: string) => Promise<boolean>
   signOut: () => Promise<void>
 }
@@ -36,6 +40,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const initializeAuth = async () => {
       try {
         console.log('🔄 AuthContext: Initializing auth state...')
+
+        // Initialize tokenManager with existing session (if any)
+        await tokenManager.initializeFromSession()
+        console.log('🔄 AuthContext: TokenManager initialization complete')
 
         // Ensure authService is initialized first
         // This will check for existing Supabase session and set up listeners
@@ -70,8 +78,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
 
     let unsubscribe: (() => void) | null = null
+    let realtimeChannel: ReturnType<ReturnType<typeof getSupabaseClient>['channel']> | null = null
+
     initializeAuth().then((fn) => {
       unsubscribe = fn
+      // Realtime listener will be set up in the user change effect below
     })
 
     return () => {
@@ -79,8 +90,45 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (unsubscribe) {
         unsubscribe()
       }
+      if (realtimeChannel) {
+        console.log('🔌 Cleaning up Realtime listener')
+        realtimeChannel.unsubscribe()
+      }
     }
   }, [])
+
+  // Re-subscribe when user changes (e.g. login)
+  useEffect(() => {
+    if (!user) return
+
+    console.log(`🔌 Setting up Realtime listener for user ${user.id} (user changed)`)
+    const supabase = getSupabaseClient()
+    
+    const channel = supabase
+      .channel(`auth_events_${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'auth_events',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload: RealtimePostgresInsertPayload<any>) => {
+          const event = payload.new as { event_type: string }
+          if (event.event_type === 'logout') {
+            console.warn('⚠️ Received force logout event from server. Signing out...')
+            signOut()
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      console.log(`🔌 Cleaning up Realtime listener for user ${user.id}`)
+      channel.unsubscribe()
+    }
+  }, [user?.id])
 
   const signIn = async (email: string, password: string): Promise<boolean> => {
     try {
@@ -106,10 +154,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }
 
-  const sendMagicLink = async (email: string): Promise<boolean> => {
+  const sendMagicLink = async (email: string, redirectTo?: string): Promise<boolean> => {
     try {
       setIsLoading(true)
-      const success = await authService.sendMagicLink(email)
+      const success = await authService.sendMagicLink(email, redirectTo)
       return success
     } catch (err) {
       console.error('Send magic link error:', err)
@@ -139,6 +187,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Clear any pending redirect cache
       localStorage.removeItem('pending_short_id')
       localStorage.removeItem('pending_week_number')
+
+      // Clear permission cache to avoid stale role/class data after logout
+      clearPermissionCache()
+      console.log('🔓 Permission cache cleared')
+
+      // Clean up token manager (stops auto-refresh and clears tokens)
+      tokenManager.onLogout()
+      console.log('🔓 TokenManager cleanup complete')
 
       await authService.signOut()
       console.log('🔓 AuthService.signOut() complete, setting isLoading to false')

@@ -35,7 +35,7 @@ export interface Article {
 
   // 內容
   title: string; // 文章標題，必填
-  content: string; // Markdown 格式內容
+  content: string; // HTML 格式內容（TipTap 直接輸出）
   author?: string; // 作者名稱（可選）
   summary?: string; // 摘要（可選）
 
@@ -124,7 +124,7 @@ export interface ApiError {
 export interface ArticleContentProps {
   title: string;
   author?: string;
-  content: string; // Markdown 內容
+  content: string; // HTML 內容
   isLoading?: boolean;
 }
 
@@ -157,3 +157,7 @@ export interface ArticleListProps {
 // ============ 資料庫類型定義 ============
 // Re-export all database types from database.ts
 export * from './database';
+
+// ============ 管理員儀表板類型定義 ============
+// Re-export all admin types from admin.ts
+export * from './admin';

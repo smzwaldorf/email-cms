@@ -7,6 +7,7 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
+import WeekService from '@/services/WeekService'
 
 export const AuthCallbackPage: React.FC = () => {
   const navigate = useNavigate()
@@ -35,6 +36,10 @@ export const AuthCallbackPage: React.FC = () => {
           return
         }
 
+        // Get redirect destination from query params
+        const redirectUrl = searchParams.get('redirect_to')
+        console.log('📍 Redirect destination from params:', redirectUrl || 'none')
+
         // Supabase handles OAuth and Magic Link callbacks automatically
         // The user session is established when the auth state changes
         // We just need to wait for the user to be set by AuthContext
@@ -49,11 +54,42 @@ export const AuthCallbackPage: React.FC = () => {
           if (!isLoading && user) {
             clearInterval(checkUser)
             console.log('✅ User authenticated:', user.email)
-            setStatus('success')
 
-            // Redirect to newsletter after short delay
-            setTimeout(() => {
-              navigate('/week/2025-W47')
+            // Redirect to original article link or latest week
+            setTimeout(async () => {
+              try {
+                if (redirectUrl) {
+                  console.log('🔄 Redirecting to original article:', redirectUrl)
+                  setStatus('success')
+                  navigate(redirectUrl)
+                } else {
+                  // Fetch latest published week from database
+                  const latestWeek = await WeekService.getLatestPublishedWeek()
+                  if (latestWeek) {
+                    console.log('🔄 Redirecting to latest week:', latestWeek.week_number)
+                    setStatus('success')
+                    navigate(`/week/${latestWeek.week_number}`)
+                  } else {
+                    // Fallback: if no published weeks, fetch all weeks and get the latest
+                    console.warn('⚠️ No published weeks found, fetching all weeks')
+                    const allWeeks = await WeekService.getAllWeeks({ sortBy: 'week', sortOrder: 'desc', limit: 1 })
+                    if (allWeeks.length > 0) {
+                      console.log('🔄 Redirecting to latest available week:', allWeeks[0].week_number)
+                      setStatus('success')
+                      navigate(`/week/${allWeeks[0].week_number}`)
+                    } else {
+                      // No weeks available in database
+                      console.error('❌ No weeks found in database')
+                      setStatus('error')
+                      setError('No newsletter weeks available. Please contact the administrator.')
+                    }
+                  }
+                }
+              } catch (err) {
+                console.error('❌ Error fetching latest week:', err)
+                setStatus('error')
+                setError('Failed to load newsletter weeks. Please try logging in again.')
+              }
             }, 500)
           } else if (attempts >= maxAttempts) {
             clearInterval(checkUser)

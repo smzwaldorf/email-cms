@@ -5,7 +5,6 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { FamilyService } from '@/services/FamilyService'
 import { FamilyServiceError } from '@/services/FamilyService'
 import type { FamilyRow, ChildClassEnrollmentRow, FamilyEnrollmentRow } from '@/types/database'
 

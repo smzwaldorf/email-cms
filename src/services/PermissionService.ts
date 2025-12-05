@@ -6,9 +6,12 @@
  * - ADMIN: Can edit/delete any article
  * - TEACHER: Can edit articles for their assigned classes
  * - PARENT/STUDENT: Read-only (cannot edit/delete)
+ *
+ * Performance: Uses session-level caching to avoid repeated database queries
+ * for user roles and teacher class assignments during a single page load.
  */
 
-import { getSupabaseClient, table } from '@/lib/supabase'
+import { table } from '@/lib/supabase'
 import type { ArticleRow, UserRoleRow, TeacherClassAssignmentRow } from '@/types/database'
 
 /**
@@ -25,15 +28,46 @@ export class PermissionError extends Error {
 }
 
 /**
+ * Session-level cache for user roles and teacher assignments
+ * Cleared when user changes or component unmounts
+ *
+ * Why: Permission checks are called multiple times per page load
+ * (once per article in a list). Caching reduces database queries
+ * from O(n_articles) to O(1) for role lookups.
+ *
+ * Example: Article list with 10 articles
+ * - Without cache: 30 queries (3 per article: canView, canEdit, canDelete)
+ * - With cache: 2 queries (1 for role, 1 for teacher classes)
+ *
+ * Cache is stored on PermissionService class (static) and can be cleared
+ * between sessions or when user context changes.
+ */
+const roleCache = new Map<string, string | null>()
+const teacherClassesCache = new Map<string, string[]>()
+
+/**
+ * Clear all caches (call when user changes or session ends)
+ */
+export function clearPermissionCache(): void {
+  roleCache.clear()
+  teacherClassesCache.clear()
+}
+
+/**
  * Permission Service class
  */
 export class PermissionService {
   /**
-   * Get user role by ID
+   * Get user role by ID (with caching)
    * @param userId User ID (from Supabase auth)
    * @returns User role or null if not found
    */
   static async getUserRole(userId: string): Promise<string | null> {
+    // Check cache first
+    if (roleCache.has(userId)) {
+      return roleCache.get(userId) || null
+    }
+
     try {
       const { data, error } = await table<UserRoleRow>('user_roles')
         .select('role')
@@ -42,22 +76,31 @@ export class PermissionService {
 
       if (error) {
         console.error(`Failed to fetch user role for ${userId}:`, error)
+        roleCache.set(userId, null)
         return null
       }
 
-      return data?.role || null
+      const role = data?.role || null
+      roleCache.set(userId, role)
+      return role
     } catch (err) {
       console.error('Error fetching user role:', err)
+      roleCache.set(userId, null)
       return null
     }
   }
 
   /**
-   * Get all classes taught by a teacher
+   * Get all classes taught by a teacher (with caching)
    * @param teacherId Teacher user ID
    * @returns Array of class IDs
    */
   static async getTeacherClasses(teacherId: string): Promise<string[]> {
+    // Check cache first
+    if (teacherClassesCache.has(teacherId)) {
+      return teacherClassesCache.get(teacherId) || []
+    }
+
     try {
       const { data, error } = await table<TeacherClassAssignmentRow>('teacher_class_assignment')
         .select('class_id')
@@ -65,12 +108,16 @@ export class PermissionService {
 
       if (error) {
         console.error(`Failed to fetch teacher classes for ${teacherId}:`, error)
+        teacherClassesCache.set(teacherId, [])
         return []
       }
 
-      return data?.map(assignment => assignment.class_id) || []
+      const classes = data?.map(assignment => assignment.class_id) || []
+      teacherClassesCache.set(teacherId, classes)
+      return classes
     } catch (err) {
       console.error('Error fetching teacher classes:', err)
+      teacherClassesCache.set(teacherId, [])
       return []
     }
   }
@@ -119,10 +166,10 @@ export class PermissionService {
   /**
    * Check if user can delete an article
    * @param userId User ID
-   * @param article Article to check
+   * @param _article Article to check (unused - only admin can delete)
    * @returns true if user can delete, false otherwise
    */
-  static async canDeleteArticle(userId: string, article: ArticleRow): Promise<boolean> {
+  static async canDeleteArticle(userId: string, _article: ArticleRow): Promise<boolean> {
     try {
       // Only admin can delete articles
       const role = await this.getUserRole(userId)

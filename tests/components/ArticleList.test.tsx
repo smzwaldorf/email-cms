@@ -28,6 +28,7 @@ const renderWithRouter = (component: React.ReactElement) => {
 const mockArticles: Article[] = [
   {
     id: 'article-001',
+    shortId: 'a001',
     title: 'React Performance Optimization',
     content: '# React Performance...',
     author: 'Alice',
@@ -42,6 +43,7 @@ const mockArticles: Article[] = [
   },
   {
     id: 'article-002',
+    shortId: 'a002',
     title: 'TypeScript Advanced Types',
     content: '# TypeScript Types...',
     author: 'Bob',
@@ -56,6 +58,7 @@ const mockArticles: Article[] = [
   },
   {
     id: 'article-003',
+    shortId: 'a003',
     title: 'Web Security Basics',
     content: '# Security...',
     author: 'Charlie',
@@ -175,6 +178,34 @@ describe('ArticleList Component', () => {
         expect(mockOnSelect).toHaveBeenCalledWith('article-001')
         expect(mockOnSelect).toHaveBeenCalledWith('article-002')
         expect(mockOnSelect).toHaveBeenCalledTimes(2)
+      }
+    })
+
+    it('should not call onSelectArticle when disabled', () => {
+      const mockOnSelect = vi.fn()
+      renderWithRouter(
+        <ArticleListView
+          weekNumber="2025-W43"
+          articles={mockArticles}
+          selectedArticleId="article-001"
+          onSelectArticle={mockOnSelect}
+          disabled={true}
+        />
+      )
+
+      // Try to find the element that handles the click. 
+      // ArticleCard renders a div with an onClick handler.
+      // We search for the text and get the closest div that is likely the card.
+      const articleText = screen.getByText('TypeScript Advanced Types')
+      const articleItem = articleText.closest('div.border') // ArticleCard has 'border' class
+
+      if (articleItem) {
+        fireEvent.click(articleItem)
+        expect(mockOnSelect).not.toHaveBeenCalled()
+      } else {
+        // Fallback if class selection fails, just click the text which bubbles up
+        fireEvent.click(articleText)
+        expect(mockOnSelect).not.toHaveBeenCalled()
       }
     })
   })
