@@ -64,30 +64,30 @@
 > - `analytics_events.article_id` → `articles.id` ✅
 > - `analytics_snapshots` 類似連接到既有表 ✅
 
-- [ ] **T001** [P] 建立單一遷移文件：`supabase/migrations/20251205_000_add_analytics_tables.sql`
+- [x] **T001** [P] 建立單一遷移文件：`supabase/migrations/20251205_000_add_analytics_tables.sql`
   - 包含: 3 個新表定義 + RLS 政策 + 索引
   - 檔案: `supabase/migrations/20251205_000_add_analytics_tables.sql`
   - 驗收: 遷移檔案包含所有 3 個表 + FK + 索引 + RLS
 
-- [ ] **T002** [P] 在遷移文件中定義 `analytics_events` 表
+- [x] **T002** [P] 在遷移文件中定義 `analytics_events` 表
   - 字段: id, user_id (FK), newsletter_id (FK), article_id (FK), session_id, event_type, metadata, created_at
   - 索引: user_id, newsletter_id, article_id, session_id, created_at
   - FK: 連接到 user_roles, newsletter_weeks, articles (均為既有表)
   - 驗收: 表結構正確，所有 FK 有效
 
-- [ ] **T003** [P] 在遷移文件中定義 `analytics_snapshots` 表
+- [x] **T003** [P] 在遷移文件中定義 `analytics_snapshots` 表
   - 字段: id, snapshot_date, newsletter_id (FK), article_id (FK), class_id (FK), metric_name, metric_value, created_at
   - 索引: snapshot_date, newsletter_id, article_id, class_id
   - FK: 連接到 newsletter_weeks, articles, classes (均為既有表)
   - 驗收: 表結構支援日聚合查詢
 
-- [ ] **T004** [P] 在遷移文件中定義 `tracking_tokens` 表
+- [x] **T004** [P] 在遷移文件中定義 `tracking_tokens` 表
   - 字段: id, user_id (FK), token_hash, token_payload, is_revoked, created_at, expires_at
   - 索引: user_id, token_hash (unique), expires_at
   - FK: 連接到 user_roles (既有表)
   - 驗收: 支援令牌撤銷和過期檢查
 
-- [ ] **T005** [P] 在遷移文件中定義 `tracking_links` 表 (可選，Phase 8)
+- [x] **T005** [P] 在遷移文件中定義 `tracking_links` 表 (可選，Phase 8)
   - 字段: id, original_url, article_id (FK), newsletter_id (FK), created_at
   - FK: 連接到 articles, newsletter_weeks (既有表)
   - 驗收: 支援重定向映射
@@ -100,19 +100,19 @@
 > - 使用者：查看自己或相關班級的數據
 > - 父母：查看子女班級的數據
 
-- [ ] **T006** [P] 在遷移文件中實現 `analytics_events` 的 RLS 政策
+- [x] **T006** [P] 在遷移文件中實現 `analytics_events` 的 RLS 政策
   - 政策: SELECT 允許用戶查看自己的事件，管理員查看全部
   - 政策: INSERT 允許服務角色 (trackingService) 插入事件
   - 檔案: 在 `supabase/migrations/20251205_000_add_analytics_tables.sql` 中定義
   - 驗收: 政策測試通過，使用者只能查看自己的數據，管理員可查看全部
 
-- [ ] **T007** [P] 在遷移文件中實現 `analytics_snapshots` 的 RLS 政策
+- [x] **T007** [P] 在遷移文件中實現 `analytics_snapshots` 的 RLS 政策
   - 政策: SELECT 允許用戶查看自己班級的 snapshot，管理員查看全部
   - 使用 `child_class_enrollment` 表進行班級級別的訪問控制
   - 檔案: 在 `supabase/migrations/20251205_000_add_analytics_tables.sql` 中定義
   - 驗收: 班級級別的訪問控制工作正確，父母只能看自己子女班級的統計
 
-- [ ] **T008** [P] 在遷移文件中實現 `tracking_tokens` 的 RLS 政策
+- [x] **T008** [P] 在遷移文件中實現 `tracking_tokens` 的 RLS 政策
   - 政策: SELECT/UPDATE 允許用戶管理自己的令牌，管理員管理全部
   - 政策: INSERT 允許認證服務生成新令牌
   - 檔案: 在 `supabase/migrations/20251205_000_add_analytics_tables.sql` 中定義
@@ -122,13 +122,13 @@
 
 > 📌 **架構整合**: 新類型需與既有的 `user_roles`、`articles`、`newsletter_weeks`、`classes` 類型整合
 
-- [ ] **T009** [P] 建立 `src/types/analytics.ts`
+- [x] **T009** [P] 建立 `src/types/analytics.ts`
   - 類型: `AnalyticsEvent`、`AnalyticsSnapshot`、`TrackingToken`、`TrackingPayload`、`AnalyticsMetrics`
   - FK 參考: `user_id` 參考 `user_roles.id`、`newsletter_id` 參考 `newsletter_weeks`、`article_id` 參考 `articles`、`class_id` 參考 `classes`
   - 檔案: `src/types/analytics.ts`
   - 驗收: 所有類型匯出並可在整個應用中使用，FK 類型相容
 
-- [ ] **T010** [P] 建立 `src/types/tracking.ts`
+- [x] **T010** [P] 建立 `src/types/tracking.ts`
   - 類型: `TrackingEventType`、`TrackingMetadata`、`SessionData`、`JWTPayload`、`TokenRevocationReason`
   - 事件類型: 'page_view'、'scroll_50'、'scroll_90'、'link_click'、'session_end'、'email_open'
   - 檔案: `src/types/tracking.ts`
@@ -136,7 +136,7 @@
 
 ### 環境配置
 
-- [ ] **T011** [P] 更新 `.env.local` 為分析配置
+- [x] **T011** [P] 更新 `.env.local` 為分析配置
   - 環境變數:
     - `VITE_JWT_SECRET` - JWT 簽名密鑰（來自 Supabase 設定）
     - `VITE_TRACKING_API_BASE` - 追蹤 API 基礎 URL（如 `https://api.example.com/tracking`）
@@ -144,7 +144,7 @@
   - 檔案: `.env.local`
   - 驗收: 環境變數在應用中可讀，npm run dev 可正常啟動
 
-- [ ] **T012** [P] 建立 `src/config/analytics.ts` 配置文件
+- [x] **T012** [P] 建立 `src/config/analytics.ts` 配置文件
   - 配置項:
     - `trackingPixelSize` - 追蹤像素尺寸 (1x1)
     - `eventThrottleMs` - 事件節流延遲 (500ms)
@@ -156,7 +156,7 @@
 
 ### 測試與驗證
 
-- [ ] **T013** [P] 執行數據庫遷移並驗證
+- [x] **T013** [P] 執行數據庫遷移並驗證
   - 命令: `supabase migration up` 或 `npm run db:migrate`
   - 檔案: `supabase/migrations/20251205_000_add_analytics_tables.sql`
   - 驗收:
@@ -165,12 +165,12 @@
     - 所有索引建立成功
     - RLS 政策已啟用並生效
 
-- [ ] **T014** [P] 驗證 TypeScript 編譯
+- [x] **T014** [P] 驗證 TypeScript 編譯
   - 命令: `npm run build`
   - 檔案: 新建的 `src/types/analytics.ts` 和 `src/types/tracking.ts`
   - 驗收: 編譯成功，無 TypeScript 類型錯誤
 
-- [ ] **T015** [P] 驗證現有測試和功能未受影響
+- [x] **T015** [P] 驗證現有測試和功能未受影響
   - 命令: `npm test -- --run`
   - 驗收:
     - 所有現有測試仍然通過 (1705+ 測試)
@@ -298,6 +298,22 @@
 - [ ] **T038** [P] 在 `WeeklyReaderPage.tsx` 中集成追蹤
   - 修改: 添加追蹤 Hook
   - 驗收: 週報訪問被追蹤
+
+### 閱讀狀態顯示 (Read Status)
+
+- [ ] **T038a** [P] 實現 `getReadArticles` 服務方法
+  - 功能: 查詢當前用戶在特定週次或班級已閱讀的文章 ID 列表
+  - 查詢: `SELECT article_id FROM analytics_events WHERE event_type = 'page_view' AND user_id = ?`
+  - 驗收: 返回準確的已讀文章 ID 集合
+
+- [ ] **T038b** [P] 建立 `useReadStatus` Hook
+  - 功能: 獲取並緩存已讀狀態，支援即時更新 (Optimistic UI)
+  - 驗收: 進入文章後，列表狀態立即更新為已讀
+
+- [ ] **T038c** [P] 更新文章列表 UI
+  - 修改: 在文章卡片/列表項顯示「已讀」勾選框或視覺提示
+  - 樣式: 綠色勾選或變灰標題
+  - 驗收: 已讀文章有明顯視覺區別
 
 - [ ] **T039** 建立 `tests/unit/hooks/useAnalyticsTracking.test.ts`
   - 測試: 令牌驗證、會話初始化、事件發送
