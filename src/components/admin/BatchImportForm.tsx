@@ -61,7 +61,6 @@ export function BatchImportForm({
   onValidationComplete,
   disabled = false,
 }: BatchImportFormProps) {
-  const [csvText, setCSVText] = useState('')
   const [csvRows, setCSVRows] = useState<Record<string, any>[]>([])
   const [validation, setValidation] = useState<BatchValidationResult | null>(null)
   const [importResult, setImportResult] = useState<BatchImportResult | null>(null)
@@ -78,7 +77,6 @@ export function BatchImportForm({
     const reader = new FileReader()
     reader.onload = (e) => {
       const text = e.target?.result as string
-      setCSVText(text)
 
       // Parse CSV
       const rows = parseCSV(text)
@@ -185,7 +183,6 @@ export function BatchImportForm({
       if (result.success) {
         alert(`導入成功！\n\n已導入 ${result.importedCount} 個用戶`)
         // Reset form
-        setCSVText('')
         setCSVRows([])
         setValidation(null)
       } else {
@@ -203,7 +200,6 @@ export function BatchImportForm({
    * 重置表單
    */
   const handleReset = () => {
-    setCSVText('')
     setCSVRows([])
     setValidation(null)
     setImportResult(null)
@@ -216,16 +212,16 @@ export function BatchImportForm({
     <div className="space-y-6">
       {/* File Upload */}
       <div className="space-y-3">
-        <label className="block text-sm font-medium text-gray-700">CSV 文件</label>
+        <label className="block text-sm font-semibold text-waldorf-clay-700">CSV 文件</label>
 
         <div
           onDragEnter={handleDragEnter}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          className={`rounded-lg border-2 border-dashed p-8 text-center transition-colors ${
+          className={`rounded-2xl border-2 border-dashed p-10 text-center transition-all duration-200 ${
             isDragging
-              ? 'border-waldorf-sage-500 bg-waldorf-sage-50'
-              : 'border-gray-300 bg-gray-50'
+              ? 'border-waldorf-sage-400 bg-waldorf-sage-50 shadow-md'
+              : 'border-waldorf-cream-300 bg-waldorf-cream-50'
           } ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
         >
           <input
@@ -239,16 +235,19 @@ export function BatchImportForm({
 
           <div
             onClick={() => !disabled && fileInputRef.current?.click()}
-            className="space-y-2"
+            className="space-y-3"
           >
-            <p className="text-sm font-medium text-gray-700">拖放 CSV 文件到此處</p>
-            <p className="text-xs text-gray-500">或點擊選擇文件</p>
+            <svg className="w-10 h-10 mx-auto text-waldorf-sage-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+            </svg>
+            <p className="text-sm font-semibold text-waldorf-clay-700">拖放 CSV 文件到此處</p>
+            <p className="text-xs text-waldorf-clay-500">或點擊選擇文件</p>
           </div>
         </div>
 
         {csvRows.length > 0 && (
-          <p className="text-sm text-gray-600">
-            已選擇: <span className="font-semibold">{csvRows.length} 行</span>
+          <p className="text-sm text-waldorf-clay-600">
+            已選擇: <span className="font-semibold text-waldorf-sage-600">{csvRows.length} 行</span>
           </p>
         )}
       </div>
@@ -256,29 +255,29 @@ export function BatchImportForm({
       {/* CSV Preview */}
       {csvRows.length > 0 && (
         <div className="space-y-3">
-          <label className="block text-sm font-medium text-gray-700">預覽</label>
+          <label className="block text-sm font-semibold text-waldorf-clay-700">預覽</label>
 
-          <div className="max-h-60 overflow-auto rounded-lg border border-gray-200">
+          <div className="max-h-60 overflow-auto rounded-xl border border-waldorf-cream-200 bg-white/50">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50">
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-700">#</th>
+                <tr className="border-b border-waldorf-cream-200 bg-gradient-to-r from-waldorf-cream-100 to-waldorf-cream-50">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-waldorf-clay-600">#</th>
                   {Object.keys(csvRows[0]).map((header) => (
                     <th
                       key={header}
-                      className="px-4 py-2 text-left text-xs font-medium text-gray-700"
+                      className="px-4 py-3 text-left text-xs font-semibold text-waldorf-clay-600"
                     >
                       {header}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-waldorf-cream-100">
                 {csvRows.slice(0, 10).map((row, index) => (
-                  <tr key={index} className="border-b border-gray-200">
-                    <td className="px-4 py-2 text-xs text-gray-600">{index + 1}</td>
+                  <tr key={index} className="hover:bg-waldorf-cream-50/50 transition-colors">
+                    <td className="px-4 py-3 text-xs text-waldorf-clay-600 font-medium">{index + 1}</td>
                     {Object.values(row).map((value, colIndex) => (
-                      <td key={colIndex} className="px-4 py-2 text-xs text-gray-600">
+                      <td key={colIndex} className="px-4 py-3 text-xs text-waldorf-clay-600">
                         {String(value)}
                       </td>
                     ))}
@@ -289,7 +288,7 @@ export function BatchImportForm({
           </div>
 
           {csvRows.length > 10 && (
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-waldorf-clay-500">
               顯示前 10 行，共 {csvRows.length} 行
             </p>
           )}
@@ -298,20 +297,25 @@ export function BatchImportForm({
 
       {/* Validation Errors */}
       {validation && !validation.isValid && (
-        <div className="rounded-lg bg-red-50 p-4">
-          <h4 className="mb-2 text-sm font-semibold text-red-700">驗證錯誤</h4>
+        <div className="rounded-2xl bg-waldorf-rose-50 border border-waldorf-rose-200 p-4">
+          <h4 className="mb-3 text-sm font-semibold text-waldorf-rose-800 flex items-center gap-2">
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" />
+            </svg>
+            驗證錯誤
+          </h4>
           <div className="max-h-40 space-y-1 overflow-auto">
             {validation.rowResults
               .filter((r) => !r.isValid)
               .slice(0, 10)
               .map((result) => (
-                <div key={result.rowNumber} className="text-xs text-red-600">
+                <div key={result.rowNumber} className="text-xs text-waldorf-rose-700">
                   <strong>第 {result.rowNumber} 行:</strong> {result.errors.join('; ')}
                 </div>
               ))}
           </div>
           {validation.rowResults.filter((r) => !r.isValid).length > 10 && (
-            <p className="mt-2 text-xs text-red-600">
+            <p className="mt-2 text-xs text-waldorf-rose-700">
               + {validation.rowResults.filter((r) => !r.isValid).length - 10} 個錯誤
             </p>
           )}
@@ -320,10 +324,15 @@ export function BatchImportForm({
 
       {/* Validation Success */}
       {validation && validation.isValid && (
-        <div className="rounded-lg bg-green-50 p-4">
-          <p className="text-sm font-medium text-green-700">✓ 驗證成功</p>
-          <p className="mt-1 text-xs text-green-600">
-            準備導入 {validation.validRows} 個有效用戶
+        <div className="rounded-2xl bg-waldorf-sage-50 border border-waldorf-sage-200 p-4">
+          <p className="text-sm font-semibold text-waldorf-sage-800 flex items-center gap-2">
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" />
+            </svg>
+            驗證成功
+          </p>
+          <p className="mt-2 text-xs text-waldorf-sage-700">
+            準備導入 <span className="font-semibold">{validation.validRows}</span> 個有效用戶
           </p>
         </div>
       )}
@@ -331,19 +340,30 @@ export function BatchImportForm({
       {/* Import Result */}
       {importResult && (
         <div
-          className={`rounded-lg p-4 ${
-            importResult.success ? 'bg-green-50' : 'bg-red-50'
+          className={`rounded-2xl border p-4 ${
+            importResult.success
+              ? 'bg-waldorf-sage-50 border-waldorf-sage-200'
+              : 'bg-waldorf-rose-50 border-waldorf-rose-200'
           }`}
         >
           <p
-            className={`text-sm font-medium ${
-              importResult.success ? 'text-green-700' : 'text-red-700'
+            className={`text-sm font-semibold flex items-center gap-2 ${
+              importResult.success ? 'text-waldorf-sage-800' : 'text-waldorf-rose-800'
             }`}
           >
-            {importResult.success ? '✓ 導入成功' : '✗ 導入失敗'}
+            {importResult.success ? (
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" />
+              </svg>
+            )}
+            {importResult.success ? '導入成功' : '導入失敗'}
           </p>
-          <p className={`mt-1 text-xs ${
-            importResult.success ? 'text-green-600' : 'text-red-600'
+          <p className={`mt-2 text-xs ${
+            importResult.success ? 'text-waldorf-sage-700' : 'text-waldorf-rose-700'
           }`}>
             {importResult.success
               ? `已導入 ${importResult.importedCount} 個用戶`
@@ -353,23 +373,28 @@ export function BatchImportForm({
       )}
 
       {/* Required Column Info */}
-      <div className="rounded-lg bg-blue-50 p-4">
-        <p className="text-xs font-medium text-blue-700">必需欄位 (CSV 標題):</p>
-        <ul className="mt-2 space-y-1 text-xs text-blue-600">
-          <li>• <strong>email</strong> - 用戶電子郵件地址</li>
-          <li>• <strong>name</strong> - 用戶姓名</li>
-          <li>• <strong>role</strong> - 用戶角色 (admin, teacher, parent, student)</li>
-          <li>• <strong>status</strong> (選填) - 用戶狀態 (active, disabled, pending_approval)</li>
+      <div className="rounded-2xl bg-waldorf-lavender-50 border border-waldorf-lavender-200 p-4">
+        <p className="text-xs font-semibold text-waldorf-lavender-800 flex items-center gap-2 mb-3">
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M18 5v8a2 2 0 01-2 2h-5l-5 4v-4H4a2 2 0 01-2-2V5a2 2 0 012-2h12a2 2 0 012 2zm-11-1a1 1 0 11-2 0 1 1 0 012 0z" />
+          </svg>
+          必需欄位 (CSV 標題)
+        </p>
+        <ul className="space-y-2 text-xs text-waldorf-lavender-700">
+          <li className="flex gap-2"><span className="text-waldorf-lavender-500">•</span><span><strong>email</strong> - 用戶電子郵件地址</span></li>
+          <li className="flex gap-2"><span className="text-waldorf-lavender-500">•</span><span><strong>name</strong> - 用戶姓名</span></li>
+          <li className="flex gap-2"><span className="text-waldorf-lavender-500">•</span><span><strong>role</strong> - 用戶角色 (admin, teacher, parent, student)</span></li>
+          <li className="flex gap-2"><span className="text-waldorf-lavender-500">•</span><span><strong>status</strong> (選填) - 用戶狀態 (active, disabled, pending_approval)</span></li>
         </ul>
       </div>
 
       {/* Action Buttons */}
-      <div className="flex gap-3">
+      <div className="flex gap-3 flex-wrap">
         {csvRows.length > 0 && !validation && (
           <button
             onClick={handleValidate}
             disabled={disabled || isValidating}
-            className="rounded-lg bg-waldorf-sage-600 px-4 py-2 text-sm font-medium text-white hover:bg-waldorf-sage-700 disabled:opacity-50"
+            className="px-6 py-2.5 text-white bg-gradient-to-r from-waldorf-sage-500 to-waldorf-sage-600 hover:from-waldorf-sage-600 hover:to-waldorf-sage-700 rounded-xl font-medium transition-all duration-200 shadow-lg shadow-waldorf-sage-200/50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isValidating ? '驗證中...' : '驗證'}
           </button>
@@ -379,7 +404,7 @@ export function BatchImportForm({
           <button
             onClick={handleImport}
             disabled={disabled || isImporting}
-            className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+            className="px-6 py-2.5 text-white bg-gradient-to-r from-waldorf-peach-500 to-waldorf-peach-600 hover:from-waldorf-peach-600 hover:to-waldorf-peach-700 rounded-xl font-medium transition-all duration-200 shadow-lg shadow-waldorf-peach-200/50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isImporting ? '導入中...' : '確認導入'}
           </button>
@@ -389,7 +414,7 @@ export function BatchImportForm({
           <button
             onClick={handleReset}
             disabled={disabled || isValidating || isImporting}
-            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            className="px-6 py-2.5 border border-waldorf-cream-300 rounded-xl text-sm font-medium text-waldorf-clay-700 hover:bg-waldorf-cream-100 transition-all duration-200 disabled:opacity-50"
           >
             重置
           </button>
