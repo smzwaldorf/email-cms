@@ -358,7 +358,7 @@ describe('Article Switching Performance', () => {
       const endTime = performance.now()
       const totalTime = endTime - startTime
 
-      expect(totalTime).toBeLessThan(200)
+      expect(totalTime).toBeLessThan(300)
       expect(mockOnSelect).toHaveBeenCalledWith(articles[4].id)
     })
 

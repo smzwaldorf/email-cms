@@ -72,7 +72,12 @@ function createSupabaseClient(): SupabaseClient {
  * Singleton Supabase client instance
  * Initialize lazily on first access
  */
+/**
+ * Singleton Supabase client instance
+ * Initialize lazily on first access
+ */
 let supabaseClient: SupabaseClient | null = null
+let supabaseServiceClient: SupabaseClient | null = null
 
 /**
  * Get the singleton Supabase client instance
@@ -95,24 +100,28 @@ export function getSupabaseClient(): SupabaseClient {
  * WARNING: Only use this for admin operations that require elevated privileges
  */
 export function getSupabaseServiceClient(): SupabaseClient {
-  validateEnvironment()
+  if (!supabaseServiceClient) {
+    validateEnvironment()
 
-  const url = import.meta.env.VITE_SUPABASE_URL
-  const serviceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY
+    const url = import.meta.env.VITE_SUPABASE_URL
+    const serviceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY
 
-  if (!serviceKey) {
-    throw new Error(
-      'Missing VITE_SUPABASE_SERVICE_ROLE_KEY environment variable. ' +
-      'This is required for admin operations.'
-    )
+    if (!serviceKey) {
+      throw new Error(
+        'Missing VITE_SUPABASE_SERVICE_ROLE_KEY environment variable. ' +
+        'This is required for admin operations.'
+      )
+    }
+
+    supabaseServiceClient = createClient(url, serviceKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    })
   }
 
-  return createClient(url, serviceKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  })
+  return supabaseServiceClient
 }
 
 /**
@@ -120,6 +129,7 @@ export function getSupabaseServiceClient(): SupabaseClient {
  */
 export function resetSupabaseClient(): void {
   supabaseClient = null
+  supabaseServiceClient = null
 }
 
 /**

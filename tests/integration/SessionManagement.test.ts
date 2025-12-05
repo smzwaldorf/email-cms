@@ -199,11 +199,11 @@ describe('E2E: Session Management & Multi-Device Support', () => {
 
       // Simulate two different devices
       const deviceA = createClient(supabaseUrl, supabaseKey, {
-        auth: { persistSession: true },
+        auth: { persistSession: false }, // Disable to avoid storage conflicts
       })
 
       const deviceB = createClient(supabaseUrl, supabaseKey, {
-        auth: { persistSession: true },
+        auth: { persistSession: false },
       })
 
       try {
@@ -234,8 +234,8 @@ describe('E2E: Session Management & Multi-Device Support', () => {
         // Note: tokens might be identical on very fast logins, but refresh tokens differ
         expect(sessionA?.user?.id).toBe(sessionB?.user?.id) // Same user
       } finally {
-        await deviceA.auth.signOut()
-        await deviceB.auth.signOut()
+        await deviceA.auth.signOut().catch(() => {})
+        await deviceB.auth.signOut().catch(() => {})
       }
     })
 
@@ -245,8 +245,12 @@ describe('E2E: Session Management & Multi-Device Support', () => {
         return
       }
 
-      const deviceA = createClient(supabaseUrl, supabaseKey)
-      const deviceB = createClient(supabaseUrl, supabaseKey)
+      const deviceA = createClient(supabaseUrl, supabaseKey, {
+        auth: { persistSession: false }, // Disable to avoid storage conflicts
+      })
+      const deviceB = createClient(supabaseUrl, supabaseKey, {
+        auth: { persistSession: false },
+      })
 
       try {
         // Device A signs in
@@ -279,8 +283,8 @@ describe('E2E: Session Management & Multi-Device Support', () => {
           expect(userB.email).toBe(testEmail)
         }
       } finally {
-        await deviceA.auth.signOut()
-        await deviceB.auth.signOut()
+        await deviceA.auth.signOut().catch(() => {})
+        await deviceB.auth.signOut().catch(() => {})
       }
     })
   })

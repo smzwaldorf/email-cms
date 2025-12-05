@@ -204,19 +204,19 @@ export const AuditLogViewer: React.FC = () => {
   const paginatedEvents = events.slice(startIndex, startIndex + eventsPerPage)
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Filters */}
-      <div className="bg-white p-4 rounded-lg border border-gray-200">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Filters</h3>
+      <div className="bg-white/70 backdrop-blur-sm p-6 rounded-2xl border border-waldorf-cream-200 shadow-sm">
+        <h3 className="text-lg font-display font-semibold text-waldorf-clay-800 mb-4">Filters</h3>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Time Range */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Time Range</label>
+            <label className="block text-sm font-semibold text-waldorf-clay-700 mb-2">Time Range</label>
             <select
               value={filterDays}
               onChange={(e) => setFilterDays(Number(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-waldorf-peach-500"
+              className="w-full px-4 py-3 border border-waldorf-cream-300 rounded-xl bg-waldorf-cream-50 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-300 focus:border-waldorf-sage-400 text-waldorf-clay-700 transition-all duration-200"
             >
               <option value={1}>Last 1 day</option>
               <option value={7}>Last 7 days</option>
@@ -227,11 +227,11 @@ export const AuditLogViewer: React.FC = () => {
 
           {/* Auth Method */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Auth Method</label>
+            <label className="block text-sm font-semibold text-waldorf-clay-700 mb-2">Auth Method</label>
             <select
               value={filterMethod}
               onChange={(e) => setFilterMethod(e.target.value as AuthMethod | 'all')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-waldorf-peach-500"
+              className="w-full px-4 py-3 border border-waldorf-cream-300 rounded-xl bg-waldorf-cream-50 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-300 focus:border-waldorf-sage-400 text-waldorf-clay-700 transition-all duration-200"
             >
               <option value="all">All Methods</option>
               <option value="google_oauth">Google OAuth</option>
@@ -242,11 +242,11 @@ export const AuditLogViewer: React.FC = () => {
 
           {/* Event Type */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Event Type</label>
+            <label className="block text-sm font-semibold text-waldorf-clay-700 mb-2">Event Type</label>
             <select
               value={filterEventType}
               onChange={(e) => setFilterEventType(e.target.value as AuthEventType | 'all')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-waldorf-peach-500"
+              className="w-full px-4 py-3 border border-waldorf-cream-300 rounded-xl bg-waldorf-cream-50 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-300 focus:border-waldorf-sage-400 text-waldorf-clay-700 transition-all duration-200"
             >
               <option value="all">All Events</option>
               <option value="login_success">Login Success</option>
@@ -263,11 +263,11 @@ export const AuditLogViewer: React.FC = () => {
         </div>
 
         {/* Export Button */}
-        <div className="mt-4 flex justify-end">
+        <div className="mt-6 flex justify-end">
           <button
             onClick={handleExportCSV}
             disabled={events.length === 0 || isLoading}
-            className="px-4 py-2 bg-waldorf-peach-500 text-white rounded-md hover:bg-opacity-90 disabled:opacity-50 transition-colors"
+            className="px-6 py-2.5 text-white bg-gradient-to-r from-waldorf-peach-500 to-waldorf-peach-600 hover:from-waldorf-peach-600 hover:to-waldorf-peach-700 rounded-xl font-medium transition-all duration-200 shadow-lg shadow-waldorf-peach-200/50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             📥 Export to CSV
           </button>
@@ -277,88 +277,93 @@ export const AuditLogViewer: React.FC = () => {
       {/* Loading State */}
       {isLoading && (
         <div className="flex justify-center items-center h-32">
-          <div className="animate-spin rounded-full h-8 w-8 border-4 border-waldorf-peach-500 border-t-transparent"></div>
+          <div className="w-12 h-12 rounded-full border-4 border-waldorf-cream-200 border-t-waldorf-sage-500 animate-spin"></div>
         </div>
       )}
 
       {/* Error State */}
       {error && !isLoading && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-          {error}
+        <div className="p-6 bg-waldorf-rose-50 border border-waldorf-rose-200 rounded-2xl">
+          <p className="text-waldorf-rose-800 font-semibold">Error</p>
+          <p className="text-waldorf-rose-700 text-sm mt-1">{error}</p>
         </div>
       )}
 
       {/* No Data */}
       {!isLoading && !error && events.length === 0 && (
-        <div className="text-center py-8 text-gray-500">
-          No authentication events found for the selected filters.
+        <div className="text-center py-16">
+          <svg className="w-12 h-12 text-waldorf-clay-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <p className="text-waldorf-clay-500 font-medium">No authentication events found</p>
+          <p className="text-waldorf-clay-400 text-sm mt-1">Try adjusting your filter settings</p>
         </div>
       )}
 
       {/* Events Table */}
       {!isLoading && !error && events.length > 0 && (
         <div>
-          <div className="bg-white shadow rounded-lg overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-              <p className="text-sm text-gray-600">
-                Showing {startIndex + 1} to {Math.min(startIndex + eventsPerPage, events.length)} of {events.length} events
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl overflow-hidden border border-waldorf-cream-200 shadow-lg shadow-waldorf-clay-100/50">
+            <div className="px-6 py-4 border-b border-waldorf-cream-200 bg-gradient-to-r from-waldorf-cream-100 to-waldorf-cream-50">
+              <p className="text-sm text-waldorf-clay-600">
+                Showing <span className="font-semibold">{startIndex + 1}</span> to <span className="font-semibold">{Math.min(startIndex + eventsPerPage, events.length)}</span> of <span className="font-semibold">{events.length}</span> events
               </p>
             </div>
 
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="w-full">
+                <thead className="bg-gradient-to-r from-waldorf-cream-100 to-waldorf-cream-50">
                   <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">
                       Timestamp
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">
                       User
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">
                       Event
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">
                       Method
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">
                       Device
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">
                       Details
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-waldorf-cream-100">
                   {paginatedEvents.map((event) => {
                     const isExpanded = expandedEventId === event.id
                     const eventInfo = EVENT_TYPE_INFO[event.event_type]
 
                     return (
                       <React.Fragment key={event.id}>
-                        <tr className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        <tr className="hover:bg-waldorf-cream-50/50 transition-colors duration-200">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-waldorf-clay-600">
                             {formatDate(event.created_at)}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-waldorf-clay-600">
                             {event.user_id ? event.user_id.substring(0, 8) : '(unauthenticated)'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span
-                              className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                              ${eventInfo.color === 'green' ? 'bg-green-100 text-green-800' : ''}
-                              ${eventInfo.color === 'red' ? 'bg-red-100 text-red-800' : ''}
-                              ${eventInfo.color === 'blue' ? 'bg-blue-100 text-blue-800' : ''}
-                              ${eventInfo.color === 'gray' ? 'bg-gray-100 text-gray-800' : ''}
-                              ${eventInfo.color === 'orange' ? 'bg-orange-100 text-orange-800' : ''}`}
+                              className={`px-3 py-1.5 inline-flex text-xs leading-5 font-medium rounded-full
+                              ${eventInfo.color === 'green' ? 'bg-waldorf-sage-100 text-waldorf-sage-700' : ''}
+                              ${eventInfo.color === 'red' ? 'bg-waldorf-rose-100 text-waldorf-rose-700' : ''}
+                              ${eventInfo.color === 'blue' ? 'bg-waldorf-lavender-100 text-waldorf-lavender-700' : ''}
+                              ${eventInfo.color === 'gray' ? 'bg-waldorf-cream-200 text-waldorf-clay-700' : ''}
+                              ${eventInfo.color === 'orange' ? 'bg-waldorf-peach-100 text-waldorf-peach-700' : ''}`}
                             >
                               {eventInfo.label}
                             </span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-waldorf-clay-600">
                             {event.auth_method ? AUTH_METHOD_INFO[event.auth_method] : '-'}
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-600">
+                          <td className="px-6 py-4 text-sm text-waldorf-clay-600">
                             <div className="max-w-xs truncate" title={event.user_agent || ''}>
                               {event.user_agent ? event.user_agent.substring(0, 40) : '-'}
                             </div>
@@ -367,7 +372,7 @@ export const AuditLogViewer: React.FC = () => {
                             {event.metadata && Object.keys(event.metadata).length > 0 && (
                               <button
                                 onClick={() => setExpandedEventId(isExpanded ? null : event.id)}
-                                className="text-waldorf-peach-500 hover:text-waldorf-peach-700 font-medium"
+                                className="text-waldorf-peach-600 hover:text-waldorf-peach-700 font-medium"
                               >
                                 {isExpanded ? '▼' : '▶'} View
                               </button>
@@ -377,11 +382,11 @@ export const AuditLogViewer: React.FC = () => {
 
                         {/* Expanded Metadata Row */}
                         {isExpanded && event.metadata && (
-                          <tr className="bg-gray-50">
+                          <tr className="bg-waldorf-cream-50/50">
                             <td colSpan={6} className="px-6 py-4">
-                              <div className="bg-white border border-gray-200 rounded p-4">
-                                <p className="text-sm font-medium text-gray-900 mb-2">Additional Info:</p>
-                                <pre className="text-xs text-gray-600 overflow-auto max-h-32 bg-gray-50 p-2 rounded">
+                              <div className="bg-white border border-waldorf-cream-200 rounded-xl p-4">
+                                <p className="text-sm font-medium text-waldorf-clay-900 mb-3">Additional Info:</p>
+                                <pre className="text-xs text-waldorf-clay-600 overflow-auto max-h-32 bg-waldorf-cream-50 p-3 rounded-lg border border-waldorf-cream-200 font-mono">
                                   {JSON.stringify(event.metadata, null, 2)}
                                 </pre>
                               </div>
@@ -397,23 +402,23 @@ export const AuditLogViewer: React.FC = () => {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-between items-center">
+              <div className="px-6 py-4 border-t border-waldorf-cream-200 bg-gradient-to-r from-waldorf-cream-100 to-waldorf-cream-50 flex justify-between items-center">
                 <button
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium disabled:opacity-50"
+                  className="px-4 py-2 border border-waldorf-cream-300 rounded-lg text-sm font-medium text-waldorf-clay-700 hover:bg-waldorf-cream-100 transition-all duration-200 disabled:opacity-50"
                 >
                   Previous
                 </button>
 
-                <span className="text-sm text-gray-600">
-                  Page {currentPage} of {totalPages}
+                <span className="text-sm text-waldorf-clay-600">
+                  Page <span className="font-semibold">{currentPage}</span> of <span className="font-semibold">{totalPages}</span>
                 </span>
 
                 <button
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
-                  className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium disabled:opacity-50"
+                  className="px-4 py-2 border border-waldorf-cream-300 rounded-lg text-sm font-medium text-waldorf-clay-700 hover:bg-waldorf-cream-100 transition-all duration-200 disabled:opacity-50"
                 >
                   Next
                 </button>
