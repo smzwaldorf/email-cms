@@ -349,22 +349,22 @@ Phase 11: Polish (所有故事後完成)
 
 ## 實施進度總結
 
-### 完成度統計
+### 完成度統計 (基於 IMPLEMENTATION_STATUS.md)
 
-| Phase | 故事 | 進度 | 說明 |
-|-------|------|------|------|
-| Phase 1 | Setup | ✅ **100%** | 所有基礎設施完成 (7/7 tasks) |
-| Phase 2 | Foundation | ✅ **100%** | 所有基礎設施完成 (9/9 tasks) |
-| Phase 3 | US1 | ✅ **100%** | NewsletterTable、AdminDashboardPage (7/7 tasks) |
-| Phase 4 | US2 | ✅ **100%** | ArticleForm with LWW, ArticleEditorPage (8/8 tasks) |
-| Phase 5 | US3 | ✅ **100%** | ClassForm、FamilyForm、管理元件 (9/9 tasks) |
-| Phase 6 | US4 | ✅ **100%** | NewsletterForm、建立電子報功能 (6/6 tasks) |
-| Phase 7 | US5 | ✅ **100%** | PublishDialog、發布/封存電子報功能 (6/6 tasks) |
-| Phase 8 | US6 | ✅ **100%** | 完整用戶管理、角色指派、批量導入、審計日誌 (16/16 tasks) |
-| Phase 9 | US7 | ✅ **100%** | 班級管理、學生選擇器、成員管理 (8/8 tasks) |
-| Phase 10 | US8 | ✅ **100%** | RelationshipMatrix、家長-學生關係管理 (7/7 tasks) |
-| Phase 11 | Polish | ✅ **100%** | 安全審查、性能優化、文件更新完成 (14/14 tasks) |
-| | **總體進度** | **✅ 100%** | **97/97 個任務已完成** |
+| Phase | 故事 | 進度 | 說明 | 任務 |
+|-------|------|------|------|------|
+| Phase 1 | Setup | ✅ **100%** | 基礎設施完成 | 7/7 |
+| Phase 2 | Foundation | ⚠️ **78%** | RLS、審計日誌、CRUD 已實施；CSV 導入待完成 | 7/9 |
+| Phase 3 | US1 | ❌ **0%** | NewsletterTable 和電子報列表 UI 待實施 | 0/7 |
+| Phase 4 | US2 | ⚠️ **60%** | 文章編輯器框架存在；LWW 衝突解決需完善 | 5/8 |
+| Phase 5 | US3 | ❌ **0%** | 分類/家族管理 UI 待實施 | 0/9 |
+| Phase 6 | US4 | ⚠️ **20%** | 電子報管理框架存在；專用建立頁面需實施 | 1/6 |
+| Phase 7 | US5 | ❌ **0%** | 發布/封存工作流待實施 | 0/6 |
+| Phase 8 | US6 | ⚠️ **65%** | 用戶管理 UI 65% 完成；CSV 導入、RLS 限制需完成 | 10/16 |
+| Phase 9 | US7 | ⚠️ **30%** | 班級管理框架部分存在；班級 CRUD UI 需完成 | 2/8 |
+| Phase 10 | US8 | ⚠️ **40%** | 關係支援框架存在；關係矩陣 UI 需完成 | 3/7 |
+| Phase 11 | Polish | ⚠️ **40%** | 安全審查、性能測試部分完成；E2E 測試需完成 | 6/14 |
+| | **總體進度** | **⚠️ 29-33%** | **28-32/97 個任務已完成** | |
 
 ### Phase 11 新增檔案
 
@@ -396,6 +396,6 @@ Phase 11: Polish (所有故事後完成)
 
 ---
 
-**狀態**: ✅ 已完成 - 所有 Phase 1-11 任務已完成
-**最後更新**: 2025-12-04
-**完成度**: 97/97 任務 (100% 完成)
+**狀態**: ⏳ 進行中 - 部分任務已完成，Phase 8 和其他階段需繼續推進
+**最後更新**: 2025-12-05
+**完成度**: 28-32/97 任務 (29-33% 完成) - 詳見 IMPLEMENTATION_STATUS.md
