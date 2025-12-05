@@ -413,19 +413,21 @@
 
 ### Snapshot 生成
 
-- [ ] **T055** [P] 建立 `src/services/analyticsAggregator.ts`
+### Snapshot 生成
+
+- [x] **T055** [P] 建立 `src/services/analyticsAggregator.ts`
   - 函數: generateDailySnapshot(), aggregateMetrics()
   - 驗收: 服務可運行
 
-- [ ] **T056** 實現日聚合 Job
-  - 功能: 每天午夜 UTC 運行，聚合前一天的事件
+- [x] **T056** 實現日聚合 Job
+  - 功能: 每天午夜 UTC 運行，聚合前一天的事件 (目前實現為手動觸發)
   - 驗收: Job 成功執行
 
-- [ ] **T057** [P] 實現開信數聚合
+- [x] **T057** [P] 實現開信數聚合
   - 邏輯: COUNT(DISTINCT user_id) WHERE event_type = 'email_open'
   - 驗收: 聚合結果准確
 
-- [ ] **T058** 實現點擊數聚合
+- [x] **T058** 實現點擊數聚合
   - 邏輯: COUNT(DISTINCT user_id) WHERE event_type = 'link_click' BY article
   - 驗收: 結果准確
 
@@ -435,8 +437,8 @@
 
 ### 查詢優化
 
-- [ ] **T060** [P] 建立 `src/hooks/useAnalyticsQuery.ts`
-  - Hook: useOpenRate(), useClickRate(), useAverageStayTime()
+- [x] **T060** [P] 建立 `src/hooks/useAnalyticsQuery.ts`
+  - Hook: useOpenRate(), useClickRate(), useAverageStayTime() (合併為 useNewsletterMetrics)
   - 驗收: Hook 可在組件中使用
 
 - [ ] **T061** 實現 Snapshot 查詢
