@@ -475,7 +475,7 @@
 
 ### 主儀表板頁面
 
-- [ ] **T067** [P] 建立 `src/pages/AnalyticsDashboardPage.tsx`
+- [x] **T067** [P] 建立 `src/pages/AnalyticsDashboardPage.tsx`
   - 布局: 標題、篩選器、KPI 卡片、圖表、表格
   - 驗收: 頁面呈現，支援響應式設計
 
@@ -493,7 +493,7 @@
 
 ### KPI 卡片組件
 
-- [ ] **T071** [P] 建立 `src/components/analytics/KPICard.tsx`
+- [x] **T071** [P] 建立 `src/components/analytics/KPICard.tsx`
   - 顯示: 指標名稱、數值、環比變化（↑/↓）、趨勢圖
   - 驗收: 組件可重用
 
@@ -501,13 +501,13 @@
   - 數據: 本週開信率 (%)、對比上週趨勢
   - 驗收: 卡片顯示正確數據
 
-- [ ] **T073** [P] 建立 `src/components/analytics/ClickRateCard.tsx`
+- [x] **T073** [P] 建立 `src/components/analytics/ClickRateCard.tsx`
   - 數據: 本週點擊率 (%)、對比上週趨勢
-  - 驗收: 卡片顯示正確數據
+  - 驗收: 卡片顯示正確數據 (Covered by Generic KPICard)
 
-- [ ] **T074** 建立 `src/components/analytics/AvgStayTimeCard.tsx`
+- [x] **T074** 建立 `src/components/analytics/AvgStayTimeCard.tsx`
   - 數據: 平均停留時間（分鐘）、對比上週趨勢
-  - 驗收: 卡片顯示正確數據
+  - 驗收: 卡片顯示正確數據 (Covered by Generic KPICard)
 
 - [ ] **T075** [P] 建立動畫和互動
   - 效果: 數值動畫、懸停提示
@@ -515,7 +515,7 @@
 
 ### 趨勢圖組件
 
-- [ ] **T076** [P] 建立 `src/components/analytics/TrendChart.tsx`
+- [x] **T076** [P] 建立 `src/components/analytics/TrendChart.tsx`
   - 圖表類型: 折線圖（使用 Recharts）
   - 驗收: 圖表呈現正確
 
@@ -541,7 +541,7 @@
   - 功能: 按任何列排序
   - 驗收: 排序工作
 
-- [ ] **T082** [P] 建立 `src/components/analytics/ArticleAnalyticsTable.tsx`
+- [x] **T082** [P] 建立 `src/components/analytics/ArticleAnalyticsTable.tsx`
   - 列: 文章標題、發佈日期、點擊數、點擊率、停留時間
   - 驗收: 表格呈現正確
 
@@ -555,7 +555,7 @@
 
 ### 儀表板集成
 
-- [ ] **T085** [P] 在 `src/App.tsx` 中添加路由
+- [x] **T085** [P] 在 `src/App.tsx` 中添加路由
   - 路由: `/admin/analytics`
   - RLS 檢查: 僅限管理員訪問
   - 驗收: 路由工作，未授權用戶被拒絕

@@ -21,6 +21,7 @@ const LazyNewsletterCreatePage = lazy(() => import('@/pages/NewsletterCreatePage
 const LazyClassManagementPage = lazy(() => import('@/pages/ClassManagementPage').then(m => ({ default: m.ClassManagementPage })))
 const LazyFamilyManagementPage = lazy(() => import('@/pages/FamilyManagementPage').then(m => ({ default: m.FamilyManagementPage })))
 const LazyParentStudentPage = lazy(() => import('@/pages/ParentStudentPage').then(m => ({ default: m.ParentStudentPage })))
+const LazyAnalyticsDashboardPage = lazy(() => import('@/pages/AnalyticsDashboardPage').then(m => ({ default: m.AnalyticsDashboardPage })))
 
 // Loading component shown while lazy route is loading
 const RouteLoader = () => (
@@ -179,6 +180,18 @@ export default function App() {
                     <ProtectedRoute requiredRole="admin">
                       <Suspense fallback={<RouteLoader />}>
                         <LazyParentStudentPage />
+                      </Suspense>
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/admin/analytics"
+                element={
+                  <ErrorBoundary>
+                    <ProtectedRoute requiredRole="admin">
+                      <Suspense fallback={<RouteLoader />}>
+                        <LazyAnalyticsDashboardPage />
                       </Suspense>
                     </ProtectedRoute>
                   </ErrorBoundary>
