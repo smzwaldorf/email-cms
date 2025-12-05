@@ -23,6 +23,7 @@ import { ROLES } from '@/lib/rbac'
 import { AuditLogViewer } from '@/components/AuditLogViewer'
 import { adminSessionService } from '@/services/adminSessionService'
 import { AdminLayout } from '@/components/admin/AdminLayout'
+import { BatchImportForm } from '@/components/admin/BatchImportForm'
 
 // --- Types ---
 
@@ -288,6 +289,7 @@ export function AdminDashboardPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<UserData | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [userManagementMode, setUserManagementMode] = useState<'table' | 'batch-import'>('table')
 
   // Shared state
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
@@ -611,6 +613,25 @@ export function AdminDashboardPage() {
                     <h2 className="font-display text-2xl font-semibold text-waldorf-clay-800">User Management</h2>
                     <p className="text-waldorf-clay-500 mt-1">{users.length} users found</p>
                   </div>
+                  <div className="flex gap-3">
+                    {userManagementMode === 'table' && (
+                      <button
+                        onClick={() => setUserManagementMode('batch-import')}
+                        className="px-4 py-2 border border-waldorf-clay-300 text-waldorf-clay-600 rounded-lg font-medium hover:bg-waldorf-cream-50 transition-colors"
+                        title="Import multiple users from CSV file"
+                      >
+                        📥 Batch Import
+                      </button>
+                    )}
+                    {userManagementMode === 'batch-import' && (
+                      <button
+                        onClick={() => setUserManagementMode('table')}
+                        className="px-4 py-2 bg-waldorf-sage-600 text-white rounded-lg font-medium hover:bg-waldorf-sage-700 transition-colors"
+                      >
+                        ← Back to User List
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {userError && (
@@ -620,108 +641,120 @@ export function AdminDashboardPage() {
                   </div>
                 )}
 
-                {isUserLoading ? (
-                  <div className="flex items-center justify-center py-16">
-                    <LoadingSpinner />
-                  </div>
-                ) : (
-                  <div className="overflow-hidden rounded-xl border border-waldorf-cream-200 shadow-sm">
-                    <table className="min-w-full">
-                      <thead className="bg-gradient-to-r from-waldorf-cream-100 to-waldorf-cream-50">
-                        <tr>
-                          <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">User</th>
-                          <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">Role</th>
-                          <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">Status</th>
-                          <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">Change Role</th>
-                          <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-waldorf-cream-100">
-                        {users.map((userData, index) => (
-                          <tr
-                            key={userData.id}
-                            className="hover:bg-waldorf-cream-50/50 transition-colors duration-200"
-                            style={{ animationDelay: `${index * 50}ms` }}
-                          >
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center">
-                                <div className="flex-shrink-0 h-11 w-11">
-                                  <div className="h-11 w-11 rounded-full bg-gradient-to-br from-waldorf-peach-400 to-waldorf-clay-400 flex items-center justify-center text-white font-semibold text-lg shadow-md">
-                                    {userData.display_name?.[0] || userData.email?.[0]?.toUpperCase() || '?'}
+                {userManagementMode === 'table' ? (
+                  isUserLoading ? (
+                    <div className="flex items-center justify-center py-16">
+                      <LoadingSpinner />
+                    </div>
+                  ) : (
+                    <div className="overflow-hidden rounded-xl border border-waldorf-cream-200 shadow-sm">
+                      <table className="min-w-full">
+                        <thead className="bg-gradient-to-r from-waldorf-cream-100 to-waldorf-cream-50">
+                          <tr>
+                            <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">User</th>
+                            <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">Role</th>
+                            <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">Status</th>
+                            <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">Change Role</th>
+                            <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-waldorf-cream-100">
+                          {users.map((userData, index) => (
+                            <tr
+                              key={userData.id}
+                              className="hover:bg-waldorf-cream-50/50 transition-colors duration-200"
+                              style={{ animationDelay: `${index * 50}ms` }}
+                            >
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center">
+                                  <div className="flex-shrink-0 h-11 w-11">
+                                    <div className="h-11 w-11 rounded-full bg-gradient-to-br from-waldorf-peach-400 to-waldorf-clay-400 flex items-center justify-center text-white font-semibold text-lg shadow-md">
+                                      {userData.display_name?.[0] || userData.email?.[0]?.toUpperCase() || '?'}
+                                    </div>
+                                  </div>
+                                  <div className="ml-4">
+                                    <div className="text-sm font-semibold text-waldorf-clay-800">{userData.display_name || 'No Name'}</div>
+                                    <div className="text-sm text-waldorf-clay-400">{userData.email}</div>
                                   </div>
                                 </div>
-                                <div className="ml-4">
-                                  <div className="text-sm font-semibold text-waldorf-clay-800">{userData.display_name || 'No Name'}</div>
-                                  <div className="text-sm text-waldorf-clay-400">{userData.email}</div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full border ${
-                                ROLE_COLORS[userData.role] || 'bg-waldorf-cream-100 text-waldorf-clay-600 border-waldorf-cream-200'
-                              }`}>
-                                {userData.role}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">
-                              {userData.id === user?.id ? (
-                                <span className="flex items-center text-waldorf-sage-600 font-medium">
-                                  <span className="w-2 h-2 rounded-full bg-waldorf-sage-400 mr-2 animate-pulse" />
-                                  Current User
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full border ${
+                                  ROLE_COLORS[userData.role] || 'bg-waldorf-cream-100 text-waldorf-clay-600 border-waldorf-cream-200'
+                                }`}>
+                                  {userData.role}
                                 </span>
-                              ) : userData.hasActiveSessions ? (
-                                <span className="flex items-center text-waldorf-sage-600 font-medium">
-                                  <span className="w-2 h-2 rounded-full bg-waldorf-sage-400 mr-2 animate-pulse" />
-                                  Active Session
-                                </span>
-                              ) : (
-                                <span className="text-waldorf-clay-400">No Active Session</span>
-                              )}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">
-                              <select
-                                value={userData.role}
-                                onChange={(e) => updateUserRole(userData.id, e.target.value as UserRole)}
-                                disabled={updatingId === userData.id || userData.id === user?.id}
-                                className="block w-full px-3 py-2 text-sm border border-waldorf-cream-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-waldorf-peach-300 focus:border-waldorf-peach-400 disabled:bg-waldorf-cream-100 disabled:cursor-not-allowed transition-all duration-200"
-                              >
-                                {Object.values(ROLES).map((role) => (
-                                  <option key={role} value={role}>{role}</option>
-                                ))}
-                              </select>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
-                              <button
-                                onClick={() => handleEditUser(userData)}
-                                className="text-waldorf-clay-500 hover:text-waldorf-clay-700 transition-colors duration-200"
-                              >
-                                Edit
-                              </button>
-                              {userData.id !== user?.id && (
-                                <>
-                                  {userData.hasActiveSessions && (
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                {userData.id === user?.id ? (
+                                  <span className="flex items-center text-waldorf-sage-600 font-medium">
+                                    <span className="w-2 h-2 rounded-full bg-waldorf-sage-400 mr-2 animate-pulse" />
+                                    Current User
+                                  </span>
+                                ) : userData.hasActiveSessions ? (
+                                  <span className="flex items-center text-waldorf-sage-600 font-medium">
+                                    <span className="w-2 h-2 rounded-full bg-waldorf-sage-400 mr-2 animate-pulse" />
+                                    Active Session
+                                  </span>
+                                ) : (
+                                  <span className="text-waldorf-clay-400">No Active Session</span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                <select
+                                  value={userData.role}
+                                  onChange={(e) => updateUserRole(userData.id, e.target.value as UserRole)}
+                                  disabled={updatingId === userData.id || userData.id === user?.id}
+                                  className="block w-full px-3 py-2 text-sm border border-waldorf-cream-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-waldorf-peach-300 focus:border-waldorf-peach-400 disabled:bg-waldorf-cream-100 disabled:cursor-not-allowed transition-all duration-200"
+                                >
+                                  {Object.values(ROLES).map((role) => (
+                                    <option key={role} value={role}>{role}</option>
+                                  ))}
+                                </select>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
+                                <button
+                                  onClick={() => handleEditUser(userData)}
+                                  className="text-waldorf-clay-500 hover:text-waldorf-clay-700 transition-colors duration-200"
+                                >
+                                  Edit
+                                </button>
+                                {userData.id !== user?.id && (
+                                  <>
+                                    {userData.hasActiveSessions && (
+                                      <button
+                                        onClick={() => handleForceLogout(userData.id)}
+                                        disabled={deletingId === userData.id}
+                                        className="text-waldorf-peach-600 hover:text-waldorf-peach-700 disabled:opacity-50 transition-colors duration-200"
+                                      >
+                                        {deletingId === userData.id ? 'Logging out...' : 'Force Logout'}
+                                      </button>
+                                    )}
                                     <button
-                                      onClick={() => handleForceLogout(userData.id)}
+                                      onClick={() => handleDeleteUser(userData.id)}
                                       disabled={deletingId === userData.id}
-                                      className="text-waldorf-peach-600 hover:text-waldorf-peach-700 disabled:opacity-50 transition-colors duration-200"
+                                      className="text-waldorf-rose-500 hover:text-waldorf-rose-700 disabled:opacity-50 transition-colors duration-200"
                                     >
-                                      {deletingId === userData.id ? 'Logging out...' : 'Force Logout'}
+                                      {deletingId === userData.id ? 'Deleting...' : 'Delete'}
                                     </button>
-                                  )}
-                                  <button
-                                    onClick={() => handleDeleteUser(userData.id)}
-                                    disabled={deletingId === userData.id}
-                                    className="text-waldorf-rose-500 hover:text-waldorf-rose-700 disabled:opacity-50 transition-colors duration-200"
-                                  >
-                                    {deletingId === userData.id ? 'Deleting...' : 'Delete'}
-                                  </button>
-                                </>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                                  </>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )
+                ) : (
+                  <div className="overflow-hidden rounded-xl border border-waldorf-cream-200 shadow-sm bg-white p-6">
+                    <h3 className="text-lg font-semibold text-waldorf-clay-800 mb-6">Import Users from CSV</h3>
+                    <BatchImportForm
+                      onImportComplete={() => {
+                        fetchUsers()
+                        setUserManagementMode('table')
+                      }}
+                    />
                   </div>
                 )}
               </>

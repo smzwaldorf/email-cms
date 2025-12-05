@@ -1,250 +1,18 @@
 import React, { useEffect, useState } from 'react'
 import { getSupabaseClient, getSupabaseServiceClient } from '@/lib/supabase'
-import { useAuth } from '@/context/AuthContext'
-import { UserRole } from '@/types/auth'
-import { ROLES } from '@/lib/rbac'
 import { AuditLogViewer } from './AuditLogViewer'
+import { UserTable } from './admin/UserTable'
+import { UserForm, type UserFormData } from './admin/UserForm'
 import { adminSessionService } from '@/services/adminSessionService'
-
-interface UserData {
-  id: string
-  email: string
-  role: UserRole
-  display_name?: string
-  last_seen?: string
-  hasActiveSessions?: boolean
-}
-
-interface AddUserModalProps {
-  isOpen: boolean
-  onClose: () => void
-  onUserAdded: () => void
-}
-
-const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserAdded }) => {
-  const [email, setEmail] = useState('')
-  const [role, setRole] = useState<UserRole>('parent')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
-    setIsSubmitting(true)
-
-    try {
-      // Use service role client for admin operations
-      const supabaseAdmin = getSupabaseServiceClient()
-
-      // Create auth user using admin API (doesn't affect current session)
-      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-        email,
-        email_confirm: true,
-      })
-
-      if (authError) throw authError
-      if (!authData.user) throw new Error('No user returned from signup')
-
-      // Create user_roles entry using service role client (bypasses RLS)
-      const { error: roleError } = await supabaseAdmin
-        .from('user_roles')
-        .insert({
-          id: authData.user.id,
-          email: email,
-          role: role,
-        })
-
-      if (roleError) throw roleError
-
-      // Success
-      setEmail('')
-      setRole('parent')
-      onUserAdded()
-      onClose()
-    } catch (err: any) {
-      console.error('Error creating user:', err)
-      setError(err.message)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  if (!isOpen) return null
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-        <h2 className="text-2xl font-bold mb-4">Add New User</h2>
-        
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-waldorf-peach-500"
-            />
-            <p className="text-xs text-gray-500 mt-1">User will receive a magic link to set up their account</p>
-          </div>
-
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as UserRole)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-waldorf-peach"
-            >
-              {Object.values(ROLES).map((r) => (
-                <option key={r} value={r}>{r}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex justify-end space-x-3">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="px-4 py-2 text-white bg-waldorf-peach-500 rounded-md hover:bg-opacity-90 disabled:opacity-50"
-            >
-              {isSubmitting ? 'Creating...' : 'Create User'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}
-
-interface EditUserModalProps {
-  isOpen: boolean
-  onClose: () => void
-  userData: UserData | null
-  onUserUpdated: () => void
-}
-
-
-// Edit User Modal Component
-const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, userData, onUserUpdated }) => {
-  const [displayName, setDisplayName] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (userData) {
-      setDisplayName(userData.display_name || '')
-    }
-  }, [userData])
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!userData) return
-
-    setError(null)
-    setIsSubmitting(true)
-
-    try {
-      const supabase = getSupabaseClient()
-
-      const { error: updateError } = await supabase
-        .from('user_roles')
-        .update({ display_name: displayName || null })
-        .eq('id', userData.id)
-
-      if (updateError) throw updateError
-
-      onUserUpdated()
-      onClose()
-    } catch (err: any) {
-      console.error('Error updating user:', err)
-      setError(err.message)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  if (!isOpen || !userData) return null
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-        <h2 className="text-2xl font-bold mb-4">Edit User</h2>
-        
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-            <input
-              type="email"
-              value={userData.email}
-              disabled
-              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
-            />
-          </div>
-
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Display Name</label>
-            <input
-              type="text"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-waldorf-peach"
-            />
-          </div>
-
-          <div className="flex justify-end space-x-3">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="px-4 py-2 text-white bg-waldorf-peach-500 rounded-md hover:bg-opacity-90 disabled:opacity-50"
-            >
-              {isSubmitting ? 'Updating...' : 'Update'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}
+import type { AdminUser } from '@/types/admin'
 
 export const AdminDashboard: React.FC = () => {
-  const { user } = useAuth()
-  const [users, setUsers] = useState<UserData[]>([])
+  const [users, setUsers] = useState<AdminUser[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [updatingId, setUpdatingId] = useState<string | null>(null)
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-  const [editingUser, setEditingUser] = useState<UserData | null>(null)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [showUserForm, setShowUserForm] = useState(false)
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null)
+  const [isSubmittingForm, setIsSubmittingForm] = useState(false)
   const [latestWeek, setLatestWeek] = useState<number>(1)
 
   // Tab state for switching between user management and audit logs
@@ -298,30 +66,6 @@ export const AdminDashboard: React.FC = () => {
     }
   }
 
-  const handleForceLogout = async (userId: string) => {
-    if (!confirm('Force logout this user from all devices?')) {
-      return
-    }
-
-    try {
-      setDeletingId(userId) // Reuse deletingId for loading state
-      const success = await adminSessionService.forceLogoutUser(userId, user?.id || '')
-
-      if (success) {
-        alert('User successfully logged out from all devices')
-        // Refresh users list to show updated session status
-        await fetchUsers()
-      } else {
-        alert('Failed to force logout user')
-      }
-    } catch (err: any) {
-      console.error('Error force logging out user:', err)
-      alert(`Failed to force logout: ${err.message}`)
-    } finally {
-      setDeletingId(null)
-    }
-  }
-
   const fetchUsers = async () => {
     try {
       setIsLoading(true)
@@ -330,55 +74,16 @@ export const AdminDashboard: React.FC = () => {
       const { data, error } = await supabase
         .from('user_roles')
         .select('*')
-        .order('role', { ascending: true })
+        .order('createdAt', { ascending: false })
 
       if (error) throw error
 
-      // Fetch session information for each user
-      const usersWithSessions = await Promise.all(
-        (data as UserData[]).map(async (userData) => {
-          try {
-            const sessions = await adminSessionService.getUserSessions(userData.id)
-            return {
-              ...userData,
-              hasActiveSessions: sessions.length > 0,
-            }
-          } catch (err) {
-            console.error(`Error fetching sessions for user ${userData.id}:`, err)
-            return userData
-          }
-        })
-      )
-
-      setUsers(usersWithSessions)
+      setUsers((data as AdminUser[]) || [])
     } catch (err: any) {
       console.error('Error fetching users:', err)
       setError(err.message)
     } finally {
       setIsLoading(false)
-    }
-  }
-
-  const updateUserRole = async (userId: string, newRole: UserRole) => {
-    try {
-      setUpdatingId(userId)
-      // Use service role client to bypass RLS policies
-      const supabaseAdmin = getSupabaseServiceClient()
-
-      const { error } = await supabaseAdmin
-        .from('user_roles')
-        .update({ role: newRole })
-        .eq('id', userId)
-
-      if (error) throw error
-
-      setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u))
-      
-    } catch (err: any) {
-      console.error('Error updating role:', err)
-      alert(`Failed to update role: ${err.message}`)
-    } finally {
-      setUpdatingId(null)
     }
   }
 
@@ -388,7 +93,6 @@ export const AdminDashboard: React.FC = () => {
     }
 
     try {
-      setDeletingId(userId)
       const supabase = getSupabaseClient()
 
       // Delete from user_roles first
@@ -407,14 +111,86 @@ export const AdminDashboard: React.FC = () => {
     } catch (err: any) {
       console.error('Error deleting user:', err)
       alert(`Failed to delete user: ${err.message}`)
-    } finally {
-      setDeletingId(null)
     }
   }
 
-  const handleEditUser = (userData: UserData) => {
-    setEditingUser(userData)
-    setIsEditModalOpen(true)
+  const handleStatusToggle = async (userId: string, status: 'active' | 'disabled') => {
+    try {
+      const supabase = getSupabaseClient()
+
+      const { error } = await supabase
+        .from('user_roles')
+        .update({ status, updatedAt: new Date().toISOString() })
+        .eq('id', userId)
+
+      if (error) throw error
+
+      setUsers(users.map(u => u.id === userId ? { ...u, status } : u))
+    } catch (err: any) {
+      console.error('Error updating user status:', err)
+      alert(`Failed to update user status: ${err.message}`)
+    }
+  }
+
+  const handleUserFormSubmit = async (formData: UserFormData) => {
+    setIsSubmittingForm(true)
+    try {
+      if (editingUser) {
+        // Update existing user
+        const supabase = getSupabaseClient()
+        const { error } = await supabase
+          .from('user_roles')
+          .update({
+            name: formData.name,
+            status: formData.status,
+            updatedAt: new Date().toISOString(),
+          })
+          .eq('id', editingUser.id)
+
+        if (error) throw error
+
+        setUsers(users.map(u =>
+          u.id === editingUser.id
+            ? { ...u, name: formData.name, status: formData.status }
+            : u
+        ))
+      } else {
+        // Create new user
+        const supabaseAdmin = getSupabaseServiceClient()
+
+        // Create auth user
+        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+          email: formData.email,
+          email_confirm: true,
+        })
+
+        if (authError) throw authError
+        if (!authData.user) throw new Error('No user returned from signup')
+
+        // Create user_roles entry
+        const now = new Date().toISOString()
+        const { error: roleError } = await supabaseAdmin
+          .from('user_roles')
+          .insert({
+            id: authData.user.id,
+            email: formData.email,
+            name: formData.name,
+            role: formData.role,
+            status: formData.status,
+            createdAt: now,
+            updatedAt: now,
+          })
+
+        if (roleError) throw roleError
+      }
+
+      // Reset form and refresh
+      setShowUserForm(false)
+      setEditingUser(null)
+      await fetchUsers()
+    } finally {
+      setIsSubmittingForm(false)
+    }
   }
 
   if (isLoading) {
@@ -518,109 +294,65 @@ export const AdminDashboard: React.FC = () => {
       {activeTab === 'users' && (
         <div className="bg-white shadow rounded-lg overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-          <div>
-            <h2 className="text-lg font-medium text-gray-900">User Management</h2>
-            <p className="text-sm text-gray-500 mt-1">{users.length} users found</p>
+            <div>
+              <h2 className="text-lg font-medium text-gray-900">User Management</h2>
+              <p className="text-sm text-gray-500 mt-1">{users.length} users found</p>
+            </div>
+            {!showUserForm && (
+              <button
+                onClick={() => {
+                  setEditingUser(null)
+                  setShowUserForm(true)
+                }}
+                className="px-4 py-2 bg-waldorf-peach-500 text-white rounded-md hover:bg-opacity-90 transition-colors"
+              >
+                + Add User
+              </button>
+            )}
           </div>
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="px-4 py-2 bg-waldorf-peach-500 text-white rounded-md hover:bg-opacity-90 transition-colors"
-          >
-            + Add User
-          </button>
+          <div className="p-6">
+            {showUserForm ? (
+              <div className="mb-6 p-6 border border-gray-200 rounded-lg bg-gray-50">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    {editingUser ? 'Edit User' : 'Add New User'}
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setShowUserForm(false)
+                      setEditingUser(null)
+                    }}
+                    className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
+                  >
+                    ×
+                  </button>
+                </div>
+                <UserForm
+                  user={editingUser || undefined}
+                  isSubmitting={isSubmittingForm}
+                  onSubmit={handleUserFormSubmit}
+                  onCancel={() => {
+                    setShowUserForm(false)
+                    setEditingUser(null)
+                  }}
+                />
+              </div>
+            ) : null}
+            {!showUserForm && (
+              <UserTable
+                users={users}
+                isLoading={isLoading}
+                error={error}
+                onEdit={(user) => {
+                  setEditingUser(user)
+                  setShowUserForm(true)
+                }}
+                onDelete={handleDeleteUser}
+                onStatusToggle={handleStatusToggle}
+              />
+            )}
+          </div>
         </div>
-        
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Change Role</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {users.map((userData) => (
-                <tr key={userData.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10">
-                        <div className="h-10 w-10 rounded-full bg-waldorf-peach-500 flex items-center justify-center text-white font-bold">
-                          {userData.display_name?.[0] || userData.email?.[0]?.toUpperCase() || '?'}
-                        </div>
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{userData.display_name || 'No Name'}</div>
-                        <div className="text-sm text-gray-500">{userData.email}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                      ${userData.role === 'admin' ? 'bg-purple-100 text-purple-800' : 
-                        userData.role === 'teacher' ? 'bg-green-100 text-green-800' : 
-                        userData.role === 'parent' ? 'bg-blue-100 text-blue-800' : 
-                        'bg-gray-100 text-gray-800'}`}>
-                      {userData.role}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {userData.id === user?.id ? (
-                      <span className="text-green-600 font-medium">Current User</span>
-                    ) : userData.hasActiveSessions ? (
-                      <span className="text-green-600 font-medium">Active Session</span>
-                    ) : (
-                      <span className="text-gray-400">No Active Session</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <select
-                      value={userData.role}
-                      onChange={(e) => updateUserRole(userData.id, e.target.value as UserRole)}
-                      disabled={updatingId === userData.id || userData.id === user?.id}
-                      className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-waldorf-peach focus:border-waldorf-peach sm:text-sm rounded-md"
-                    >
-                      {Object.values(ROLES).map((role) => (
-                        <option key={role} value={role}>{role}</option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                    <button
-                      onClick={() => handleEditUser(userData)}
-                      className="text-waldorf-peach hover:text-opacity-80"
-                    >
-                      Edit
-                    </button>
-                    {userData.id !== user?.id && (
-                      <>
-                        {userData.hasActiveSessions && (
-                          <button
-                            onClick={() => handleForceLogout(userData.id)}
-                            disabled={deletingId === userData.id}
-                            className="text-orange-600 hover:text-orange-800 disabled:opacity-50"
-                          >
-                            {deletingId === userData.id ? 'Logging out...' : 'Force Logout'}
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleDeleteUser(userData.id)}
-                          disabled={deletingId === userData.id}
-                          className="text-red-600 hover:text-red-800 disabled:opacity-50"
-                        >
-                          {deletingId === userData.id ? 'Deleting...' : 'Delete'}
-                        </button>
-                      </>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
       )}
 
       {/* Audit Logs Tab */}
@@ -635,22 +367,6 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </div>
       )}
-
-      <AddUserModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onUserAdded={fetchUsers}
-      />
-
-      <EditUserModal
-        isOpen={isEditModalOpen}
-        onClose={() => {
-          setIsEditModalOpen(false)
-          setEditingUser(null)
-        }}
-        userData={editingUser}
-        onUserUpdated={fetchUsers}
-      />
     </div>
   )
 }
