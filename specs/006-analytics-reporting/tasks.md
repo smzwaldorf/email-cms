@@ -345,36 +345,36 @@
 
 ### 追蹤像素端點
 
-- [ ] **T042** [P] 建立 `api/tracking/pixel.ts` Supabase 函數
+- [x] **T042** [P] 建立 `api/tracking/pixel.ts` Supabase 函數
   - 端點: `GET /api/tracking/pixel/:newsletterId?t=TOKEN`
   - 功能: 驗證令牌、記錄 email_open 事件、返回 GIF
   - 驗收: 端點工作，返回 1x1 GIF
 
-- [ ] **T043** 實現 email_open 事件記錄
+- [x] **T043** 實現 email_open 事件記錄
   - 功能: 從令牌提取 userId，記錄 email_open 事件
   - 驗收: 事件儲存到 analytics_events
 
-- [ ] **T044** [P] 實現重複檢測（10 秒去重）
+- [x] **T044** [P] 實現重複檢測（10 秒去重）
   - 功能: 同用戶在 10 秒內的多次開啟只計一次
   - 驗收: 重複檢測工作
 
-- [ ] **T045** 實現返回追蹤像素
+- [x] **T045** 實現返回追蹤像素
   - 功能: 返回 1x1 透明 GIF
   - 優化: 緩存 GIF 資源
   - 驗收: 郵件客戶端正確顯示（無呈現延遲）
 
 ### 重定向追蹤端點
 
-- [ ] **T046** [P] 建立 `api/tracking/click.ts` Supabase 函數
+- [x] **T046** [P] 建立 `api/tracking/click.ts` Supabase 函數
   - 端點: `GET /api/tracking/click/:trackingLinkId?t=TOKEN&redirect=true`
   - 功能: 驗證令牌、記錄 link_click 事件、重定向
   - 驗收: 端點工作，重定向成功
 
-- [ ] **T047** 實現 link_click 事件記錄
+- [x] **T047** 實現 link_click 事件記錄
   - 功能: 從令牌提取信息，記錄點擊事件
   - 驗收: 事件儲存
 
-- [ ] **T048** 實現重定向邏輯
+- [x] **T048** 實現重定向邏輯
   - 功能: 查找 tracking_links，返回 302 重定向
   - 驗收: 用戶重定向到原始 URL
 
