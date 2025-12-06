@@ -9,7 +9,7 @@ import { ErrorPage } from '@/pages/ErrorPage'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { AnalyticsFooter } from '@/components/AnalyticsFooter'
-import { AnalyticsDashboardPage } from './pages/AnalyticsDashboardPage';
+
 import { ArticleReadersPage } from './pages/ArticleReadersPage';
 import '@/styles/globals.css'
 
@@ -60,7 +60,7 @@ export default function App() {
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
-            <Route path="analytics/article/:articleId/readers" element={<ArticleReadersPage />} />
+
               <Route path="/auth/callback" element={<AuthCallbackPage />} />
               <Route
                 path="/week/:weekNumber"
@@ -196,6 +196,16 @@ export default function App() {
                       <Suspense fallback={<RouteLoader />}>
                         <LazyAnalyticsDashboardPage />
                       </Suspense>
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/admin/analytics/article/:articleId/readers"
+                element={
+                  <ErrorBoundary>
+                    <ProtectedRoute requiredRole="admin">
+                      <ArticleReadersPage />
                     </ProtectedRoute>
                   </ErrorBoundary>
                 }
