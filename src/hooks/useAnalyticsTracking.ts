@@ -19,7 +19,8 @@ export function useAnalyticsTracking({ articleId, weekNumber, classId }: UseAnal
   const location = useLocation();
   const { user } = useAuth();
   const sessionIdRef = useRef<string>('');
-  const hasLoggedViewRef = useRef<boolean>(false);
+
+  const lastLoggedKeyRef = useRef<string>(''); // Track the unique key of the last logged view (e.g. articleId + pathname)
 
   // Initialize Session ID
   useEffect(() => {
@@ -33,23 +34,19 @@ export function useAnalyticsTracking({ articleId, weekNumber, classId }: UseAnal
 
   // Track Page View
   useEffect(() => {
-    // Reset view tracking on route change if articleId changes or it's a new mount
-    // But this hook might be re-mounted.
-    // We want to track unique views per session/page-load context basically.
-    
-    // Check if we already logged this specific view instance
-    if (hasLoggedViewRef.current) return;
-
     if (!sessionIdRef.current) return; // Wait for session init
+    
+    // Construct a unique key for this view context
+    // If articleId is present, we track per article.
+    // If not, we track per path (e.g. dashboard list view).
+    const currentKey = `${location.pathname}:${articleId || ''}:${weekNumber || ''}`;
+
+    // Prevent duplicate logging for the same context
+    if (lastLoggedKeyRef.current === currentKey) return;
 
     const trackView = async () => {
-      // Determine effective user ID (auth user or from token)
-      // For now, use auth user. Token logic can be added if we support anonymous tracking via token.
-      const userId = user?.id; // Allow null for anonymous if needed, but schema might require it?
-      // Schema: user_id UUID references user_roles. Can be nullable? 
-      // T002 says user_id (FK). If it's nullable, we can support anon.
-      // Looking at migration: "user_id" uuid references "public"."user_roles"("id").
-      // It DOES NOT say NOT NULL. So it is nullable.
+      // Determine effective user ID
+      const userId = user?.id;
       
       await trackingService.logEvent({
         user_id: userId || null,
@@ -64,27 +61,11 @@ export function useAnalyticsTracking({ articleId, weekNumber, classId }: UseAnal
         }
       });
       
-      hasLoggedViewRef.current = true;
+      lastLoggedKeyRef.current = currentKey;
     };
 
     trackView();
-
-    // Cleanup: if props change meaningfully, allow re-logging?
-    // React strict mode might double invoke. hasLoggedViewRef helps.
-    // If articleId changes, component usually unmounts/remounts or props update.
-    // If props update, we should reset hasLoggedViewRef?
-    return () => {
-       // Cleanup if needed
-    };
-  }, [articleId, weekNumber, classId, user?.id, location.pathname]);
-
-  // Reset ref if key props change effectively (handled by dependency array usually re-triggering effect, 
-  // but if effect re-runs, we need to allow it.
-  // Actually, hasLoggedViewRef persists across re-renders. 
-  // We need to reset it if the "page" context changes.
-  useEffect(() => {
-      hasLoggedViewRef.current = false;
-  }, [articleId, weekNumber, location.pathname]); 
+  }, [articleId, weekNumber, classId, user?.id, location.pathname, location.search]);
 
   // Scroll Tracking (Simplified)
   useEffect(() => {
