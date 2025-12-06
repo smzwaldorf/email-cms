@@ -9,13 +9,14 @@ export interface UseAnalyticsTrackingProps {
   articleId?: string;
   weekNumber?: string;
   classId?: string;
+  enabled?: boolean; // Defaults to true, set to false to skip tracking
 }
 
 /**
  * Hook to handle analytics tracking for pages.
  * Tracks page views on mount and handles session management.
  */
-export function useAnalyticsTracking({ articleId, weekNumber, classId }: UseAnalyticsTrackingProps = {}) {
+export function useAnalyticsTracking({ articleId, weekNumber, classId, enabled = true }: UseAnalyticsTrackingProps = {}) {
   const location = useLocation();
   const { user } = useAuth();
   const sessionIdRef = useRef<string>('');
@@ -34,6 +35,7 @@ export function useAnalyticsTracking({ articleId, weekNumber, classId }: UseAnal
 
   // Track Page View
   useEffect(() => {
+    if (!enabled) return; // Skip tracking if not enabled
     if (!sessionIdRef.current) return; // Wait for session init
     
     // Construct a unique key for this view context
@@ -65,7 +67,7 @@ export function useAnalyticsTracking({ articleId, weekNumber, classId }: UseAnal
     };
 
     trackView();
-  }, [articleId, weekNumber, classId, user?.id, location.pathname, location.search]);
+  }, [enabled, articleId, weekNumber, classId, user?.id, location.pathname, location.search]);
 
   // Scroll Tracking (Simplified)
   useEffect(() => {

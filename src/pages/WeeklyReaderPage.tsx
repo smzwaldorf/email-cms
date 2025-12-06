@@ -50,6 +50,7 @@ export function WeeklyReaderPage() {
   useAnalyticsTracking({
     articleId: article?.id,
     weekNumber: weekNumber,
+    enabled: !!article?.id, // Only track when article is loaded
     // Add classId if available in user context or params? 
     // For now omitting classId as it's not readily available in url params usually
   });
