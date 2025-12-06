@@ -43,7 +43,21 @@ export function useNewsletterMetrics(newsletterId: string) {
     };
   }, [newsletterId]);
 
-  return { metrics, loading, error };
+  const refetch = async () => {
+      setLoading(true);
+      try {
+          const data = await analyticsAggregator.getNewsletterMetrics(newsletterId);
+          setMetrics(data);
+          setError(null);
+      } catch (err) {
+          console.error('[Analytics] Failed to refetch metrics:', err);
+          setError(err instanceof Error ? err : new Error('Unknown error'));
+      } finally {
+          setLoading(false);
+      }
+  };
+
+  return { metrics, loading, error, refetch };
 }
 
 /**
@@ -66,4 +80,97 @@ export function useGenerateSnapshots() {
   };
 
   return { generate, generating };
+}
+
+export function useArticleStats(newsletterId: string) {
+    const [stats, setStats] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function fetch() {
+            if (!newsletterId) return;
+            try {
+                setLoading(true);
+                const data = await analyticsAggregator.getArticleStats(newsletterId);
+                setStats(data);
+            } catch (e) {
+                console.error(e);
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetch();
+    }, [newsletterId]);
+
+    const refetch = async () => {
+        if (!newsletterId) return;
+        setLoading(true);
+        try {
+            const data = await analyticsAggregator.getArticleStats(newsletterId);
+            setStats(data);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return { stats, loading, refetch };
+}
+
+export function useTrendStats() {
+    const [trend, setTrend] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function fetch() {
+            try {
+                setLoading(true);
+                // Fetch last 6 weeks for trend
+                const data = await analyticsAggregator.getTrendStats(6);
+                setTrend(data);
+            } catch (e) {
+                console.error(e);
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetch();
+    }, []);
+
+    const refetch = async () => {
+        setLoading(true);
+        try {
+            const data = await analyticsAggregator.getTrendStats(6);
+            setTrend(data);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return { trend, loading, refetch };
+}
+
+export function useAvailableWeeks() {
+    const [weeks, setWeeks] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function fetch() {
+            try {
+                setLoading(true);
+                const data = await analyticsAggregator.getAvailableWeeks();
+                setWeeks(data);
+            } catch (e) {
+                console.error(e);
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetch();
+    }, []);
+
+    return { weeks, loading };
 }

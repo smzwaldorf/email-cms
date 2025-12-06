@@ -4,7 +4,7 @@ import { getSupabaseClient } from '@/lib/supabase'
 
 interface AdminLayoutProps {
   children: React.ReactNode
-  activeTab?: 'newsletters' | 'users' | 'audit' | 'classes' | 'families'
+  activeTab?: 'newsletters' | 'users' | 'audit' | 'classes' | 'families' | 'analytics'
   headerAction?: React.ReactNode
 }
 
@@ -155,6 +155,9 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, activeTab, h
               </TabLink>
               <TabLink to="/admin/families" isActive={activeTab === 'families'}>
                 Families
+              </TabLink>
+              <TabLink to="/admin/analytics" isActive={activeTab === 'analytics'}>
+                Analytics
               </TabLink>
             </nav>
           </div>

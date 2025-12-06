@@ -26,8 +26,8 @@ export const TrendChart: React.FC<TrendChartProps> = ({ data, title = 'Engagemen
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm border border-brand-neutral-100">
       <h3 className="text-lg font-semibold text-brand-neutral-800 mb-6">{title}</h3>
-      <div style={{ width: '100%', height }}>
-        <ResponsiveContainer>
+      <div style={{ width: '100%', height, minWidth: 0 }}>
+        <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
             <XAxis 

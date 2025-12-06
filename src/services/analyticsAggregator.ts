@@ -23,11 +23,24 @@ export const analyticsAggregator = {
       const startOfDay = `${targetDate}T00:00:00.000Z`;
       const endOfDay = `${targetDate}T23:59:59.999Z`;
 
+      // 0. Clear existing snapshots for this date to prevent duplicates (since UNIQUE allows multiple NULLs)
+      console.log(`[Analytics] Clearing existing snapshots for ${targetDate}...`);
+      const { error: deleteError } = await supabase
+        .from('analytics_snapshots')
+        .delete()
+        .eq('snapshot_date', targetDate);
+      
+      if (deleteError) throw deleteError;
+
       const { data: events, error } = await supabase
         .from('analytics_events')
         .select('*')
         .gte('created_at', startOfDay)
+        .select('*')
+        .gte('created_at', startOfDay)
         .lte('created_at', endOfDay);
+
+      console.log(`[Analytics] Fetched ${events?.length || 0} events.`);
 
       if (error) throw error;
       if (!events || events.length === 0) {
@@ -89,7 +102,9 @@ export const analyticsAggregator = {
            .insert(snapshotsToInsert);
          
          if (insertError) throw insertError;
-         console.log(`[Analytics] Inserted ${snapshotsToInsert.length} snapshots.`);
+         console.log(`[Analytics] Successfully inserted ${snapshotsToInsert.length} snapshots.`);
+      } else {
+         console.log('[Analytics] No snapshots to insert.');
       }
 
     } catch (err) {
@@ -153,5 +168,132 @@ export const analyticsAggregator = {
       avgTimeSpent: 0, // Not implemented yet
       totalViews: totalViews || 0 // Total page views
     };
+  },
+
+  /**
+   * Fetches detailed statistics for all articles in a newsletter.
+   */
+  async getArticleStats(newsletterId: string) {
+    const supabase = getSupabaseClient();
+    
+    // We want views, clicks, and title for each article
+    // Note: We're doing client-side aggregation here for MVP. 
+    // In production, use an RPC function or a view.
+    
+    // 1. Fetch Views per article
+    const { data: viewEvents, error: viewError } = await supabase
+      .from('analytics_events')
+      .select('article_id, articles ( title, created_at, article_order )')
+      .eq('newsletter_id', newsletterId)
+      .eq('event_type', 'page_view');
+
+    if (viewError) throw viewError;
+
+    // 2. Fetch Clicks per article (if applicable, link_click usually has article_id if clicked FROM an article)
+    // If link_click is "clicked a link IN an article", it should have article_id.
+    const { data: clickEvents, error: clickError } = await supabase
+      .from('analytics_events')
+      .select('article_id')
+      .eq('newsletter_id', newsletterId)
+      .eq('event_type', 'link_click');
+
+    if (clickError) throw clickError;
+
+    // Aggregate
+    const statsMap = new Map<string, { 
+      id: string; 
+      title: string; 
+      publishedAt: string; 
+      order: number;
+      views: number; 
+      clicks: number;
+    }>();
+
+    viewEvents?.forEach((event: any) => {
+        if (!event.article_id) return;
+        
+        if (!statsMap.has(event.article_id)) {
+            const article = event.articles; // Joined data
+            statsMap.set(event.article_id, {
+                id: event.article_id,
+                title: article?.title || 'Unknown Article',
+                publishedAt: article?.created_at ? new Date(article.created_at).toLocaleDateString() : '-',
+                order: article?.article_order || 999,
+                views: 0,
+                clicks: 0
+            });
+        }
+        statsMap.get(event.article_id)!.views++;
+    });
+
+    clickEvents?.forEach((event) => {
+        if (!event.article_id) return;
+        // Note: Clicks might exist without views if data is partial? 
+        // We usually assume article exists in viewEvents map if referenced, 
+        // but for safety we might check. For now, only count clicks for known articles.
+        if (statsMap.has(event.article_id)) {
+            statsMap.get(event.article_id)!.clicks++;
+        }
+    });
+
+    return Array.from(statsMap.values()).map(stat => ({
+        ...stat,
+        avgTimeSpent: '-' // Not implemented yet
+    })).sort((a, b) => a.order - b.order); // Sort by article order
+  },
+
+  /**
+   * Fetches trend data for the last N snapshots.
+   * If snapshots are missing, it might return empty or sparse data.
+   */
+  async getTrendStats(limit: number = 12) {
+      const supabase = getSupabaseClient();
+      
+      // Query analytics_snapshots for daily metrics
+      // We want to group by newsletter? 
+      // Actually, trend chart usually shows "Week 1, Week 2..." so we need 
+      // aggregated stats per newsletter_id, OR per date if it's daily trend.
+      // Let's assume the chart wants "Newsletter Performance Trend"
+      
+      // Since generateDailySnapshot isn't populating 'open_rate' yet, this will be empty.
+      // For MVP "Connect Real Data", we will cheat slightly:
+      // We will fetch the LIST of recent newsletters and calculate metrics on the fly for them.
+      // This is slow but guaranteed to work without cron jobs.
+      
+      const { data: newsletters } = await supabase
+        .from('newsletter_weeks')
+        .select('week_number')
+        .order('week_number', { ascending: false })
+        .limit(limit);
+        
+      if (!newsletters) return [];
+      
+      const results = [];
+      // Parallel fetch for last N weeks (limit concurrency if needed)
+      // Reverse to show oldest first in chart
+      for (const nl of newsletters.reverse()) {
+          const metrics = await this.getNewsletterMetrics(nl.week_number);
+          results.push({
+              name: nl.week_number,
+              openRate: parseFloat(metrics.openRate.toFixed(1)),
+              clickRate: parseFloat(metrics.clickRate.toFixed(1))
+          });
+      }
+      
+      return results;
+  },
+
+  /**
+   * Fetches list of available weeks for the dashboard.
+   */
+  async getAvailableWeeks() {
+      const supabase = getSupabaseClient();
+      const { data, error } = await supabase
+          .from('newsletter_weeks')
+          .select('week_number, release_date')
+          .order('week_number', { ascending: false });
+          
+      if (error) throw error;
+      return data || [];
   }
 };

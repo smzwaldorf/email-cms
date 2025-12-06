@@ -82,9 +82,9 @@ CREATE INDEX idx_analytics_snapshots_class ON public.analytics_snapshots(class_i
 -- RLS for Analytics Snapshots
 ALTER TABLE public.analytics_snapshots ENABLE ROW LEVEL SECURITY;
 
--- Admin: View all snapshots
-CREATE POLICY analytics_snapshots_admin_read
-  ON public.analytics_snapshots FOR SELECT
+-- Admin: Manage all snapshots
+CREATE POLICY analytics_snapshots_admin_all
+  ON public.analytics_snapshots FOR ALL
   USING (
     EXISTS (
       SELECT 1 FROM public.user_roles

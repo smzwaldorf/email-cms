@@ -51,7 +51,7 @@ export const trackingService = {
         .not('article_id', 'is', null);
 
       if (weekNumber) {
-        query = query.eq('week_number', weekNumber);
+        query = query.eq('newsletter_id', weekNumber);
       }
 
       const { data, error } = await query;

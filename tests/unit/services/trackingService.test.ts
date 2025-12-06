@@ -61,7 +61,8 @@ describe('trackingService', () => {
     const event = {
       event_type: 'page_view' as const,
       article_id: 'article-123',
-      week_number: '2025-W01',
+      newsletter_id: '2025-W01',
+      user_id: 'user-123',
       session_id: 'session-123',
       metadata: { path: '/test' }
     }
@@ -72,7 +73,8 @@ describe('trackingService', () => {
     expect(mockInsert).toHaveBeenCalledWith(expect.objectContaining({
       event_type: 'page_view',
       article_id: 'article-123',
-      week_number: '2025-W01',
+      newsletter_id: '2025-W01',
+      user_id: 'user-123',
       session_id: 'session-123',
       metadata: { path: '/test' }
     }))
@@ -121,7 +123,7 @@ describe('trackingService', () => {
     expect(mockSelect).toHaveBeenCalledWith('article_id')
     expect(chain.eq).toHaveBeenCalledWith('event_type', 'page_view')
     expect(chain.eq).toHaveBeenCalledWith('user_id', userId)
-    expect(chain.eq).toHaveBeenCalledWith('week_number', weekNumber)
+    expect(chain.eq).toHaveBeenCalledWith('newsletter_id', weekNumber)
     
     expect(result).toEqual(['art-1', 'art-2']) // Expect unique IDs
   })
