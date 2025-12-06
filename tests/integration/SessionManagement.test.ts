@@ -159,15 +159,19 @@ describe('E2E: Session Management & Multi-Device Support', () => {
         return
       }
 
-      const { error: signInError } = await client.auth.signInWithPassword({
+      const { data: signInData, error: signInError } = await client.auth.signInWithPassword({
         email: testEmail,
         password: testPassword,
       })
 
       expect(signInError).toBeNull()
+      expect(signInData.session).not.toBeNull()
 
       // Verify user is authenticated before refresh
       const { data: userDataBefore, error: userErrorBefore } = await client.auth.getUser()
+      if (userErrorBefore) {
+          console.error('Error in getUser before refresh:', userErrorBefore);
+      }
       expect(userErrorBefore).toBeNull()
       expect(userDataBefore.user?.email).toBe(testEmail)
 

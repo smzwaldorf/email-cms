@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { analyticsAggregator } from '@/services/analyticsAggregator';
 import { AnalyticsMetrics } from '@/types/analytics';
 
@@ -43,19 +43,25 @@ export function useNewsletterMetrics(newsletterId: string) {
     };
   }, [newsletterId]);
 
-  const refetch = async () => {
-      setLoading(true);
+  const refetch = useCallback(async (isBackground = false) => {
+      if (!newsletterId) return;
+      
       try {
+          if (!isBackground) {
+              setLoading(true);
+              console.log('[Analytics] Refetching metrics for:', newsletterId);
+          }
           const data = await analyticsAggregator.getNewsletterMetrics(newsletterId);
           setMetrics(data);
           setError(null);
+          console.log('[Analytics] Metrics refetched successfully');
       } catch (err) {
           console.error('[Analytics] Failed to refetch metrics:', err);
           setError(err instanceof Error ? err : new Error('Unknown error'));
-      } finally {
-          setLoading(false);
+      } finally { 
+          setLoading(false); 
       }
-  };
+  }, [newsletterId]);
 
   return { metrics, loading, error, refetch };
 }
@@ -102,18 +108,18 @@ export function useArticleStats(newsletterId: string) {
         fetch();
     }, [newsletterId]);
 
-    const refetch = async () => {
+    const refetch = useCallback(async (isBackground = false) => {
         if (!newsletterId) return;
-        setLoading(true);
+        if (!isBackground) setLoading(true);
         try {
             const data = await analyticsAggregator.getArticleStats(newsletterId);
             setStats(data);
         } catch (e) {
             console.error(e);
-        } finally {
-            setLoading(false);
+        } finally { 
+            setLoading(false); 
         }
-    };
+    }, [newsletterId]);
 
     return { stats, loading, refetch };
 }
@@ -138,19 +144,43 @@ export function useTrendStats() {
         fetch();
     }, []);
 
-    const refetch = async () => {
-        setLoading(true);
+    const refetch = useCallback(async (isBackground = false) => {
+        if (!isBackground) setLoading(true);
         try {
             const data = await analyticsAggregator.getTrendStats(6);
             setTrend(data);
         } catch (e) {
             console.error(e);
-        } finally {
-            setLoading(false);
+        } finally { 
+            setLoading(false); 
         }
-    };
+    }, []);
 
     return { trend, loading, refetch };
+}
+
+export function useClassEngagement(newsletterId: string) {
+  const [data, setData] = useState<{ className: string; activeUsers: number; totalUsers: number }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchEngagement = useCallback(async (isBackground = false) => {
+      if (!newsletterId) return;
+      if (typeof isBackground !== 'boolean' || !isBackground) setLoading(true);
+      try {
+          const result = await analyticsAggregator.getClassEngagement(newsletterId);
+          setData(result);
+      } catch (err) {
+          console.error(err);
+      } finally { 
+          setLoading(false); 
+      }
+  }, [newsletterId]);
+
+  useEffect(() => {
+    fetchEngagement();
+  }, [fetchEngagement]);
+
+  return { data, loading, refetch: fetchEngagement };
 }
 
 export function useAvailableWeeks() {

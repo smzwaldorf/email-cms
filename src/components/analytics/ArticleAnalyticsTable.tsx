@@ -1,11 +1,14 @@
 import React from 'react';
 import { Eye, MousePointerClick, Clock } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface ArticleMetric {
   id: string;
   title: string;
   publishedAt: string;
+
   views: number;
+  uniqueViews: number;
   clicks: number;
   avgTimeSpent: string; // e.g. "2m 30s"
 }
@@ -26,7 +29,10 @@ export const ArticleAnalyticsTable: React.FC<ArticleAnalyticsTableProps> = ({ da
             <tr>
               <th className="px-6 py-4 font-medium">Article Title</th>
               <th className="px-6 py-4 font-medium text-right flex items-center justify-end gap-1">
-                <Eye className="w-4 h-4" /> Views
+                <Eye className="w-4 h-4 ml-1" /> Unique
+              </th>
+              <th className="px-6 py-4 font-medium text-right">
+                Views
               </th>
               <th className="px-6 py-4 font-medium text-right">
                 <div className="flex items-center justify-end gap-1">
@@ -44,8 +50,15 @@ export const ArticleAnalyticsTable: React.FC<ArticleAnalyticsTableProps> = ({ da
             {data.map((article) => (
               <tr key={article.id} className="hover:bg-brand-neutral-50 transition-colors">
                 <td className="px-6 py-4">
-                  <div className="font-medium text-brand-neutral-800">{article.title}</div>
-                  <div className="text-xs text-brand-neutral-400">{article.publishedAt}</div>
+                  <Link to={`/admin/analytics/article/${article.id}/readers`} className="group">
+                      <div className="font-medium text-brand-neutral-800 group-hover:text-brand-primary transition-colors">{article.title}</div>
+                      <div className="text-xs text-brand-neutral-400">{article.publishedAt}</div>
+                  </Link>
+                </td>
+                <td className="px-6 py-4 text-right tabular-nums text-brand-neutral-600 font-medium">
+                  <Link to={`/admin/analytics/article/${article.id}/readers`} className="hover:text-brand-primary hover:underline decoration-brand-primary/30 underline-offset-2">
+                    {article.uniqueViews.toLocaleString()}
+                  </Link>
                 </td>
                 <td className="px-6 py-4 text-right tabular-nums text-brand-neutral-600">
                   {article.views.toLocaleString()}

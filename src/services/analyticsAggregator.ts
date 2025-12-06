@@ -1,6 +1,23 @@
 import { getSupabaseClient } from '@/lib/supabase';
 import { AnalyticsEvent, AnalyticsSnapshot, AnalyticsMetrics } from '@/types/analytics';
 
+export interface ClassEngagement {
+    className: string;
+    viewCount: number;
+    activeUsers: number;
+    totalUsers: number; // Placeholder for now, hard to get without full enrollment count
+}
+
+export interface ArticleReader {
+    userId: string;
+    email: string;
+    role: string;
+    className: string[]; // List of class names (e.g. "G1", "G2")
+    studentNames: string[]; // List of student names related to this parent
+    lastViewed: string;
+    viewCount: number;
+}
+
 /**
  * Service for aggregating raw analytics events into snapshots and calculating metrics.
  */
@@ -119,55 +136,89 @@ export const analyticsAggregator = {
    */
   async getNewsletterMetrics(newsletterId: string): Promise<AnalyticsMetrics> {
     const supabase = getSupabaseClient();
+    const QUERY_TIMEOUT_MS = 10000;
     
-    // Get total recipients (approximate from user_roles or enrollment)
-    // For MVP, let's assume valid users count or just use raw events count for now.
-    // Real calculation: Unique Opens / Total Sent
+    // Helper to create a timeout promise
+    const createTimeout = (ms: number) => new Promise((_, reject) => 
+      setTimeout(() => reject(new Error(`Query timeout after ${ms}ms`)), ms)
+    );
     
-    // 1. Get Unique Opens
-    const { count: uniqueOpens, error: openError } = await supabase
-      .from('analytics_events')
-      .select('user_id', { count: 'exact', head: true }) // head: true for count only? No, we need distinct.
-      // supbase-js doesn't support distinct count easily in one go without raw sql or generic helper
-      // workaround: use .select('user_id') and manual set, or rpc.
-      .eq('newsletter_id', newsletterId)
-      .eq('event_type', 'email_open');
-      
-    // Actually, simpler query for MVP:
-    const { data: openEvents } = await supabase
+    try {
+      // 1. Get Unique Opens
+      const openEventsPromise = supabase
         .from('analytics_events')
         .select('user_id')
         .eq('newsletter_id', newsletterId)
         .eq('event_type', 'email_open');
-        
-    const uniqueOpenCount = new Set(openEvents?.map(e => e.user_id)).size;
+      
+      const openResult = await Promise.race([
+        openEventsPromise,
+        createTimeout(QUERY_TIMEOUT_MS)
+      ]) as { data: { user_id: string }[] | null; error: Error | null };
+      
+      if (openResult.error) {
+        console.error('[Analytics] Error fetching open events:', openResult.error);
+        throw openResult.error;
+      }
+          
+      const uniqueOpenCount = new Set(openResult.data?.map((e: { user_id: string }) => e.user_id)).size;
 
-    // 2. Get Unique Clicks
-    const { data: clickEvents } = await supabase
+      // 2. Get Unique Clicks
+      const clickEventsPromise = supabase
         .from('analytics_events')
         .select('user_id')
         .eq('newsletter_id', newsletterId)
         .eq('event_type', 'link_click');
-    
-    const uniqueClickCount = new Set(clickEvents?.map(e => e.user_id)).size;
+      
+      const clickResult = await Promise.race([
+        clickEventsPromise,
+        createTimeout(QUERY_TIMEOUT_MS)
+      ]) as { data: { user_id: string }[] | null; error: Error | null };
+      
+      if (clickResult.error) {
+        console.error('[Analytics] Error fetching click events:', clickResult.error);
+        throw clickResult.error;
+      }
+      
+      const uniqueClickCount = new Set(clickResult.data?.map((e: { user_id: string }) => e.user_id)).size;
 
-    // 3. Get Total Views (Article Reads)
-    const { count: totalViews } = await supabase
+      // 3. Get Total Views (Article Reads)
+      const viewCountPromise = supabase
         .from('analytics_events')
         .select('*', { count: 'exact', head: true })
         .eq('newsletter_id', newsletterId)
         .eq('event_type', 'page_view');
+      
+      const viewResult = await Promise.race([
+        viewCountPromise,
+        createTimeout(QUERY_TIMEOUT_MS)
+      ]) as { count: number | null; error: Error | null };
 
-    // Mock Total Sent (since we don't have email log table yet, usually distinct students count)
-    // Placeholder: 100
-    const totalSent = 100; 
+      if (viewResult.error) {
+        console.error('[Analytics] Error fetching view count:', viewResult.error);
+        throw viewResult.error;
+      }
 
-    return {
-      openRate: totalSent > 0 ? (uniqueOpenCount / totalSent) * 100 : 0,
-      clickRate: uniqueOpenCount > 0 ? (uniqueClickCount / uniqueOpenCount) * 100 : 0, // Click-to-open rate usually
-      avgTimeSpent: 0, // Not implemented yet
-      totalViews: totalViews || 0 // Total page views
-    };
+      // Mock Total Sent (since we don't have email log table yet, usually distinct students count)
+      // Placeholder: 100
+      const totalSent = 100; 
+
+      return {
+        openRate: totalSent > 0 ? (uniqueOpenCount / totalSent) * 100 : 0,
+        clickRate: uniqueOpenCount > 0 ? (uniqueClickCount / uniqueOpenCount) * 100 : 0,
+        avgTimeSpent: 0, // Not implemented yet
+        totalViews: viewResult.count || 0
+      };
+    } catch (err) {
+      console.error(`[Analytics] getNewsletterMetrics failed for ${newsletterId}:`, err);
+      // Return default metrics instead of throwing to prevent cascade failures
+      return {
+        openRate: 0,
+        clickRate: 0,
+        avgTimeSpent: 0,
+        totalViews: 0
+      };
+    }
   },
 
   /**
@@ -183,7 +234,7 @@ export const analyticsAggregator = {
     // 1. Fetch Views per article
     const { data: viewEvents, error: viewError } = await supabase
       .from('analytics_events')
-      .select('article_id, articles ( title, created_at, article_order )')
+      .select('article_id, user_id, session_id, articles ( title, created_at, article_order )')
       .eq('newsletter_id', newsletterId)
       .eq('event_type', 'page_view');
 
@@ -206,6 +257,7 @@ export const analyticsAggregator = {
       publishedAt: string; 
       order: number;
       views: number; 
+      uniqueViews: Set<string>; // Set of unique user/session IDs
       clicks: number;
     }>();
 
@@ -220,10 +272,14 @@ export const analyticsAggregator = {
                 publishedAt: article?.created_at ? new Date(article.created_at).toLocaleDateString() : '-',
                 order: article?.article_order || 999,
                 views: 0,
+                uniqueViews: new Set(),
                 clicks: 0
             });
         }
-        statsMap.get(event.article_id)!.views++;
+        const stat = statsMap.get(event.article_id)!;
+        stat.views++;
+        // Track unique visitor: use user_id if logged in, else session_id
+        stat.uniqueViews.add(event.user_id || event.session_id);
     });
 
     clickEvents?.forEach((event) => {
@@ -238,6 +294,7 @@ export const analyticsAggregator = {
 
     return Array.from(statsMap.values()).map(stat => ({
         ...stat,
+        uniqueViews: stat.uniqueViews.size, // Convert Set to count
         avgTimeSpent: '-' // Not implemented yet
     })).sort((a, b) => a.order - b.order); // Sort by article order
   },
@@ -268,18 +325,26 @@ export const analyticsAggregator = {
         
       if (!newsletters) return [];
       
+      console.log(`[Analytics] Fetching trend stats for ${newsletters.length} weeks...`);
       const results = [];
       // Parallel fetch for last N weeks (limit concurrency if needed)
       // Reverse to show oldest first in chart
       for (const nl of newsletters.reverse()) {
-          const metrics = await this.getNewsletterMetrics(nl.week_number);
-          results.push({
-              name: nl.week_number,
-              openRate: parseFloat(metrics.openRate.toFixed(1)),
-              clickRate: parseFloat(metrics.clickRate.toFixed(1))
-          });
+          try {
+              console.log(`[Analytics] Processing week ${nl.week_number}...`);
+              const metrics = await this.getNewsletterMetrics(nl.week_number);
+              results.push({
+                  name: nl.week_number,
+                  openRate: parseFloat(metrics.openRate.toFixed(1)),
+                  clickRate: parseFloat(metrics.clickRate.toFixed(1))
+              });
+          } catch (err) {
+              console.error(`[Analytics] Failed to process week ${nl.week_number}:`, err);
+              // Push placeholder or skip
+              results.push({ name: nl.week_number, openRate: 0, clickRate: 0 });
+          }
       }
-      
+      console.log('[Analytics] Trend stats completed.');
       return results;
   },
 
@@ -295,5 +360,206 @@ export const analyticsAggregator = {
           
       if (error) throw error;
       return data || [];
+  },
+
+  /**
+   * Fetches the list of users who have read a specific article.
+   * Enriches with class info (for parents -> student classes, for teachers -> assigned classes).
+   */
+  async getArticleReaders(articleId: string): Promise<ArticleReader[]> {
+      const supabase = getSupabaseClient();
+      
+      try {
+          // 1. Fetch all 'page_view' events for this article
+          // We need unique users, but we might want last view time.
+          const { data: events, error } = await supabase
+            .from('analytics_events')
+            .select('user_id, created_at')
+            .eq('article_id', articleId)
+            .eq('event_type', 'page_view')
+            .not('user_id', 'is', null);
+
+          if (error) throw error;
+          if (!events || events.length === 0) return [];
+
+          // Aggregate by user_id
+          const userMap = new Map<string, { viewCount: number, lastViewed: string }>();
+          
+          events.forEach(e => {
+              if (!e.user_id) return;
+              const current = userMap.get(e.user_id) || { viewCount: 0, lastViewed: '' };
+              current.viewCount++;
+              if (!current.lastViewed || new Date(e.created_at) > new Date(current.lastViewed)) {
+                  current.lastViewed = e.created_at;
+              }
+              userMap.set(e.user_id, current);
+          });
+
+          const userIds = Array.from(userMap.keys());
+          
+          // 2. Fetch User Details (Email, Role)
+          const { data: users, error: userError } = await supabase
+            .from('user_roles')
+            .select('id, email, role')
+            .in('id', userIds);
+            
+          if (userError) throw userError;
+
+          // 3. Fetch Context (Student Classes for Parents, Assigned Classes for Teachers)
+          // This part is tricky to do in one query without complex joins.
+          // We'll simplisticly fetch related data for these users.
+          
+          // Fetch Family Enrollments for Parents
+          const { data: familyEnrollments } = await supabase
+             .from('family_enrollment')
+             .select('parent_id, families ( family_enrollment ( students ( name ) ), student_class_enrollment ( class_id, classes ( class_name ) ) )')
+             .in('parent_id', userIds);
+             
+          // Fetch Teacher Assignments
+          const { data: teacherAssignments } = await supabase
+             .from('teacher_class_assignment')
+             .select('teacher_id, class_id, classes ( class_name )')
+             .in('teacher_id', userIds);
+
+          // 4. Assemble Result
+          const readers: ArticleReader[] = [];
+          
+          users?.forEach(user => {
+              const stats = userMap.get(user.id)!;
+              const reader: ArticleReader = {
+                  userId: user.id,
+                  email: user.email,
+                  role: user.role,
+                  className: [],
+                  studentNames: [],
+                  lastViewed: new Date(stats.lastViewed).toLocaleString(),
+                  viewCount: stats.viewCount
+              };
+
+              // Enrich with Class info
+              if (user.role === 'parent' || user.role === 'admin') { // Admin might have kids too? assume role='parent' mostly
+                  const myEnrollments = familyEnrollments?.filter(fe => fe.parent_id === user.id);
+                  myEnrollments?.forEach((fe: any) => {
+                      if (fe.families) {
+                          // Get Students related to this family
+                          const famEnrolls = fe.families.family_enrollment;
+                          if (Array.isArray(famEnrolls)) {
+                              famEnrolls.forEach((sfe: any) => {
+                                  if (sfe.students) reader.studentNames.push(sfe.students.name);
+                              });
+                          }
+
+                          // Get Classes related to this family's students
+                          // Actually student_class_enrollment is directly on families in our schema?
+                          // Let's check schema again. `student_class_enrollment` has `family_id` FK.
+                          // So yes, `families` -> `student_class_enrollment`.
+                          const classEnrolls = fe.families.student_class_enrollment;
+                          if (Array.isArray(classEnrolls)) {
+                              classEnrolls.forEach((sce: any) => {
+                                  if (sce.classes) reader.className.push(sce.classes.class_name);
+                              });
+                          }
+                      }
+                  });
+              }
+              
+              if (user.role === 'teacher' || user.role === 'admin') {
+                  const myAssignments = teacherAssignments?.filter(ta => ta.teacher_id === user.id);
+                  myAssignments?.forEach(ta => {
+                      // @ts-ignore
+                      if (ta.classes) reader.className.push(ta.classes.class_name);
+                  });
+              }
+              
+              // Deduplicate class names
+              reader.className = Array.from(new Set(reader.className));
+              reader.studentNames = Array.from(new Set(reader.studentNames));
+
+              readers.push(reader);
+          });
+
+          return readers.sort((a, b) => new Date(b.lastViewed).getTime() - new Date(a.lastViewed).getTime());
+
+      } catch (err) {
+          console.error('[Analytics] Failed to get article readers:', err);
+          return [];
+      }
+  },
+
+  /**
+   * aggregated class engagement metrics for a newsletter.
+   */
+  async getClassEngagement(newsletterId: string): Promise<ClassEngagement[]> {
+      const supabase = getSupabaseClient();
+      try {
+           // 1. Fetch all page views for this newsletter
+            const { data: events } = await supabase
+                .from('analytics_events')
+                .select('user_id')
+                .eq('newsletter_id', newsletterId)
+                .eq('event_type', 'page_view')
+                .not('user_id', 'is', null);
+
+            if (!events || events.length === 0) return [];
+            
+            const userIds = Array.from(new Set(events.map(e => e.user_id)));
+            
+            // 2. Fetch User Class Context
+             // Fetch Family Enrollments for Parents
+            const { data: familyEnrollments } = await supabase
+                .from('family_enrollment')
+                .select('parent_id, families ( student_class_enrollment ( class_id, classes ( class_name ) ) )')
+                .in('parent_id', userIds);
+                
+             // Map user_id -> List of Class Names
+            const userClasses = new Map<string, string[]>();
+            
+             // Populate userClasses
+             familyEnrollments?.forEach((fe: any) => {
+                   const classes: string[] = [];
+                   if (fe.families && fe.families.student_class_enrollment) {
+                       const enrolls = fe.families.student_class_enrollment;
+                        if (Array.isArray(enrolls)) {
+                                enrolls.forEach((enc: any) => {
+                                    if (enc.classes) classes.push(enc.classes.class_name);
+                                });
+                        }
+                   }
+                   if (classes.length > 0) userClasses.set(fe.parent_id, classes);
+             });
+             
+             // 3. Aggregate View Counts by Class
+             // We want "Active Users per Class" basically.
+             const classStats = new Map<string, Set<string>>(); // ClassName -> Set<UserId>
+             
+             userIds.forEach(uid => {
+                 const classes = userClasses.get(uid);
+                 if (classes) {
+                     classes.forEach(cls => {
+                         if (!classStats.has(cls)) classStats.set(cls, new Set());
+                         classStats.get(cls)!.add(uid);
+                     });
+                 } else {
+                     // Maybe count "Unassigned" or "Teachers"?
+                 }
+             });
+             
+             const result: ClassEngagement[] = [];
+             for (const [className, users] of classStats.entries()) {
+                 result.push({
+                     className,
+                     viewCount: 0, // Not counting logic here, just users
+                     activeUsers: users.size,
+                     totalUsers: 20 // Mock total for now until we have full class counts
+                 });
+             }
+             
+             // Sort by active users
+             return result.sort((a, b) => b.activeUsers - a.activeUsers).slice(0, 5); // Start with top 5
+             
+      } catch (err) {
+          console.error('[Analytics] Failed to get class engagement:', err);
+          return [];
+      }
   }
 };

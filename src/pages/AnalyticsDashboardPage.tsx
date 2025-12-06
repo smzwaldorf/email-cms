@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNewsletterMetrics, useGenerateSnapshots, useTrendStats, useArticleStats, useAvailableWeeks } from '@/hooks/useAnalyticsQuery';
+import { useNewsletterMetrics, useGenerateSnapshots, useTrendStats, useArticleStats, useAvailableWeeks, useClassEngagement } from '@/hooks/useAnalyticsQuery';
 import { KPICard } from '@/components/analytics/KPICard';
 import { TrendChart } from '@/components/analytics/TrendChart';
 import { ArticleAnalyticsTable } from '@/components/analytics/ArticleAnalyticsTable';
@@ -20,23 +20,15 @@ export const AnalyticsDashboardPage: React.FC = () => {
     const { metrics, refetch: refetchMetrics } = useNewsletterMetrics(selectedWeek);
     const { stats: articleData, loading: articlesLoading, refetch: refetchArticles } = useArticleStats(selectedWeek);
     const { trend: trendData, loading: trendLoading, refetch: refetchTrend } = useTrendStats();
+    const { data: classEngagement, loading: classLoading, refetch: refetchClasses } = useClassEngagement(selectedWeek);
     const { generate, generating } = useGenerateSnapshots();
 
-    // Auto-refresh live data every 5 seconds
-    React.useEffect(() => {
-        const interval = setInterval(() => {
-            if (document.hidden) return; // Don't refresh if tab is backgrounded
-            refetchMetrics();
-            refetchArticles();
-            // Trend data doesn't change that often, but why not
-            refetchTrend();
-        }, 5000);
-        return () => clearInterval(interval);
-    }, [refetchMetrics, refetchArticles, refetchTrend]);
+
 
     const handleManualRefresh = () => {
         refetchMetrics();
         refetchArticles();
+        refetchClasses();
         refetchTrend();
     };
 
@@ -82,9 +74,7 @@ export const AnalyticsDashboardPage: React.FC = () => {
                             </select>
                         </div>
 
-                        <div className="flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 text-xs rounded-full border border-green-100 animate-pulse">
-                            <Activity className="w-3 h-3" /> Live Data
-                        </div>
+
 
                         <button 
                             onClick={handleManualRefresh}
@@ -151,20 +141,28 @@ export const AnalyticsDashboardPage: React.FC = () => {
                     <div className="space-y-6">
                         {/* Secondary Widgets / Breakdown - Placeholder for now */}
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-brand-neutral-100 h-full">
-                            <h3 className="text-lg font-semibold text-brand-neutral-800 mb-4">Engagement by Class</h3>
+                            <h3 className="text-lg font-semibold text-brand-neutral-800 mb-4">Engagement by Class (Active Parents)</h3>
                             <div className="space-y-4">
-                                {['Class 1', 'Class 2', 'Class 3'].map((cls, i) => (
-                                    <div key={i} className="flex justify-between items-center text-sm">
-                                        <span className="text-brand-neutral-600">{cls}</span>
-                                        <div className="w-32 h-2 bg-brand-neutral-100 rounded-full overflow-hidden">
-                                            <div 
-                                                className="h-full bg-brand-primary rounded-full" 
-                                                style={{ width: `${60 + i * 10}%` }}
-                                            />
+                                {classLoading ? (
+                                    <div className="text-sm text-brand-neutral-400">Loading...</div>
+                                ) : classEngagement.length === 0 ? (
+                                    <div className="text-sm text-brand-neutral-400">No class engagement data yet.</div>
+                                ) : (
+                                    classEngagement.map((item, i) => (
+                                        <div key={i} className="flex justify-between items-center text-sm">
+                                            <span className="text-brand-neutral-600">{item.className}</span>
+                                            <div className="flex items-center gap-3">
+                                                 <div className="w-24 h-2 bg-brand-neutral-100 rounded-full overflow-hidden">
+                                                    <div 
+                                                        className="h-full bg-brand-primary rounded-full transition-all duration-500" 
+                                                        style={{ width: `${Math.min((item.activeUsers / item.totalUsers) * 100, 100)}%` }}
+                                                    />
+                                                </div>
+                                                <span className="font-medium min-w-[2rem] text-right">{item.activeUsers}</span>
+                                            </div>
                                         </div>
-                                        <span className="font-medium">{60 + i * 10}%</span>
-                                    </div>
-                                ))}
+                                    ))
+                                )}
                             </div>
                         </div>
                     </div>
