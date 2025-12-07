@@ -42,7 +42,28 @@ export const AnalyticsDashboardPage: React.FC = () => {
 
 
 
+    // Track if the tab has been hidden/backgrounded since load
+    const hasBeenHidden = React.useRef(false);
+
+    React.useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.hidden) {
+                hasBeenHidden.current = true;
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }, []);
+
     const handleManualRefresh = () => {
+        // If the tab was backgrounded, force a hard reload to ensure clean connection state
+        if (hasBeenHidden.current) {
+            console.log('🔄 Tab was backgrounded, performing hard reload...');
+            window.location.reload();
+            return;
+        }
+
+        // Otherwise, just refetch data (soft refresh)
         refetchMetrics();
         refetchArticles();
         refetchClasses();

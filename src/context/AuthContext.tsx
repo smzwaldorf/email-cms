@@ -127,39 +127,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
 
     const handleVisibilityChange = () => {
-      isTabVisible = !document.hidden
+      const isVisible = !document.hidden
       
-      if (isTabVisible) {
-        // Tab became visible - ping immediately and restart interval
-        console.log('👁️ Tab visible, starting keep-alive')
+      if (isVisible) {
+        // Tab became visible - ping immediately for responsiveness
+        console.log('👁️ Tab visible, checking connection...')
         pingSupabase()
-        if (!intervalId) {
-          intervalId = setInterval(pingSupabase, KEEP_ALIVE_INTERVAL)
-        }
       } else {
-        // Tab hidden - stop interval to save resources
-        console.log('🙈 Tab hidden, pausing keep-alive')
-        if (intervalId) {
-          clearInterval(intervalId)
-          intervalId = null
-        }
+        console.log('🙈 Tab hidden, keep-alive continuing in background')
       }
     }
 
-    // Start keep-alive if tab is currently visible
-    if (isTabVisible) {
-      intervalId = setInterval(pingSupabase, KEEP_ALIVE_INTERVAL)
-      // Do an initial ping after 1 second to warm up the connection
-      setTimeout(pingSupabase, 1000)
-    }
+    // Start keep-alive immediately
+    intervalId = setInterval(pingSupabase, KEEP_ALIVE_INTERVAL)
+    // Initial ping
+    pingSupabase()
 
     document.addEventListener('visibilitychange', handleVisibilityChange)
-    
+
     return () => {
+      if (intervalId) clearInterval(intervalId)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
-      if (intervalId) {
-        clearInterval(intervalId)
-      }
     }
   }, [])
 

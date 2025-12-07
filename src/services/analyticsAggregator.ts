@@ -136,7 +136,7 @@ export const analyticsAggregator = {
    */
   async getNewsletterMetrics(newsletterId: string): Promise<AnalyticsMetrics> {
     const supabase = getSupabaseClient();
-    const QUERY_TIMEOUT_MS = 10000; // Standard 10s timeout
+    const QUERY_TIMEOUT_MS = 30000; // Increased to 30s for cold DB recovery
     
     // Helper to create a timeout promise
     const createTimeout = (ms: number) => new Promise((_, reject) => 
@@ -144,13 +144,6 @@ export const analyticsAggregator = {
     );
     
     try {
-      // Pre-warm session to ensure connection and token are valid
-      // This prevents the first query from timing out due to auth handshake
-      await Promise.race([
-        supabase.auth.getSession(),
-        createTimeout(10000) // 10s timeout for session warm-up
-      ]).catch(err => console.warn('[Analytics] Session warm-up warning:', err));
-
       // 1. Get Unique Opens
       const openEventsPromise = supabase
         .from('analytics_events')
@@ -235,10 +228,14 @@ export const analyticsAggregator = {
     const supabase = getSupabaseClient();
     
     // 1. Fetch Views per article
+    // Use !inner to force join and filter by article's actual week number
+    // This prevents "pollution" where an event logged with the wrong newsletter_id 
+    // (or cross-week navigation) causes an old article to show up in the wrong week's report.
     const { data: viewEvents, error: viewError } = await supabase
       .from('analytics_events')
-      .select('article_id, user_id, session_id, articles ( title, created_at, article_order )')
+      .select('article_id, user_id, session_id, articles!inner ( title, created_at, article_order, week_number )')
       .eq('newsletter_id', newsletterId)
+      .eq('articles.week_number', newsletterId)
       .eq('event_type', 'page_view');
 
     if (viewError) throw viewError;
