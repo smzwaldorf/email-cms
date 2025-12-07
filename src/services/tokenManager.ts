@@ -18,7 +18,7 @@ export interface TokenInfo {
   expiresIn: number // Seconds until expiry
 }
 
-class TokenManager {
+export class TokenManager {
   private accessToken: string | null = null
   private accessTokenExpiresAt: number | null = null
   private refreshInProgress: Promise<boolean> | null = null

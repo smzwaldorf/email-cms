@@ -105,7 +105,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     let isTabVisible = !document.hidden
 
     const pingSupabase = async () => {
-      if (!isTabVisible) return
+      // Allow background pings to keep TCP connection alive
+      // if (!isTabVisible) return
       
       const startTime = performance.now()
       try {
