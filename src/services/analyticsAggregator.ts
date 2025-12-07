@@ -1,5 +1,5 @@
 import { getSupabaseClient } from '@/lib/supabase';
-import { AnalyticsEvent, AnalyticsSnapshot, AnalyticsMetrics } from '@/types/analytics';
+import { AnalyticsEvent, AnalyticsSnapshot, AnalyticsMetrics, ArticleHotness } from '@/types/analytics';
 
 export interface ClassEngagement {
     className: string;
@@ -136,7 +136,7 @@ export const analyticsAggregator = {
    */
   async getNewsletterMetrics(newsletterId: string): Promise<AnalyticsMetrics> {
     const supabase = getSupabaseClient();
-    const QUERY_TIMEOUT_MS = 10000;
+    const QUERY_TIMEOUT_MS = 10000; // Standard 10s timeout
     
     // Helper to create a timeout promise
     const createTimeout = (ms: number) => new Promise((_, reject) => 
@@ -144,6 +144,13 @@ export const analyticsAggregator = {
     );
     
     try {
+      // Pre-warm session to ensure connection and token are valid
+      // This prevents the first query from timing out due to auth handshake
+      await Promise.race([
+        supabase.auth.getSession(),
+        createTimeout(10000) // 10s timeout for session warm-up
+      ]).catch(err => console.warn('[Analytics] Session warm-up warning:', err));
+
       // 1. Get Unique Opens
       const openEventsPromise = supabase
         .from('analytics_events')
@@ -227,10 +234,6 @@ export const analyticsAggregator = {
   async getArticleStats(newsletterId: string) {
     const supabase = getSupabaseClient();
     
-    // We want views, clicks, and title for each article
-    // Note: We're doing client-side aggregation here for MVP. 
-    // In production, use an RPC function or a view.
-    
     // 1. Fetch Views per article
     const { data: viewEvents, error: viewError } = await supabase
       .from('analytics_events')
@@ -240,8 +243,7 @@ export const analyticsAggregator = {
 
     if (viewError) throw viewError;
 
-    // 2. Fetch Clicks per article (if applicable, link_click usually has article_id if clicked FROM an article)
-    // If link_click is "clicked a link IN an article", it should have article_id.
+    // 2. Fetch Clicks per article
     const { data: clickEvents, error: clickError } = await supabase
       .from('analytics_events')
       .select('article_id')
@@ -250,6 +252,15 @@ export const analyticsAggregator = {
 
     if (clickError) throw clickError;
 
+    // 3. Fetch session_end events for time spent calculation
+    const { data: sessionEndEvents, error: sessionError } = await supabase
+      .from('analytics_events')
+      .select('article_id, metadata')
+      .eq('newsletter_id', newsletterId)
+      .eq('event_type', 'session_end');
+
+    if (sessionError) throw sessionError;
+
     // Aggregate
     const statsMap = new Map<string, { 
       id: string; 
@@ -257,15 +268,17 @@ export const analyticsAggregator = {
       publishedAt: string; 
       order: number;
       views: number; 
-      uniqueViews: Set<string>; // Set of unique user/session IDs
+      uniqueViews: Set<string>;
       clicks: number;
+      totalTimeSpent: number;
+      timeSpentCount: number;
     }>();
 
     viewEvents?.forEach((event: any) => {
         if (!event.article_id) return;
         
         if (!statsMap.has(event.article_id)) {
-            const article = event.articles; // Joined data
+            const article = event.articles;
             statsMap.set(event.article_id, {
                 id: event.article_id,
                 title: article?.title || 'Unknown Article',
@@ -273,30 +286,58 @@ export const analyticsAggregator = {
                 order: article?.article_order || 999,
                 views: 0,
                 uniqueViews: new Set(),
-                clicks: 0
+                clicks: 0,
+                totalTimeSpent: 0,
+                timeSpentCount: 0
             });
         }
         const stat = statsMap.get(event.article_id)!;
         stat.views++;
-        // Track unique visitor: use user_id if logged in, else session_id
         stat.uniqueViews.add(event.user_id || event.session_id);
     });
 
     clickEvents?.forEach((event) => {
         if (!event.article_id) return;
-        // Note: Clicks might exist without views if data is partial? 
-        // We usually assume article exists in viewEvents map if referenced, 
-        // but for safety we might check. For now, only count clicks for known articles.
         if (statsMap.has(event.article_id)) {
             statsMap.get(event.article_id)!.clicks++;
         }
     });
 
-    return Array.from(statsMap.values()).map(stat => ({
-        ...stat,
-        uniqueViews: stat.uniqueViews.size, // Convert Set to count
-        avgTimeSpent: '-' // Not implemented yet
-    })).sort((a, b) => a.order - b.order); // Sort by article order
+    // Aggregate time spent from session_end events
+    sessionEndEvents?.forEach((event: any) => {
+        if (!event.article_id || !statsMap.has(event.article_id)) return;
+        const timeSpent = event.metadata?.time_spent_seconds;
+        if (typeof timeSpent === 'number' && timeSpent > 0) {
+            const stat = statsMap.get(event.article_id)!;
+            stat.totalTimeSpent += timeSpent;
+            stat.timeSpentCount++;
+        }
+    });
+
+    return Array.from(statsMap.values()).map(stat => {
+        const avgSeconds = stat.timeSpentCount > 0 
+            ? Math.round(stat.totalTimeSpent / stat.timeSpentCount) 
+            : 0;
+        return {
+            ...stat,
+            uniqueViews: stat.uniqueViews.size,
+            avgTimeSpent: avgSeconds, // Now returns seconds as number
+            avgTimeSpentFormatted: avgSeconds > 0 ? this.formatDuration(avgSeconds) : '-'
+        };
+    }).sort((a, b) => a.order - b.order);
+  },
+
+  /**
+   * Formats seconds into a human-readable duration string (Xh Ym Zs or Xm Ys)
+   */
+  formatDuration(seconds: number): string {
+    if (seconds < 60) return `${seconds}s`;
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    if (mins < 60) return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+    const hours = Math.floor(mins / 60);
+    const remainingMins = mins % 60;
+    return remainingMins > 0 ? `${hours}h ${remainingMins}m` : `${hours}h`;
   },
 
   /**
@@ -559,6 +600,90 @@ export const analyticsAggregator = {
              
       } catch (err) {
           console.error('[Analytics] Failed to get class engagement:', err);
+          return [];
+      }
+  },
+
+  /**
+   * Calculates topic hotness based on how quickly parents read articles after publishing.
+   * Hotness score: 100 = read immediately, decreases as average read latency increases.
+   */
+  async getTopicHotness(newsletterId: string): Promise<ArticleHotness[]> {
+      const supabase = getSupabaseClient();
+      
+      try {
+          // 1. Fetch all page_view events with article publish time
+          const { data: events, error } = await supabase
+            .from('analytics_events')
+            .select('article_id, user_id, created_at, articles ( title, created_at )')
+            .eq('newsletter_id', newsletterId)
+            .eq('event_type', 'page_view')
+            .not('user_id', 'is', null);
+
+          if (error) throw error;
+          if (!events || events.length === 0) return [];
+
+          // 2. Group by article and find first view per user
+          const articleMap = new Map<string, {
+              title: string;
+              publishedAt: Date;
+              firstViews: Map<string, Date>; // userId -> first view time
+          }>();
+
+          events.forEach((event: any) => {
+              if (!event.article_id || !event.articles?.created_at) return;
+              
+              if (!articleMap.has(event.article_id)) {
+                  articleMap.set(event.article_id, {
+                      title: event.articles.title || 'Unknown',
+                      publishedAt: new Date(event.articles.created_at),
+                      firstViews: new Map()
+                  });
+              }
+              
+              const article = articleMap.get(event.article_id)!;
+              const viewTime = new Date(event.created_at);
+              const existingFirst = article.firstViews.get(event.user_id);
+              
+              if (!existingFirst || viewTime < existingFirst) {
+                  article.firstViews.set(event.user_id, viewTime);
+              }
+          });
+
+          // 3. Calculate hotness for each article
+          const results: ArticleHotness[] = [];
+          
+          for (const [articleId, data] of articleMap.entries()) {
+              if (data.firstViews.size === 0) continue;
+              
+              // Calculate average latency in minutes
+              let totalLatencyMinutes = 0;
+              data.firstViews.forEach((viewTime) => {
+                  const latencyMs = viewTime.getTime() - data.publishedAt.getTime();
+                  totalLatencyMinutes += Math.max(0, latencyMs / (1000 * 60));
+              });
+              const avgLatencyMinutes = totalLatencyMinutes / data.firstViews.size;
+              
+              // Calculate hotness score: 100 for immediate, decreases over time
+              // Formula: score = max(0, 100 - (avgLatencyMinutes / 60) * 2)
+              // Read within 1 hour = ~98, within 24 hours = ~52, 50+ hours = 0
+              const hotnessScore = Math.max(0, Math.round(100 - (avgLatencyMinutes / 60) * 2));
+              
+              results.push({
+                  articleId,
+                  title: data.title,
+                  publishedAt: data.publishedAt.toISOString(),
+                  avgReadLatencyMinutes: Math.round(avgLatencyMinutes),
+                  hotnessScore,
+                  totalReaders: data.firstViews.size
+              });
+          }
+          
+          // Sort by hotness score descending
+          return results.sort((a, b) => b.hotnessScore - a.hotnessScore);
+          
+      } catch (err) {
+          console.error('[Analytics] Failed to get topic hotness:', err);
           return [];
       }
   }

@@ -36,7 +36,7 @@ function ArticleContentComponent({
   viewCount,
   isLoading = false,
 }: ArticleContentProps) {
-  const { isTimedOut } = useLoadingTimeout(isLoading, 3000)
+  const { isTimedOut } = useLoadingTimeout(isLoading, 3000) // 3 second timeout (default)
   const contentRef = useRef<HTMLDivElement>(null)
 
 

@@ -14,14 +14,40 @@ export interface UseAnalyticsTrackingProps {
 
 /**
  * Hook to handle analytics tracking for pages.
- * Tracks page views on mount and handles session management.
+ * Tracks page views on mount, time spent reading, and handles session management.
  */
 export function useAnalyticsTracking({ articleId, weekNumber, classId, enabled = true }: UseAnalyticsTrackingProps = {}) {
   const location = useLocation();
   const { user } = useAuth();
   const sessionIdRef = useRef<string>('');
 
-  const lastLoggedKeyRef = useRef<string>(''); // Track the unique key of the last logged view (e.g. articleId + pathname)
+  const lastLoggedKeyRef = useRef<string>(''); // Track the unique key of the last logged view
+  
+  // Time tracking refs
+  const startTimeRef = useRef<number>(0);
+  const accumulatedTimeRef = useRef<number>(0); // Accumulated visible time in ms
+  const isVisibleRef = useRef<boolean>(true);
+  const hasLoggedEndRef = useRef<boolean>(false); // Prevent duplicate session_end logs
+  
+  // Store current values in refs for cleanup function access
+  const currentContextRef = useRef({
+    articleId: articleId,
+    weekNumber: weekNumber,
+    classId: classId,
+    userId: user?.id,
+    pathname: location.pathname
+  });
+  
+  // Update refs when values change
+  useEffect(() => {
+    currentContextRef.current = {
+      articleId,
+      weekNumber,
+      classId,
+      userId: user?.id,
+      pathname: location.pathname
+    };
+  }, [articleId, weekNumber, classId, user?.id, location.pathname]);
 
   // Initialize Session ID
   useEffect(() => {
@@ -35,19 +61,15 @@ export function useAnalyticsTracking({ articleId, weekNumber, classId, enabled =
 
   // Track Page View
   useEffect(() => {
-    if (!enabled) return; // Skip tracking if not enabled
-    if (!sessionIdRef.current) return; // Wait for session init
+    if (!enabled) return;
+    if (!sessionIdRef.current) return;
     
-    // Construct a unique key for this view context
-    // If articleId is present, we track per article.
-    // If not, we track per path (e.g. dashboard list view).
     const currentKey = `${location.pathname}:${articleId || ''}:${weekNumber || ''}`;
 
     // Prevent duplicate logging for the same context
     if (lastLoggedKeyRef.current === currentKey) return;
 
     const trackView = async () => {
-      // Determine effective user ID
       const userId = user?.id;
       
       await trackingService.logEvent({
@@ -69,21 +91,98 @@ export function useAnalyticsTracking({ articleId, weekNumber, classId, enabled =
     trackView();
   }, [enabled, articleId, weekNumber, classId, user?.id, location.pathname, location.search]);
 
+  // Time Tracking with Visibility API
+  useEffect(() => {
+    if (!articleId || !enabled) return;
+    
+    // Reset time tracking for new article
+    startTimeRef.current = Date.now();
+    accumulatedTimeRef.current = 0;
+    isVisibleRef.current = !document.hidden;
+    hasLoggedEndRef.current = false;
+    
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Page became hidden - accumulate time
+        if (isVisibleRef.current && startTimeRef.current > 0) {
+          accumulatedTimeRef.current += Date.now() - startTimeRef.current;
+        }
+        isVisibleRef.current = false;
+      } else {
+        // Page became visible - restart timer
+        startTimeRef.current = Date.now();
+        isVisibleRef.current = true;
+      }
+    };
+    
+    // Log session end - inline function that reads from refs
+    const logSessionEnd = async () => {
+      if (hasLoggedEndRef.current) return;
+      
+      const ctx = currentContextRef.current;
+      if (!ctx.articleId) return;
+      
+      // Calculate final time spent
+      let totalTime = accumulatedTimeRef.current;
+      if (isVisibleRef.current && startTimeRef.current > 0) {
+        totalTime += Date.now() - startTimeRef.current;
+      }
+      
+      const timeSpentSeconds = Math.round(totalTime / 1000);
+      
+      // Only log if user spent at least 3 seconds (filters out React Strict Mode double-mount)
+      if (timeSpentSeconds < 3) return;
+      
+      hasLoggedEndRef.current = true;
+      
+      await trackingService.logEvent({
+        user_id: ctx.userId || null,
+        session_id: sessionIdRef.current,
+        event_type: 'session_end',
+        newsletter_id: ctx.weekNumber || null,
+        article_id: ctx.articleId,
+        metadata: {
+          path: ctx.pathname,
+          time_spent_seconds: timeSpentSeconds,
+          class_id: ctx.classId
+        }
+      });
+    };
+    
+    const handleBeforeUnload = () => {
+      logSessionEnd();
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('pagehide', handleBeforeUnload);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handleBeforeUnload);
+      
+      // Log session end when navigating away (component unmount)
+      logSessionEnd();
+    };
+  }, [articleId, enabled]); // Minimal dependencies - reads other values from refs
+
   // Scroll Tracking (Simplified)
   useEffect(() => {
-      // Only track scroll on articles
-      if (!articleId) return;
+    if (!articleId) return;
 
-      const handleScroll = () => {
-          // Implement scroll logic (throttle etc)
-          // For MVP maybe wait.
-      };
-      
-      window.addEventListener('scroll', handleScroll);
-      return () => window.removeEventListener('scroll', handleScroll);
+    const handleScroll = () => {
+      // Implement scroll logic (throttle etc)
+      // For MVP maybe wait.
+    };
+    
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   }, [articleId]);
 
   return {
     sessionId: sessionIdRef.current
   };
 }
+
+

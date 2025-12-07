@@ -97,6 +97,72 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [])
 
+  // Keep-alive: Ping Supabase every 5 minutes while tab is visible
+  // This prevents the connection from going completely stale after idle
+  useEffect(() => {
+    const KEEP_ALIVE_INTERVAL = 5 * 60 * 1000 // 5 minutes
+    let intervalId: NodeJS.Timeout | null = null
+    let isTabVisible = !document.hidden
+
+    const pingSupabase = async () => {
+      if (!isTabVisible) return
+      
+      const startTime = performance.now()
+      try {
+        const supabase = getSupabaseClient()
+        // Use getUser() instead of getSession() because getSession() often hits local cache (0-1ms)
+        // and fails to keep the TCP connection warm. getUser() forces a network request.
+        const { error } = await supabase.auth.getUser()
+        
+        if (error) {
+           // If 401, it means token expired, which is fine (TokenManager will handle it), 
+           // but at least we touched the network.
+           console.log(`💓 Keep-alive ping network check (${(performance.now() - startTime).toFixed(0)}ms) - Status: ${error.status || 'Error'}`)
+        } else {
+           console.log(`💓 Keep-alive ping network check successful (${(performance.now() - startTime).toFixed(0)}ms)`)
+        }
+      } catch (err) {
+        console.warn('⚠️ Keep-alive ping failed:', err)
+      }
+    }
+
+    const handleVisibilityChange = () => {
+      isTabVisible = !document.hidden
+      
+      if (isTabVisible) {
+        // Tab became visible - ping immediately and restart interval
+        console.log('👁️ Tab visible, starting keep-alive')
+        pingSupabase()
+        if (!intervalId) {
+          intervalId = setInterval(pingSupabase, KEEP_ALIVE_INTERVAL)
+        }
+      } else {
+        // Tab hidden - stop interval to save resources
+        console.log('🙈 Tab hidden, pausing keep-alive')
+        if (intervalId) {
+          clearInterval(intervalId)
+          intervalId = null
+        }
+      }
+    }
+
+    // Start keep-alive if tab is currently visible
+    if (isTabVisible) {
+      intervalId = setInterval(pingSupabase, KEEP_ALIVE_INTERVAL)
+      // Do an initial ping after 1 second to warm up the connection
+      setTimeout(pingSupabase, 1000)
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      if (intervalId) {
+        clearInterval(intervalId)
+      }
+    }
+  }, [])
+
   // Re-subscribe when user changes (e.g. login)
   useEffect(() => {
     if (!user) return

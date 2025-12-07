@@ -1,6 +1,7 @@
 import React from 'react';
-import { Eye, MousePointerClick, Clock } from 'lucide-react';
+import { Eye, MousePointerClick, Clock, Flame } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { formatReadLatency } from '@/hooks/useAnalyticsQuery';
 
 interface ArticleMetric {
   id: string;
@@ -10,12 +11,47 @@ interface ArticleMetric {
   views: number;
   uniqueViews: number;
   clicks: number;
-  avgTimeSpent: string; // e.g. "2m 30s"
+  avgTimeSpent: number; // Seconds
+  avgTimeSpentFormatted: string; // e.g. "2m 30s"
+  hotnessScore?: number; // 0-100
+  avgReadLatencyMinutes?: number;
 }
 
 interface ArticleAnalyticsTableProps {
   data: ArticleMetric[];
 }
+
+// Helper component for hotness badge
+const HotnessBadge: React.FC<{ score?: number; latency?: number }> = ({ score, latency }) => {
+  if (score === undefined) return <span className="text-brand-neutral-400">-</span>;
+  
+  let emoji = '❄️';
+  let label = 'Cold';
+  let bgColor = 'bg-blue-100 text-blue-700';
+  
+  if (score >= 70) {
+    emoji = '🔥';
+    label = 'Hot';
+    bgColor = 'bg-red-100 text-red-700';
+  } else if (score >= 40) {
+    emoji = '☀️';
+    label = 'Warm';
+    bgColor = 'bg-orange-100 text-orange-700';
+  }
+  
+  const latencyStr = latency !== undefined ? formatReadLatency(latency) : '';
+  
+  return (
+    <div className="flex flex-col items-end gap-0.5">
+      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${bgColor}`}>
+        {emoji} {label}
+      </span>
+      {latencyStr && (
+        <span className="text-xs text-brand-neutral-400">{latencyStr} avg</span>
+      )}
+    </div>
+  );
+};
 
 export const ArticleAnalyticsTable: React.FC<ArticleAnalyticsTableProps> = ({ data }) => {
   return (
@@ -44,6 +80,11 @@ export const ArticleAnalyticsTable: React.FC<ArticleAnalyticsTableProps> = ({ da
                   <Clock className="w-4 h-4" /> Avg. Time
                 </div>
               </th>
+              <th className="px-6 py-4 font-medium text-right">
+                <div className="flex items-center justify-end gap-1">
+                  <Flame className="w-4 h-4" /> Hotness
+                </div>
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-brand-neutral-100">
@@ -67,13 +108,16 @@ export const ArticleAnalyticsTable: React.FC<ArticleAnalyticsTableProps> = ({ da
                   {article.clicks.toLocaleString()}
                 </td>
                 <td className="px-6 py-4 text-right tabular-nums text-brand-neutral-600">
-                  {article.avgTimeSpent}
+                  {article.avgTimeSpentFormatted || '-'}
+                </td>
+                <td className="px-6 py-4 text-right">
+                  <HotnessBadge score={article.hotnessScore} latency={article.avgReadLatencyMinutes} />
                 </td>
               </tr>
             ))}
             {data.length === 0 && (
                 <tr>
-                    <td colSpan={4} className="px-6 py-8 text-center text-brand-neutral-400">
+                    <td colSpan={6} className="px-6 py-8 text-center text-brand-neutral-400">
                         No articles found for this period.
                     </td>
                 </tr>
@@ -84,3 +128,4 @@ export const ArticleAnalyticsTable: React.FC<ArticleAnalyticsTableProps> = ({ da
     </div>
   );
 };
+

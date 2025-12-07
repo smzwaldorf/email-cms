@@ -42,7 +42,6 @@ export function useFetchArticle(articleId: string): UseFetchArticleResult {
   const [article, setArticle] = useState<Article | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
-
   const refetch = useCallback(async () => {
     setIsLoading(true)
     setError(null)
@@ -56,12 +55,14 @@ export function useFetchArticle(articleId: string): UseFetchArticleResult {
 
     try {
       const articleRow = await ArticleService.getArticleById(articleId)
+      
       if (articleRow) {
         setArticle(convertArticleRow(articleRow))
       } else {
         setError(new Error('Article not found'))
       }
     } catch (err) {
+      console.error('❌ useFetchArticle error:', err)
       setError(err instanceof Error ? err : new Error('Unknown error'))
     } finally {
       setIsLoading(false)
@@ -74,3 +75,5 @@ export function useFetchArticle(articleId: string): UseFetchArticleResult {
 
   return { article, isLoading, error, refetch }
 }
+
+

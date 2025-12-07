@@ -64,7 +64,6 @@ export function useFetchWeekly(weekNumber: string): UseFetchWeeklyResult {
   const [error, setError] = useState<Error | null>(null)
 
   const refetch = async () => {
-    console.log(`🔄 useFetchWeekly: Refetching for week ${weekNumber}, User: ${user?.id || 'anon'}`)
     setIsLoading(true)
     setError(null)
     try {
@@ -76,8 +75,6 @@ export function useFetchWeekly(weekNumber: string): UseFetchWeeklyResult {
         excludeDeleted: true,
       })
       
-      console.log(`✅ useFetchWeekly: Fetched ${articlesData.length} articles`)
-
       // Convert to UI types
       const convertedArticles = articlesData.map((row, index) =>
         convertArticleRow(row, index + 1)

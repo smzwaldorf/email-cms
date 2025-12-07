@@ -45,3 +45,13 @@ export interface AnalyticsMetrics {
   avgTimeSpent: number;
   totalViews: number;
 }
+
+export interface ArticleHotness {
+  articleId: string;
+  title: string;
+  publishedAt: string;
+  avgReadLatencyMinutes: number; // Average minutes from publish to first read
+  hotnessScore: number; // 0-100 score (higher = read faster = hotter)
+  totalReaders: number;
+}
+

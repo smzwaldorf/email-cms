@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNewsletterMetrics, useGenerateSnapshots, useTrendStats, useArticleStats, useAvailableWeeks, useClassEngagement } from '@/hooks/useAnalyticsQuery';
+import React, { useState, useMemo } from 'react';
+import { useNewsletterMetrics, useGenerateSnapshots, useTrendStats, useArticleStats, useAvailableWeeks, useClassEngagement, useTopicHotness } from '@/hooks/useAnalyticsQuery';
 import { KPICard } from '@/components/analytics/KPICard';
 import { TrendChart } from '@/components/analytics/TrendChart';
 import { ArticleAnalyticsTable } from '@/components/analytics/ArticleAnalyticsTable';
@@ -21,7 +21,24 @@ export const AnalyticsDashboardPage: React.FC = () => {
     const { stats: articleData, loading: articlesLoading, refetch: refetchArticles } = useArticleStats(selectedWeek);
     const { trend: trendData, loading: trendLoading, refetch: refetchTrend } = useTrendStats();
     const { data: classEngagement, loading: classLoading, refetch: refetchClasses } = useClassEngagement(selectedWeek);
+    const { hotness: hotnessData, refetch: refetchHotness } = useTopicHotness(selectedWeek);
     const { generate, generating } = useGenerateSnapshots();
+
+    // Merge hotness data into article stats
+    const enrichedArticleData = useMemo(() => {
+        if (!articleData || articleData.length === 0) return articleData;
+        
+        const hotnessMap = new Map(hotnessData.map(h => [h.articleId, h]));
+        
+        return articleData.map(article => {
+            const hotness = hotnessMap.get(article.id);
+            return {
+                ...article,
+                hotnessScore: hotness?.hotnessScore,
+                avgReadLatencyMinutes: hotness?.avgReadLatencyMinutes
+            };
+        });
+    }, [articleData, hotnessData]);
 
 
 
@@ -30,6 +47,7 @@ export const AnalyticsDashboardPage: React.FC = () => {
         refetchArticles();
         refetchClasses();
         refetchTrend();
+        refetchHotness();
     };
 
     const formatDuration = (seconds?: number) => {
@@ -135,7 +153,7 @@ export const AnalyticsDashboardPage: React.FC = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="lg:col-span-2 space-y-8">
                         {trendLoading ? <div className="h-[300px] bg-white rounded-xl flex items-center justify-center">Loading Trend...</div> : <TrendChart data={trendData} />}
-                        {articlesLoading ? <div className="h-[200px] bg-white rounded-xl flex items-center justify-center">Loading Articles...</div> : <ArticleAnalyticsTable data={articleData} />}
+                        {articlesLoading ? <div className="h-[200px] bg-white rounded-xl flex items-center justify-center">Loading Articles...</div> : <ArticleAnalyticsTable data={enrichedArticleData} />}
                     </div>
                     
                     <div className="space-y-6">

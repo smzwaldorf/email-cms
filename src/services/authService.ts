@@ -8,6 +8,7 @@ import { getSupabaseClient } from '@/lib/supabase'
 import type { AuthSession } from '@supabase/supabase-js'
 import type { AuthUser } from '@/types/auth'
 import { auditLogger } from './auditLogger'
+import { tokenManager } from './tokenManager'
 
 export interface AuthServiceInterface {
   signIn(email: string, password: string): Promise<AuthUser | null>
@@ -53,6 +54,16 @@ class SupabaseAuthService implements AuthServiceInterface {
 
       // Listen for auth state changes
       supabase.auth.onAuthStateChange(async (_event, session) => {
+        if (_event === 'TOKEN_REFRESHED' && session) {
+          console.log('🔄 Supabase auth token refreshed (synced to TokenManager).')
+          // Sync new token to TokenManager to prevent staleness
+          tokenManager.setAccessToken(session.access_token, session.expires_in || 3600)
+          
+          // Optimization: Skip re-fetching user role on simple token refresh
+          // The user identity hasn't changed.
+          return
+        }
+        
         if (session?.user) {
           await this.setCurrentUser(session.user.id)
         } else {

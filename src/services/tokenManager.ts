@@ -55,7 +55,7 @@ class TokenManager {
   /**
    * Set access token and start expiry timer
    */
-  private setAccessToken(token: string, expiresInSeconds: number): void {
+  public setAccessToken(token: string, expiresInSeconds: number): void {
     this.accessToken = token
     // Calculate expiry time (current time + expiry seconds)
     this.accessTokenExpiresAt = Date.now() + expiresInSeconds * 1000
@@ -140,14 +140,24 @@ class TokenManager {
    */
   private async performRefresh(): Promise<boolean> {
     const supabase = getSupabaseClient()
+    const REFRESH_TIMEOUT = 15000 // 15 second timeout for refresh
 
     try {
       console.log('🔄 TokenManager: Performing token refresh...')
+      const startTime = performance.now()
 
-      const {
-        data: { session },
-        error,
-      } = await supabase.auth.refreshSession()
+      // Wrap refresh in a timeout to prevent hanging forever
+      const refreshPromise = supabase.auth.refreshSession()
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Token refresh timeout')), REFRESH_TIMEOUT)
+      })
+
+      const { data: { session }, error } = await Promise.race([
+        refreshPromise,
+        timeoutPromise
+      ]) as Awaited<typeof refreshPromise>
+
+      console.log(`⏱️ TokenManager: Refresh took ${(performance.now() - startTime).toFixed(0)}ms`)
 
       if (error || !session?.access_token) {
         console.error('❌ TokenManager: Refresh failed:', error?.message)
@@ -161,8 +171,23 @@ class TokenManager {
       console.log('✅ TokenManager: Token refreshed successfully')
       return true
     } catch (err) {
-      console.error('❌ TokenManager: Refresh exception:', err)
-      this.clearTokens()
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+      console.error('❌ TokenManager: Refresh exception:', errorMessage)
+      
+      // If timeout, just return false but KEEP the tokens.
+      // The next request might succeed, or the user might reload.
+      // Clearing tokens here logs the user out which is too aggressive for a network timeout.
+      if (errorMessage === 'Token refresh timeout') {
+        console.warn('⚠️ TokenManager: Refresh timed out - keeping existing tokens for retry')
+        return false
+      }
+      
+      // Only clear tokens if it's a fatal auth error (e.g. invalid grant)
+      if (errorMessage.includes('Invalid Refresh Token') || errorMessage.includes('refresh_token_not_found')) {
+        console.error('❌ TokenManager: Fatal auth error, clearing tokens')
+        this.clearTokens()
+      }
+      
       return false
     }
   }
