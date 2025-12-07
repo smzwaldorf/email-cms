@@ -49,18 +49,32 @@ serve(async (req) => {
     
     if (payload) {
       const { user_id, newsletter_id } = payload as any;
+      
+      // Deduplication: Check for recent events (last 10 seconds)
+      const { count } = await supabase
+        .from("analytics_events")
+        .select("*", { count: 'exact', head: true })
+        .eq("event_type", "link_click")
+        .eq("user_id", user_id)
+        .eq("newsletter_id", newsletter_id)
+        .eq("metadata->>target_url", targetUrl) // Check same URL
+        .gt("created_at", new Date(Date.now() - 10000).toISOString());
 
-      // Log event
-      await supabase.from("analytics_events").insert({
-        event_type: "link_click",
-        user_id,
-        newsletter_id,
-        metadata: {
-           target_url: targetUrl,
-           user_agent: req.headers.get("user-agent"),
-           ip: req.headers.get("x-forwarded-for"),
-        }
-      });
+      if (count && count > 0) {
+        console.log(`Duplicate link_click skipped for user ${user_id}`);
+      } else {
+        // Log event
+        await supabase.from("analytics_events").insert({
+          event_type: "link_click",
+          user_id,
+          newsletter_id,
+          metadata: {
+             target_url: targetUrl,
+             user_agent: req.headers.get("user-agent"),
+             ip: req.headers.get("x-forwarded-for"),
+          }
+        });
+      }
     }
 
     return Response.redirect(targetUrl, 302);

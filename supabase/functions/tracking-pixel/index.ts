@@ -52,16 +52,29 @@ serve(async (req) => {
     if (payload) {
       const { user_id, newsletter_id } = payload as any;
 
-      // Log event
-      await supabase.from("analytics_events").insert({
-        event_type: "email_open",
-        user_id,
-        newsletter_id,
-        metadata: {
-           user_agent: req.headers.get("user-agent"),
-           ip: req.headers.get("x-forwarded-for"),
-        }
-      });
+      // Deduplication: Check for recent events (last 10 seconds)
+      const { count } = await supabase
+        .from("analytics_events")
+        .select("*", { count: 'exact', head: true })
+        .eq("event_type", "email_open")
+        .eq("user_id", user_id)
+        .eq("newsletter_id", newsletter_id)
+        .gt("created_at", new Date(Date.now() - 10000).toISOString());
+
+      if (count && count > 0) {
+        console.log(`Duplicate email_open skipped for user ${user_id}`);
+      } else {
+        // Log event
+        await supabase.from("analytics_events").insert({
+          event_type: "email_open",
+          user_id,
+          newsletter_id,
+          metadata: {
+             user_agent: req.headers.get("user-agent"),
+             ip: req.headers.get("x-forwarded-for"),
+          }
+        });
+      }
     }
 
     return new Response(TRANSPARENT_GIF, {
