@@ -1,5 +1,5 @@
 import { getSupabaseClient } from '@/lib/supabase';
-import { AnalyticsEvent, AnalyticsSnapshot, AnalyticsMetrics, ArticleHotness } from '@/types/analytics';
+import { AnalyticsSnapshot, AnalyticsMetrics, ArticleHotness } from '@/types/analytics';
 
 export interface ClassEngagement {
     className: string;
@@ -65,36 +65,39 @@ export const analyticsAggregator = {
         return;
       }
 
-      // 2. Aggregate data in memory (for MVP)
-      // Key: `${newsletter_id}:${article_id}:${class_id}`
-      const aggregations = new Map<string, {
-        newsletter_id: string | null;
-        article_id: string | null;
-        class_id: string | null; // We need to fetch user roles to get class_id
+      // 2. Aggregate data in memory
+      // Key: `${newsletter_id}:${article_id}` (Class breakdown skipped for MVP)
+      const articleStats = new Map<string, { 
         views: number;
         clicks: number;
-        // opens? (opens are usually at newsletter level, not article)
+        totalTimeSeconds: number;
+        sessionCount: number;
       }>();
-
-      // Helper to fetching user classes - simple cache
-      const userClasses = new Map<string, string | null>(); 
-      // Populate userClasses (this part assumes we can fetch user roles efficiently or we do it lazily)
-      // For MVP, lets just group by what we have. analytics_events doesn't have class_id directly yet.
-      // We might need to join with user_roles/enrollments.
-      
-      // OPTIMIZATION: For this MVP phase, let's Aggregate by (newsletter, article) first. 
-      // Class breakdown requires joining.
-      
-      // Let's implement a simpler aggregation first: Total Views per Article per Newsletter
-      const articleStats = new Map<string, { views: number }>();
       
       for (const event of events) {
-        if (event.event_type === 'page_view' && event.article_id) {
-           const key = `${event.newsletter_id || 'null'}:${event.article_id}`;
-           const current = articleStats.get(key) || { views: 0 };
+        if (!event.article_id) continue;
+
+        const key = `${event.newsletter_id || 'null'}:${event.article_id}`;
+        const current = articleStats.get(key) || { 
+          views: 0, 
+          clicks: 0, 
+          totalTimeSeconds: 0, 
+          sessionCount: 0 
+        };
+
+        if (event.event_type === 'page_view') {
            current.views++;
-           articleStats.set(key, current);
+        } else if (event.event_type === 'link_click') {
+           current.clicks++;
+        } else if (event.event_type === 'session_end') {
+           const time = event.metadata?.time_spent_seconds;
+           if (typeof time === 'number' && time > 0) {
+             current.totalTimeSeconds += time;
+             current.sessionCount++;
+           }
         }
+        
+        articleStats.set(key, current);
       }
 
       // 3. Insert Snapshots
@@ -102,15 +105,44 @@ export const analyticsAggregator = {
 
       for (const [key, stats] of articleStats.entries()) {
         const [newsletterId, articleId] = key.split(':');
-        
-        snapshotsToInsert.push({
-          snapshot_date: targetDate,
-          newsletter_id: newsletterId === 'null' ? null : newsletterId,
-          article_id: articleId,
-          class_id: null, // Global stats for now
-          metric_name: 'total_views',
-          metric_value: stats.views
-        });
+        const validNewsletterId = newsletterId === 'null' ? null : newsletterId;
+
+        // Views
+        if (stats.views > 0) {
+          snapshotsToInsert.push({
+            snapshot_date: targetDate,
+            newsletter_id: validNewsletterId,
+            article_id: articleId,
+            class_id: null,
+            metric_name: 'total_views',
+            metric_value: stats.views
+          });
+        }
+
+        // Clicks
+        if (stats.clicks > 0) {
+          snapshotsToInsert.push({
+            snapshot_date: targetDate,
+            newsletter_id: validNewsletterId,
+            article_id: articleId,
+            class_id: null,
+            metric_name: 'total_clicks',
+            metric_value: stats.clicks
+          });
+        }
+
+        // Avg Stay Time
+        if (stats.sessionCount > 0) {
+          const avgTime = Math.round(stats.totalTimeSeconds / stats.sessionCount);
+          snapshotsToInsert.push({
+            snapshot_date: targetDate,
+            newsletter_id: validNewsletterId,
+            article_id: articleId,
+            class_id: null,
+            metric_name: 'avg_time_spent',
+            metric_value: avgTime
+          });
+        }
       }
 
       if (snapshotsToInsert.length > 0) {
@@ -321,7 +353,93 @@ export const analyticsAggregator = {
             avgTimeSpent: avgSeconds, // Now returns seconds as number
             avgTimeSpentFormatted: avgSeconds > 0 ? this.formatDuration(avgSeconds) : '-'
         };
-    }).sort((a, b) => a.order - b.order);
+      }).sort((a, b) => a.order - b.order);
+  },
+
+  /**
+   * Fetches article stats with a fallback strategy:
+   * 1. Try to fetch from analytics_snapshots (fastest)
+   * 2. If no snapshots, fallback to raw event aggregation (slower)
+   */
+  async getArticleStatsWithFallback(newsletterId: string) {
+    const supabase = getSupabaseClient();
+    
+    try {
+      // 1. Try Snapshots
+      const { data: snapshots, error } = await supabase
+        .from('analytics_snapshots')
+        .select('*')
+        .eq('newsletter_id', newsletterId);
+
+      if (!error && snapshots && snapshots.length > 0) {
+        console.log('[Analytics] Using snapshots for article stats');
+        
+        // Group by article_id and aggregate
+        const map = new Map<string, {
+            article_id: string;
+            views: number;
+            clicks: number;
+            weightedTime: number;
+            timeCount: number;
+        }>();
+
+        snapshots.forEach(row => {
+            if (!row.article_id) return;
+            const current = map.get(row.article_id) || {
+                article_id: row.article_id,
+                views: 0,
+                clicks: 0,
+                weightedTime: 0,
+                timeCount: 0
+            };
+
+            if (row.metric_name === 'total_views') current.views += Number(row.metric_value);
+            if (row.metric_name === 'total_clicks') current.clicks += Number(row.metric_value);
+            if (row.metric_name === 'avg_time_spent') {
+                // Approximate weighted average not possible without weights (session counts).
+                // Assuming simple average of averages for MVP or just max? 
+                // Better approach: store total_time in snapshot?
+                // For MVP: Average of daily averages.
+                current.weightedTime += Number(row.metric_value);
+                current.timeCount++;
+            }
+            map.set(row.article_id, current);
+        });
+
+        // We need article titles/metadata. Snapshots don't have them.
+        // So we still need to join with articles, OR fetch articles separately.
+        // Let's fetch articles for this newsletter to enrich data.
+        const { data: articles } = await supabase
+           .from('articles')
+           .select('id, title, created_at, article_order')
+           .eq('week_number', newsletterId);
+           
+        const articleLookup = new Map(articles?.map(a => [a.id, a]));
+
+        return Array.from(map.values()).map(stat => {
+           const article = articleLookup.get(stat.article_id);
+           const avgTime = stat.timeCount > 0 ? Math.round(stat.weightedTime / stat.timeCount) : 0;
+           
+           return {
+               id: stat.article_id,
+               title: article?.title || 'Unknown',
+               publishedAt: article?.created_at ? new Date(article.created_at).toLocaleDateString() : '-',
+               order: article?.article_order || 999,
+               views: stat.views,
+               uniqueViews: stat.views, // Snapshots store total views, not unique. MVP Compromise or rename UI label.
+               clicks: stat.clicks,
+               avgTimeSpent: avgTime,
+               avgTimeSpentFormatted: avgTime > 0 ? this.formatDuration(avgTime) : '-'
+           };
+        }).sort((a, b) => a.order - b.order);
+      }
+    } catch (e) {
+      console.warn('[Analytics] Snapshot query failed, falling back:', e);
+    }
+
+    // 2. Fallback to raw events
+    console.log('[Analytics] Falling back to raw event aggregation');
+    return this.getArticleStats(newsletterId);
   },
 
   /**

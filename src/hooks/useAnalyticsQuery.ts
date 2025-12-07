@@ -1,69 +1,30 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react'; // keeping useState for generateSnapshots
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { analyticsAggregator } from '@/services/analyticsAggregator';
-import { AnalyticsMetrics, ArticleHotness } from '@/types/analytics';
 
 /**
  * Hook to fetch analytics metrics for a newsletter.
- * Includes simple caching/state management.
+ * Uses TanStack Query for caching and state management.
  */
 export function useNewsletterMetrics(newsletterId: string) {
-  const [metrics, setMetrics] = useState<AnalyticsMetrics | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['newsletterMetrics', newsletterId],
+    queryFn: () => analyticsAggregator.getNewsletterMetrics(newsletterId),
+    enabled: !!newsletterId,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
 
-  useEffect(() => {
-    let mounted = true;
+  const safeRefetch = async () => {
+    if (!newsletterId) return;
+    return refetch();
+  };
 
-    async function fetchMetrics() {
-      if (!newsletterId) return;
-      
-      try {
-        setLoading(true);
-        const data = await analyticsAggregator.getNewsletterMetrics(newsletterId);
-        if (mounted) {
-          setMetrics(data);
-          setError(null);
-        }
-      } catch (err) {
-        if (mounted) {
-          console.error('[Analytics] Failed to fetch metrics:', err);
-          setError(err instanceof Error ? err : new Error('Unknown error'));
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    }
-
-    fetchMetrics();
-
-    return () => {
-      mounted = false;
-    };
-  }, [newsletterId]);
-
-  const refetch = useCallback(async (isBackground = false) => {
-      if (!newsletterId) return;
-      
-      try {
-          if (!isBackground) {
-              setLoading(true);
-              console.log('[Analytics] Refetching metrics for:', newsletterId);
-          }
-          const data = await analyticsAggregator.getNewsletterMetrics(newsletterId);
-          setMetrics(data);
-          setError(null);
-          console.log('[Analytics] Metrics refetched successfully');
-      } catch (err) {
-          console.error('[Analytics] Failed to refetch metrics:', err);
-          setError(err instanceof Error ? err : new Error('Unknown error'));
-      } finally { 
-          setLoading(false); 
-      }
-  }, [newsletterId]);
-
-  return { metrics, loading, error, refetch };
+  return { 
+    metrics: data || null, 
+    loading: isLoading, 
+    error: error as Error | null, 
+    refetch: safeRefetch
+  };
 }
 
 /**
@@ -71,11 +32,16 @@ export function useNewsletterMetrics(newsletterId: string) {
  */
 export function useGenerateSnapshots() {
   const [generating, setGenerating] = useState(false);
+  const queryClient = useQueryClient();
 
   const generate = async (date?: string) => {
     try {
       setGenerating(true);
       await analyticsAggregator.generateDailySnapshot(date);
+      // Invalidate all analytics queries
+      queryClient.invalidateQueries({ queryKey: ['articleStats'] });
+      queryClient.invalidateQueries({ queryKey: ['trendStats'] });
+      
       alert('Snapshots generated successfully!');
     } catch (err) {
       alert('Failed to generate snapshots');
@@ -89,168 +55,87 @@ export function useGenerateSnapshots() {
 }
 
 export function useArticleStats(newsletterId: string) {
-    const [stats, setStats] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['articleStats', newsletterId],
+    // Use fallback method for snapshot optimization
+    queryFn: () => analyticsAggregator.getArticleStatsWithFallback(newsletterId),
+    enabled: !!newsletterId,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
 
-    useEffect(() => {
-        async function fetch() {
-            if (!newsletterId) return;
-            try {
-                setLoading(true);
-                const data = await analyticsAggregator.getArticleStats(newsletterId);
-                setStats(data);
-            } catch (e) {
-                console.error(e);
-            } finally {
-                setLoading(false);
-            }
-        }
-        fetch();
-    }, [newsletterId]);
-
-    const refetch = useCallback(async (isBackground = false) => {
-        if (!newsletterId) return;
-        if (!isBackground) setLoading(true);
-        try {
-            const data = await analyticsAggregator.getArticleStats(newsletterId);
-            setStats(data);
-        } catch (e) {
-            console.error(e);
-        } finally { 
-            setLoading(false); 
-        }
-    }, [newsletterId]);
-
-    return { stats, loading, refetch };
+  return { 
+    stats: data || [], 
+    loading: isLoading, 
+    refetch: () => refetch() 
+  };
 }
 
 export function useTrendStats() {
-    const [trend, setTrend] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['trendStats'],
+    queryFn: () => analyticsAggregator.getTrendStats(6),
+    staleTime: 1000 * 60 * 60, // 1 hour (trends don't change often)
+  });
 
-    useEffect(() => {
-        async function fetch() {
-            try {
-                setLoading(true);
-                // Fetch last 6 weeks for trend
-                const data = await analyticsAggregator.getTrendStats(6);
-                setTrend(data);
-            } catch (e) {
-                console.error(e);
-            } finally {
-                setLoading(false);
-            }
-        }
-        fetch();
-    }, []);
-
-    const refetch = useCallback(async (isBackground = false) => {
-        if (!isBackground) setLoading(true);
-        try {
-            const data = await analyticsAggregator.getTrendStats(6);
-            setTrend(data);
-        } catch (e) {
-            console.error(e);
-        } finally { 
-            setLoading(false); 
-        }
-    }, []);
-
-    return { trend, loading, refetch };
+  return { 
+    trend: data || [], 
+    loading: isLoading, 
+    refetch: () => refetch() 
+  };
 }
 
 export function useClassEngagement(newsletterId: string) {
-  const [data, setData] = useState<{ className: string; activeUsers: number; totalUsers: number }[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['classEngagement', newsletterId],
+    queryFn: () => analyticsAggregator.getClassEngagement(newsletterId),
+    enabled: !!newsletterId,
+    staleTime: 1000 * 60 * 15, // 15 minutes
+  });
 
-  const fetchEngagement = useCallback(async (isBackground = false) => {
-      if (!newsletterId) return;
-      if (typeof isBackground !== 'boolean' || !isBackground) setLoading(true);
-      try {
-          const result = await analyticsAggregator.getClassEngagement(newsletterId);
-          setData(result);
-      } catch (err) {
-          console.error(err);
-      } finally { 
-          setLoading(false); 
-      }
-  }, [newsletterId]);
-
-  useEffect(() => {
-    fetchEngagement();
-  }, [fetchEngagement]);
-
-  return { data, loading, refetch: fetchEngagement };
+  return { 
+    data: data || [], 
+    loading: isLoading, 
+    refetch: () => refetch() 
+  };
 }
 
 export function useAvailableWeeks() {
-    const [weeks, setWeeks] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
+  const { data, isLoading } = useQuery({
+    queryKey: ['availableWeeks'],
+    queryFn: () => analyticsAggregator.getAvailableWeeks(),
+    staleTime: 1000 * 60 * 60, // 1 hour
+  });
 
-    useEffect(() => {
-        async function fetch() {
-            try {
-                setLoading(true);
-                const data = await analyticsAggregator.getAvailableWeeks();
-                setWeeks(data);
-            } catch (e) {
-                console.error(e);
-            } finally {
-                setLoading(false);
-            }
-        }
-        fetch();
-    }, []);
-
-    return { weeks, loading };
+  return { 
+    weeks: data || [], 
+    loading: isLoading 
+  };
 }
 
 export function useTopicHotness(newsletterId: string) {
-    const [hotness, setHotness] = useState<ArticleHotness[]>([]);
-    const [loading, setLoading] = useState(true);
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['topicHotness', newsletterId],
+    queryFn: () => analyticsAggregator.getTopicHotness(newsletterId),
+    enabled: !!newsletterId,
+  });
 
-    useEffect(() => {
-        async function fetch() {
-            if (!newsletterId) return;
-            try {
-                setLoading(true);
-                const data = await analyticsAggregator.getTopicHotness(newsletterId);
-                setHotness(data);
-            } catch (e) {
-                console.error(e);
-            } finally {
-                setLoading(false);
-            }
-        }
-        fetch();
-    }, [newsletterId]);
-
-    const refetch = useCallback(async (isBackground = false) => {
-        if (!newsletterId) return;
-        if (!isBackground) setLoading(true);
-        try {
-            const data = await analyticsAggregator.getTopicHotness(newsletterId);
-            setHotness(data);
-        } catch (e) {
-            console.error(e);
-        } finally { 
-            setLoading(false); 
-        }
-    }, [newsletterId]);
-
-    return { hotness, loading, refetch };
+  return { 
+    hotness: data || [], 
+    loading: isLoading, 
+    refetch: () => refetch() 
+  };
 }
 
 // Helper to format read latency as hours and minutes
 export function formatReadLatency(minutes: number): string {
-    if (minutes < 60) return `${minutes}m`;
-    const hours = Math.floor(minutes / 60);
-    const remainingMins = minutes % 60;
-    if (hours < 24) {
-        return remainingMins > 0 ? `${hours}h ${remainingMins}m` : `${hours}h`;
-    }
-    const days = Math.floor(hours / 24);
-    const remainingHours = hours % 24;
-    return remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days}d`;
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const remainingMins = minutes % 60;
+  if (hours < 24) {
+    return remainingMins > 0 ? `${hours}h ${remainingMins}m` : `${hours}h`;
+  }
+  const days = Math.floor(hours / 24);
+  const remainingHours = hours % 24;
+  return remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days}d`;
 }
 

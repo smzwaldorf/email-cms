@@ -2,6 +2,18 @@ import { renderHook, act, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useNewsletterMetrics } from '@/hooks/useAnalyticsQuery'
 import { analyticsAggregator } from '@/services/analyticsAggregator'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import React from 'react'
+
+const createWrapper = () => {
+    const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+    });
+    return ({ children }: { children: React.ReactNode }) => (
+        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+};
+import { analyticsAggregator } from '@/services/analyticsAggregator'
 
 // Mock analyticsAggregator
 vi.mock('@/services/analyticsAggregator', () => ({
@@ -30,7 +42,9 @@ describe('useNewsletterMetrics', () => {
     it('should fetch metrics on mount', async () => {
         (analyticsAggregator.getNewsletterMetrics as any).mockResolvedValueOnce(mockMetrics);
 
-        const { result } = renderHook(() => useNewsletterMetrics(mockNewsletterId));
+        const { result } = renderHook(() => useNewsletterMetrics(mockNewsletterId), {
+            wrapper: createWrapper()
+        });
 
         expect(result.current.loading).toBe(true);
         expect(result.current.metrics).toBeNull();
@@ -46,7 +60,9 @@ describe('useNewsletterMetrics', () => {
     it('should handle refetch success with loading state', async () => {
         (analyticsAggregator.getNewsletterMetrics as any).mockResolvedValue(mockMetrics);
 
-        const { result } = renderHook(() => useNewsletterMetrics(mockNewsletterId));
+        const { result } = renderHook(() => useNewsletterMetrics(mockNewsletterId), {
+            wrapper: createWrapper()
+        });
 
         await waitFor(() => {
             expect(result.current.loading).toBe(false);
@@ -90,7 +106,9 @@ describe('useNewsletterMetrics', () => {
     });
 
     it('should not refetch if newsletterId is missing', async () => {
-        const { result } = renderHook(() => useNewsletterMetrics(''));
+        const { result } = renderHook(() => useNewsletterMetrics(''), {
+            wrapper: createWrapper()
+        });
         
         // Initial effect checks guard
         expect(analyticsAggregator.getNewsletterMetrics).not.toHaveBeenCalled();
