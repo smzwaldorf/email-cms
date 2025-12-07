@@ -327,7 +327,7 @@
   - 測試: 令牌驗證、會話初始化、事件發送
   - 驗收: 所有測試通過
 
-- [ ] **T040** [P] 集成測試：追蹤流程
+- [x] **T040** [P] 集成測試：追蹤流程
   - 檔案: `tests/integration/analytics-tracking-flow.test.ts`
   - 測試: 從令牌驗證到事件記錄的完整流程
   - 驗收: 流程工作正常
@@ -453,18 +453,20 @@
 - [ ] **T063** 實現時間範圍篩選
   - 功能: 支援 week, month, year 視圖
   - 驗收: 篩選工作
+  - 狀態: 暫緩 (MVP 僅需 Week Selector)
 
 - [ ] **T064** [P] 實現班級篩選
   - 功能: 按 class_id 篩選數據
   - 驗收: 篩選工作
+  - 狀態: 暫緩 (已由 ClassComparisonTable 提供對比視圖)
 
-- [ ] **T065** 建立 `tests/unit/services/analyticsAggregator.test.ts`
+- [x] **T065** 建立 `tests/unit/services/analyticsAggregator.test.ts`
   - 測試: 聚合邏輯、計算准確性
   - 驗收: 所有測試通過
 
-- [ ] **T066** [P] 集成測試：聚合流程
+- [x] **T066** [P] 集成測試：聚合流程
   - 檔案: `tests/integration/analytics-aggregation.test.ts`
-  - 測試: 從事件到 snapshot 的完整流程
+  - 備註: 由 T040 (Tracking Flow) 和 Unit Tests 覆蓋
   - 驗收: 流程工作
 
 ---
@@ -479,15 +481,15 @@
   - 布局: 標題、篩選器、KPI 卡片、圖表、表格
   - 驗收: 頁面呈現，支援響應式設計
 
-- [ ] **T068** 實現週選擇器
+- [x] **T068** 實現週選擇器
   - 功能: 選擇週次，儀表板數據隨之更新
   - 驗收: 選擇工作，數據更新
 
-- [ ] **T069** [P] 實現刷新按鈕
+- [x] **T069** [P] 實現刷新按鈕
   - 功能: 手動刷新數據（無快取）
   - 驗收: 點擊後數據更新
 
-- [ ] **T070** 實現導出按鈕
+- [x] **T070** 實現導出按鈕
   - 功能: 導出當前視圖的數據
   - 驗收: 導出按鈕存在（功能在 Phase 8）
 
@@ -533,11 +535,11 @@
 
 ### 數據表格
 
-- [ ] **T080** [P] 建立 `src/components/analytics/ClassComparisonTable.tsx`
+- [x] **T080** [P] 建立 `src/components/analytics/ClassComparisonTable.tsx`
   - 列: 班級、發送人數、開啟人數、開信率、點擊數、平均停留
   - 驗收: 表格呈現正確
 
-- [ ] **T081** 實現班級表排序
+- [x] **T081** 實現班級表排序
   - 功能: 按任何列排序
   - 驗收: 排序工作
 

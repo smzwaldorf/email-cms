@@ -3,9 +3,11 @@ import { AnalyticsSnapshot, AnalyticsMetrics, ArticleHotness } from '@/types/ana
 
 export interface ClassEngagement {
     className: string;
-    viewCount: number;
     activeUsers: number;
-    totalUsers: number; // Placeholder for now, hard to get without full enrollment count
+    totalUsers: number;
+    openRate: number;
+    clickCount: number;
+    avgDailyTime: number;
 }
 
 export interface ArticleReader {
@@ -645,79 +647,141 @@ export const analyticsAggregator = {
   /**
    * aggregated class engagement metrics for a newsletter.
    */
-  async getClassEngagement(newsletterId: string): Promise<ClassEngagement[]> {
-      const supabase = getSupabaseClient();
-      try {
-           // 1. Fetch all page views for this newsletter
-            const { data: events } = await supabase
-                .from('analytics_events')
-                .select('user_id')
-                .eq('newsletter_id', newsletterId)
-                .eq('event_type', 'page_view')
-                .not('user_id', 'is', null);
-
-            if (!events || events.length === 0) return [];
-            
-            const userIds = Array.from(new Set(events.map(e => e.user_id)));
-            
-            // 2. Fetch User Class Context
-             // Fetch Family Enrollments for Parents
-            const { data: familyEnrollments } = await supabase
-                .from('family_enrollment')
-                .select('parent_id, families ( student_class_enrollment ( class_id, classes ( class_name ) ) )')
-                .in('parent_id', userIds);
-                
-             // Map user_id -> List of Class Names
-            const userClasses = new Map<string, string[]>();
-            
-             // Populate userClasses
+    async getClassEngagement(newsletterId: string, client?: any): Promise<ClassEngagement[]> {
+        const supabase = client || getSupabaseClient();
+        try {
+             // 1. Fetch all events for this newsletter (views, clicks, sessions)
+             const { data: events } = await supabase
+                 .from('analytics_events')
+                 .select('user_id, event_type, metadata')
+                 .eq('newsletter_id', newsletterId)
+                 .not('user_id', 'is', null);
+ 
+             if (!events || events.length === 0) return [];
+             
+             // 2. Map Users to Classes
+             const userIds = Array.from(new Set(events.map(e => e.user_id)));
+             
+             // Fetch Family Enrollments for these Parents to identify their classes
+             // Note: A parent might belong to multiple classes. We'll credit their activity to ALL their classes for now.
+             const { data: familyEnrollments } = await supabase
+                 .from('family_enrollment')
+                 .select('parent_id, families ( student_class_enrollment ( class_id, classes ( class_name ) ) )')
+                 .in('parent_id', userIds);
+             
+             const userClasses = new Map<string, string[]>();
              familyEnrollments?.forEach((fe: any) => {
-                   const classes: string[] = [];
-                   if (fe.families && fe.families.student_class_enrollment) {
-                       const enrolls = fe.families.student_class_enrollment;
-                        if (Array.isArray(enrolls)) {
-                                enrolls.forEach((enc: any) => {
-                                    if (enc.classes) classes.push(enc.classes.class_name);
-                                });
-                        }
-                   }
-                   if (classes.length > 0) userClasses.set(fe.parent_id, classes);
-             });
-             
-             // 3. Aggregate View Counts by Class
-             // We want "Active Users per Class" basically.
-             const classStats = new Map<string, Set<string>>(); // ClassName -> Set<UserId>
-             
-             userIds.forEach(uid => {
-                 const classes = userClasses.get(uid);
-                 if (classes) {
-                     classes.forEach(cls => {
-                         if (!classStats.has(cls)) classStats.set(cls, new Set());
-                         classStats.get(cls)!.add(uid);
-                     });
-                 } else {
-                     // Maybe count "Unassigned" or "Teachers"?
+                 const classes: string[] = [];
+                 if (fe.families && fe.families.student_class_enrollment) {
+                     const enrolls = fe.families.student_class_enrollment;
+                     if (Array.isArray(enrolls)) {
+                         enrolls.forEach((enc: any) => {
+                             if (enc.classes) classes.push(enc.classes.class_name);
+                         });
+                     }
                  }
+                 if (classes.length > 0) userClasses.set(fe.parent_id, classes);
              });
              
+             // 3. Aggregate Stats per Class
+             // Structure: ClassName -> Stats
+             const classStats = new Map<string, {
+                 activeUsers: Set<string>;
+                 clicks: number;
+                 totalTime: number;
+                 sessionCount: number;
+             }>();
+             
+             // Helper to get/init stats
+             const getStats = (className: string) => {
+                 if (!classStats.has(className)) {
+                     classStats.set(className, {
+                         activeUsers: new Set(),
+                         clicks: 0,
+                         totalTime: 0,
+                         sessionCount: 0
+                     });
+                 }
+                 return classStats.get(className)!;
+             };
+ 
+             events.forEach(event => {
+                 const classes = userClasses.get(event.user_id);
+                 if (!classes) return; // User has no class (e.g. admin or unassigned)
+ 
+                 classes.forEach(className => {
+                     const stats = getStats(className);
+                     
+                     // Page View -> Active User
+                     if (event.event_type === 'page_view') {
+                         stats.activeUsers.add(event.user_id);
+                     }
+                     // Link Click -> Click Count
+                     else if (event.event_type === 'link_click') {
+                         stats.clicks++;
+                     }
+                     // Session End -> Time Spent
+                     else if (event.event_type === 'session_end') {
+                          const time = Number(event.metadata?.time_spent_seconds) || 0;
+                          if (time > 0) {
+                              stats.totalTime += time;
+                              stats.sessionCount++;
+                          }
+                     }
+                 });
+             });
+ 
+             // 4. Fetch Total Users per Class (Census)
+             // We need to know the total number of parents in each class to calculate "Open Rate" (Participation)
+             // This requires querying the DB for all enrollments, not just active ones.
+             // Optimization: We fetch ALL classes and their parent counts.
+             
+             // For this MVP, we might just query student_class_enrollment count.
+             // Ideally: Count distinct families.id where student_class_enrollment.class_id = X
+             
+             const { data: allClassData } = await supabase
+                .from('classes')
+                .select(`
+                    class_name,
+                    student_class_enrollment (count)
+                `);
+                
+             const classCensus = new Map<string, number>();
+             allClassData?.forEach((c: any) => {
+                 // Assuming 1 student approx 1.5 parents? Or just count students as proxies for families?
+                 // Let's use student count as the denominator for "Families"
+                 const count = c.student_class_enrollment?.[0]?.count || 0;
+                 classCensus.set(c.class_name, count || 1); // Avoid div by zero
+             });
+ 
+             // 5. Build Result
              const result: ClassEngagement[] = [];
-             for (const [className, users] of classStats.entries()) {
+             for (const [className, stats] of classStats.entries()) {
+                 const totalFamilies = classCensus.get(className) || 20; // Default fallback
+                 
+                 // Avg Time per Active User (or Session?) -> Let's do per Active User
+                 const avgTime = stats.activeUsers.size > 0 
+                    ? Math.round(stats.totalTime / stats.activeUsers.size) 
+                    : 0;
+ 
                  result.push({
                      className,
-                     viewCount: 0, // Not counting logic here, just users
-                     activeUsers: users.size,
-                     totalUsers: 20 // Mock total for now until we have full class counts
+                     activeUsers: stats.activeUsers.size,
+                     totalUsers: totalFamilies,
+                     openRate: (stats.activeUsers.size / totalFamilies) * 100,
+                     clickCount: stats.clicks,
+                     avgDailyTime: avgTime 
                  });
              }
              
-             // Sort by active users
-             return result.sort((a, b) => b.activeUsers - a.activeUsers).slice(0, 5); // Start with top 5
+             // Sort by Open Rate
+             return result.sort((a, b) => b.openRate - a.openRate);
              
-      } catch (err) {
-          console.error('[Analytics] Failed to get class engagement:', err);
-          return [];
-      }
-  },
+         } catch (err) {
+             console.error('[Analytics] Failed to get class engagement:', err);
+             return [];
+         }
+    },
 
   /**
    * Calculates topic hotness based on how quickly parents read articles after publishing.

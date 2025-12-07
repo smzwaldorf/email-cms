@@ -3,7 +3,8 @@ import { useNewsletterMetrics, useGenerateSnapshots, useTrendStats, useArticleSt
 import { KPICard } from '@/components/analytics/KPICard';
 import { TrendChart } from '@/components/analytics/TrendChart';
 import { ArticleAnalyticsTable } from '@/components/analytics/ArticleAnalyticsTable';
-import { RefreshCw, Download, Calendar, Activity } from 'lucide-react';
+import { ClassComparisonTable } from '@/components/analytics/ClassComparisonTable';
+import { RefreshCw, Download, Calendar } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 
 export const AnalyticsDashboardPage: React.FC = () => {
@@ -179,30 +180,14 @@ export const AnalyticsDashboardPage: React.FC = () => {
                     
                     <div className="space-y-6">
                         {/* Secondary Widgets / Breakdown - Placeholder for now */}
-                        <div className="bg-white p-6 rounded-xl shadow-sm border border-brand-neutral-100 h-full">
-                            <h3 className="text-lg font-semibold text-brand-neutral-800 mb-4">Engagement by Class (Active Parents)</h3>
-                            <div className="space-y-4">
-                                {classLoading ? (
-                                    <div className="text-sm text-brand-neutral-400">Loading...</div>
-                                ) : classEngagement.length === 0 ? (
-                                    <div className="text-sm text-brand-neutral-400">No class engagement data yet.</div>
-                                ) : (
-                                    classEngagement.map((item, i) => (
-                                        <div key={i} className="flex justify-between items-center text-sm">
-                                            <span className="text-brand-neutral-600">{item.className}</span>
-                                            <div className="flex items-center gap-3">
-                                                 <div className="w-24 h-2 bg-brand-neutral-100 rounded-full overflow-hidden">
-                                                    <div 
-                                                        className="h-full bg-brand-primary rounded-full transition-all duration-500" 
-                                                        style={{ width: `${Math.min((item.activeUsers / item.totalUsers) * 100, 100)}%` }}
-                                                    />
-                                                </div>
-                                                <span className="font-medium min-w-[2rem] text-right">{item.activeUsers}</span>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
+                        <div className="h-full">
+                            {classLoading ? (
+                                <div className="h-[200px] bg-white rounded-xl flex items-center justify-center border border-brand-neutral-100">
+                                    <span className="text-brand-neutral-400">Loading Class Data...</span>
+                                </div>
+                            ) : (
+                                <ClassComparisonTable data={classEngagement} />
+                            )}
                         </div>
                     </div>
                 </div>

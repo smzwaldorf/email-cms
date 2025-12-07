@@ -8,9 +8,25 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js'
 /**
  * Validate that required environment variables are set
  */
+/**
+ * Helper to get environment variables across Vite and Node.js
+ */
+function getEnvVar(key: string): string | undefined {
+  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) {
+      return import.meta.env[key];
+  }
+  if (typeof process !== 'undefined' && process.env && process.env[key]) {
+      return process.env[key];
+  }
+  return undefined;
+}
+
+/**
+ * Validate that required environment variables are set
+ */
 function validateEnvironment(): void {
-  const url = import.meta.env.VITE_SUPABASE_URL
-  const key = import.meta.env.VITE_SUPABASE_ANON_KEY
+  const url = getEnvVar('VITE_SUPABASE_URL')
+  const key = getEnvVar('VITE_SUPABASE_ANON_KEY')
 
   if (!url) {
     throw new Error(
@@ -35,8 +51,8 @@ function validateEnvironment(): void {
 function createSupabaseClient(): SupabaseClient {
   validateEnvironment()
 
-  const url = import.meta.env.VITE_SUPABASE_URL
-  const key = import.meta.env.VITE_SUPABASE_ANON_KEY
+  const url = getEnvVar('VITE_SUPABASE_URL') as string
+  const key = getEnvVar('VITE_SUPABASE_ANON_KEY') as string
 
   const client = createClient(url, key, {
     auth: {
@@ -60,7 +76,7 @@ function createSupabaseClient(): SupabaseClient {
   })
 
   // Log successful initialization in development
-  if (import.meta.env.DEV) {
+  if (getEnvVar('DEV')) {
     console.log('✅ Supabase client initialized successfully')
     console.log(`   Project URL: ${url}`)
   }
@@ -103,8 +119,8 @@ export function getSupabaseServiceClient(): SupabaseClient {
   if (!supabaseServiceClient) {
     validateEnvironment()
 
-    const url = import.meta.env.VITE_SUPABASE_URL
-    const serviceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY
+    const url = getEnvVar('VITE_SUPABASE_URL') as string
+    const serviceKey = getEnvVar('VITE_SUPABASE_SERVICE_ROLE_KEY')
 
     if (!serviceKey) {
       throw new Error(
