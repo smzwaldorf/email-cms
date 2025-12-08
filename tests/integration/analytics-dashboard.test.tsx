@@ -8,6 +8,17 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 const mockRefetch = vi.fn();
 const mockGenerate = vi.fn();
 
+// Mock react-window
+vi.mock('react-window', () => ({
+  FixedSizeList: ({ children, itemCount, itemSize, height, width }: any) => (
+    <div data-testid="virtual-list" style={{ height, width }}>
+      {Array.from({ length: itemCount }).map((_, index) => (
+         <div key={index}>{children({ index, style: { height: itemSize } })}</div>
+      ))}
+    </div>
+  ),
+}));
+
 vi.mock('@/hooks/useAnalyticsQuery', () => ({
     useAvailableWeeks: vi.fn(() => ({ 
         weeks: [{ week_number: '2025-W01', release_date: '2025-01-01' }, { week_number: '2024-W52', release_date: '2024-12-25' }],
@@ -56,7 +67,8 @@ vi.mock('@/hooks/useAnalyticsQuery', () => ({
         refetch: mockRefetch 
     })),
     useTopicHotness: vi.fn(() => ({ hotness: [], refetch: mockRefetch })),
-    useGenerateSnapshots: vi.fn(() => ({ generate: mockGenerate, generating: false }))
+    useGenerateSnapshots: vi.fn(() => ({ generate: mockGenerate, generating: false })),
+    useAllClasses: vi.fn(() => ({ classes: ['Class 1', 'Class 2'], loading: false }))
 }));
 
 // Mock CountUp to render immediately
@@ -67,26 +79,6 @@ vi.mock('@/components/common/CountUp', () => ({
 // Mock AdminLayout to avoid side effects (Supabase calls, Auth)
 vi.mock('@/components/admin/AdminLayout', () => ({
     AdminLayout: ({ children }: any) => <div>{children}</div>
-}));
-
-// Mock Data - These are now largely handled by the hook mocks directly
-const mockWeeks = [
-    { week_number: '2025-W01', release_date: '2025-01-01' },
-    { week_number: '2024-W52', release_date: '2024-12-25' }
-];
-
-const mockMetrics = {
-    openRate: 45.5,
-    clickRate: 12.3,
-    totalViews: 1200,
-    avgTimeSpent: 185 // 3m 5s
-};
-
-const mockTrends = Array.from({ length: 12 }).map((_, i) => ({
-    name: `Week ${i}`,
-    openRate: 40 + i,
-    clickRate: 10 + (i * 0.5),
-    avgTimeSpent: 180 + i
 }));
 
 // Setup Providers
@@ -152,14 +144,15 @@ describe('AnalyticsDashboardPage Integration', () => {
         });
 
         // Change Week
-        const select = await screen.findByRole('combobox');
-        fireEvent.change(select, { target: { value: '2024-W52' } });
+        const selects = await screen.findAllByRole('combobox');
+        const weekSelect = selects[1]; // 0 is class, 1 is week
+        fireEvent.change(weekSelect, { target: { value: '2024-W52' } });
 
         // Note: verifying data change is tricky with the current static mock in this file
         // unless we make the mock dynamic. But calling the hook with different arg is verified by Hook mock.
         await waitFor(() => {
-             // Verify hook was called with new week
-             expect(useAnalyticsQuery.useNewsletterMetrics).toHaveBeenCalledWith('2024-W52');
+             // Verify hook was called with new week and empty class
+             expect(useAnalyticsQuery.useNewsletterMetrics).toHaveBeenCalledWith('2024-W52', expect.anything());
         });
     });
 
@@ -168,7 +161,7 @@ describe('AnalyticsDashboardPage Integration', () => {
         
         // Trend Chart Title
         await waitFor(() => {
-            expect(screen.getByText('Engagement Trends (Last 12 Weeks)')).toBeInTheDocument();
+            expect(screen.getByText('Engagement Trend')).toBeInTheDocument();
         });
 
         // Class Table

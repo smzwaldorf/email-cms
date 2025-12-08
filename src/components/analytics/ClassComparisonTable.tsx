@@ -95,7 +95,7 @@ export const ClassComparisonTable: React.FC<ClassComparisonTableProps> = ({ data
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-brand-neutral-100">
-                        {sortedData.map((row, idx) => (
+                        {sortedData.map((row) => (
                             <tr key={row.className} className="hover:bg-brand-neutral-50/50 transition-colors">
                                 <td className="px-6 py-4 whitespace-nowrap">
                                     <div className="text-sm font-medium text-brand-neutral-900">{row.className}</div>

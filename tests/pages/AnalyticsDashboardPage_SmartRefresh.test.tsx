@@ -1,9 +1,18 @@
-
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import { AnalyticsDashboardPage } from '../../src/pages/AnalyticsDashboardPage'
-import React from 'react'
 import { BrowserRouter } from 'react-router-dom'
+
+// Mock react-window
+vi.mock('react-window', () => ({
+  FixedSizeList: ({ children, itemCount, itemSize, height, width }: any) => (
+    <div data-testid="virtual-list" style={{ height, width }}>
+      {Array.from({ length: itemCount }).map((_, index) => (
+         <div key={index}>{children({ index, style: { height: itemSize } })}</div>
+      ))}
+    </div>
+  ),
+}));
 
 // Mock Hooks
 vi.mock('@/hooks/useAnalyticsQuery', () => ({
@@ -14,6 +23,7 @@ vi.mock('@/hooks/useAnalyticsQuery', () => ({
   useTopicHotness: () => ({ hotness: [], refetch: vi.fn(), loading: false }),
   useGenerateSnapshots: () => ({ generate: vi.fn(), generating: false }),
   useAvailableWeeks: () => ({ weeks: [{ week_number: '2025-W47' }], loading: false }),
+  useAllClasses: () => ({ classes: [], loading: false }),
 }))
 
 // Mock Layout
@@ -36,7 +46,7 @@ describe('Analytics Smart Refresh', () => {
   })
 
   it('should perform hard reload if tab was previously hidden', () => {
-    const { unmount } = render(
+    render(
       <BrowserRouter>
         <AnalyticsDashboardPage />
       </BrowserRouter>
@@ -45,18 +55,20 @@ describe('Analytics Smart Refresh', () => {
     // Simulate switching tabs (visibility change)
     Object.defineProperty(document, 'hidden', { value: true, configurable: true })
     const event = new Event('visibilitychange')
-    document.dispatchEvent(event)
+    
+    act(() => {
+        document.dispatchEvent(event)
+    });
 
     // Simulate coming back
     Object.defineProperty(document, 'hidden', { value: false, configurable: true })
-    document.dispatchEvent(event)
+    
+    act(() => {
+        document.dispatchEvent(event)
+    });
 
     // The button has title="Reload Data"
     const refreshBtn = screen.getByTitle('Reload Data')
-    
-    // Initial State: hasBeenHidden is false.
-    // We already moved it to true and back to false in the test setup above.
-    // So logic dictates it SHOULD be a reload.
     
     fireEvent.click(refreshBtn)
 
@@ -64,7 +76,7 @@ describe('Analytics Smart Refresh', () => {
   })
 
   it('should perform soft refresh if tab was never hidden', () => {
-     const { unmount } = render(
+     render(
       <BrowserRouter>
         <AnalyticsDashboardPage />
       </BrowserRouter>

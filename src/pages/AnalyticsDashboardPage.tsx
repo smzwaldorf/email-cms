@@ -1,50 +1,85 @@
 import React, { useState, useMemo } from 'react';
-import { useNewsletterMetrics, useGenerateSnapshots, useTrendStats, useArticleStats, useAvailableWeeks, useClassEngagement, useTopicHotness } from '@/hooks/useAnalyticsQuery';
+import { useNewsletterMetrics, useGenerateSnapshots, useTrendStats, useArticleStats, useAvailableWeeks, useClassEngagement, useTopicHotness, useAllClasses } from '@/hooks/useAnalyticsQuery';
 import { KPICard } from '@/components/analytics/KPICard';
 import { TrendChart } from '@/components/analytics/TrendChart';
 import { ArticleAnalyticsTable } from '@/components/analytics/ArticleAnalyticsTable';
 import { ClassComparisonTable } from '@/components/analytics/ClassComparisonTable';
-import { RefreshCw, Download, Calendar } from 'lucide-react';
+// Re-added ClassComparisonChart for T091
+import { ClassComparisonChart } from '@/components/analytics/ClassComparisonChart';
+import { RefreshCw, Download, Calendar, Filter } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 
+import { useParams } from 'react-router-dom';
+
 export const AnalyticsDashboardPage: React.FC = () => {
-    const [selectedWeek, setSelectedWeek] = useState<string>('');
+    const { weekNumber } = useParams<{ weekNumber: string }>();
+    const [selectedWeek, setSelectedWeek] = React.useState<string>(weekNumber || '');
+    const [selectedClass, setSelectedClass] = useState<string>('');
     const { weeks, loading: weeksLoading } = useAvailableWeeks();
+    const { classes: allClasses, loading: allClassesLoading } = useAllClasses();
     const [timeRange, setTimeRange] = React.useState<'4' | '12'>('12');
+    const [classViewMode, setClassViewMode] = React.useState<'table' | 'chart'>('table');
     
     // Set default selected week when weeks load
     React.useEffect(() => {
         if (weeks.length > 0 && !selectedWeek) {
-            setSelectedWeek(weeks[0].week_number);
+             // @ts-ignore
+            setSelectedWeek(weeks[0].week_number || weeks[0].toString());
         }
     }, [weeks, selectedWeek]);
     
-    const { metrics, loading: metricsLoading, refetch: refetchMetrics } = useNewsletterMetrics(selectedWeek);
+    const { metrics, loading: metricsLoading, refetch: refetchMetrics } = useNewsletterMetrics(selectedWeek, selectedClass);
     const { stats: articleData, loading: articlesLoading, refetch: refetchArticles } = useArticleStats(selectedWeek);
-    const { trend: trendData, loading: trendsLoading, refetch: refetchTrends } = useTrendStats();
+    const { trend: trendData, loading: trendsLoading, refetch: refetchTrends } = useTrendStats(selectedClass);
     const { data: classEngagement, loading: classLoading, refetch: refetchClasses } = useClassEngagement(selectedWeek);
     const { hotness: hotnessData, refetch: refetchHotness } = useTopicHotness(selectedWeek);
     const { generate, generating } = useGenerateSnapshots();
 
-    // Filter Trends based on Range
-    const displayTrends = React.useMemo(() => {
+    // Smart Refresh Logic
+    const [hasBeenHidden, setHasBeenHidden] = useState(false);
+
+    React.useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.hidden) {
+                setHasBeenHidden(true);
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }, []);
+
+    const handleRefresh = () => {
+        if (hasBeenHidden) {
+            window.location.reload();
+            return;
+        }
+        refetchMetrics();
+        refetchArticles();
+        refetchTrends();
+        refetchClasses();
+        refetchHotness();
+    };
+
+    // Format duration helper
+    const formatDuration = (seconds?: number) => {
+        if (!seconds) return '-';
+        const m = Math.floor(seconds / 60);
+        const s = Math.floor(seconds % 60);
+        return `${m}m ${s}s`;
+    };
+
+    // Filter trend data based on time range
+    const filteredTrendData = useMemo(() => {
         if (!trendData) return [];
         const limit = parseInt(timeRange);
-        // trendData is commonly sorted Oldest -> Newest (Week 1, Week 2...)
-        // If we want "Last 4 Weeks", we take the LAST 4 items.
-        // If trendData is [W1, W2, W3... W12], slice(-4) gives [W9, W10, W11, W12]
-        // Which is correct for a "Trend over time" chart.
-        return trendData.slice(-limit);
+        return trendData.slice(0, limit).reverse();
     }, [trendData, timeRange]);
 
-    // Merge hotness data into article stats
-    const enrichedArticleData = useMemo(() => {
-        if (!articleData || articleData.length === 0) return articleData;
-        
-        const hotnessMap = new Map(hotnessData.map(h => [h.articleId, h]));
-        
+    // Merge hotness score into article data
+    const enhancedArticleData = useMemo(() => {
+        if (!articleData) return [];
         return articleData.map(article => {
-            const hotness = hotnessMap.get(article.id);
+            const hotness = hotnessData?.find(h => h.articleId === article.id);
             return {
                 ...article,
                 hotnessScore: hotness?.hotnessScore,
@@ -53,146 +88,54 @@ export const AnalyticsDashboardPage: React.FC = () => {
         });
     }, [articleData, hotnessData]);
 
-
-
-    // Track if the tab has been hidden/backgrounded since load
-    const hasBeenHidden = React.useRef(false);
-
-    React.useEffect(() => {
-        const handleVisibilityChange = () => {
-            if (document.hidden) {
-                hasBeenHidden.current = true;
-            }
-        };
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-    }, []);
-
-    const handleManualRefresh = () => {
-        // If the tab was backgrounded, force a hard reload to ensure clean connection state
-        if (hasBeenHidden.current) {
-            console.log('🔄 Tab was backgrounded, performing hard reload...');
-            window.location.reload();
-            return;
-        }
-
-        // Otherwise, just refetch data (soft refresh)
-        refetchMetrics();
-        refetchArticles();
-        refetchClasses();
-        refetchTrends();
-        refetchHotness();
-    };
-
-    // Calculate Trends
-    const trends = useMemo(() => {
-        if (!metrics || !trendData || trendData.length === 0 || !selectedWeek) {
-            return { openRate: 0, clickRate: 0, timeSpent: 0 };
-        }
-
-        const currentIndex = trendData.findIndex(t => t.name === selectedWeek);
-        // We need previous week data.
-        // trendData is commonly sorted Ascending (oldest first) if it comes from our reverse loop logic which pushes in order of processing, 
-        // wait. aggregator.getTrendStats processes reverse(descending) -> Ascending. 
-        // So [Week1, Week2, Week3].
-        // If selected is Week3 (index 2), prev is Week2 (index 1).
-        
-        if (currentIndex <= 0) return { openRate: 0, clickRate: 0, timeSpent: 0 };
-        
-        const currentParams = trendData[currentIndex];
-        const prevParams = trendData[currentIndex - 1];
-        
-        // Note: trends in KPICard usually expect absolute difference for percentages (pp)
-        // and percentage change for values? Or just simple diff?
-        // Let's assume absolute difference for Rates, and Percentage Change for Time.
-        
-        const openRateTrend = currentParams.openRate - prevParams.openRate;
-        const clickRateTrend = currentParams.clickRate - prevParams.clickRate;
-        
-        // Time is seconds.
-        const currentTime = (currentParams as any).avgTimeSpent || 0; // Cast as any because we just added it and Interface might not be updated in context yet? No, it's run-time safe. interface needs update in TrendChart.tsx? No, trendData comes from hook type.
-        const prevTime = (prevParams as any).avgTimeSpent || 0;
-        
-        // Avoid division by zero
-        const timeTrend = prevTime === 0 ? 0 : ((currentTime - prevTime) / prevTime) * 100;
-
-        return {
-            openRate: openRateTrend,
-            clickRate: clickRateTrend,
-            timeSpent: timeTrend
-        };
-    }, [metrics, trendData, selectedWeek]); // Use full trendData here for accuracy
-
-    const formatDuration = (seconds?: number) => {
-        if (!seconds) return '-';
-        const m = Math.floor(seconds / 60);
-        const s = Math.floor(seconds % 60);
-        return `${m}m ${s}s`;
-    };
-
-
-
     return (
         <AdminLayout activeTab="analytics">
-            <div className="space-y-8">
-                {/* Header */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
                         <h1 className="text-2xl font-bold text-brand-neutral-800">Analytics Dashboard</h1>
-                        <p className="text-brand-neutral-500">Overview of newsletter performance and engagement.</p>
+                        <p className="text-brand-neutral-500 text-sm mt-1">Real-time performance metrics</p>
                     </div>
                     
                     <div className="flex items-center gap-3">
-                        {/* Time Range Selector */}
-                        <div className="flex bg-brand-neutral-100 rounded-lg p-1">
-                            <button
-                                onClick={() => setTimeRange('4')}
-                                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
-                                    timeRange === '4' 
-                                    ? 'bg-white text-brand-neutral-800 shadow-sm' 
-                                    : 'text-brand-neutral-500 hover:text-brand-neutral-700'
-                                }`}
+                         <div className="relative">
+                            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-neutral-400" />
+                            <select 
+                                value={selectedClass}
+                                onChange={(e) => setSelectedClass(e.target.value)}
+                                className="pl-9 pr-4 py-2 border border-brand-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20 min-w-[140px]"
+                                disabled={allClassesLoading}
                             >
-                                Last 4 Weeks
-                            </button>
-                            <button
-                                onClick={() => setTimeRange('12')}
-                                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
-                                    timeRange === '12' 
-                                    ? 'bg-white text-brand-neutral-800 shadow-sm' 
-                                    : 'text-brand-neutral-500 hover:text-brand-neutral-700'
-                                }`}
-                            >
-                                Last 12 Weeks
-                            </button>
+                                <option value="">All Classes</option>
+                                {allClasses.map(cls => (
+                                    <option key={cls} value={cls}>{cls}</option>
+                                ))}
+                            </select>
                         </div>
 
                         <div className="relative">
                             <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-neutral-400" />
                             <select 
-                                value={selectedWeek}
+                                value={selectedWeek} 
                                 onChange={(e) => setSelectedWeek(e.target.value)}
-                                className="pl-9 pr-4 py-2 border border-brand-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+                                className="pl-9 pr-4 py-2 border border-brand-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20 min-w-[140px]"
                                 disabled={weeksLoading}
                             >
-                                {weeksLoading ? (
-                                    <option>Loading...</option>
-                                ) : (
-                                    weeks.map(week => (
-                                        <option key={week.week_number} value={week.week_number}>
-                                            {/* Format: Week 01, 2025 */}
-                                            {/* Basic formatting assuming standard week number format like '2025-W01' */}
-                                            {week.week_number.replace('-', ' ')}
-                                        </option>
-                                    ))
-                                )}
+                                {weeks.map(week => (
+                                    // @ts-ignore
+                                    <option key={week.week_number} value={week.week_number}>
+                                        {/* @ts-ignore */}
+                                        {week.week_number} ({new Date(week.release_date).toLocaleDateString()})
+                                    </option>
+                                ))}
                             </select>
                         </div>
 
 
 
+
                         <button 
-                            onClick={handleManualRefresh}
+                            onClick={handleRefresh}
                             className="p-2 text-brand-neutral-600 hover:bg-white rounded-lg border border-transparent hover:border-brand-neutral-200 transition-all"
                             title="Reload Data"
                         >
@@ -222,7 +165,7 @@ export const AnalyticsDashboardPage: React.FC = () => {
                         animateValue={metrics?.openRate}
                         suffix="%"
                         loading={metricsLoading}
-                        trend={trends.openRate} 
+                        trend={0} 
                         tooltip="Percentage of recipients who opened the email. (Unique Opens / Total Sent)"
                         icon={<div className="p-2 bg-purple-50 rounded-lg text-purple-600"><EyeIcon /></div>}
                     />
@@ -232,7 +175,7 @@ export const AnalyticsDashboardPage: React.FC = () => {
                         animateValue={metrics?.clickRate}
                         suffix="%"
                         loading={metricsLoading}
-                        trend={trends.clickRate} 
+                        trend={0} 
                         tooltip="Percentage of openers who clicked at least one link. (Unique Clicks / Unique Opens)"
                         icon={<div className="p-2 bg-emerald-50 rounded-lg text-emerald-600"><ClickIcon /></div>}
                     />
@@ -250,7 +193,7 @@ export const AnalyticsDashboardPage: React.FC = () => {
                         value={formatDuration(metrics?.avgTimeSpent)} 
                         loading={metricsLoading}
                         // No animateValue for time spent as it's formatted string
-                        trend={trends.timeSpent}
+                        trend={0}
                         tooltip="Average active reading time per session. (Estimated based on heartbeats)"
                         icon={<div className="p-2 bg-orange-50 rounded-lg text-orange-600"><TimeIcon /></div>}
                     />
@@ -259,19 +202,78 @@ export const AnalyticsDashboardPage: React.FC = () => {
                 {/* Charts & Tables Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="lg:col-span-2 space-y-8">
-                        {trendsLoading ? <div className="h-[300px] bg-white rounded-xl flex items-center justify-center">Loading Trend...</div> : <TrendChart data={displayTrends} title={`Engagement Trends (${timeRange === '4' ? 'Last 4 Weeks' : 'Last 12 Weeks'})`} />}
-                        {articlesLoading ? <div className="h-[200px] bg-white rounded-xl flex items-center justify-center">Loading Articles...</div> : <ArticleAnalyticsTable data={enrichedArticleData} />}
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-brand-neutral-100">
+                             <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-lg font-semibold text-brand-neutral-800">Engagement Trend</h3>
+                                <div className="bg-brand-neutral-50 rounded-lg p-1 flex text-xs font-medium">
+                                    <button 
+                                        onClick={() => setTimeRange('4')}
+                                        className={`px-3 py-1.5 rounded-md transition-all ${timeRange === '4' ? 'bg-white shadow text-brand-primary' : 'text-brand-neutral-500 hover:text-brand-neutral-700'}`}
+                                    >
+                                        Last 4 Weeks
+                                    </button>
+                                    <button 
+                                        onClick={() => setTimeRange('12')}
+                                        className={`px-3 py-1.5 rounded-md transition-all ${timeRange === '12' ? 'bg-white shadow text-brand-primary' : 'text-brand-neutral-500 hover:text-brand-neutral-700'}`}
+                                    >
+                                        Last 12 Weeks
+                                    </button>
+                                </div>
+                            </div>
+                            {trendsLoading ? (
+                                <div className="h-[300px] flex items-center justify-center font-medium text-brand-neutral-500">
+                                    Loading Trend...
+                                </div>
+                            ) : (
+                                <TrendChart 
+                                    data={filteredTrendData} 
+                                    // Title removed from chart prop as we have it in header now
+                                />
+                            )}
+                        </div>
+                        
+                        {articlesLoading ? (
+                            <div className="h-[200px] bg-white rounded-xl flex items-center justify-center font-medium text-brand-neutral-500">
+                                Loading Articles...
+                            </div>
+                        ) : (
+                            <ArticleAnalyticsTable data={enhancedArticleData} />
+                        )}
                     </div>
                     
                     <div className="space-y-6">
-                        {/* Secondary Widgets / Breakdown - Placeholder for now */}
-                        <div className="h-full">
+                        {/* Comparison Widget */}
+                        <div className="h-full flex flex-col space-y-4">
+                             <div className="flex justify-between items-center bg-white p-3 rounded-xl border border-brand-neutral-100 shadow-sm">
+                                <h3 className="font-semibold text-brand-neutral-800 ml-2">Class Performance</h3>
+                                <div className="flex bg-brand-neutral-50 rounded-lg p-1">
+                                    <button 
+                                        onClick={() => setClassViewMode('table')}
+                                        className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${classViewMode === 'table' ? 'bg-white shadow text-brand-primary' : 'text-brand-neutral-500 hover:text-brand-neutral-700'}`}
+                                    >
+                                        Table
+                                    </button>
+                                    <button 
+                                        onClick={() => setClassViewMode('chart')}
+                                        className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${classViewMode === 'chart' ? 'bg-white shadow text-brand-primary' : 'text-brand-neutral-500 hover:text-brand-neutral-700'}`}
+                                    >
+                                        Chart
+                                    </button>
+                                </div>
+                            </div>
+
                             {classLoading ? (
-                                <div className="h-[200px] bg-white rounded-xl flex items-center justify-center border border-brand-neutral-100">
-                                    <span className="text-brand-neutral-400">Loading Class Data...</span>
+                                <div className="h-[200px] bg-white rounded-xl flex items-center justify-center border border-brand-neutral-100 font-medium text-brand-neutral-400">
+                                    Loading Class Data...
                                 </div>
                             ) : (
-                                <ClassComparisonTable data={classEngagement} />
+                                <>
+                                    {classViewMode === 'table' ? (
+                                        <ClassComparisonTable data={classEngagement} />
+                                    ) : (
+                                        <ClassComparisonChart data={classEngagement} metric="openRate" />
+                                    )}
+                                </>
                             )}
                         </div>
                     </div>

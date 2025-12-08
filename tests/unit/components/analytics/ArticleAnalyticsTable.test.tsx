@@ -1,7 +1,21 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { ArticleAnalyticsTable } from '@/components/analytics/ArticleAnalyticsTable';
+
+// Mock react-window to render all items without virtualization for testing
+vi.mock('react-window', () => ({
+  FixedSizeList: ({ children, itemCount, itemSize, height, width }: any) => (
+    <div data-testid="virtual-list" style={{ height, width, position: 'relative' }}>
+      {Array.from({ length: itemCount }).map((_, index) => (
+        <React.Fragment key={index}>
+          {/* @ts-ignore */}
+          {children({ index, style: { height: itemSize, top: index * itemSize, position: 'absolute', width: '100%' } })}
+        </React.Fragment>
+      ))}
+    </div>
+  ),
+}));
 import { BrowserRouter } from 'react-router-dom';
 
 // Mock data
@@ -76,10 +90,9 @@ describe('ArticleAnalyticsTable', () => {
     it('sorts data by Views by default (descending)', () => {
         renderComponent();
         // With default views desc sort: Beta (200) -> Alpha (100) -> Gamma (50) ...
-        const rows = screen.getAllByRole('row');
-        // Row 0 is header. Row 1+ are data.
-        expect(rows[1]).toHaveTextContent('Beta Article');
-        expect(rows[2]).toHaveTextContent('Alpha Article');
+        const rows = screen.getAllByTestId('article-row');
+        expect(rows[0]).toHaveTextContent('Beta Article');
+        expect(rows[1]).toHaveTextContent('Alpha Article');
     });
 
     it('can sort by Title', () => {
@@ -92,10 +105,10 @@ describe('ArticleAnalyticsTable', () => {
         // Click again for Ascending
         fireEvent.click(titleHeader);
 
-        const rows = screen.getAllByRole('row');
+        const rows = screen.getAllByTestId('article-row');
         // Ascending: Alpha, Beta, Gamma...
-        expect(rows[1]).toHaveTextContent('Alpha Article');
-        expect(rows[2]).toHaveTextContent('Beta Article');
+        expect(rows[0]).toHaveTextContent('Alpha Article');
+        expect(rows[1]).toHaveTextContent('Beta Article');
     });
 
     it('filters data by search term', () => {
@@ -106,27 +119,6 @@ describe('ArticleAnalyticsTable', () => {
         
         expect(screen.getByText('Beta Article')).toBeInTheDocument();
         expect(screen.queryByText('Alpha Article')).not.toBeInTheDocument();
-    });
-
-    it('paginates data (10 items per page)', () => {
-        renderComponent();
-        // Total 18 items. Page 1 should have 10.
-        // Header + 10 rows = 11 rows.
-        const rows = screen.getAllByRole('row');
-        expect(rows).toHaveLength(11); 
-
-        // Check for Pagination Controls
-        expect(screen.getByText(/Page 1 of 2/)).toBeInTheDocument();
-
-        // Go to next page
-        const nextBtn = screen.getByRole('button', { name: "Next Page" });
-        fireEvent.click(nextBtn);
-        
-        expect(screen.getByText(/Page 2 of 2/)).toBeInTheDocument();
-        
-        const rows2 = screen.getAllByRole('row');
-        // Header + 8 remaining items (total 18) = 9 rows
-        expect(rows2).toHaveLength(9);
     });
 
     it('shows empty state when no data matches', () => {

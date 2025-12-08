@@ -1,4 +1,4 @@
-import { useState } from 'react'; // keeping useState for generateSnapshots
+import { useState, useEffect } from 'react'; // keeping useState for generateSnapshots
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { analyticsAggregator } from '@/services/analyticsAggregator';
 
@@ -6,10 +6,10 @@ import { analyticsAggregator } from '@/services/analyticsAggregator';
  * Hook to fetch analytics metrics for a newsletter.
  * Uses TanStack Query for caching and state management.
  */
-export function useNewsletterMetrics(newsletterId: string) {
+export function useNewsletterMetrics(newsletterId: string, className?: string) {
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['newsletterMetrics', newsletterId],
-    queryFn: () => analyticsAggregator.getNewsletterMetrics(newsletterId),
+    queryKey: ['newsletterMetrics', newsletterId, className],
+    queryFn: () => analyticsAggregator.getNewsletterMetrics(newsletterId, className),
     enabled: !!newsletterId,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
@@ -70,10 +70,10 @@ export function useArticleStats(newsletterId: string) {
   };
 }
 
-export function useTrendStats() {
+export function useTrendStats(className?: string) {
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['trendStats'],
-    queryFn: () => analyticsAggregator.getTrendStats(12),
+    queryKey: ['trendStats', className],
+    queryFn: () => analyticsAggregator.getTrendStats(12, className),
     staleTime: 1000 * 60 * 60, // 1 hour (trends don't change often)
   });
 
@@ -126,6 +126,7 @@ export function useTopicHotness(newsletterId: string) {
   };
 }
 
+
 // Helper to format read latency as hours and minutes
 export function formatReadLatency(minutes: number): string {
   if (minutes < 60) return `${minutes}m`;
@@ -138,4 +139,98 @@ export function formatReadLatency(minutes: number): string {
   const remainingHours = hours % 24;
   return remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days}d`;
 }
+
+export const useClassHistory = (className: string) => {
+    const [history, setHistory] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (!className) return;
+        const fetchHistory = async () => {
+            setLoading(true);
+            try {
+                const data = await analyticsAggregator.getClassHistory(className);
+                setHistory(data);
+            } catch (err) {
+                console.error(err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchHistory();
+    }, [className]);
+
+    return { history, loading };
+};
+
+export const useAllClasses = () => {
+    const [classes, setClasses] = useState<string[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchClasses = async () => {
+            setLoading(true);
+            try {
+                const data = await analyticsAggregator.getAllClasses();
+                setClasses(data);
+            } catch (err) {
+                console.error(err);
+                // Fallback or empty
+                setClasses([]);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchClasses();
+    }, []);
+
+    return { classes, loading };
+};
+
+export const useArticleReaders = (articleId: string) => {
+    const [readers, setReaders] = useState<any[]>([]); 
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (!articleId) return;
+        const fetchReaders = async () => {
+            setLoading(true);
+            try {
+                const data = await analyticsAggregator.getArticleReaders(articleId);
+                setReaders(data);
+            } catch (err) {
+                console.error(err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchReaders();
+    }, [articleId]);
+
+    return { readers, loading };
+};
+
+export const useArticleMetadata = (articleId: string) => {
+    const [metadata, setMetadata] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (!articleId) return;
+        const fetchMeta = async () => {
+            setLoading(true);
+            try {
+                const data = await analyticsAggregator.getArticleMetadata(articleId);
+                setMetadata(data);
+            } catch (err) {
+                console.error(err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchMeta();
+    }, [articleId]);
+
+    return { metadata, loading };
+};
+
 

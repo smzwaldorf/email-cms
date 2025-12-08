@@ -24,6 +24,8 @@ const LazyClassManagementPage = lazy(() => import('@/pages/ClassManagementPage')
 const LazyFamilyManagementPage = lazy(() => import('@/pages/FamilyManagementPage').then(m => ({ default: m.FamilyManagementPage })))
 const LazyParentStudentPage = lazy(() => import('@/pages/ParentStudentPage').then(m => ({ default: m.ParentStudentPage })))
 const LazyAnalyticsDashboardPage = lazy(() => import('@/pages/AnalyticsDashboardPage').then(m => ({ default: m.AnalyticsDashboardPage })))
+const LazyClassAnalyticsPage = lazy(() => import('@/pages/analytics/ClassAnalyticsPage').then(m => ({ default: m.ClassAnalyticsPage })))
+const LazyArticleAnalyticsPage = lazy(() => import('@/pages/analytics/ArticleAnalyticsPage').then(m => ({ default: m.ArticleAnalyticsPage })))
 
 // Loading component shown while lazy route is loading
 const RouteLoader = () => (
@@ -195,6 +197,54 @@ export default function App() {
                     <ProtectedRoute requiredRole="admin">
                       <Suspense fallback={<RouteLoader />}>
                         <LazyAnalyticsDashboardPage />
+                      </Suspense>
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/admin/analytics/week/:weekNumber"
+                element={
+                  <ErrorBoundary>
+                    <ProtectedRoute requiredRole="admin">
+                      <Suspense fallback={<RouteLoader />}>
+                        <LazyAnalyticsDashboardPage />
+                      </Suspense>
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/admin/analytics/class/:className"
+                element={
+                  <ErrorBoundary>
+                    <ProtectedRoute requiredRole="admin">
+                      <Suspense fallback={<RouteLoader />}>
+                        <LazyClassAnalyticsPage />
+                      </Suspense>
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/admin/analytics/article/:articleId"
+                element={
+                  <ErrorBoundary>
+                    <ProtectedRoute requiredRole="admin">
+                      <Suspense fallback={<RouteLoader />}>
+                        <LazyArticleAnalyticsPage />
+                      </Suspense>
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/admin/analytics/article/:articleId/readers"
+                element={
+                  <ErrorBoundary>
+                    <ProtectedRoute requiredRole="admin">
+                      <Suspense fallback={<RouteLoader />}>
+                        <LazyArticleAnalyticsPage />
                       </Suspense>
                     </ProtectedRoute>
                   </ErrorBoundary>

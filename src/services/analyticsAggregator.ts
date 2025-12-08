@@ -7,6 +7,7 @@ export interface ClassEngagement {
     totalUsers: number;
     openRate: number;
     clickCount: number;
+    clickRate: number;
     avgDailyTime: number;
 }
 
@@ -168,7 +169,7 @@ export const analyticsAggregator = {
    * Calculates metrics for a specific newsletter.
    * Computes Open Rate and Click Rate.
    */
-  async getNewsletterMetrics(newsletterId: string): Promise<AnalyticsMetrics> {
+  async getNewsletterMetrics(newsletterId: string, className?: string): Promise<AnalyticsMetrics> {
     const supabase = getSupabaseClient();
     const QUERY_TIMEOUT_MS = 30000; // Increased to 30s for cold DB recovery
     
@@ -179,14 +180,24 @@ export const analyticsAggregator = {
     
     try {
       // 1. Get Unique Opens
-      const openEventsPromise = supabase
+      let openEventsQuery = supabase
         .from('analytics_events')
         .select('user_id')
         .eq('newsletter_id', newsletterId)
         .eq('event_type', 'email_open');
+
+      if (className) {
+           const classUsers = await this.getUsersInClass(className);
+           if (classUsers.length > 0) {
+               openEventsQuery = openEventsQuery.in('user_id', classUsers);
+           } else {
+               // Class has no users or not found, return 0 metrics
+               return { openRate: 0, clickRate: 0, avgTimeSpent: 0, totalViews: 0 };
+           }
+      }
       
       const openResult = await Promise.race([
-        openEventsPromise,
+        openEventsQuery,
         createTimeout(QUERY_TIMEOUT_MS)
       ]) as { data: { user_id: string }[] | null; error: Error | null };
       
@@ -194,18 +205,24 @@ export const analyticsAggregator = {
         console.error('[Analytics] Error fetching open events:', openResult.error);
         throw openResult.error;
       }
-          
       const uniqueOpenCount = new Set(openResult.data?.map((e: { user_id: string }) => e.user_id)).size;
 
       // 2. Get Unique Clicks
-      const clickEventsPromise = supabase
+      let clickEventsQuery = supabase
         .from('analytics_events')
         .select('user_id')
         .eq('newsletter_id', newsletterId)
         .eq('event_type', 'link_click');
+        
+      if (className) {
+           const classUsers = await this.getUsersInClass(className);
+           if (classUsers.length > 0) {
+               clickEventsQuery = clickEventsQuery.in('user_id', classUsers);
+           }
+      }
       
       const clickResult = await Promise.race([
-        clickEventsPromise,
+        clickEventsQuery,
         createTimeout(QUERY_TIMEOUT_MS)
       ]) as { data: { user_id: string }[] | null; error: Error | null };
       
@@ -216,32 +233,62 @@ export const analyticsAggregator = {
       
       const uniqueClickCount = new Set(clickResult.data?.map((e: { user_id: string }) => e.user_id)).size;
 
-      // 3. Get Total Views (Article Reads)
-      const viewCountPromise = supabase
+      // 3. Get Total Views (Page Views)
+      let viewEventsQuery = supabase
         .from('analytics_events')
-        .select('*', { count: 'exact', head: true })
+        .select('metadata')
         .eq('newsletter_id', newsletterId)
         .eq('event_type', 'page_view');
-      
-      const viewResult = await Promise.race([
-        viewCountPromise,
-        createTimeout(QUERY_TIMEOUT_MS)
-      ]) as { count: number | null; error: Error | null };
 
+      if (className) {
+           const classUsers = await this.getUsersInClass(className);
+           if (classUsers.length > 0) {
+               viewEventsQuery = viewEventsQuery.in('user_id', classUsers);
+           }
+      }
+
+      const viewResult = await Promise.race([
+        viewEventsQuery,
+        createTimeout(QUERY_TIMEOUT_MS)
+      ]) as { data: { metadata: any }[] | null; error: Error | null };
+      
       if (viewResult.error) {
         console.error('[Analytics] Error fetching view count:', viewResult.error);
         throw viewResult.error;
       }
+      
+      const totalViews = viewResult.data?.length || 0;
+
+      // 4. Calculate Avg Time Spent
+      // Sum 'duration' from metadata where event_type = 'page_view'
+      // Note: metadata is JSONB. We need to extract duration.
+      let totalTimeSeconds = 0;
+      viewResult.data?.forEach(row => {
+          if (row.metadata?.duration) {
+              totalTimeSeconds += Number(row.metadata.duration);
+          }
+      });
+      
+      const avgTimeSpent = totalViews > 0 ? Math.round(totalTimeSeconds / totalViews) : 0;
 
       // Mock Total Sent (since we don't have email log table yet, usually distinct students count)
-      // Placeholder: 100
-      const totalSent = 100; 
+      // If className provided, get total families in that class.
+      let totalSent = 100; 
+      if (className) {
+           const { data: classData } = await supabase
+             .from('classes')
+             .select('student_class_enrollment (count)')
+             .eq('class_name', className)
+             .single();
+           // @ts-ignore
+           totalSent = classData?.student_class_enrollment?.[0]?.count || 20;
+      } 
 
       return {
         openRate: totalSent > 0 ? (uniqueOpenCount / totalSent) * 100 : 0,
-        clickRate: uniqueOpenCount > 0 ? (uniqueClickCount / uniqueOpenCount) * 100 : 0,
-        avgTimeSpent: 0, // Not implemented yet
-        totalViews: viewResult.count || 0
+        clickRate: uniqueOpenCount > 0 ? (uniqueClickCount / uniqueOpenCount) * 100 : 0, // Clicks / Opens
+        avgTimeSpent,
+        totalViews
       };
     } catch (err) {
       console.error(`[Analytics] getNewsletterMetrics failed for ${newsletterId}:`, err);
@@ -461,7 +508,7 @@ export const analyticsAggregator = {
    * Fetches trend data for the last N snapshots.
    * If snapshots are missing, it might return empty or sparse data.
    */
-  async getTrendStats(limit: number = 12) {
+  async getTrendStats(limit: number = 12, className?: string) {
       const supabase = getSupabaseClient();
       
       // Query analytics_snapshots for daily metrics
@@ -490,7 +537,7 @@ export const analyticsAggregator = {
       for (const nl of newsletters.reverse()) {
           try {
               console.log(`[Analytics] Processing week ${nl.week_number}...`);
-              const metrics = await this.getNewsletterMetrics(nl.week_number);
+              const metrics = await this.getNewsletterMetrics(nl.week_number, className);
               results.push({
                   name: nl.week_number,
                   openRate: parseFloat(metrics.openRate.toFixed(1)),
@@ -500,7 +547,7 @@ export const analyticsAggregator = {
           } catch (err) {
               console.error(`[Analytics] Failed to process week ${nl.week_number}:`, err);
               // Push placeholder or skip
-              results.push({ name: nl.week_number, openRate: 0, clickRate: 0 });
+              results.push({ name: nl.week_number, openRate: 0, clickRate: 0, avgTimeSpent: 0 });
           }
       }
       console.log('[Analytics] Trend stats completed.');
@@ -522,127 +569,6 @@ export const analyticsAggregator = {
   },
 
   /**
-   * Fetches the list of users who have read a specific article.
-   * Enriches with class info (for parents -> student classes, for teachers -> assigned classes).
-   */
-  async getArticleReaders(articleId: string): Promise<ArticleReader[]> {
-      const supabase = getSupabaseClient();
-      
-      try {
-          // 1. Fetch all 'page_view' events for this article
-          // We need unique users, but we might want last view time.
-          const { data: events, error } = await supabase
-            .from('analytics_events')
-            .select('user_id, created_at')
-            .eq('article_id', articleId)
-            .eq('event_type', 'page_view')
-            .not('user_id', 'is', null);
-
-          if (error) throw error;
-          if (!events || events.length === 0) return [];
-
-          // Aggregate by user_id
-          const userMap = new Map<string, { viewCount: number, lastViewed: string }>();
-          
-          events.forEach(e => {
-              if (!e.user_id) return;
-              const current = userMap.get(e.user_id) || { viewCount: 0, lastViewed: '' };
-              current.viewCount++;
-              if (!current.lastViewed || new Date(e.created_at) > new Date(current.lastViewed)) {
-                  current.lastViewed = e.created_at;
-              }
-              userMap.set(e.user_id, current);
-          });
-
-          const userIds = Array.from(userMap.keys());
-          
-          // 2. Fetch User Details (Email, Role)
-          const { data: users, error: userError } = await supabase
-            .from('user_roles')
-            .select('id, email, role')
-            .in('id', userIds);
-            
-          if (userError) throw userError;
-
-          // 3. Fetch Context (Student Classes for Parents, Assigned Classes for Teachers)
-          // This part is tricky to do in one query without complex joins.
-          // We'll simplisticly fetch related data for these users.
-          
-          // Fetch Family Enrollments for Parents
-          const { data: familyEnrollments } = await supabase
-             .from('family_enrollment')
-             .select('parent_id, families ( family_enrollment ( students ( name ) ), student_class_enrollment ( class_id, classes ( class_name ) ) )')
-             .in('parent_id', userIds);
-             
-          // Fetch Teacher Assignments
-          const { data: teacherAssignments } = await supabase
-             .from('teacher_class_assignment')
-             .select('teacher_id, class_id, classes ( class_name )')
-             .in('teacher_id', userIds);
-
-          // 4. Assemble Result
-          const readers: ArticleReader[] = [];
-          
-          users?.forEach(user => {
-              const stats = userMap.get(user.id)!;
-              const reader: ArticleReader = {
-                  userId: user.id,
-                  email: user.email,
-                  role: user.role,
-                  className: [],
-                  studentNames: [],
-                  lastViewed: new Date(stats.lastViewed).toLocaleString(),
-                  viewCount: stats.viewCount
-              };
-
-              // Enrich with Class info
-              if (user.role === 'parent' || user.role === 'admin') { // Admin might have kids too? assume role='parent' mostly
-                  const myEnrollments = familyEnrollments?.filter(fe => fe.parent_id === user.id);
-                  myEnrollments?.forEach((fe: any) => {
-                      if (fe.families) {
-                          // Get Students related to this family
-                          const famEnrolls = fe.families.family_enrollment;
-                          if (Array.isArray(famEnrolls)) {
-                              famEnrolls.forEach((sfe: any) => {
-                                  if (sfe.students) reader.studentNames.push(sfe.students.name);
-                              });
-                          }
-
-                          // Get Classes related to this family's students
-                          // Actually student_class_enrollment is directly on families in our schema?
-                          // Let's check schema again. `student_class_enrollment` has `family_id` FK.
-                          // So yes, `families` -> `student_class_enrollment`.
-                          const classEnrolls = fe.families.student_class_enrollment;
-                          if (Array.isArray(classEnrolls)) {
-                              classEnrolls.forEach((sce: any) => {
-                                  if (sce.classes) reader.className.push(sce.classes.class_name);
-                              });
-                          }
-                      }
-                  });
-              }
-              
-              if (user.role === 'teacher' || user.role === 'admin') {
-                  const myAssignments = teacherAssignments?.filter(ta => ta.teacher_id === user.id);
-                  myAssignments?.forEach(ta => {
-                      // @ts-ignore
-                      if (ta.classes) reader.className.push(ta.classes.class_name);
-                  });
-              }
-              
-              // Deduplicate class names
-              reader.className = Array.from(new Set(reader.className));
-              reader.studentNames = Array.from(new Set(reader.studentNames));
-
-              readers.push(reader);
-          });
-
-          return readers.sort((a, b) => new Date(b.lastViewed).getTime() - new Date(a.lastViewed).getTime());
-
-      } catch (err) {
-          console.error('[Analytics] Failed to get article readers:', err);
-          return [];
-      }
   },
 
   /**
@@ -772,6 +698,7 @@ export const analyticsAggregator = {
                      activeUsers: stats.activeUsers.size,
                      totalUsers: totalFamilies,
                      openRate: (stats.activeUsers.size / totalFamilies) * 100,
+                     clickRate: (stats.activeUsers.size > 0 ? (stats.clicks / stats.activeUsers.size) : 0),
                      clickCount: stats.clicks,
                      avgDailyTime: avgTime 
                  });
@@ -868,5 +795,129 @@ export const analyticsAggregator = {
           console.error('[Analytics] Failed to get topic hotness:', err);
           return [];
       }
+  },
+
+  async getUsersInClass(className: string): Promise<string[]> {
+      const supabase = getSupabaseClient();
+      const { data: classes } = await supabase
+        .from('classes')
+        .select('id')
+        .eq('class_name', className);
+        
+      if (!classes || classes.length === 0) return [];
+      const classIds = classes.map(c => c.id);
+
+      const { data: parents } = await supabase
+          .from('student_class_enrollment')
+          .select('family_enrollment ( parent_id )')
+          .in('class_id', classIds);
+          
+      if (!parents) return [];
+      
+      const userIds = new Set<string>();
+      parents.forEach((p: any) => {
+          if (p.family_enrollment?.parent_id) {
+              userIds.add(p.family_enrollment.parent_id);
+          }
+      });
+      
+      return Array.from(userIds);
+  },
+
+  async getClassHistory(className: string, limit: number = 12) {
+      return this.getTrendStats(limit, className);
+  },
+
+  async getArticleMetadata(articleId: string) {
+      const supabase = getSupabaseClient();
+      const { data, error } = await supabase
+        .from('articles')
+        .select('title, created_at, newsletter_id, newsletters(week_number)')
+        .eq('id', articleId)
+        .single();
+        
+      if (error) throw error;
+      return {
+          title: data.title,
+          publishedAt: data.created_at,
+          newsletterId: data.newsletter_id,
+          // @ts-ignore
+          weekNumber: Array.isArray(data.newsletters) ? data.newsletters[0]?.week_number : data.newsletters?.week_number
+      };
+  },
+
+  async getArticleReaders(articleId: string): Promise<ArticleReader[]> {
+      const supabase = getSupabaseClient();
+      
+      const { data: events, error } = await supabase
+        .from('analytics_events')
+        .select('user_id, created_at')
+        .eq('article_id', articleId)
+        .eq('event_type', 'page_view');
+        
+      if (error || !events) return [];
+      
+      const userViewerMap = new Map<string, { lastViewed: string; count: number }>();
+      
+      events.forEach((e: any) => {
+          if (!e.user_id) return;
+          const current = userViewerMap.get(e.user_id) || { lastViewed: '', count: 0 };
+          
+          current.count++;
+          if (!current.lastViewed || new Date(e.created_at) > new Date(current.lastViewed)) {
+              current.lastViewed = e.created_at;
+          }
+          userViewerMap.set(e.user_id, current);
+      });
+      
+      const userIds = Array.from(userViewerMap.keys());
+      if (userIds.length === 0) return [];
+      
+      const { data: families } = await supabase
+        .from('family_enrollment')
+        .select('parent_id, families ( family_name, student_class_enrollment ( classes ( class_name ), students ( student_name ) ) )')
+        .in('parent_id', userIds);
+        
+      const results: ArticleReader[] = [];
+      
+      userIds.forEach(uid => {
+          const family = families?.find(f => f.parent_id === uid); // @ts-ignore
+          const viewerStats = userViewerMap.get(uid)!;
+          
+          let classNames: string[] = [];
+          let studentNames: string[] = [];
+          
+          // @ts-ignore
+          if (family?.families?.student_class_enrollment) {
+              // @ts-ignore
+              family.families.student_class_enrollment.forEach((enroll: any) => {
+                  if (enroll.classes?.class_name) classNames.push(enroll.classes.class_name);
+                  if (enroll.students?.student_name) studentNames.push(enroll.students.student_name);
+              });
+          }
+          
+          results.push({
+              userId: uid,
+              email: `User ${uid.slice(0,4)}...`, 
+              role: 'Parent',
+              className: Array.from(new Set(classNames)),
+              studentNames: Array.from(new Set(studentNames)),
+              lastViewed: viewerStats.lastViewed,
+              viewCount: viewerStats.count
+          });
+      });
+      
+      return results;
+  },
+  async getAllClasses(): Promise<string[]> {
+      const supabase = getSupabaseClient();
+      const { data, error } = await supabase
+        .from('classes')
+        .select('class_name')
+        .order('class_name', { ascending: true });
+        
+      if (error) throw error;
+      return data?.map(c => c.class_name) || [];
   }
 };
+

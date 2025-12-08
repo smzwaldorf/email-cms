@@ -1,4 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect } from 'vitest';
 import { ClassComparisonTable } from '@/components/analytics/ClassComparisonTable';
 import { ClassEngagement } from '@/services/analyticsAggregator';
 
@@ -9,6 +10,7 @@ const mockData: ClassEngagement[] = [
         totalUsers: 20,
         openRate: 50,
         clickCount: 100,
+        clickRate: 10,
         avgDailyTime: 120
     },
     {
@@ -17,6 +19,7 @@ const mockData: ClassEngagement[] = [
         totalUsers: 20,
         openRate: 25,
         clickCount: 20,
+        clickRate: 4,
         avgDailyTime: 60
     }
 ];

@@ -13,7 +13,7 @@ const createWrapper = () => {
         <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     );
 };
-import { analyticsAggregator } from '@/services/analyticsAggregator'
+
 
 // Mock analyticsAggregator
 vi.mock('@/services/analyticsAggregator', () => ({
@@ -22,7 +22,8 @@ vi.mock('@/services/analyticsAggregator', () => ({
     getArticleStats: vi.fn(),
     getTrendStats: vi.fn(),
     getClassEngagement: vi.fn(),
-    getAvailableWeeks: vi.fn()
+    getAvailableWeeks: vi.fn(),
+    getAllClasses: vi.fn()
   }
 }))
 
@@ -53,7 +54,7 @@ describe('useNewsletterMetrics', () => {
             expect(result.current.loading).toBe(false);
         });
 
-        expect(analyticsAggregator.getNewsletterMetrics).toHaveBeenCalledWith(mockNewsletterId);
+        expect(analyticsAggregator.getNewsletterMetrics).toHaveBeenCalledWith(mockNewsletterId, undefined);
         expect(result.current.metrics).toEqual(mockMetrics);
     });
 
@@ -118,5 +119,28 @@ describe('useNewsletterMetrics', () => {
         });
 
         expect(analyticsAggregator.getNewsletterMetrics).not.toHaveBeenCalled();
+    });
+});
+
+import { useAllClasses } from '@/hooks/useAnalyticsQuery'
+
+describe('useAllClasses', () => {
+    it('should fetch classes on mount', async () => {
+        const mockClasses = ['Class A', 'Class B'];
+        (analyticsAggregator.getAllClasses as any) = vi.fn().mockResolvedValue(mockClasses);
+
+        const { result } = renderHook(() => useAllClasses(), {
+            wrapper: createWrapper()
+        });
+
+        expect(result.current.loading).toBe(true);
+        expect(result.current.classes).toEqual([]);
+
+        await waitFor(() => {
+            expect(result.current.loading).toBe(false);
+        });
+
+        expect(analyticsAggregator.getAllClasses).toHaveBeenCalled();
+        expect(result.current.classes).toEqual(mockClasses);
     });
 });
