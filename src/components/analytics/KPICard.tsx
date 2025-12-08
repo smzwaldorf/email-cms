@@ -1,9 +1,13 @@
 import React from 'react';
 import { ArrowUp, ArrowDown, HelpCircle } from 'lucide-react';
+import { CountUp } from '@/components/common/CountUp';
 
 interface KPICardProps {
   title: string;
   value: string | number;
+  animateValue?: number; // Raw number for animation
+  suffix?: string;      // Suffix for animation
+  loading?: boolean;
   trend?: number; // precentage change
   trendLabel?: string;
   tooltip?: string;
@@ -13,6 +17,9 @@ interface KPICardProps {
 export const KPICard: React.FC<KPICardProps> = ({ 
   title, 
   value, 
+  animateValue,
+  suffix = '',
+  loading = false,
   trend, 
   trendLabel = 'vs last week',
   tooltip,
@@ -39,7 +46,17 @@ export const KPICard: React.FC<KPICardProps> = ({
       </div>
 
       <div className="flex items-baseline gap-2">
-        <span className="text-3xl font-bold text-brand-neutral-800">{value}</span>
+        {loading ? (
+            <div className="h-8 w-24 bg-brand-neutral-100 animate-pulse rounded"></div>
+        ) : (
+            <span className="text-3xl font-bold text-brand-neutral-800">
+                {typeof animateValue === 'number' ? (
+                    <CountUp end={animateValue} decimals={animateValue % 1 !== 0 ? 1 : 0} suffix={suffix} />
+                ) : (
+                    value
+                )}
+            </span>
+        )}
       </div>
 
       {typeof trend === 'number' && (

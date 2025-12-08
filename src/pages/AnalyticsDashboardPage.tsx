@@ -10,6 +10,7 @@ import { AdminLayout } from '@/components/admin/AdminLayout';
 export const AnalyticsDashboardPage: React.FC = () => {
     const [selectedWeek, setSelectedWeek] = useState<string>('');
     const { weeks, loading: weeksLoading } = useAvailableWeeks();
+    const [timeRange, setTimeRange] = React.useState<'4' | '12'>('12');
     
     // Set default selected week when weeks load
     React.useEffect(() => {
@@ -18,12 +19,23 @@ export const AnalyticsDashboardPage: React.FC = () => {
         }
     }, [weeks, selectedWeek]);
     
-    const { metrics, refetch: refetchMetrics } = useNewsletterMetrics(selectedWeek);
+    const { metrics, loading: metricsLoading, refetch: refetchMetrics } = useNewsletterMetrics(selectedWeek);
     const { stats: articleData, loading: articlesLoading, refetch: refetchArticles } = useArticleStats(selectedWeek);
-    const { trend: trendData, loading: trendLoading, refetch: refetchTrend } = useTrendStats();
+    const { trend: trendData, loading: trendsLoading, refetch: refetchTrends } = useTrendStats();
     const { data: classEngagement, loading: classLoading, refetch: refetchClasses } = useClassEngagement(selectedWeek);
     const { hotness: hotnessData, refetch: refetchHotness } = useTopicHotness(selectedWeek);
     const { generate, generating } = useGenerateSnapshots();
+
+    // Filter Trends based on Range
+    const displayTrends = React.useMemo(() => {
+        if (!trendData) return [];
+        const limit = parseInt(timeRange);
+        // trendData is commonly sorted Oldest -> Newest (Week 1, Week 2...)
+        // If we want "Last 4 Weeks", we take the LAST 4 items.
+        // If trendData is [W1, W2, W3... W12], slice(-4) gives [W9, W10, W11, W12]
+        // Which is correct for a "Trend over time" chart.
+        return trendData.slice(-limit);
+    }, [trendData, timeRange]);
 
     // Merge hotness data into article stats
     const enrichedArticleData = useMemo(() => {
@@ -68,7 +80,7 @@ export const AnalyticsDashboardPage: React.FC = () => {
         refetchMetrics();
         refetchArticles();
         refetchClasses();
-        refetchTrend();
+        refetchTrends();
         refetchHotness();
     };
 
@@ -109,7 +121,7 @@ export const AnalyticsDashboardPage: React.FC = () => {
             clickRate: clickRateTrend,
             timeSpent: timeTrend
         };
-    }, [metrics, trendData, selectedWeek]);
+    }, [metrics, trendData, selectedWeek]); // Use full trendData here for accuracy
 
     const formatDuration = (seconds?: number) => {
         if (!seconds) return '-';
@@ -131,6 +143,30 @@ export const AnalyticsDashboardPage: React.FC = () => {
                     </div>
                     
                     <div className="flex items-center gap-3">
+                        {/* Time Range Selector */}
+                        <div className="flex bg-brand-neutral-100 rounded-lg p-1">
+                            <button
+                                onClick={() => setTimeRange('4')}
+                                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                                    timeRange === '4' 
+                                    ? 'bg-white text-brand-neutral-800 shadow-sm' 
+                                    : 'text-brand-neutral-500 hover:text-brand-neutral-700'
+                                }`}
+                            >
+                                Last 4 Weeks
+                            </button>
+                            <button
+                                onClick={() => setTimeRange('12')}
+                                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                                    timeRange === '12' 
+                                    ? 'bg-white text-brand-neutral-800 shadow-sm' 
+                                    : 'text-brand-neutral-500 hover:text-brand-neutral-700'
+                                }`}
+                            >
+                                Last 12 Weeks
+                            </button>
+                        </div>
+
                         <div className="relative">
                             <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-neutral-400" />
                             <select 
@@ -183,6 +219,9 @@ export const AnalyticsDashboardPage: React.FC = () => {
                     <KPICard 
                         title="Open Rate" 
                         value={`${metrics?.openRate.toFixed(1) || 0}%`} 
+                        animateValue={metrics?.openRate}
+                        suffix="%"
+                        loading={metricsLoading}
                         trend={trends.openRate} 
                         tooltip="Percentage of recipients who opened the email. (Unique Opens / Total Sent)"
                         icon={<div className="p-2 bg-purple-50 rounded-lg text-purple-600"><EyeIcon /></div>}
@@ -190,6 +229,9 @@ export const AnalyticsDashboardPage: React.FC = () => {
                     <KPICard 
                         title="Click Rate" 
                         value={`${metrics?.clickRate.toFixed(1) || 0}%`} 
+                        animateValue={metrics?.clickRate}
+                        suffix="%"
+                        loading={metricsLoading}
                         trend={trends.clickRate} 
                         tooltip="Percentage of openers who clicked at least one link. (Unique Clicks / Unique Opens)"
                         icon={<div className="p-2 bg-emerald-50 rounded-lg text-emerald-600"><ClickIcon /></div>}
@@ -197,6 +239,8 @@ export const AnalyticsDashboardPage: React.FC = () => {
                     <KPICard 
                         title="Total Views" 
                         value={metrics?.totalViews.toLocaleString() || '0'} 
+                        animateValue={metrics?.totalViews}
+                        loading={metricsLoading}
                         // Views trend hard to calc without full view history in trendData. leaving blank or using heuristic.
                         tooltip="Total number of page views across all articles in this newsletter."
                         icon={<div className="p-2 bg-blue-50 rounded-lg text-blue-600"><ViewIcon /></div>}
@@ -204,6 +248,8 @@ export const AnalyticsDashboardPage: React.FC = () => {
                     <KPICard 
                         title="Avg. Time Spent" 
                         value={formatDuration(metrics?.avgTimeSpent)} 
+                        loading={metricsLoading}
+                        // No animateValue for time spent as it's formatted string
                         trend={trends.timeSpent}
                         tooltip="Average active reading time per session. (Estimated based on heartbeats)"
                         icon={<div className="p-2 bg-orange-50 rounded-lg text-orange-600"><TimeIcon /></div>}
@@ -213,7 +259,7 @@ export const AnalyticsDashboardPage: React.FC = () => {
                 {/* Charts & Tables Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="lg:col-span-2 space-y-8">
-                        {trendLoading ? <div className="h-[300px] bg-white rounded-xl flex items-center justify-center">Loading Trend...</div> : <TrendChart data={trendData} />}
+                        {trendsLoading ? <div className="h-[300px] bg-white rounded-xl flex items-center justify-center">Loading Trend...</div> : <TrendChart data={displayTrends} title={`Engagement Trends (${timeRange === '4' ? 'Last 4 Weeks' : 'Last 12 Weeks'})`} />}
                         {articlesLoading ? <div className="h-[200px] bg-white rounded-xl flex items-center justify-center">Loading Articles...</div> : <ArticleAnalyticsTable data={enrichedArticleData} />}
                     </div>
                     

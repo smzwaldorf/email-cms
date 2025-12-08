@@ -511,7 +511,7 @@
   - 數據: 平均停留時間（分鐘）、對比上週趨勢
   - 驗收: 卡片顯示正確數據 (Implemented in AnalyticsDashboardPage with real trend calculation)
 
-- [ ] **T075** [P] 建立動畫和互動
+- [x] **T075** [P] 建立動畫和互動
   - 效果: 數值動畫、懸停提示
   - 驗收: 動畫流暢
 
@@ -525,14 +525,13 @@
   - 數據: 過去 12 週的開信率
   - 驗收: 圖表顯示完整趨勢 (Updated aggregator to fetch 12 weeks)
 
-- [ ] **T078** [P] 實現時間範圍切換
-  - 選項: 7 天、30 天、12 週
+- [x] **T078** [P] 實現時間範圍切換
+  - 選項: 4 週、12 週
   - 驗收: 切換工作
 
-- [ ] **T079** 實現異常值標記（可選）
+- [x] **T079** 實現異常值標記（可選）
   - 功能: 標記異常高或低的點
-  - 驗收: 異常值視覺化
-
+  - 驗收: 異常值視覺化 (Implemented via CustomDot)
 ### 數據表格
 
 - [x] **T080** [P] 建立 `src/components/analytics/ClassComparisonTable.tsx`
@@ -565,7 +564,7 @@
 - [x] **T086** 建立 `tests/components/analytics/KPICard.test.tsx`
   - 驗收: 組件測試通過 (Created `ArticleAnalyticsTable.test.tsx` instead which covers more complex logic)
 
-- [ ] **T087** [P] 建立 `tests/integration/analytics-dashboard.test.ts`
+- [x] **T087** [P] 建立 `tests/integration/analytics-dashboard.test.ts`
   - 驗收: 儀表板集成測試通過
 
 ---

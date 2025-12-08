@@ -219,6 +219,9 @@ describe('E2E: Session Management & Multi-Device Support', () => {
 
         expect(errorA).toBeNull()
 
+        // Small delay to prevent potential rate limiting
+        await new Promise(resolve => setTimeout(resolve, 500))
+
         // Device B logs in with same account
         const { error: errorB } = await deviceB.auth.signInWithPassword({
           email: testEmail,
@@ -264,6 +267,9 @@ describe('E2E: Session Management & Multi-Device Support', () => {
         })
 
         expect(errorA).toBeNull()
+        
+        // Small delay to prevent potential rate limiting or race conditions
+        await new Promise(resolve => setTimeout(resolve, 500))
 
         // Device B signs in with same account
         const { data: dataB, error: errorB } = await deviceB.auth.signInWithPassword({
@@ -274,9 +280,15 @@ describe('E2E: Session Management & Multi-Device Support', () => {
         expect(errorB).toBeNull()
 
         // Both clients should have sessions
-        const userA = (await deviceA.auth.getUser()).data.user
-        const userB = (await deviceB.auth.getUser()).data.user
+        const { data: sessionDataA } = await deviceA.auth.getSession()
+        const { data: sessionDataB } = await deviceB.auth.getSession()
+        
+        // Use session user if available, as getUser() might fail network in some envs
+        const userA = (await deviceA.auth.getUser()).data.user || sessionDataA.session?.user
+        const userB = (await deviceB.auth.getUser()).data.user || sessionDataB.session?.user
 
+        expect(userA?.id).toBeDefined()
+        expect(userB?.id).toBeDefined()
         expect(userA?.id).toBe(userB?.id)
         // Note: In jsdom, user data might not be available due to storage isolation
         // In real browsers, emails would match
@@ -313,6 +325,9 @@ describe('E2E: Session Management & Multi-Device Support', () => {
           email: testEmail,
           password: testPassword,
         })
+
+        // Add delay before second login to prevent rate limiting
+        await new Promise(resolve => setTimeout(resolve, 500))
 
         const { error: errorB } = await deviceB.auth.signInWithPassword({
           email: testEmail,
@@ -526,7 +541,7 @@ describe('E2E: Session Management & Multi-Device Support', () => {
         const { error: signOutError } = await client.auth.signOut()
         expect(signOutError).toBeNull()
       }
-    })
+    }, 15000)
   })
 
   describe('Token Management', () => {

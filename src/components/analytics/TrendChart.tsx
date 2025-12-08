@@ -22,6 +22,38 @@ interface TrendChartProps {
   height?: number;
 }
 
+const CustomDot = (props: any) => {
+    const { cx, cy, value, data, dataKey, color } = props;
+    
+    if (!data || data.length === 0) return null;
+
+    const values = data.map((d: any) => d[dataKey]);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    
+    const isMax = value === max;
+    const isMin = value === min;
+    
+    if (isMax) {
+        // Larger Filled Dot for Max
+        return (
+            <circle cx={cx} cy={cy} r={6} fill={color} stroke="white" strokeWidth={2} />
+        );
+    }
+    
+    if (isMin) {
+         // Hollow Dot for Min
+         return (
+            <circle cx={cx} cy={cy} r={5} fill="white" stroke={color} strokeWidth={2} />
+        );
+    }
+
+    // Standard Dot
+    return (
+        <circle cx={cx} cy={cy} r={3} fill={color} stroke="white" strokeWidth={1} />
+    );
+};
+
 export const TrendChart: React.FC<TrendChartProps> = ({ data, title = 'Engagement Trends', height = 300 }) => {
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm border border-brand-neutral-100">
@@ -54,7 +86,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({ data, title = 'Engagemen
               name="Open Rate" 
               stroke="#8B5CF6" 
               strokeWidth={3} 
-              dot={{ r: 4, fill: '#8B5CF6', strokeWidth: 2, stroke: 'white' }} 
+              dot={(props) => <CustomDot {...props} data={data} dataKey="openRate" color="#8B5CF6" />}
               activeDot={{ r: 6 }} 
             />
             <Line 
@@ -63,7 +95,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({ data, title = 'Engagemen
               name="Click Rate" 
               stroke="#10B981" 
               strokeWidth={3} 
-              dot={{ r: 4, fill: '#10B981', strokeWidth: 2, stroke: 'white' }} 
+              dot={(props) => <CustomDot {...props} data={data} dataKey="clickRate" color="#10B981" />}
               activeDot={{ r: 6 }} 
             />
           </LineChart>
