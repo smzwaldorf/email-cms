@@ -18,11 +18,11 @@ vi.mock('react-window', () => ({
 
 // Mock Hooks
 vi.mock('@/hooks/useAnalyticsQuery', () => ({
-  useNewsletterMetrics: () => ({ metrics: null, refetch: vi.fn(), loading: false }),
-  useArticleStats: () => ({ stats: [], refetch: vi.fn(), loading: false }),
-  useTrendStats: () => ({ trend: [], refetch: vi.fn(), loading: false }),
-  useClassEngagement: () => ({ data: [], refetch: vi.fn(), loading: false }),
-  useTopicHotness: () => ({ hotness: [], refetch: vi.fn(), loading: false }),
+  useNewsletterMetrics: () => ({ metrics: null, refetch: vi.fn(), loading: false, refreshing: false }),
+  useArticleStats: () => ({ stats: [], refetch: vi.fn(), loading: false, refreshing: false }),
+  useTrendStats: () => ({ trend: [], refetch: vi.fn(), loading: false, refreshing: false }),
+  useClassEngagement: () => ({ data: [], refetch: vi.fn(), loading: false, refreshing: false }),
+  useTopicHotness: () => ({ hotness: [], refetch: vi.fn(), loading: false, refreshing: false }),
   useGenerateSnapshots: () => ({ generate: vi.fn(), generating: false }),
   useAvailableWeeks: () => ({ weeks: [{ week_number: '2025-W47' }], loading: false }),
   useAllClasses: () => ({ classes: [], loading: false }),

@@ -13,11 +13,11 @@ vi.mock('@/hooks/useAnalyticsQuery', () => ({
         loading: false 
     })),
     // Other hooks need to return valid objects to prevent crash
-    useNewsletterMetrics: vi.fn(() => ({ metrics: null, loading: false, refetch: vi.fn() })),
-    useTrendStats: vi.fn(() => ({ trend: [], loading: false, refetch: vi.fn() })),
-    useClassEngagement: vi.fn(() => ({ data: [], loading: false, refetch: vi.fn() })),
-    useArticleStats: vi.fn(() => ({ stats: [], loading: false, refetch: vi.fn() })),
-    useTopicHotness: vi.fn(() => ({ hotness: [], refetch: vi.fn() })),
+    useNewsletterMetrics: vi.fn(() => ({ metrics: null, loading: false, refreshing: false, refetch: vi.fn() })),
+    useTrendStats: vi.fn(() => ({ trend: [], loading: false, refreshing: false, refetch: vi.fn() })),
+    useClassEngagement: vi.fn(() => ({ data: [], loading: false, refreshing: false, refetch: vi.fn() })),
+    useArticleStats: vi.fn(() => ({ stats: [], loading: false, refreshing: false, refetch: vi.fn() })),
+    useTopicHotness: vi.fn(() => ({ hotness: [], refreshing: false, refetch: vi.fn() })),
     useGenerateSnapshots: vi.fn(() => ({ generate: vi.fn(), generating: false })),
     useAllClasses: vi.fn(() => ({ classes: [], loading: false }))
 }));

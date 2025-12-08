@@ -1,10 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { useNewsletterMetrics, useGenerateSnapshots, useTrendStats, useArticleStats, useAvailableWeeks, useClassEngagement, useTopicHotness, useAllClasses } from '@/hooks/useAnalyticsQuery';
 import { KPICard } from '@/components/analytics/KPICard';
 import { TrendChart } from '@/components/analytics/TrendChart';
 import { ArticleAnalyticsTable } from '@/components/analytics/ArticleAnalyticsTable';
 import { ClassComparisonTable } from '@/components/analytics/ClassComparisonTable';
-// Re-added ClassComparisonChart for T091
 import { ClassComparisonChart } from '@/components/analytics/ClassComparisonChart';
 import { RefreshCw, Download, Calendar, Filter } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
@@ -21,7 +20,8 @@ export const AnalyticsDashboardPage: React.FC = () => {
         selectedWeek, setSelectedWeek,
         selectedClass, setSelectedClass,
         timeRange, setTimeRange,
-        classViewMode, setClassViewMode
+        classViewMode, setClassViewMode,
+        hasBeenHidden
     } = useAnalytics();
 
     const { weeks, loading: weeksLoading } = useAvailableWeeks();
@@ -43,25 +43,14 @@ export const AnalyticsDashboardPage: React.FC = () => {
         }
     }, [weeks, selectedWeek, weekNumber, setSelectedWeek]);
     
-    const { metrics, loading: metricsLoading, refetch: refetchMetrics } = useNewsletterMetrics(selectedWeek, selectedClass);
-    const { stats: articleData, loading: articlesLoading, refetch: refetchArticles } = useArticleStats(selectedWeek);
-    const { trend: trendData, loading: trendsLoading, refetch: refetchTrends } = useTrendStats(selectedClass);
-    const { data: classEngagement, loading: classLoading, refetch: refetchClasses } = useClassEngagement(selectedWeek);
-    const { hotness: hotnessData, refetch: refetchHotness } = useTopicHotness(selectedWeek);
+    const { metrics, loading: metricsLoading, refreshing: metricsRefreshing, refetch: refetchMetrics } = useNewsletterMetrics(selectedWeek, selectedClass);
+    const { stats: articleData, loading: articlesLoading, refreshing: articlesRefreshing, refetch: refetchArticles } = useArticleStats(selectedWeek);
+    const { trend: trendData, loading: trendsLoading, refreshing: trendsRefreshing, refetch: refetchTrends } = useTrendStats(selectedClass);
+    const { data: classEngagement, loading: classLoading, refreshing: classesRefreshing, refetch: refetchClasses } = useClassEngagement(selectedWeek);
+    const { hotness: hotnessData, refreshing: hotnessRefreshing, refetch: refetchHotness } = useTopicHotness(selectedWeek);
     const { generate, generating } = useGenerateSnapshots();
 
-    // Smart Refresh Logic
-    const [hasBeenHidden, setHasBeenHidden] = useState(false);
-
-    React.useEffect(() => {
-        const handleVisibilityChange = () => {
-            if (document.hidden) {
-                setHasBeenHidden(true);
-            }
-        };
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-    }, []);
+    const isRefreshing = metricsRefreshing || articlesRefreshing || trendsRefreshing || classesRefreshing || hotnessRefreshing;
 
     const handleRefresh = () => {
         if (hasBeenHidden) {
@@ -151,15 +140,13 @@ export const AnalyticsDashboardPage: React.FC = () => {
                             </select>
                         </div>
 
-
-
-
                         <button 
                             onClick={handleRefresh}
-                            className="p-2 text-brand-neutral-600 hover:bg-white rounded-lg border border-transparent hover:border-brand-neutral-200 transition-all"
+                            className="p-2 text-brand-neutral-600 hover:bg-white rounded-lg border border-transparent hover:border-brand-neutral-200 transition-all disabled:opacity-50"
                             title="Reload Data"
+                            disabled={isRefreshing}
                         >
-                            <RefreshCw className="w-5 h-5" />
+                            <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
                         </button>
 
                         <button 

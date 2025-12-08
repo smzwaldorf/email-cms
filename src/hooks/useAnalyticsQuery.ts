@@ -7,7 +7,7 @@ import { analyticsAggregator } from '@/services/analyticsAggregator';
  * Uses TanStack Query for caching and state management.
  */
 export function useNewsletterMetrics(newsletterId: string, className?: string) {
-  const { data, isLoading, error, refetch } = useQuery({
+  const { data, isLoading, error, refetch, isRefetching } = useQuery({
     queryKey: ['newsletterMetrics', newsletterId, className],
     queryFn: () => analyticsAggregator.getNewsletterMetrics(newsletterId, className),
     enabled: !!newsletterId,
@@ -22,6 +22,7 @@ export function useNewsletterMetrics(newsletterId: string, className?: string) {
   return { 
     metrics: data || null, 
     loading: isLoading, 
+    refreshing: isRefetching,
     error: error as Error | null, 
     refetch: safeRefetch
   };
@@ -55,7 +56,7 @@ export function useGenerateSnapshots() {
 }
 
 export function useArticleStats(newsletterId: string) {
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['articleStats', newsletterId],
     // Use fallback method for snapshot optimization
     queryFn: () => analyticsAggregator.getArticleStatsWithFallback(newsletterId),
@@ -65,13 +66,14 @@ export function useArticleStats(newsletterId: string) {
 
   return { 
     stats: data || [], 
-    loading: isLoading, 
+    loading: isLoading,
+    refreshing: isRefetching, 
     refetch: () => refetch() 
   };
 }
 
 export function useTrendStats(className?: string) {
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['trendStats', className],
     queryFn: () => analyticsAggregator.getTrendStats(12, className),
     staleTime: 1000 * 60 * 60, // 1 hour (trends don't change often)
@@ -79,13 +81,14 @@ export function useTrendStats(className?: string) {
 
   return { 
     trend: data || [], 
-    loading: isLoading, 
+    loading: isLoading,
+    refreshing: isRefetching, 
     refetch: () => refetch() 
   };
 }
 
 export function useClassEngagement(newsletterId: string) {
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['classEngagement', newsletterId],
     queryFn: () => analyticsAggregator.getClassEngagement(newsletterId),
     enabled: !!newsletterId,
@@ -95,6 +98,7 @@ export function useClassEngagement(newsletterId: string) {
   return { 
     data: data || [], 
     loading: isLoading, 
+    refreshing: isRefetching,
     refetch: () => refetch() 
   };
 }
@@ -113,7 +117,7 @@ export function useAvailableWeeks() {
 }
 
 export function useTopicHotness(newsletterId: string) {
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['topicHotness', newsletterId],
     queryFn: () => analyticsAggregator.getTopicHotness(newsletterId),
     enabled: !!newsletterId,
@@ -121,7 +125,8 @@ export function useTopicHotness(newsletterId: string) {
 
   return { 
     hotness: data || [], 
-    loading: isLoading, 
+    loading: isLoading,
+    refreshing: isRefetching, 
     refetch: () => refetch() 
   };
 }

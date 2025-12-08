@@ -5,6 +5,7 @@ interface AnalyticsState {
     selectedClass: string;
     timeRange: '4' | '12';
     classViewMode: 'table' | 'chart';
+    hasBeenHidden: boolean;
 }
 
 interface AnalyticsContextType extends AnalyticsState {
@@ -21,6 +22,17 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
     const [selectedClass, setSelectedClass] = useState<string>('');
     const [timeRange, setTimeRange] = useState<'4' | '12'>('12');
     const [classViewMode, setClassViewMode] = useState<'table' | 'chart'>('table');
+    const [hasBeenHidden, setHasBeenHidden] = useState(false);
+
+    React.useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.hidden) {
+                setHasBeenHidden(true);
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }, []);
 
     return (
         <AnalyticsContext.Provider value={{
@@ -31,7 +43,8 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
             timeRange,
             setTimeRange,
             classViewMode,
-            setClassViewMode
+            setClassViewMode,
+            hasBeenHidden
         }}>
             {children}
         </AnalyticsContext.Provider>

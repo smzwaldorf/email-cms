@@ -49,6 +49,7 @@ vi.mock('@/hooks/useAnalyticsQuery', () => ({
             avgDailyTime: 120 
         }], 
         loading: false, 
+        refreshing: false,
         refetch: mockRefetch 
     })),
     useArticleStats: vi.fn(() => ({ 
@@ -64,9 +65,10 @@ vi.mock('@/hooks/useAnalyticsQuery', () => ({
             hotnessScore: 85
         }], 
         loading: false, 
+        refreshing: false,
         refetch: mockRefetch 
     })),
-    useTopicHotness: vi.fn(() => ({ hotness: [], refetch: mockRefetch })),
+    useTopicHotness: vi.fn(() => ({ hotness: [], refreshing: false, refetch: mockRefetch })),
     useGenerateSnapshots: vi.fn(() => ({ generate: mockGenerate, generating: false })),
     useAllClasses: vi.fn(() => ({ classes: ['Class 1', 'Class 2'], loading: false }))
 }));
