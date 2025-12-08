@@ -103,12 +103,17 @@ vi.mock('@/context/AuthContext', () => ({
     AuthContext: { Provider: ({ children }: any) => children } // Fallback if needed
 }));
 
+// Import Context
+import { AnalyticsProvider } from '@/context/AnalyticsContext';
+
 const renderDashboard = () => {
     return render(
         <QueryClientProvider client={queryClient}>
-            <BrowserRouter>
-                <AnalyticsDashboardPage />
-            </BrowserRouter>
+            <AnalyticsProvider>
+                <BrowserRouter>
+                    <AnalyticsDashboardPage />
+                </BrowserRouter>
+            </AnalyticsProvider>
         </QueryClientProvider>
     );
 };

@@ -9,24 +9,39 @@ import { ClassComparisonChart } from '@/components/analytics/ClassComparisonChar
 import { RefreshCw, Download, Calendar, Filter } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useAnalytics } from '@/context/AnalyticsContext';
 
 export const AnalyticsDashboardPage: React.FC = () => {
     const { weekNumber } = useParams<{ weekNumber: string }>();
-    const [selectedWeek, setSelectedWeek] = React.useState<string>(weekNumber || '');
-    const [selectedClass, setSelectedClass] = useState<string>('');
+    const navigate = useNavigate();
+    
+    // Global Context State
+    const { 
+        selectedWeek, setSelectedWeek,
+        selectedClass, setSelectedClass,
+        timeRange, setTimeRange,
+        classViewMode, setClassViewMode
+    } = useAnalytics();
+
     const { weeks, loading: weeksLoading } = useAvailableWeeks();
     const { classes: allClasses, loading: allClassesLoading } = useAllClasses();
-    const [timeRange, setTimeRange] = React.useState<'4' | '12'>('12');
-    const [classViewMode, setClassViewMode] = React.useState<'table' | 'chart'>('table');
     
-    // Set default selected week when weeks load
+    // Sync state with URL param
     React.useEffect(() => {
-        if (weeks.length > 0 && !selectedWeek) {
-             // @ts-ignore
-            setSelectedWeek(weeks[0].week_number || weeks[0].toString());
+        if (weekNumber && weekNumber !== selectedWeek) {
+            setSelectedWeek(weekNumber);
         }
-    }, [weeks, selectedWeek]);
+    }, [weekNumber, selectedWeek, setSelectedWeek]);
+
+    // Set default selected week when weeks load (if no URL param and no context state)
+    React.useEffect(() => {
+        if (weeks.length > 0 && !selectedWeek && !weekNumber) {
+             // @ts-ignore
+             const defaultWeek = weeks[0].week_number || weeks[0].toString();
+             setSelectedWeek(defaultWeek);
+        }
+    }, [weeks, selectedWeek, weekNumber, setSelectedWeek]);
     
     const { metrics, loading: metricsLoading, refetch: refetchMetrics } = useNewsletterMetrics(selectedWeek, selectedClass);
     const { stats: articleData, loading: articlesLoading, refetch: refetchArticles } = useArticleStats(selectedWeek);
@@ -58,6 +73,11 @@ export const AnalyticsDashboardPage: React.FC = () => {
         refetchTrends();
         refetchClasses();
         refetchHotness();
+    };
+    
+    const handleWeekChange = (newWeek: string) => {
+        setSelectedWeek(newWeek);
+        navigate(`/admin/analytics/week/${newWeek}`);
     };
 
     // Format duration helper
@@ -117,7 +137,7 @@ export const AnalyticsDashboardPage: React.FC = () => {
                             <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-neutral-400" />
                             <select 
                                 value={selectedWeek} 
-                                onChange={(e) => setSelectedWeek(e.target.value)}
+                                onChange={(e) => handleWeekChange(e.target.value)}
                                 className="pl-9 pr-4 py-2 border border-brand-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20 min-w-[140px]"
                                 disabled={weeksLoading}
                             >

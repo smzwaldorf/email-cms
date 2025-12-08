@@ -832,7 +832,7 @@ export const analyticsAggregator = {
       const supabase = getSupabaseClient();
       const { data, error } = await supabase
         .from('articles')
-        .select('title, created_at, newsletter_id, newsletters(week_number)')
+        .select('title, created_at, week_number')
         .eq('id', articleId)
         .single();
         
@@ -840,9 +840,8 @@ export const analyticsAggregator = {
       return {
           title: data.title,
           publishedAt: data.created_at,
-          newsletterId: data.newsletter_id,
-          // @ts-ignore
-          weekNumber: Array.isArray(data.newsletters) ? data.newsletters[0]?.week_number : data.newsletters?.week_number
+          newsletterId: data.week_number, // week_number acts as the newsletter identifier
+          weekNumber: data.week_number
       };
   },
 
@@ -875,7 +874,7 @@ export const analyticsAggregator = {
       
       const { data: families } = await supabase
         .from('family_enrollment')
-        .select('parent_id, families ( family_name, student_class_enrollment ( classes ( class_name ), students ( student_name ) ) )')
+        .select('parent_id, families ( family_code, student_class_enrollment ( classes ( class_name ), students ( name ) ) )')
         .in('parent_id', userIds);
         
       const results: ArticleReader[] = [];
@@ -892,7 +891,7 @@ export const analyticsAggregator = {
               // @ts-ignore
               family.families.student_class_enrollment.forEach((enroll: any) => {
                   if (enroll.classes?.class_name) classNames.push(enroll.classes.class_name);
-                  if (enroll.students?.student_name) studentNames.push(enroll.students.student_name);
+                  if (enroll.students?.name) studentNames.push(enroll.students.name);
               });
           }
           

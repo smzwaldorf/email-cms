@@ -11,6 +11,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { AnalyticsFooter } from '@/components/AnalyticsFooter'
 
 import { ArticleReadersPage } from './pages/ArticleReadersPage';
+import { AnalyticsProvider } from '@/context/AnalyticsContext';
 import '@/styles/globals.css'
 
 // Lazy load editor and admin pages - only loaded when route is accessed
@@ -58,8 +59,9 @@ export default function App() {
     <ErrorBoundary>
       <AuthProvider>
         <NavigationProvider>
-          <Router>
-            <Routes>
+          <AnalyticsProvider>
+            <Router>
+              <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
 
@@ -266,6 +268,7 @@ export default function App() {
             </Routes>
             <AnalyticsFooter />
           </Router>
+          </AnalyticsProvider>
         </NavigationProvider>
       </AuthProvider>
     </ErrorBoundary>

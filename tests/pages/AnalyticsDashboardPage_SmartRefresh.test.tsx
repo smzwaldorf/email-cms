@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import { AnalyticsDashboardPage } from '../../src/pages/AnalyticsDashboardPage'
+import { AnalyticsProvider } from '@/context/AnalyticsContext'
 import { BrowserRouter } from 'react-router-dom'
+import React from 'react'
 
 // Mock react-window
 vi.mock('react-window', () => ({
@@ -47,9 +49,11 @@ describe('Analytics Smart Refresh', () => {
 
   it('should perform hard reload if tab was previously hidden', () => {
     render(
-      <BrowserRouter>
-        <AnalyticsDashboardPage />
-      </BrowserRouter>
+      <AnalyticsProvider>
+        <BrowserRouter>
+          <AnalyticsDashboardPage />
+        </BrowserRouter>
+      </AnalyticsProvider>
     )
 
     // Simulate switching tabs (visibility change)
@@ -77,9 +81,11 @@ describe('Analytics Smart Refresh', () => {
 
   it('should perform soft refresh if tab was never hidden', () => {
      render(
-      <BrowserRouter>
-        <AnalyticsDashboardPage />
-      </BrowserRouter>
+      <AnalyticsProvider>
+        <BrowserRouter>
+          <AnalyticsDashboardPage />
+        </BrowserRouter>
+      </AnalyticsProvider>
     )
 
     // Find refresh button
