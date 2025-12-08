@@ -65,7 +65,7 @@ describe('Analytics - Article Reader Class Info', () => {
     const testId = Date.now().toString(); // Still keep this for other unique names
     const mockEmail = `parent-${testId}@test.com`;
     const mockAdminEmail = `admin-${testId}@test.com`;
-    const mockClassName = `Class-${testId}`;
+    const mockClassName = `C-${randomSuffix}-${Math.floor(Math.random()*1000)}`; // Max: C-99-999 = 8 chars
     const mockStudentName = `Student-${testId}`;
     
     // State variables
@@ -118,40 +118,42 @@ describe('Analytics - Article Reader Class Info', () => {
         });
 
         // 8. Enroll Student in Class
-        await adminSupabase.from('student_class_enrollment').insert({
+        const { error: enrollError } = await adminSupabase.from('student_class_enrollment').insert({
             student_id: student.id,
             family_id: familyId,
             class_id: mockClassName
         });
 
+        if (enrollError) {
+             throw new Error(`Enrollment failed: ${enrollError.message} (details: ${enrollError.details})`);
+        }
+
         // 9. Article Setup
         
         // Clean events first (fk)
         await adminSupabase.from('analytics_events').delete().eq('newsletter_id', weekNum);
-
-        // Explicitly clean up week and articles first
-        const { error: delArtError } = await adminSupabase.from('articles').delete().eq('week_number', weekNum).select('*', { count: 'exact', head: true });
         
-        const { error: delWeekError } = await adminSupabase.from('newsletter_weeks').delete().eq('week_number', weekNum);
+        // Clean snapshots too (potential FK blocker)
+        await adminSupabase.from('analytics_snapshots').delete().eq('newsletter_id', weekNum);
 
-        const { error: weekError } = await adminSupabase.from('newsletter_weeks').insert({
+        // Ensure week exists (Newsletter Weeks)
+        const { error: weekError } = await adminSupabase.from('newsletter_weeks').upsert({
             week_number: weekNum,
             release_date: '2099-01-01',
             is_published: true
-        });
-        // Ignore duplicate key for week if it exists from partial run
-        if (weekError && !weekError.message.includes('duplicate')) {
-             throw weekError;
-        }
+        }, { onConflict: 'week_number' });
+        
+        if (weekError) throw weekError;
 
-        const { data: article, error: articleError } = await adminSupabase.from('articles').insert({
+        // Create Article (Upsert to avoid unique constraint violation)
+        const { data: article, error: articleError } = await adminSupabase.from('articles').upsert({
             week_number: weekNum,
             title: 'Test Analytics Article',
             content: 'Content',
-            article_order: 1, // Only 1 article per week in this test
+            article_order: 1, 
             is_published: true,
             visibility_type: 'public'
-        }).select().single();
+        }, { onConflict: 'week_number, article_order' }).select().single();
 
         if (!article) {
              console.error('Article creation error:', articleError);
