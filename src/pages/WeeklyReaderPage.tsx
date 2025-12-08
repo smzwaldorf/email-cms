@@ -49,8 +49,8 @@ export function WeeklyReaderPage() {
   // Tracking Hooks
   useAnalyticsTracking({
     articleId: article?.id,
-    weekNumber: weekNumber,
-    enabled: !!article?.id, // Only track when article is loaded
+    weekNumber: article?.weekNumber || weekNumber,
+    enabled: !!article?.id && article.weekNumber === weekNumber, // Only track when article matches the current week
     // Add classId if available in user context or params? 
     // For now omitting classId as it's not readily available in url params usually
   });
