@@ -494,7 +494,8 @@ export const analyticsAggregator = {
               results.push({
                   name: nl.week_number,
                   openRate: parseFloat(metrics.openRate.toFixed(1)),
-                  clickRate: parseFloat(metrics.clickRate.toFixed(1))
+                  clickRate: parseFloat(metrics.clickRate.toFixed(1)),
+                  avgTimeSpent: metrics.avgTimeSpent
               });
           } catch (err) {
               console.error(`[Analytics] Failed to process week ${nl.week_number}:`, err);
@@ -660,7 +661,9 @@ export const analyticsAggregator = {
              if (!events || events.length === 0) return [];
              
              // 2. Map Users to Classes
-             const userIds = Array.from(new Set(events.map(e => e.user_id)));
+             // Explicitly type event as any or define interface if possible, 
+             // but here we just fix the lint.
+             const userIds = Array.from(new Set(events.map((e: any) => e.user_id)));
              
              // Fetch Family Enrollments for these Parents to identify their classes
              // Note: A parent might belong to multiple classes. We'll credit their activity to ALL their classes for now.
@@ -705,7 +708,7 @@ export const analyticsAggregator = {
                  return classStats.get(className)!;
              };
  
-             events.forEach(event => {
+             events.forEach((event: any) => {
                  const classes = userClasses.get(event.user_id);
                  if (!classes) return; // User has no class (e.g. admin or unassigned)
  

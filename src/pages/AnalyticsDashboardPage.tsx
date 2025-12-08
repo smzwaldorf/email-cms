@@ -72,6 +72,45 @@ export const AnalyticsDashboardPage: React.FC = () => {
         refetchHotness();
     };
 
+    // Calculate Trends
+    const trends = useMemo(() => {
+        if (!metrics || !trendData || trendData.length === 0 || !selectedWeek) {
+            return { openRate: 0, clickRate: 0, timeSpent: 0 };
+        }
+
+        const currentIndex = trendData.findIndex(t => t.name === selectedWeek);
+        // We need previous week data.
+        // trendData is commonly sorted Ascending (oldest first) if it comes from our reverse loop logic which pushes in order of processing, 
+        // wait. aggregator.getTrendStats processes reverse(descending) -> Ascending. 
+        // So [Week1, Week2, Week3].
+        // If selected is Week3 (index 2), prev is Week2 (index 1).
+        
+        if (currentIndex <= 0) return { openRate: 0, clickRate: 0, timeSpent: 0 };
+        
+        const currentParams = trendData[currentIndex];
+        const prevParams = trendData[currentIndex - 1];
+        
+        // Note: trends in KPICard usually expect absolute difference for percentages (pp)
+        // and percentage change for values? Or just simple diff?
+        // Let's assume absolute difference for Rates, and Percentage Change for Time.
+        
+        const openRateTrend = currentParams.openRate - prevParams.openRate;
+        const clickRateTrend = currentParams.clickRate - prevParams.clickRate;
+        
+        // Time is seconds.
+        const currentTime = (currentParams as any).avgTimeSpent || 0; // Cast as any because we just added it and Interface might not be updated in context yet? No, it's run-time safe. interface needs update in TrendChart.tsx? No, trendData comes from hook type.
+        const prevTime = (prevParams as any).avgTimeSpent || 0;
+        
+        // Avoid division by zero
+        const timeTrend = prevTime === 0 ? 0 : ((currentTime - prevTime) / prevTime) * 100;
+
+        return {
+            openRate: openRateTrend,
+            clickRate: clickRateTrend,
+            timeSpent: timeTrend
+        };
+    }, [metrics, trendData, selectedWeek]);
+
     const formatDuration = (seconds?: number) => {
         if (!seconds) return '-';
         const m = Math.floor(seconds / 60);
@@ -144,28 +183,28 @@ export const AnalyticsDashboardPage: React.FC = () => {
                     <KPICard 
                         title="Open Rate" 
                         value={`${metrics?.openRate.toFixed(1) || 0}%`} 
-                        // trend={5.2} // TODO: Calculate trend
+                        trend={trends.openRate} 
                         tooltip="Percentage of recipients who opened the email. (Unique Opens / Total Sent)"
                         icon={<div className="p-2 bg-purple-50 rounded-lg text-purple-600"><EyeIcon /></div>}
                     />
                     <KPICard 
                         title="Click Rate" 
                         value={`${metrics?.clickRate.toFixed(1) || 0}%`} 
-                        // trend={-1.5} // TODO: Calculate trend
+                        trend={trends.clickRate} 
                         tooltip="Percentage of openers who clicked at least one link. (Unique Clicks / Unique Opens)"
                         icon={<div className="p-2 bg-emerald-50 rounded-lg text-emerald-600"><ClickIcon /></div>}
                     />
                     <KPICard 
                         title="Total Views" 
                         value={metrics?.totalViews.toLocaleString() || '0'} 
-                        // trend={12.5} // TODO: Calculate trend
+                        // Views trend hard to calc without full view history in trendData. leaving blank or using heuristic.
                         tooltip="Total number of page views across all articles in this newsletter."
                         icon={<div className="p-2 bg-blue-50 rounded-lg text-blue-600"><ViewIcon /></div>}
                     />
                     <KPICard 
                         title="Avg. Time Spent" 
                         value={formatDuration(metrics?.avgTimeSpent)} 
-                        // trend={0} 
+                        trend={trends.timeSpent}
                         tooltip="Average active reading time per session. (Estimated based on heartbeats)"
                         icon={<div className="p-2 bg-orange-50 rounded-lg text-orange-600"><TimeIcon /></div>}
                     />

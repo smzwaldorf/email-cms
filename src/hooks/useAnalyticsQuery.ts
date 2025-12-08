@@ -73,7 +73,7 @@ export function useArticleStats(newsletterId: string) {
 export function useTrendStats() {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['trendStats'],
-    queryFn: () => analyticsAggregator.getTrendStats(6),
+    queryFn: () => analyticsAggregator.getTrendStats(12),
     staleTime: 1000 * 60 * 60, // 1 hour (trends don't change often)
   });
 
