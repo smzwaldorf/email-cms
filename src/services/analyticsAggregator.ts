@@ -876,7 +876,7 @@ export const analyticsAggregator = {
         .from('family_enrollment')
         .select('parent_id, families ( family_code, student_class_enrollment ( classes ( class_name ), students ( name ) ) )')
         .in('parent_id', userIds);
-        
+      
       const results: ArticleReader[] = [];
       
       userIds.forEach(uid => {
