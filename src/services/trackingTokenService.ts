@@ -167,9 +167,31 @@ export const trackingTokenService = {
       .select('is_revoked')
       .eq('token_hash', tokenHash)
       .single();
-      
+
     if (error || !data) return false;
     return data.is_revoked;
+  },
+
+  /**
+   * Revokes all tokens for a specific user (e.g., password reset, account change).
+   */
+  async revokeTokensForUser(userId: string): Promise<{ revokedCount: number; error?: string }> {
+    try {
+      const { data, error } = await getSupabaseClient()
+        .from('tracking_tokens')
+        .update({ is_revoked: true })
+        .eq('user_id', userId)
+        .eq('is_revoked', false)
+        .select('id');
+
+      if (error) {
+        return { revokedCount: 0, error: error.message };
+      }
+
+      return { revokedCount: data?.length || 0 };
+    } catch (e: any) {
+      return { revokedCount: 0, error: e.message || 'Unknown error' };
+    }
   },
 
   /**

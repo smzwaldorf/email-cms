@@ -2,18 +2,41 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { trackingTokenService } from '@/services/trackingTokenService';
 
 // Mock Supabase
-vi.mock('@/lib/supabase', () => ({
-  getSupabaseClient: vi.fn(() => ({
-    from: vi.fn(() => ({
+const mockSupabaseClient = {
+  from: vi.fn(function(table: string) {
+    if (table === 'tracking_tokens') {
+      return {
+        update: vi.fn(() => ({
+          eq: vi.fn(function(_column: string) {
+            return {
+              eq: vi.fn(() => ({ select: vi.fn(() => ({ data: [{ id: 'token-1' }], error: null })) }))
+            };
+          })
+        })),
+        insert: vi.fn(() => ({ error: null })),
+        select: vi.fn(() => ({
+          eq: vi.fn(function(_column: string) {
+            return {
+              single: vi.fn(() => ({ data: { is_revoked: false }, error: null }))
+            };
+          })
+        }))
+      };
+    }
+    return {
       update: vi.fn(() => ({ eq: vi.fn(() => ({ error: null })) })),
       insert: vi.fn(() => ({ error: null })),
-      select: vi.fn(() => ({ 
-        eq: vi.fn(() => ({ 
-          single: vi.fn(() => ({ data: { is_revoked: false }, error: null })) 
-        })) 
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          single: vi.fn(() => ({ data: { is_revoked: false }, error: null }))
+        }))
       }))
-    }))
-  }))
+    };
+  })
+};
+
+vi.mock('@/lib/supabase', () => ({
+  getSupabaseClient: vi.fn(() => mockSupabaseClient)
 }));
 
 describe('trackingTokenService', () => {
@@ -49,14 +72,26 @@ describe('trackingTokenService', () => {
   
   it('should check revocation status via supabase', async () => {
     const token = await trackingTokenService.generateToken(userId, payload);
-    
+
     // Mock return false for revocation
     const result = await trackingTokenService.verifyToken(token);
     expect(result.valid).toBe(true);
-    
+
     // Check if supabase was called
     // We can't easily spy on internal calls unless we refactor, but we can rely on verifyToken calling checkTokenRevoked logic
     // which calls supabase.
+  });
+
+  it('should revoke all tokens for a user', async () => {
+    const result = await trackingTokenService.revokeTokensForUser(userId);
+    expect(result.revokedCount).toBe(1);
+    expect(result.error).toBeUndefined();
+  });
+
+  it('should return count of revoked tokens', async () => {
+    const result = await trackingTokenService.revokeTokensForUser(userId);
+    expect(typeof result.revokedCount).toBe('number');
+    expect(result.revokedCount >= 0).toBe(true);
   });
 
 });

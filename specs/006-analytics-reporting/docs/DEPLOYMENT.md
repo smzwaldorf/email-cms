@@ -33,6 +33,12 @@ supabase secrets set SUPABASE_URL=your_project_url
 supabase secrets set SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 ```
 
+**Security Requirements**:
+- `JWT_SECRET` must be at least 32 characters long (use `openssl rand -base64 32` to generate)
+- Ensure `VITE_JWT_SECRET` is set in `.env.local` (frontend) with the same value
+- All secrets should be rotated periodically (e.g., monthly)
+- Never commit secrets to version control - use `.env.local` and `.env.secrets` files with .gitignore
+
 ## Database Migrations
 Ensure migration `20251205000000_add_analytics_tables.sql` (and any fixes) is applied.
 
