@@ -144,9 +144,9 @@ export const AnalyticsDashboardPage: React.FC = () => {
                             onClick={handleRefresh}
                             className="p-2 text-brand-neutral-600 hover:bg-white rounded-lg border border-transparent hover:border-brand-neutral-200 transition-all disabled:opacity-50"
                             title="Reload Data"
-                            disabled={isRefreshing}
+                            disabled={isRefreshing && !hasBeenHidden}
                         >
-                            <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                            <RefreshCw className={`w-5 h-5 ${isRefreshing && !hasBeenHidden ? 'animate-spin' : ''}`} />
                         </button>
 
                         <button 

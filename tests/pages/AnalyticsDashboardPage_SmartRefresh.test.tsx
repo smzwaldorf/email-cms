@@ -16,13 +16,20 @@ vi.mock('react-window', () => ({
   ),
 }));
 
+// Mock implementation variables
+const mockUseNewsletterMetrics = vi.fn(() => ({ metrics: null, refetch: vi.fn(), loading: false, refreshing: false }))
+const mockUseArticleStats = vi.fn(() => ({ stats: [], refetch: vi.fn(), loading: false, refreshing: false }))
+const mockUseTrendStats = vi.fn(() => ({ trend: [], refetch: vi.fn(), loading: false, refreshing: false }))
+const mockUseClassEngagement = vi.fn(() => ({ data: [], refetch: vi.fn(), loading: false, refreshing: false }))
+const mockUseTopicHotness = vi.fn(() => ({ hotness: [], refetch: vi.fn(), loading: false, refreshing: false }))
+
 // Mock Hooks
 vi.mock('@/hooks/useAnalyticsQuery', () => ({
-  useNewsletterMetrics: () => ({ metrics: null, refetch: vi.fn(), loading: false, refreshing: false }),
-  useArticleStats: () => ({ stats: [], refetch: vi.fn(), loading: false, refreshing: false }),
-  useTrendStats: () => ({ trend: [], refetch: vi.fn(), loading: false, refreshing: false }),
-  useClassEngagement: () => ({ data: [], refetch: vi.fn(), loading: false, refreshing: false }),
-  useTopicHotness: () => ({ hotness: [], refetch: vi.fn(), loading: false, refreshing: false }),
+  useNewsletterMetrics: () => mockUseNewsletterMetrics(),
+  useArticleStats: () => mockUseArticleStats(),
+  useTrendStats: () => mockUseTrendStats(),
+  useClassEngagement: () => mockUseClassEngagement(),
+  useTopicHotness: () => mockUseTopicHotness(),
   useGenerateSnapshots: () => ({ generate: vi.fn(), generating: false }),
   useAvailableWeeks: () => ({ weeks: [{ week_number: '2025-W47' }], loading: false }),
   useAllClasses: () => ({ classes: [], loading: false }),
@@ -45,6 +52,9 @@ describe('Analytics Smart Refresh', () => {
     vi.clearAllMocks()
     // Reset document visibility to visible
     Object.defineProperty(document, 'hidden', { value: false, configurable: true })
+    
+    // Reset default mock implementations
+    mockUseNewsletterMetrics.mockReturnValue({ metrics: null, refetch: vi.fn(), loading: false, refreshing: false })
   })
 
   it('should perform hard reload if tab was previously hidden', () => {
@@ -96,5 +106,49 @@ describe('Analytics Smart Refresh', () => {
 
     // Should NOT call reload
     expect(mockReload).not.toHaveBeenCalled()
+  })
+
+  it('should allow reload even if refreshing is stuck, provided tab was hidden', () => {
+    // Mock stuck refreshing state
+    mockUseNewsletterMetrics.mockReturnValue({ 
+        metrics: null, 
+        refetch: vi.fn(), 
+        loading: false, 
+        refreshing: true // STUCK REFRESHING
+    })
+
+    render(
+      <AnalyticsProvider>
+        <BrowserRouter>
+          <AnalyticsDashboardPage />
+        </BrowserRouter>
+      </AnalyticsProvider>
+    )
+
+    // 1. Simulate finding tab hidden (overnight)
+    Object.defineProperty(document, 'hidden', { value: true, configurable: true })
+    const event = new Event('visibilitychange')
+    act(() => {
+        document.dispatchEvent(event)
+    });
+    
+    // 2. User comes back
+    Object.defineProperty(document, 'hidden', { value: false, configurable: true })
+    act(() => {
+        document.dispatchEvent(event)
+    });
+
+    const refreshBtn = screen.getByTitle('Reload Data')
+
+    // 3. Verify button is NOT disabled despite refreshing=true
+    expect(refreshBtn).not.toBeDisabled()
+    
+    // 4. Verify spinner is NOT showing (optional, check logic)
+    // The spinner logic is inside the button, verifying class presence might be fragile, 
+    // but we can check if the button is clickable which implies the fix.
+    
+    // 5. Click verifies reload
+    fireEvent.click(refreshBtn)
+    expect(mockReload).toHaveBeenCalled()
   })
 })
