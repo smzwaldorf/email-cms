@@ -2,6 +2,36 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { verify } from "https://deno.land/x/djwt@v2.9.1/mod.ts";
 
+// Validate URL to prevent open redirect attacks
+const isValidRedirectUrl = (targetUrl: string): boolean => {
+  try {
+    const parsed = new URL(targetUrl);
+    // Only allow http and https protocols
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    // If URL parsing fails, it's not a valid URL
+    return false;
+  }
+};
+
+// Validate JWT payload structure
+const isValidPayload = (payload: any): boolean => {
+  if (typeof payload !== 'object' || !payload) return false;
+  if (typeof payload.user_id !== 'string' || !payload.user_id) return false;
+  if (typeof payload.newsletter_id !== 'string' || !payload.newsletter_id) return false;
+  return true;
+};
+
+// Deduplication window configuration
+const DEDUP_WINDOW_MS = 10000; // 10 seconds
+const MIN_DEDUP_WINDOW_MS = 1000; // Prevent DOS with very small windows
+const MAX_DEDUP_WINDOW_MS = 300000; // 5 minutes maximum
+
+// Validate deduplication window
+const isValidDeduplicationWindow = (windowMs: number): boolean => {
+  return windowMs >= MIN_DEDUP_WINDOW_MS && windowMs <= MAX_DEDUP_WINDOW_MS;
+};
+
 serve(async (req) => {
   try {
     const url = new URL(req.url);
@@ -10,6 +40,11 @@ serve(async (req) => {
 
     if (!targetUrl) {
       return new Response("Missing URL parameter", { status: 400 });
+    }
+
+    // Validate the redirect URL to prevent open redirect attacks
+    if (!isValidRedirectUrl(targetUrl)) {
+      return new Response("Invalid redirect URL", { status: 400 });
     }
 
     // Default redirect if token is missing or invalid (fallback to prevent broken UX)
@@ -43,50 +78,51 @@ serve(async (req) => {
     try {
       payload = await verify(token, key);
     } catch (e) {
-      console.error("Token verification failed:", e);
+      console.error("Token verification failed");
       return fallbackRedirect;
     }
-    
-    if (payload) {
-      const { user_id, newsletter_id } = payload as any;
-      
-      // Deduplication: Check for recent events (last 10 seconds)
-      const { count } = await supabase
-        .from("analytics_events")
-        .select("*", { count: 'exact', head: true })
-        .eq("event_type", "link_click")
-        .eq("user_id", user_id)
-        .eq("newsletter_id", newsletter_id)
-        .eq("metadata->>target_url", targetUrl) // Check same URL
-        .gt("created_at", new Date(Date.now() - 10000).toISOString());
 
-      if (count && count > 0) {
-        console.log(`Duplicate link_click skipped for user ${user_id}`);
-      } else {
-        // Log event
-        await supabase.from("analytics_events").insert({
-          event_type: "link_click",
-          user_id,
-          newsletter_id,
-          metadata: {
-             target_url: targetUrl,
-             user_agent: req.headers.get("user-agent"),
-             ip: req.headers.get("x-forwarded-for"),
-          }
-        });
-      }
+    // Validate payload structure at runtime
+    if (!payload || !isValidPayload(payload)) {
+      console.error("Invalid token payload structure");
+      return fallbackRedirect;
+    }
+
+    const { user_id, newsletter_id } = payload as { user_id: string; newsletter_id: string };
+
+    // Deduplication: Check for recent events (last 10 seconds)
+    const { count } = await supabase
+      .from("analytics_events")
+      .select("*", { count: 'exact', head: true })
+      .eq("event_type", "link_click")
+      .eq("user_id", user_id)
+      .eq("newsletter_id", newsletter_id)
+      .eq("metadata->>target_url", targetUrl) // Check same URL
+      .gt("created_at", new Date(Date.now() - 10000).toISOString());
+
+    if (count && count > 0) {
+      // Log deduplication (without PII)
+      console.log("Duplicate link_click event skipped");
+    } else {
+      // Log event
+      await supabase.from("analytics_events").insert({
+        event_type: "link_click",
+        user_id,
+        newsletter_id,
+        metadata: {
+          target_url: targetUrl,
+          user_agent: req.headers.get("user-agent"),
+          ip: req.headers.get("x-forwarded-for"),
+        }
+      });
     }
 
     return Response.redirect(targetUrl, 302);
 
   } catch (error) {
     console.error("Click Tracking Error:", error);
-    // Try to extract URL from query params manually if URL parsing failed, 
-    // or just return 500, but ideally we redirect if we can at all find a URL.
-    const urlParam = req.url.split("url=")[1]?.split("&")[0];
-    if (urlParam) {
-       return Response.redirect(decodeURIComponent(urlParam), 302);
-    }
+    // Don't attempt to extract and redirect arbitrary URLs from error scenarios
+    // Always validate URLs to prevent open redirect attacks
     return new Response("Internal Server Error", { status: 500 });
   }
 });

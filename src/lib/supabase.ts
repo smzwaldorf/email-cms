@@ -114,18 +114,22 @@ export function getSupabaseClient(): SupabaseClient {
 /**
  * Get Supabase client with service role key for admin operations
  * WARNING: Only use this for admin operations that require elevated privileges
+ * NOTE: Service role key should NEVER be exposed in frontend bundles.
+ * Only available in Node.js environments (server/edge functions/scripts).
  */
 export function getSupabaseServiceClient(): SupabaseClient {
   if (!supabaseServiceClient) {
     validateEnvironment()
 
     const url = getEnvVar('VITE_SUPABASE_URL') as string
-    const serviceKey = getEnvVar('VITE_SUPABASE_SERVICE_ROLE_KEY')
+    // Use non-VITE_ prefixed variable to prevent bundling in frontend
+    const serviceKey = getEnvVar('SUPABASE_SERVICE_ROLE_KEY')
 
     if (!serviceKey) {
       throw new Error(
-        'Missing VITE_SUPABASE_SERVICE_ROLE_KEY environment variable. ' +
-        'This is required for admin operations.'
+        'Missing SUPABASE_SERVICE_ROLE_KEY environment variable. ' +
+        'This is required for admin operations. ' +
+        'Note: This should only be set in .env (Node.js), never in .env.local (frontend).'
       )
     }
 

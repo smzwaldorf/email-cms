@@ -61,6 +61,26 @@ const formatFilename = (format: string, weekNumber?: string) => {
   return `analytics-dashboard${weekStr}-${dateStr}.${format}`;
 };
 
+/**
+ * Safely escape CSV field to prevent formula injection attacks
+ * Prevents execution of formulas starting with =, +, -, @, or tab
+ */
+const escapeCSVField = (value: string | number): string => {
+  const stringValue = String(value);
+
+  // If the value starts with a formula character, prefix with single quote
+  if (/^[=+\-@\t]/.test(stringValue)) {
+    return `'${stringValue}`;
+  }
+
+  // Escape quotes and wrap in quotes if contains comma, newline, or quote
+  if (/[,\n"]/.test(stringValue)) {
+    return `"${stringValue.replace(/"/g, '""')}"`;
+  }
+
+  return stringValue;
+};
+
 export const analyticsExportService = {
   /**
    * Export analytics data as CSV
@@ -81,18 +101,18 @@ export const analyticsExportService = {
       if (data.metrics) {
         rows.push('METRICS');
         rows.push('Metric,Value');
-        rows.push(`Open Rate,${data.metrics.openRate.toFixed(2)}%`);
-        rows.push(`Click Rate,${data.metrics.clickRate.toFixed(2)}%`);
-        rows.push(`Total Views,${data.metrics.totalViews}`);
-        rows.push(`Avg Time Spent,${data.metrics.avgTimeSpent || 0}s`);
+        rows.push(`Open Rate,${escapeCSVField(data.metrics.openRate.toFixed(2))}%`);
+        rows.push(`Click Rate,${escapeCSVField(data.metrics.clickRate.toFixed(2))}%`);
+        rows.push(`Total Views,${escapeCSVField(data.metrics.totalViews)}`);
+        rows.push(`Avg Time Spent,${escapeCSVField(data.metrics.avgTimeSpent || 0)}s`);
         if (data.metrics.sentCount !== undefined) {
-          rows.push(`Sent Count,${data.metrics.sentCount}`);
+          rows.push(`Sent Count,${escapeCSVField(data.metrics.sentCount)}`);
         }
         if (data.metrics.openCount !== undefined) {
-          rows.push(`Open Count,${data.metrics.openCount}`);
+          rows.push(`Open Count,${escapeCSVField(data.metrics.openCount)}`);
         }
         if (data.metrics.clickCount !== undefined) {
-          rows.push(`Click Count,${data.metrics.clickCount}`);
+          rows.push(`Click Count,${escapeCSVField(data.metrics.clickCount)}`);
         }
         rows.push('');
       }
@@ -102,9 +122,8 @@ export const analyticsExportService = {
         rows.push('ARTICLES');
         rows.push('Title,Clicks,Click Rate,Avg Time Spent (s)');
         data.articles.forEach(article => {
-          const escapedTitle = `"${article.title.replace(/"/g, '""')}"`;
           rows.push(
-            `${escapedTitle},${article.clicks},${article.clickRate.toFixed(2)}%,${article.avgTimeSpent || 0}`
+            `${escapeCSVField(article.title)},${escapeCSVField(article.clicks)},${escapeCSVField(article.clickRate.toFixed(2))}%,${escapeCSVField(article.avgTimeSpent || 0)}`
           );
         });
         rows.push('');
@@ -116,7 +135,7 @@ export const analyticsExportService = {
         rows.push('Name,Sent,Opens,Clicks,Open Rate,Click Rate,Avg Stay Time (s)');
         data.classes.forEach(cls => {
           rows.push(
-            `${cls.name},${cls.sent},${cls.opens},${cls.clicks},${cls.openRate.toFixed(2)}%,${cls.clickRate.toFixed(2)}%,${cls.avgStayTime || 0}`
+            `${escapeCSVField(cls.name)},${escapeCSVField(cls.sent)},${escapeCSVField(cls.opens)},${escapeCSVField(cls.clicks)},${escapeCSVField(cls.openRate.toFixed(2))}%,${escapeCSVField(cls.clickRate.toFixed(2))}%,${escapeCSVField(cls.avgStayTime || 0)}`
           );
         });
         rows.push('');
@@ -127,7 +146,7 @@ export const analyticsExportService = {
         rows.push('TRENDS (Last 12 Weeks)');
         rows.push('Week,Open Rate,Click Rate');
         data.trends.forEach(trend => {
-          rows.push(`${trend.week},${trend.openRate.toFixed(2)}%,${trend.clickRate.toFixed(2)}%`);
+          rows.push(`${escapeCSVField(trend.week)},${escapeCSVField(trend.openRate.toFixed(2))}%,${escapeCSVField(trend.clickRate.toFixed(2))}%`);
         });
       }
 

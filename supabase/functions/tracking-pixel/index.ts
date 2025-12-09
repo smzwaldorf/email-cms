@@ -8,6 +8,24 @@ const TRANSPARENT_GIF = new Uint8Array([
   0x01, 0x00, 0x3b
 ]);
 
+// Validate JWT payload structure
+const isValidPayload = (payload: any): boolean => {
+  if (typeof payload !== 'object' || !payload) return false;
+  if (typeof payload.user_id !== 'string' || !payload.user_id) return false;
+  if (typeof payload.newsletter_id !== 'string' || !payload.newsletter_id) return false;
+  return true;
+};
+
+// Deduplication window configuration
+const DEDUP_WINDOW_MS = 10000; // 10 seconds
+const MIN_DEDUP_WINDOW_MS = 1000; // Prevent DOS with very small windows
+const MAX_DEDUP_WINDOW_MS = 300000; // 5 minutes maximum
+
+// Validate deduplication window
+const isValidDeduplicationWindow = (windowMs: number): boolean => {
+  return windowMs >= MIN_DEDUP_WINDOW_MS && windowMs <= MAX_DEDUP_WINDOW_MS;
+};
+
 serve(async (req) => {
   try {
     const url = new URL(req.url);
@@ -40,41 +58,40 @@ serve(async (req) => {
     );
 
     const payload = await verify(token, key);
-    
-    // Check if token is revoked
-    // Note: Ideally we check `tracking_tokens` table here, but for MVP pixel speed 
-    // we might skip DB check or implement a cache. 
-    // For this implementation, we'll assume valid signature is enough for "open" tracking
-    // to avoid potential DB latency on every pixel load, 
-    // OR we do a swift insert which doubles as validation check if we rely on RLS/Constraints?
-    // Actually, we should log the event.
-    
-    if (payload) {
-      const { user_id, newsletter_id } = payload as any;
 
-      // Deduplication: Check for recent events (last 10 seconds)
-      const { count } = await supabase
-        .from("analytics_events")
-        .select("*", { count: 'exact', head: true })
-        .eq("event_type", "email_open")
-        .eq("user_id", user_id)
-        .eq("newsletter_id", newsletter_id)
-        .gt("created_at", new Date(Date.now() - 10000).toISOString());
+    // Validate payload structure at runtime
+    if (!isValidPayload(payload)) {
+      console.error("Invalid token payload structure");
+      return new Response(TRANSPARENT_GIF, {
+        headers: { "Content-Type": "image/gif" },
+      });
+    }
 
-      if (count && count > 0) {
-        console.log(`Duplicate email_open skipped for user ${user_id}`);
-      } else {
-        // Log event
-        await supabase.from("analytics_events").insert({
-          event_type: "email_open",
-          user_id,
-          newsletter_id,
-          metadata: {
-             user_agent: req.headers.get("user-agent"),
-             ip: req.headers.get("x-forwarded-for"),
-          }
-        });
-      }
+    const { user_id, newsletter_id } = payload as { user_id: string; newsletter_id: string };
+
+    // Deduplication: Check for recent events (last 10 seconds)
+    const { count } = await supabase
+      .from("analytics_events")
+      .select("*", { count: 'exact', head: true })
+      .eq("event_type", "email_open")
+      .eq("user_id", user_id)
+      .eq("newsletter_id", newsletter_id)
+      .gt("created_at", new Date(Date.now() - 10000).toISOString());
+
+    if (count && count > 0) {
+      // Log deduplication (without PII)
+      console.log("Duplicate email_open event skipped");
+    } else {
+      // Log event
+      await supabase.from("analytics_events").insert({
+        event_type: "email_open",
+        user_id,
+        newsletter_id,
+        metadata: {
+          user_agent: req.headers.get("user-agent"),
+          ip: req.headers.get("x-forwarded-for"),
+        }
+      });
     }
 
     return new Response(TRANSPARENT_GIF, {

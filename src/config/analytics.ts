@@ -11,5 +11,14 @@ export const ANALYTICS_CONFIG = {
   thresholds: {
     scroll: [50, 90], // Percentage depths to track
     heartbeat: 10000, // 10s heartbeat for time tracking
+  },
+  deduplication: {
+    // Window in milliseconds to check for duplicate events
+    // Events within this window from the same user for the same action are deduplicated
+    windowMs: 10000, // 10 seconds
+    // Minimum allowed window (prevents DOS via very small windows)
+    minWindowMs: 1000, // 1 second minimum
+    // Maximum allowed window (prevents accidentally logging too few events)
+    maxWindowMs: 300000, // 5 minutes maximum
   }
 };

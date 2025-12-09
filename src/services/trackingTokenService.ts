@@ -56,6 +56,46 @@ export const trackingTokenService = {
   },
 
   /**
+   * Validates JWT payload structure at runtime
+   */
+  isValidJWTPayload(payload: any): payload is JWTPayload {
+    // Required fields for JWT
+    if (typeof payload !== 'object' || payload === null) {
+      return false;
+    }
+
+    // Check required fields
+    if (typeof payload.sub !== 'string' || !payload.sub) {
+      return false;
+    }
+
+    if (typeof payload.nwl !== 'string' || !payload.nwl) {
+      return false;
+    }
+
+    // cls should be an array if present
+    if (payload.cls && !Array.isArray(payload.cls)) {
+      return false;
+    }
+
+    // iat and exp should be numbers
+    if (typeof payload.iat !== 'number' || payload.iat <= 0) {
+      return false;
+    }
+
+    if (typeof payload.exp !== 'number' || payload.exp <= 0) {
+      return false;
+    }
+
+    // jti should be a string
+    if (typeof payload.jti !== 'string' || !payload.jti) {
+      return false;
+    }
+
+    return true;
+  },
+
+  /**
    * Verifies the token and checks if it has been revoked.
    */
   async verifyToken(token: string): Promise<{ valid: boolean; payload?: JWTPayload; error?: string }> {
@@ -84,22 +124,29 @@ export const trackingTokenService = {
         throw new Error('Invalid signature');
       }
 
-      const payload = JSON.parse(base64UrlDecode(encodedPayload)) as JWTPayload;
-      
+      const payload = JSON.parse(base64UrlDecode(encodedPayload));
+
+      // Validate payload structure at runtime
+      if (!this.isValidJWTPayload(payload)) {
+        throw new Error('Invalid token payload structure');
+      }
+
+      const validatedPayload = payload as JWTPayload;
+
       // Check expiry
-      if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
+      if (validatedPayload.exp && validatedPayload.exp < Math.floor(Date.now() / 1000)) {
         throw new Error('Token expired');
       }
 
       // Check revocation status in DB
       const tokenHash = await this.getTokenHash(token);
       const isRevoked = await this.checkTokenRevoked(tokenHash);
-      
+
       if (isRevoked) {
         return { valid: false, error: 'Token revoked' };
       }
 
-      return { valid: true, payload };
+      return { valid: true, payload: validatedPayload };
     } catch (e: any) {
       return { valid: false, error: e.message || 'Invalid token' };
     }
@@ -202,6 +249,12 @@ export const trackingTokenService = {
     if (!secret) {
       throw new Error('VITE_JWT_SECRET is not configured');
     }
+
+    // Validate JWT secret strength (minimum 32 characters)
+    if (secret.length < 32) {
+      console.warn('JWT_SECRET is too weak. Minimum 32 characters recommended for production.');
+    }
+
     const encoder = new TextEncoder();
     const keyData = encoder.encode(secret);
     return window.crypto.subtle.importKey(
