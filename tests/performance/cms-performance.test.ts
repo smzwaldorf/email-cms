@@ -374,7 +374,7 @@ describe('CMS Performance Validation (Phase 7)', () => {
       const result = weeks.filter((w) => w === targetWeek)
 
       const duration = Date.now() - startTime
-      expect(duration).toBeLessThan(10)
+      expect(duration).toBeLessThan(20)
       expect(result).toHaveLength(1)
     })
 

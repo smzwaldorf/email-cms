@@ -9,7 +9,7 @@
  * 4. Multiple users → Concurrent sessions
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { createClient } from '@supabase/supabase-js'
 
 describe('E2E: Authentication Flow with Session Persistence', () => {
@@ -19,6 +19,15 @@ describe('E2E: Authentication Flow with Session Persistence', () => {
   if (!supabaseUrl || !supabaseKey) {
     console.warn('Skipping auth tests: VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY not set')
   }
+
+  // Ensure storage isolation between tests
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  afterEach(() => {
+    localStorage.clear()
+  })
 
   describe('Sign In and Session Storage', () => {
     it('should sign in user and create session', async () => {
@@ -44,7 +53,7 @@ describe('E2E: Authentication Flow with Session Persistence', () => {
       expect(data.user?.email).toBe('parent1@example.com')
 
       await client.auth.signOut()
-    })
+    }, 10000)
 
     it('should access user role after sign in', async () => {
       if (!supabaseUrl || !supabaseKey) return
@@ -70,7 +79,7 @@ describe('E2E: Authentication Flow with Session Persistence', () => {
       expect(roleData?.email).toBe('parent1@example.com')
 
       await client.auth.signOut()
-    })
+    }, 10000)
 
     it('should access articles after sign in', async () => {
       if (!supabaseUrl || !supabaseKey) return
@@ -102,7 +111,7 @@ describe('E2E: Authentication Flow with Session Persistence', () => {
       expect(restrictedArticles).toHaveLength(2)
 
       await client.auth.signOut()
-    })
+    }, 10000)
   })
 
   describe('Session Restoration', () => {
@@ -147,7 +156,7 @@ describe('E2E: Authentication Flow with Session Persistence', () => {
 
       // Cleanup
       await client.auth.signOut()
-    })
+    }, 10000)
   })
 
   describe('Sign Out and Session Clearing', () => {

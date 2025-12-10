@@ -28,8 +28,6 @@ async function seedTestUser(email: string, role: string) {
     });
 
     if (authError || !authData.user) {
-        // If user already exists, try to get it (or delete and recreate?)
-        // For simplicity, let's assume unique email per test run or handle collision
         throw new Error(`Failed to create user ${email}: ${authError?.message}`);
     }
 
@@ -47,39 +45,45 @@ async function seedTestUser(email: string, role: string) {
     return { user: authData.user };
 }
 
-async function cleanupTestUser(email: string) {
-    // Find user by email to get ID (not directly supported by admin api delete by email)
-    // Actually admin.deleteUser requires ID.
-    // For now, we might leave them or implemented lookup. 
-    // Since we generate unique emails, maybe strictly necessary.
-    // But good practice:
-    // This part is skipped for brevity in this specific fix verification, 
-    // relying on unique emails.
-}
-
 describe('Analytics - Article Reader Class Info', () => {
     // Constraint requires YYYY-WXX (2 digits). We only have 100 slots.
     // To identify this test run, we'll try to pick a random one but also clean it up.
     const randomSuffix = Math.floor(Math.random() * 90) + 10;
     const weekNum = `2099-W${randomSuffix}`;
     const testId = Date.now().toString(); // Still keep this for other unique names
-    const mockEmail = `parent-${testId}@test.com`;
-    const mockAdminEmail = `admin-${testId}@test.com`;
+    // Use consistent pattern for easier cleanup
+    const mockEmail = `test-analytics-parent-${testId}@test.com`;
+    const mockAdminEmail = `test-analytics-admin-${testId}@test.com`;
     const mockClassName = `C-${randomSuffix}-${Math.floor(Math.random()*1000)}`; // Max: C-99-999 = 8 chars
     const mockStudentName = `Student-${testId}`;
     
+    // Tracking for cleanup
+    let testEmails: string[] = [];
+    let testUserIds: string[] = [];
+
     // State variables
     let parentUserId: string;
+    let adminUserId: string;
     let familyId: string;
+    let studentId: string;
     let articleId: string;
 
     beforeEach(async () => {
+        // Reset tracking
+        testEmails = [];
+        testUserIds = [];
+
         // 1. Create Parent User
         const { user: parent } = await seedTestUser(mockEmail, 'parent');
         parentUserId = parent.id;
+        testEmails.push(mockEmail);
+        testUserIds.push(parentUserId);
 
         // 2. Create Admin User
-        await seedTestUser(mockAdminEmail, 'admin');
+        const { user: admin } = await seedTestUser(mockAdminEmail, 'admin');
+        adminUserId = admin.id;
+        testEmails.push(mockAdminEmail);
+        testUserIds.push(adminUserId);
 
         // 3. Create Class
         await adminSupabase.from('classes').insert({
@@ -107,8 +111,9 @@ describe('Analytics - Article Reader Class Info', () => {
         const { data: student } = await adminSupabase.from('students').insert({
             name: mockStudentName
         }).select().single();
-
+        
         if (!student) throw new Error('Student creation failed');
+        studentId = student.id;
 
         // 7. Enroll Student in Family
         await adminSupabase.from('family_enrollment').insert({
@@ -172,40 +177,139 @@ describe('Analytics - Article Reader Class Info', () => {
     });
 
     afterEach(async () => {
-        // Cleanup
-        if (articleId) await adminSupabase.from('articles').delete().eq('id', articleId);
-        
-        // Use cleanupTestUser here to fix lint (even though it's empty, it counts as usage)
-        if (mockEmail) await cleanupTestUser(mockEmail);
+        try {
+            // Clean up in dependency order (reverse of creation)
 
-        // Clean other entities
-        await adminSupabase.from('newsletter_weeks').delete().eq('week_number', weekNum);
-        await adminSupabase.from('classes').delete().eq('id', mockClassName);
-        if (familyId) await adminSupabase.from('families').delete().eq('id', familyId);
+            // 1. Delete analytics events (references article)
+            if (articleId) {
+                const { error } = await adminSupabase.from('analytics_events').delete().eq('article_id', articleId);
+                if (error) console.error('Failed to delete analytics_events:', error);
+            }
+
+            // 2. Delete analytics snapshots
+            const { error: snapError } = await adminSupabase.from('analytics_snapshots').delete().eq('newsletter_id', weekNum);
+            if (snapError) console.error('Failed to delete analytics_snapshots:', snapError);
+
+            // 3. Delete articles (and normally audit logs cascade, but we want to ensure we don't block)
+            if (articleId) {
+                // Now that we fixed the DB schema (removed FK on audit log), 
+                // deleting the article should succeed and trigger the audit log insertion without error.
+                const { error: delError } = await adminSupabase
+                    .from('articles')
+                    .delete()
+                    .eq('id', articleId);
+                
+                if (delError) {
+                    console.error('Failed to delete article:', delError);
+                }
+
+                // Double check audit logs are gone or kept (depending on requirements, but often for tests we want clean slate)
+                // Since we removed FK, cascade might not delete them anymore? 
+                // Wait, if we removed the FK, we lost the CASCADE DELETE too! 
+                // So we MUST manually delete audit logs now if we want them gone.
+                const { error: auditDelError } = await adminSupabase
+                    .from('article_audit_log')
+                    .delete()
+                    .eq('article_id', articleId);
+                
+                if (auditDelError) {
+                    console.error('Failed to delete article_audit_log:', auditDelError);
+                }
+            }
+
+            // 4. Delete student class enrollments
+            if (studentId) {
+                const { error } = await adminSupabase.from('student_class_enrollment').delete().eq('student_id', studentId);
+                if (error) console.error('Failed to delete student_class_enrollment:', error);
+            }
+
+            // 5. Delete family enrollments
+            if (familyId) {
+                const { error } = await adminSupabase.from('family_enrollment').delete().eq('family_id', familyId);
+                if (error) console.error('Failed to delete family_enrollment:', error);
+            }
+
+            // 6. Delete students
+            if (studentId) {
+                const { error } = await adminSupabase.from('students').delete().eq('id', studentId);
+                if (error) console.error('Failed to delete students:', error);
+            }
+
+            // 7. Delete families
+            if (familyId) {
+                const { error } = await adminSupabase.from('families').delete().eq('id', familyId);
+                if (error) console.error('Failed to delete families:', error);
+            }
+
+            // 8. Delete newsletter weeks
+            await adminSupabase.from('newsletter_weeks').delete().eq('week_number', weekNum);
+
+            // 9. Delete classes
+            const { error: classError } = await adminSupabase.from('classes').delete().eq('id', mockClassName);
+            if (classError) console.error('Failed to delete classes:', classError);
+
+            // 10. Robust User Cleanup
+            // First cleanup known auth events
+            if (testUserIds.length > 0) {
+                for (const userId of testUserIds) {
+                    // Delete auth_events for known user IDs
+                    await adminSupabase
+                        .from('auth_events')
+                        .delete()
+                        .eq('user_id', userId);
+                    
+                    // Also delete user_roles using ID
+                    await adminSupabase
+                        .from('user_roles')
+                        .delete()
+                        .eq('id', userId);
+                }
+            }
+            
+            if (testEmails.length > 0) {
+                 for (const email of testEmails) {
+                    // Delete auth_events using email metadata fallback
+                    await adminSupabase
+                        .from('auth_events')
+                        .delete()
+                        .ilike('metadata->email', email);
+                 }
+            }
+            
+            // Safety sweep: find any leftover users matching our pattern
+            const { data: { users }, error: listError } = await adminSupabase.auth.admin.listUsers({ perPage: 1000 });
+            
+            if (!listError && users) {
+                const usersToDelete = users.filter(u => u.email?.startsWith('test-analytics-'));
+                
+                if (usersToDelete.length > 0) {
+                    console.log(`Cleaning up ${usersToDelete.length} 'test-analytics-' users...`);
+                    for (const user of usersToDelete) {
+                        try {
+                            // Ensure roles are gone
+                            await adminSupabase.from('user_roles').delete().eq('id', user.id);
+                            // Ensure auth events are gone
+                            await adminSupabase.from('auth_events').delete().eq('user_id', user.id);
+                            // Delete user
+                            await adminSupabase.auth.admin.deleteUser(user.id);
+                        } catch (delErr) {
+                            console.error(`Failed to delete user ${user.id}:`, delErr);
+                        }
+                    }
+                }
+            }
+
+        } catch (err) {
+            console.error('Error during afterEach cleanup:', err);
+        }
     });
 
     it('should include class name and student name in reader list', async () => {
-        // We simulate running this as the Admin user.
-        // However, analyticsAggregator uses `getSupabaseClient()` which likely uses `createClient`
-        // with implicit env vars.
-        // If the test runner environment doesn't have a signed-in user, `getArticleReaders` might fail RLS if it relies on `auth.uid()`.
-        // BUT `getArticleReaders` logic:
-        // 1. Fetches `analytics_events` (admin or service role?)
-        // The implementation uses `analyticsAggregator.ts` which uses `getSupabaseClient()`.
-        
-        // IMPORTANT: `analyticsAggregator` functions are likely designed for Admin usage.
-        // If `getSupabaseClient()` returns an Anon client, and we haven't signed in, RLS will block `analytics_events` read.
-        // We need to Authenticate the `getSupabaseClient` instance OR mock it to return our admin client.
-        // Since we are integration testing the LOGIC + DB, but not necessarily the Auth Context Provider...
-        
-        // Actually, let's look at `analyticsAggregator.ts`:
-        // `const supabase = getSupabaseClient();`
-        
-        // We can sign in the global client if `getSupabaseClient` shares state (singleton).
-        // `src/lib/supabase` is typically a singleton.
-        
+        // Authenticate the shared client for analyticsAggregator
         const { getSupabaseClient } = await import('@/lib/supabase');
         const client = getSupabaseClient();
+        
+        await client.auth.signOut(); // Ensure clean state
         
         const { error } = await client.auth.signInWithPassword({
             email: mockAdminEmail,
@@ -233,4 +337,3 @@ describe('Analytics - Article Reader Class Info', () => {
         expect(parentReader?.studentNames).toContain(mockStudentName);
     });
 });
-
