@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import { getSupabaseClient, getSupabaseServiceClient } from '@/lib/supabase'
-import { UserAuditLog } from './UserAuditLog'
+import { getSupabaseClient } from '@/lib/supabase'
+import { AuditLogViewer as UserAuditLog } from './UserAuditLog'
 import { UserTable } from './admin/UserTable'
 import { UserForm, type UserFormData } from './admin/UserForm'
 import { adminSessionService } from '@/services/adminSessionService'
@@ -156,7 +156,7 @@ export const AdminDashboard: React.FC = () => {
         ))
       } else {
         // Create new user
-        const supabaseAdmin = getSupabaseServiceClient()
+        const supabaseAdmin = getSupabaseClient()
 
         // Create auth user
         const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({

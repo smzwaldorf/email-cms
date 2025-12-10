@@ -10,7 +10,7 @@
  * - Relationship management for parent-student connections
  */
 
-import { getSupabaseServiceClient } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase'
 import type {
   AdminNewsletter,
   AdminArticle,
@@ -51,7 +51,7 @@ class AdminService {
     filters?: NewsletterFilterOptions
   ): Promise<AdminNewsletter[]> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       let query = supabase
         .from('newsletter_weeks')
@@ -126,7 +126,7 @@ class AdminService {
    */
   async fetchNewsletter(id: string): Promise<AdminNewsletter> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { data, error } = await supabase
         .from('newsletter_weeks')
@@ -168,7 +168,7 @@ class AdminService {
    */
   async fetchNewsletterByWeek(weekNumber: string): Promise<AdminNewsletter> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { data, error } = await supabase
         .from('newsletter_weeks')
@@ -213,7 +213,7 @@ class AdminService {
     releaseDate: string
   ): Promise<AdminNewsletter> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { data, error } = await supabase
         .from('newsletter_weeks')
@@ -269,7 +269,7 @@ class AdminService {
    */
   async publishNewsletter(id: string): Promise<AdminNewsletter> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       // Check that newsletter has at least one article
       const { data: articles, error: articleError } = await supabase
@@ -338,7 +338,7 @@ class AdminService {
    */
   async archiveNewsletter(id: string): Promise<AdminNewsletter> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { data, error } = await supabase
         .from('newsletter_weeks')
@@ -381,7 +381,7 @@ class AdminService {
    */
   async deleteNewsletter(id: string): Promise<void> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { error } = await supabase
         .from('newsletter_weeks')
@@ -416,7 +416,7 @@ class AdminService {
     weekNumber: string
   ): Promise<AdminArticle[]> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { data, error } = await supabase
         .from('articles')
@@ -468,7 +468,7 @@ class AdminService {
     userId: string
   ): Promise<AdminArticle> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       // Check for concurrent edits using LWW
       const { data: existing, error: fetchError } = await supabase
@@ -559,7 +559,7 @@ class AdminService {
    */
   async deleteArticle(id: string): Promise<void> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { error } = await supabase
         .from('articles')
@@ -592,7 +592,7 @@ class AdminService {
    */
   async fetchClasses(): Promise<Class[]> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { data, error } = await supabase
         .from('classes')
@@ -677,7 +677,7 @@ class AdminService {
     teacherIds?: string[]
   ): Promise<Class> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       // ID strategy: Use name as ID if short enough, otherwise generate short ID
       // For now, let's use a simplified approach: use name as ID if < 10 chars
@@ -783,7 +783,7 @@ class AdminService {
     }
   ): Promise<Class> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const updatePayload: any = {}
       if (updates.name !== undefined) updatePayload.class_name = updates.name
@@ -940,7 +940,7 @@ class AdminService {
    */
   async deleteClass(id: string): Promise<void> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { error } = await supabase
         .from('classes')
@@ -969,7 +969,7 @@ class AdminService {
    */
   async addStudentToClass(classId: string, studentId: string): Promise<void> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       // First, fetch the class to get existing students
       const { data: classData, error: fetchError } = await supabase
@@ -1019,7 +1019,7 @@ class AdminService {
    */
   async removeStudentFromClass(classId: string, studentId: string): Promise<void> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       // First, fetch the class to get existing students
       const { data: classData, error: fetchError } = await supabase
@@ -1072,7 +1072,7 @@ class AdminService {
    */
   async fetchFamilies(): Promise<Family[]> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { data, error } = await supabase
         .from('families')
@@ -1114,7 +1114,7 @@ class AdminService {
     _relatedTopics?: string[]
   ): Promise<Family> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       // Use name as family_code since family_code is the only text field that exists
       const { data, error } = await supabase
@@ -1163,7 +1163,7 @@ class AdminService {
     }
   ): Promise<Family> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const updatePayload: any = {}
       // Map name to family_code since family_code is the only text field that exists
@@ -1208,7 +1208,7 @@ class AdminService {
    */
   async deleteFamily(id: string): Promise<void> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { error } = await supabase
         .from('families')
@@ -1237,7 +1237,7 @@ class AdminService {
    */
   async getFamilyMembers(familyId: string): Promise<Array<{ id: string; name: string; email: string; type: 'parent' | 'student'; relationship?: 'father' | 'mother' | 'guardian'; classes?: Array<{ id: string; name: string }> }>> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       // Fetch all family enrollment records for this family
       const { data: enrollments, error: enrollError } = await supabase
@@ -1392,7 +1392,7 @@ class AdminService {
     relationship: 'father' | 'mother' | 'guardian'
   ): Promise<void> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { error } = await supabase
         .from('family_enrollment')
@@ -1424,7 +1424,7 @@ class AdminService {
    */
   async removeParentFromFamily(familyId: string, parentId: string): Promise<void> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { error } = await supabase
         .from('family_enrollment')
@@ -1458,7 +1458,7 @@ class AdminService {
     relationship: 'father' | 'mother' | 'guardian'
   ): Promise<void> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { error } = await supabase
         .from('family_enrollment')
@@ -1488,7 +1488,7 @@ class AdminService {
    */
   async addStudentToFamily(familyId: string, studentId: string): Promise<void> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { error } = await supabase
         .from('family_enrollment')
@@ -1519,7 +1519,7 @@ class AdminService {
    */
   async removeStudentFromFamily(familyId: string, studentId: string): Promise<void> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { error } = await supabase
         .from('family_enrollment')
@@ -1549,7 +1549,7 @@ class AdminService {
    */
   async getAvailableParents(familyId: string): Promise<AdminUser[]> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       // Get all parents with role 'parent' or 'teacher'
       const { data: allParents, error: fetchError } = await supabase
@@ -1614,7 +1614,7 @@ class AdminService {
    */
   async getAvailableStudents(familyId: string): Promise<AdminUser[]> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       // Get all students
       const { data: allStudents, error: fetchError } = await supabase
@@ -1682,7 +1682,7 @@ class AdminService {
    */
   async fetchUsers(role?: string): Promise<AdminUser[]> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       let query = supabase
         .from('user_roles')
@@ -1733,7 +1733,7 @@ class AdminService {
     status: string = 'pending_approval'
   ): Promise<AdminUser> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { data, error } = await supabase
         .from('user_roles')
@@ -1780,7 +1780,7 @@ class AdminService {
     updates: Partial<AdminUser>
   ): Promise<AdminUser> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       // Only map fields that exist in user_roles table
       const updatePayload: any = {}
@@ -1828,7 +1828,7 @@ class AdminService {
    */
   async deleteUser(id: string): Promise<void> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { error } = await supabase
         .from('user_roles')
@@ -1865,7 +1865,7 @@ class AdminService {
     relationship?: string
   ): Promise<ParentStudentRelationship> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { data, error } = await supabase
         .from('parent_student_relationships')
@@ -1911,7 +1911,7 @@ class AdminService {
     studentId: string
   ): Promise<void> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { error } = await supabase
         .from('parent_student_relationships')
@@ -1941,7 +1941,7 @@ class AdminService {
    */
   async getParentStudents(parentId: string): Promise<AdminUser[]> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { data: relationships, error: relError } = await supabase
         .from('parent_student_relationships')
@@ -2000,7 +2000,7 @@ class AdminService {
    */
   async getParentStudentRelationships(): Promise<Array<{ parentId: string; studentId: string }>> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
       const startTime = Date.now()
 
       const { data: relationships, error } = await supabase
