@@ -46,14 +46,19 @@ CREATE POLICY analytics_events_user_read
   ON public.analytics_events FOR SELECT
   USING (user_id = auth.uid());
 
--- Service/Server: Insert events (authenticated or anon with valid token logic handled by API)
--- For now, allowing authenticated users to insert their own events directly (client-side tracking)
-CREATE POLICY analytics_events_user_insert
+-- Service/Server: Insert events - authenticated users can only insert their own events
+-- Client-side tracking is restricted to prevent unattributed event insertion
+CREATE POLICY analytics_events_authenticated_insert
   ON public.analytics_events FOR INSERT
   WITH CHECK (
-    user_id = auth.uid() OR user_id IS NULL 
-    -- If using a service role for insertion, it bypasses RLS. 
-    -- If client-side insertion is needed, we ensure user_id matches auth.uid() for logged-in users.
+    user_id = auth.uid() AND user_id IS NOT NULL
+  );
+
+-- Anonymous users: insert events with user_id = NULL (for unauthenticated tracking via API)
+CREATE POLICY analytics_events_anonymous_insert
+  ON public.analytics_events FOR INSERT
+  WITH CHECK (
+    user_id IS NULL AND auth.uid() IS NULL
   );
 
 -- ============================================================================

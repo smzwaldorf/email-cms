@@ -23,7 +23,7 @@ const mockSupabase = {
 }
 
 vi.mock('@/lib/supabase', () => ({
-  getSupabaseServiceClient: () => mockSupabase,
+  getSupabaseClient: () => mockSupabase,
 }))
 
 describe('AdminService', () => {
