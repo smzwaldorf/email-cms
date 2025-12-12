@@ -53,7 +53,11 @@ class SupabaseAuthService implements AuthServiceInterface {
       }
 
       // Listen for auth state changes
-      supabase.auth.onAuthStateChange(async (_event, session) => {
+      // IMPORTANT: Use setTimeout to make async operations non-blocking.
+      // The Supabase client uses internal locking that can cause deadlocks
+      // if async Supabase operations are called directly within onAuthStateChange.
+      // See: https://github.com/nuxt-modules/supabase/issues/273
+      supabase.auth.onAuthStateChange((_event, session) => {
         if (_event === 'TOKEN_REFRESHED' && session) {
           console.log('🔄 Supabase auth token refreshed (synced to TokenManager).')
           // Sync new token to TokenManager to prevent staleness
@@ -64,12 +68,15 @@ class SupabaseAuthService implements AuthServiceInterface {
           return
         }
         
-        if (session?.user) {
-          await this.setCurrentUser(session.user.id)
-        } else {
-          this.currentUser = null
-          this.notifyListeners(null)
-        }
+        // Defer async operations to prevent blocking the auth state callback
+        setTimeout(() => {
+          if (session?.user) {
+            this.setCurrentUser(session.user.id)
+          } else {
+            this.currentUser = null
+            this.notifyListeners(null)
+          }
+        }, 0)
       })
 
       this.initialized = true

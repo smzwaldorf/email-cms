@@ -1,11 +1,11 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode } from 'react';
 
 interface AnalyticsState {
     selectedWeek: string;
     selectedClass: string;
     timeRange: '4' | '12';
     classViewMode: 'table' | 'chart';
-    hasBeenHidden: boolean;
+    liveUpdate: boolean;
 }
 
 interface AnalyticsContextType extends AnalyticsState {
@@ -13,6 +13,7 @@ interface AnalyticsContextType extends AnalyticsState {
     setSelectedClass: (cls: string) => void;
     setTimeRange: (range: '4' | '12') => void;
     setClassViewMode: (mode: 'table' | 'chart') => void;
+    setLiveUpdate: (enabled: boolean) => void;
 }
 
 const AnalyticsContext = createContext<AnalyticsContextType | undefined>(undefined);
@@ -22,17 +23,7 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
     const [selectedClass, setSelectedClass] = useState<string>('');
     const [timeRange, setTimeRange] = useState<'4' | '12'>('12');
     const [classViewMode, setClassViewMode] = useState<'table' | 'chart'>('table');
-    const [hasBeenHidden, setHasBeenHidden] = useState(false);
-
-    React.useEffect(() => {
-        const handleVisibilityChange = () => {
-            if (document.hidden) {
-                setHasBeenHidden(true);
-            }
-        };
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-    }, []);
+    const [liveUpdate, setLiveUpdate] = useState<boolean>(false);
 
     return (
         <AnalyticsContext.Provider value={{
@@ -44,7 +35,8 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
             setTimeRange,
             classViewMode,
             setClassViewMode,
-            hasBeenHidden
+            liveUpdate,
+            setLiveUpdate
         }}>
             {children}
         </AnalyticsContext.Provider>

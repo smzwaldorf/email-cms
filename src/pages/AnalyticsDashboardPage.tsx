@@ -1,11 +1,11 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useRef } from 'react';
 import { useNewsletterMetrics, useGenerateSnapshots, useTrendStats, useArticleStats, useAvailableWeeks, useClassEngagement, useTopicHotness, useAllClasses } from '@/hooks/useAnalyticsQuery';
 import { KPICard } from '@/components/analytics/KPICard';
 import { TrendChart } from '@/components/analytics/TrendChart';
 import { ArticleAnalyticsTable } from '@/components/analytics/ArticleAnalyticsTable';
 import { ClassComparisonTable } from '@/components/analytics/ClassComparisonTable';
 import { ClassComparisonChart } from '@/components/analytics/ClassComparisonChart';
-import { RefreshCw, Download, Calendar, Filter } from 'lucide-react';
+import { RefreshCw, Download, Calendar, Filter, Radio } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 
 import { useParams, useNavigate } from 'react-router-dom';
@@ -21,7 +21,7 @@ export const AnalyticsDashboardPage: React.FC = () => {
         selectedClass, setSelectedClass,
         timeRange, setTimeRange,
         classViewMode, setClassViewMode,
-        hasBeenHidden
+        liveUpdate, setLiveUpdate
     } = useAnalytics();
 
     const { weeks, loading: weeksLoading } = useAvailableWeeks();
@@ -53,16 +53,27 @@ export const AnalyticsDashboardPage: React.FC = () => {
     const isRefreshing = metricsRefreshing || articlesRefreshing || trendsRefreshing || classesRefreshing || hotnessRefreshing;
 
     const handleRefresh = () => {
-        if (hasBeenHidden) {
-            window.location.reload();
-            return;
-        }
         refetchMetrics();
         refetchArticles();
         refetchTrends();
         refetchClasses();
         refetchHotness();
     };
+
+    // Live update: auto-refresh every 5 seconds
+    const handleRefreshRef = useRef(handleRefresh);
+    handleRefreshRef.current = handleRefresh;
+    
+    useEffect(() => {
+        if (!liveUpdate) return;
+        
+        const intervalId = setInterval(() => {
+            console.log('📡 Live update: refreshing analytics data...');
+            handleRefreshRef.current();
+        }, 5000);
+        
+        return () => clearInterval(intervalId);
+    }, [liveUpdate]);
     
     const handleWeekChange = (newWeek: string) => {
         setSelectedWeek(newWeek);
@@ -144,9 +155,22 @@ export const AnalyticsDashboardPage: React.FC = () => {
                             onClick={handleRefresh}
                             className="p-2 text-brand-neutral-600 hover:bg-white rounded-lg border border-transparent hover:border-brand-neutral-200 transition-all disabled:opacity-50"
                             title="Reload Data"
-                            disabled={isRefreshing && !hasBeenHidden}
+                            disabled={isRefreshing}
                         >
-                            <RefreshCw className={`w-5 h-5 ${isRefreshing && !hasBeenHidden ? 'animate-spin' : ''}`} />
+                            <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                        </button>
+
+                        <button 
+                            onClick={() => setLiveUpdate(!liveUpdate)}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-all ${
+                                liveUpdate 
+                                    ? 'bg-emerald-50 border-emerald-200 text-emerald-700' 
+                                    : 'bg-white border-brand-neutral-200 text-brand-neutral-600 hover:bg-brand-neutral-50'
+                            }`}
+                            title={liveUpdate ? 'Disable live updates' : 'Enable live updates (every 5s)'}
+                        >
+                            <Radio className={`w-4 h-4 ${liveUpdate ? 'animate-pulse' : ''}`} />
+                            <span className="hidden sm:inline">{liveUpdate ? 'Live' : 'Live'}</span>
                         </button>
 
                         <button 
