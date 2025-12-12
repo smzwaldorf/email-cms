@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import { AnalyticsDashboardPage } from '../../src/pages/AnalyticsDashboardPage'
 import { AnalyticsProvider } from '@/context/AnalyticsContext'
@@ -27,8 +27,10 @@ vi.mock('react-window', () => ({
   ),
 }));
 
+const mockRefetch = vi.fn()
+
 vi.mock('@/hooks/useAnalyticsQuery', () => ({
-  useNewsletterMetrics: () => ({ metrics: null, refetch: vi.fn(), loading: false, refreshing: false }),
+  useNewsletterMetrics: () => ({ metrics: null, refetch: mockRefetch, loading: false, refreshing: false }),
   useArticleStats: () => ({ stats: [], refetch: vi.fn(), loading: false, refreshing: false }),
   useTrendStats: () => ({ trend: [], refetch: vi.fn(), loading: false, refreshing: false }),
   useClassEngagement: () => ({ data: [], refetch: vi.fn(), loading: false, refreshing: false }),
@@ -42,19 +44,17 @@ vi.mock('@/components/admin/AdminLayout', () => ({
   AdminLayout: ({ children }: any) => <div>{children}</div>
 }))
 
-const mockReload = vi.fn()
-Object.defineProperty(window, 'location', {
-  value: { reload: mockReload },
-  writable: true
-})
-
-describe('Analytics Smart Refresh with Navigation', () => {
+describe('Analytics Dashboard with Navigation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    Object.defineProperty(document, 'hidden', { value: false, configurable: true })
+    vi.useFakeTimers()
   })
 
-  it('triggers full reload when refreshing dashboard after being hidden on article page', async () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('renders dashboard and displays correct title', () => {
     render(
       <AnalyticsProvider>
         <MemoryRouter initialEntries={['/admin/analytics']}>
@@ -66,18 +66,10 @@ describe('Analytics Smart Refresh with Navigation', () => {
       </AnalyticsProvider>
     )
 
-    // 1. Start at Dashboard
     expect(screen.getByText('Analytics Dashboard')).toBeInTheDocument();
-
-    // 2. Navigate to Article Page (Simulate)
-    // Since we don't have the link rendered in the mock dashboard easily, we can use a test utility or just simulate a link click if we had one.
-    // For this test, let's just render the Router with the flow.
-    // Actually, let's force navigation using a mocked button in dashboard or simply start at Article Page?
-    // User scenario: View Article -> Background -> Dashboard -> Refresh.
-    // Let's start the router at Article Page.
   });
 
-  it('workflow: Article -> Background -> Dashboard -> Refresh triggers reload', async () => {
+  it('navigates from article page to dashboard and refresh works', async () => {
      render(
       <AnalyticsProvider>
         <MemoryRouter initialEntries={['/admin/analytics/article/123']}>
@@ -92,32 +84,45 @@ describe('Analytics Smart Refresh with Navigation', () => {
     // 1. Verify we are on Article Page
     expect(screen.getByText('Article Page')).toBeInTheDocument();
 
-    // 2. Simulate User Switching Tabs (Backgrounding)
-    Object.defineProperty(document, 'hidden', { value: true, configurable: true })
-    const hideEvent = new Event('visibilitychange')
-    act(() => {
-        document.dispatchEvent(hideEvent)
-    });
-
-    // 3. User Comes Back (Foregrounding)
-    Object.defineProperty(document, 'hidden', { value: false, configurable: true })
-    const showEvent = new Event('visibilitychange')
-    act(() => {
-        document.dispatchEvent(showEvent)
-    });
-
-    // 4. Navigate Back to Dashboard
+    // 2. Navigate Back to Dashboard
     const backBtn = screen.getByText('Back to Dashboard');
     fireEvent.click(backBtn);
 
-    // 5. Verify Dashboard is shown
+    // 3. Verify Dashboard is shown
     expect(screen.getByText('Analytics Dashboard')).toBeInTheDocument();
 
-    // 6. Click Refresh Button
+    // 4. Click Refresh Button
     const refreshBtn = screen.getByTitle('Reload Data')
     fireEvent.click(refreshBtn)
 
-    // 7. Expect Hard Reload
-    expect(mockReload).toHaveBeenCalled()
+    // 5. Expect refetch to be called
+    expect(mockRefetch).toHaveBeenCalled()
+  })
+
+  it('live update continues working after navigation', async () => {
+    render(
+      <AnalyticsProvider>
+        <MemoryRouter initialEntries={['/admin/analytics']}>
+            <Routes>
+                <Route path="/admin/analytics" element={<AnalyticsDashboardPage />} />
+            </Routes>
+        </MemoryRouter>
+      </AnalyticsProvider>
+    )
+
+    // Enable live update
+    const liveBtn = screen.getByTitle('Enable live updates (every 5s)')
+    fireEvent.click(liveBtn)
+
+    // Clear previous calls
+    mockRefetch.mockClear()
+
+    // Advance timer by 5 seconds
+    act(() => {
+      vi.advanceTimersByTime(5000)
+    })
+
+    // Should auto-refresh
+    expect(mockRefetch).toHaveBeenCalled()
   })
 })

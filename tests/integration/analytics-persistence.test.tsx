@@ -5,6 +5,7 @@ import { AnalyticsProvider } from '@/context/AnalyticsContext';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as useAnalyticsQuery from '@/hooks/useAnalyticsQuery';
+import React from 'react';
 
 // Mock Hooks (Simplified for persistence verification)
 vi.mock('@/hooks/useAnalyticsQuery', () => ({
@@ -32,48 +33,6 @@ vi.mock('@/components/analytics/KPICard', () => ({ KPICard: () => <div>KPI</div>
 vi.mock('@/components/analytics/TrendChart', () => ({ TrendChart: () => <div>TrendChart</div> }));
 
 describe('Analytics Persistence', () => {
-    const queryClient = new QueryClient();
-
-    it('persists selected week in context after unmounting and remounting', async () => {
-        // Create a wrapper that holds the Provider
-        const Wrapper = ({ children }: { children: React.ReactNode }) => (
-            <QueryClientProvider client={queryClient}>
-                <AnalyticsProvider>
-                    <BrowserRouter>
-                        {children}
-                    </BrowserRouter>
-                </AnalyticsProvider>
-            </QueryClientProvider>
-        );
-
-        // 1. Render Dashboard
-        const { unmount, rerender } = render(
-            <Wrapper>
-                <AnalyticsDashboardPage />
-            </Wrapper>
-        );
-
-        // 2. Change Week to '2024-W52'
-        const selects = await screen.findAllByRole('combobox');
-        // Assuming second select is week select (based on order in component)
-        // Or finding by value. Initial default is '2025-W01' (first in list)
-        const weekSelect = selects[1]; 
-        fireEvent.change(weekSelect, { target: { value: '2024-W52' } });
-
-        // Verify hook called with new week
-        await waitFor(() => {
-             expect(useAnalyticsQuery.useNewsletterMetrics).toHaveBeenCalledWith('2024-W52', expect.anything());
-        });
-
-        // 3. Unmount (Simulate navigation away)
-        unmount();
-
-        // 4. Remount - The Provider is IN the Wrapper, but 'render' creates a new tree.
-        // Wait, 'render(<Wrapper>...)' creates the Provider. unmount() unmounts everything including Provider.
-        // This test setup is WRONG for persistence across unmount. Note my previous thought.
-        // To test persistence, we must keep Provider mounted and toggle the child.
-    });
-
     it('persists state when navigating away and back (simulated)', async () => {
         const queryClient = new QueryClient();
         
@@ -97,9 +56,6 @@ describe('Analytics Persistence', () => {
                 </QueryClientProvider>
             );
         };
-        
-        // Need React import
-        const React = require('react');
 
         render(<TestApp />);
 
@@ -125,6 +81,55 @@ describe('Analytics Persistence', () => {
         await waitFor(() => {
              // The most recent call should be with the persisted week
              expect(useAnalyticsQuery.useNewsletterMetrics).toHaveBeenLastCalledWith('2024-W52', expect.anything());
+        });
+    });
+
+    it('persists liveUpdate state when navigating away and back', async () => {
+        const queryClient = new QueryClient();
+        
+        // Component to toggle visibility
+        const TestApp = () => {
+            const [showDashboard, setShowDashboard] = React.useState(true);
+            return (
+                <QueryClientProvider client={queryClient}>
+                    <AnalyticsProvider>
+                        <BrowserRouter>
+                            {showDashboard ? (
+                                <AnalyticsDashboardPage />
+                            ) : (
+                                <button onClick={() => setShowDashboard(true)}>Back to Dashboard</button>
+                            )}
+                             {showDashboard && (
+                                <button onClick={() => setShowDashboard(false)}>Go Away</button>
+                            )}
+                        </BrowserRouter>
+                    </AnalyticsProvider>
+                </QueryClientProvider>
+            );
+        };
+
+        render(<TestApp />);
+
+        // 1. Enable live update
+        const liveBtn = screen.getByTitle('Enable live updates (every 5s)');
+        fireEvent.click(liveBtn);
+        
+        // Verify it's now enabled
+        expect(screen.getByTitle('Disable live updates')).toBeInTheDocument();
+
+        // 2. Click "Go Away" to unmount Dashboard (but keep Provider)
+        fireEvent.click(screen.getByText('Go Away'));
+        
+        await waitFor(() => {
+            expect(screen.queryByText('Analytics Dashboard')).not.toBeInTheDocument();
+        });
+
+        // 3. Click "Back to Dashboard" to remount
+        fireEvent.click(screen.getByText('Back to Dashboard'));
+
+        // 4. Verify liveUpdate is still enabled (button should show "Disable")
+        await waitFor(() => {
+            expect(screen.getByTitle('Disable live updates')).toBeInTheDocument();
         });
     });
 });

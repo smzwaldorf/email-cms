@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, act } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { AnalyticsDashboardPage } from '../../src/pages/AnalyticsDashboardPage'
 import { AnalyticsProvider } from '@/context/AnalyticsContext'
 import { BrowserRouter } from 'react-router-dom'
@@ -17,7 +17,8 @@ vi.mock('react-window', () => ({
 }));
 
 // Mock implementation variables
-const mockUseNewsletterMetrics = vi.fn(() => ({ metrics: null, refetch: vi.fn(), loading: false, refreshing: false }))
+const mockRefetch = vi.fn()
+const mockUseNewsletterMetrics = vi.fn(() => ({ metrics: null, refetch: mockRefetch, loading: false, refreshing: false }))
 const mockUseArticleStats = vi.fn(() => ({ stats: [], refetch: vi.fn(), loading: false, refreshing: false }))
 const mockUseTrendStats = vi.fn(() => ({ trend: [], refetch: vi.fn(), loading: false, refreshing: false }))
 const mockUseClassEngagement = vi.fn(() => ({ data: [], refetch: vi.fn(), loading: false, refreshing: false }))
@@ -40,57 +41,21 @@ vi.mock('@/components/admin/AdminLayout', () => ({
   AdminLayout: ({ children }: any) => <div>{children}</div>
 }))
 
-// Mock window.location.reload
-const mockReload = vi.fn()
-Object.defineProperty(window, 'location', {
-  value: { reload: mockReload },
-  writable: true
-})
-
-describe('Analytics Smart Refresh', () => {
+describe('Analytics Dashboard Refresh', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    // Reset document visibility to visible
-    Object.defineProperty(document, 'hidden', { value: false, configurable: true })
+    vi.useFakeTimers()
     
     // Reset default mock implementations
-    mockUseNewsletterMetrics.mockReturnValue({ metrics: null, refetch: vi.fn(), loading: false, refreshing: false })
+    mockUseNewsletterMetrics.mockReturnValue({ metrics: null, refetch: mockRefetch, loading: false, refreshing: false })
   })
 
-  it('should perform hard reload if tab was previously hidden', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('should perform soft refresh when clicking the refresh button', () => {
     render(
-      <AnalyticsProvider>
-        <BrowserRouter>
-          <AnalyticsDashboardPage />
-        </BrowserRouter>
-      </AnalyticsProvider>
-    )
-
-    // Simulate switching tabs (visibility change)
-    Object.defineProperty(document, 'hidden', { value: true, configurable: true })
-    const event = new Event('visibilitychange')
-    
-    act(() => {
-        document.dispatchEvent(event)
-    });
-
-    // Simulate coming back
-    Object.defineProperty(document, 'hidden', { value: false, configurable: true })
-    
-    act(() => {
-        document.dispatchEvent(event)
-    });
-
-    // The button has title="Reload Data"
-    const refreshBtn = screen.getByTitle('Reload Data')
-    
-    fireEvent.click(refreshBtn)
-
-    expect(mockReload).toHaveBeenCalled()
-  })
-
-  it('should perform soft refresh if tab was never hidden', () => {
-     render(
       <AnalyticsProvider>
         <BrowserRouter>
           <AnalyticsDashboardPage />
@@ -101,20 +66,20 @@ describe('Analytics Smart Refresh', () => {
     // Find refresh button
     const refreshBtn = screen.getByTitle('Reload Data')
 
-    // Click without changing visibility
+    // Click the refresh button
     fireEvent.click(refreshBtn)
 
-    // Should NOT call reload
-    expect(mockReload).not.toHaveBeenCalled()
+    // Should call refetch functions
+    expect(mockRefetch).toHaveBeenCalled()
   })
 
-  it('should allow reload even if refreshing is stuck, provided tab was hidden', () => {
-    // Mock stuck refreshing state
+  it('should disable refresh button when data is refreshing', () => {
+    // Mock refreshing state
     mockUseNewsletterMetrics.mockReturnValue({ 
-        metrics: null, 
-        refetch: vi.fn(), 
-        loading: false, 
-        refreshing: true // STUCK REFRESHING
+      metrics: null, 
+      refetch: mockRefetch, 
+      loading: false, 
+      refreshing: true
     })
 
     render(
@@ -125,30 +90,65 @@ describe('Analytics Smart Refresh', () => {
       </AnalyticsProvider>
     )
 
-    // 1. Simulate finding tab hidden (overnight)
-    Object.defineProperty(document, 'hidden', { value: true, configurable: true })
-    const event = new Event('visibilitychange')
-    act(() => {
-        document.dispatchEvent(event)
-    });
-    
-    // 2. User comes back
-    Object.defineProperty(document, 'hidden', { value: false, configurable: true })
-    act(() => {
-        document.dispatchEvent(event)
-    });
-
     const refreshBtn = screen.getByTitle('Reload Data')
+    
+    // Should be disabled when refreshing
+    expect(refreshBtn).toBeDisabled()
+  })
 
-    // 3. Verify button is NOT disabled despite refreshing=true
-    expect(refreshBtn).not.toBeDisabled()
-    
-    // 4. Verify spinner is NOT showing (optional, check logic)
-    // The spinner logic is inside the button, verifying class presence might be fragile, 
-    // but we can check if the button is clickable which implies the fix.
-    
-    // 5. Click verifies reload
-    fireEvent.click(refreshBtn)
-    expect(mockReload).toHaveBeenCalled()
+  it('should have a Live Update toggle button', () => {
+    render(
+      <AnalyticsProvider>
+        <BrowserRouter>
+          <AnalyticsDashboardPage />
+        </BrowserRouter>
+      </AnalyticsProvider>
+    )
+
+    // Find the live update button
+    const liveBtn = screen.getByTitle('Enable live updates (every 5s)')
+    expect(liveBtn).toBeInTheDocument()
+  })
+
+  it('should toggle live update state when clicking the Live button', () => {
+    render(
+      <AnalyticsProvider>
+        <BrowserRouter>
+          <AnalyticsDashboardPage />
+        </BrowserRouter>
+      </AnalyticsProvider>
+    )
+
+    // Find and click the live update button
+    const liveBtn = screen.getByTitle('Enable live updates (every 5s)')
+    fireEvent.click(liveBtn)
+
+    // After clicking, the button title should change
+    expect(screen.getByTitle('Disable live updates')).toBeInTheDocument()
+  })
+
+  it('should auto-refresh data every 5 seconds when live update is enabled', async () => {
+    render(
+      <AnalyticsProvider>
+        <BrowserRouter>
+          <AnalyticsDashboardPage />
+        </BrowserRouter>
+      </AnalyticsProvider>
+    )
+
+    // Enable live update
+    const liveBtn = screen.getByTitle('Enable live updates (every 5s)')
+    fireEvent.click(liveBtn)
+
+    // Clear previous mock calls from initial render
+    mockRefetch.mockClear()
+
+    // Advance timer by 5 seconds
+    act(() => {
+      vi.advanceTimersByTime(5000)
+    })
+
+    // Should have called refetch
+    expect(mockRefetch).toHaveBeenCalled()
   })
 })
