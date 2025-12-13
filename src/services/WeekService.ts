@@ -1,10 +1,10 @@
 /**
- * Week Service
- * Handles newsletter week operations (CRUD, publishing)
+ * Newsletter Service
+ * Handles newsletter operations (CRUD, publishing)
  */
 
 import { table } from '@/lib/supabase'
-import type { NewsletterWeekRow } from '@/types/database'
+import type { NewsletterRow } from '@/types/database'
 
 /**
  * Pagination options
@@ -31,17 +31,17 @@ export class WeekServiceError extends Error {
 }
 
 /**
- * Week Service class
- * Provides methods for newsletter week management
+ * Newsletter Service class
+ * Provides methods for newsletter management
  */
 export class WeekService {
   /**
-   * Get a specific week by week number
+   * Get a specific newsletter by week number
    * @param weekNumber ISO week format (e.g., "2025-W47")
    */
-  static async getWeek(weekNumber: string): Promise<NewsletterWeekRow> {
+  static async getWeek(weekNumber: string): Promise<NewsletterRow> {
     try {
-      const { data, error } = await table('newsletter_weeks')
+      const { data, error } = await table('newsletters')
         .select('*')
         .eq('week_number', weekNumber)
         .single()
@@ -73,9 +73,9 @@ export class WeekService {
   }
 
   /**
-   * Create a new week
+   * Create a new newsletter
    */
-  static async createWeek(weekNumber: string, releaseDate: Date | string): Promise<NewsletterWeekRow> {
+  static async createWeek(weekNumber: string, releaseDate: Date | string): Promise<NewsletterRow> {
     try {
       // Validate week format
       if (!this.isValidWeekNumber(weekNumber)) {
@@ -89,12 +89,12 @@ export class WeekService {
         ? releaseDate.toISOString().split('T')[0]
         : releaseDate
 
-      const { data, error } = await table('newsletter_weeks')
+      const { data, error } = await table('newsletters')
         .insert([
           {
             week_number: weekNumber,
             release_date: releaseDateTime,
-            is_published: false,
+            status: 'draft',
             created_at: new Date().toISOString(),
           },
         ])
@@ -128,19 +128,19 @@ export class WeekService {
   }
 
   /**
-   * Publish a week (make it visible to readers)
+   * Publish a newsletter (make it visible to readers)
    */
-  static async publishWeek(weekNumber: string): Promise<NewsletterWeekRow> {
+  static async publishWeek(weekNumber: string): Promise<NewsletterRow> {
     try {
-      const { data, error } = await table('newsletter_weeks')
-        .update({ is_published: true })
+      const { data, error } = await table('newsletters')
+        .update({ status: 'published', published_at: new Date().toISOString() })
         .eq('week_number', weekNumber)
         .select()
         .single()
 
       if (error) {
         throw new WeekServiceError(
-          `Failed to publish week ${weekNumber}: ${error.message}`,
+          `Failed to publish newsletter ${weekNumber}: ${error.message}`,
           'PUBLISH_WEEK_ERROR',
           error as Error,
         )
@@ -148,7 +148,7 @@ export class WeekService {
 
       if (!data) {
         throw new WeekServiceError(
-          `Week ${weekNumber} not found for publishing`,
+          `Newsletter ${weekNumber} not found for publishing`,
           'WEEK_NOT_FOUND',
         )
       }
@@ -157,7 +157,7 @@ export class WeekService {
     } catch (err) {
       if (err instanceof WeekServiceError) throw err
       throw new WeekServiceError(
-        `Unexpected error publishing week: ${err instanceof Error ? err.message : String(err)}`,
+        `Unexpected error publishing newsletter: ${err instanceof Error ? err.message : String(err)}`,
         'PUBLISH_WEEK_ERROR',
         err instanceof Error ? err : undefined,
       )
@@ -165,19 +165,19 @@ export class WeekService {
   }
 
   /**
-   * Unpublish a week (make it invisible to readers)
+   * Unpublish a newsletter (set to draft)
    */
-  static async unpublishWeek(weekNumber: string): Promise<NewsletterWeekRow> {
+  static async unpublishWeek(weekNumber: string): Promise<NewsletterRow> {
     try {
-      const { data, error } = await table('newsletter_weeks')
-        .update({ is_published: false })
+      const { data, error } = await table('newsletters')
+        .update({ status: 'draft' })
         .eq('week_number', weekNumber)
         .select()
         .single()
 
       if (error) {
         throw new WeekServiceError(
-          `Failed to unpublish week ${weekNumber}: ${error.message}`,
+          `Failed to unpublish newsletter ${weekNumber}: ${error.message}`,
           'UNPUBLISH_WEEK_ERROR',
           error as Error,
         )
@@ -185,7 +185,7 @@ export class WeekService {
 
       if (!data) {
         throw new WeekServiceError(
-          `Week ${weekNumber} not found for unpublishing`,
+          `Newsletter ${weekNumber} not found for unpublishing`,
           'WEEK_NOT_FOUND',
         )
       }
@@ -194,7 +194,7 @@ export class WeekService {
     } catch (err) {
       if (err instanceof WeekServiceError) throw err
       throw new WeekServiceError(
-        `Unexpected error unpublishing week: ${err instanceof Error ? err.message : String(err)}`,
+        `Unexpected error unpublishing newsletter: ${err instanceof Error ? err.message : String(err)}`,
         'UNPUBLISH_WEEK_ERROR',
         err instanceof Error ? err : undefined,
       )
@@ -202,11 +202,11 @@ export class WeekService {
   }
 
   /**
-   * Get all weeks with optional pagination and sorting
+   * Get all newsletters with optional pagination and sorting
    */
-  static async getAllWeeks(options?: PaginationOptions): Promise<NewsletterWeekRow[]> {
+  static async getAllWeeks(options?: PaginationOptions): Promise<NewsletterRow[]> {
     try {
-      let query = table('newsletter_weeks').select('*')
+      let query = table('newsletters').select('*')
 
       // Determine sort column
       const sortColumn = options?.sortBy === 'release_date'
@@ -229,7 +229,7 @@ export class WeekService {
 
       if (error) {
         throw new WeekServiceError(
-          `Failed to fetch weeks: ${error.message}`,
+          `Failed to fetch newsletters: ${error.message}`,
           'FETCH_WEEKS_ERROR',
           error as Error,
         )
@@ -239,7 +239,7 @@ export class WeekService {
     } catch (err) {
       if (err instanceof WeekServiceError) throw err
       throw new WeekServiceError(
-        `Unexpected error fetching weeks: ${err instanceof Error ? err.message : String(err)}`,
+        `Unexpected error fetching newsletters: ${err instanceof Error ? err.message : String(err)}`,
         'FETCH_WEEKS_ERROR',
         err instanceof Error ? err : undefined,
       )
@@ -247,13 +247,13 @@ export class WeekService {
   }
 
   /**
-   * Get published weeks
+   * Get published newsletters
    */
-  static async getPublishedWeeks(options?: PaginationOptions): Promise<NewsletterWeekRow[]> {
+  static async getPublishedWeeks(options?: PaginationOptions): Promise<NewsletterRow[]> {
     try {
-      let query = table('newsletter_weeks')
+      let query = table('newsletters')
         .select('*')
-        .eq('is_published', true)
+        .eq('status', 'published')
 
       const sortOrder = options?.sortOrder === 'asc' ? true : false
       query = query.order('week_number', { ascending: sortOrder })
@@ -267,7 +267,7 @@ export class WeekService {
 
       if (error) {
         throw new WeekServiceError(
-          `Failed to fetch published weeks: ${error.message}`,
+          `Failed to fetch published newsletters: ${error.message}`,
           'FETCH_WEEKS_ERROR',
           error as Error,
         )
@@ -277,7 +277,7 @@ export class WeekService {
     } catch (err) {
       if (err instanceof WeekServiceError) throw err
       throw new WeekServiceError(
-        `Unexpected error fetching published weeks: ${err instanceof Error ? err.message : String(err)}`,
+        `Unexpected error fetching published newsletters: ${err instanceof Error ? err.message : String(err)}`,
         'FETCH_WEEKS_ERROR',
         err instanceof Error ? err : undefined,
       )
@@ -285,20 +285,20 @@ export class WeekService {
   }
 
   /**
-   * Get the latest published week
+   * Get the latest published newsletter
    */
-  static async getLatestPublishedWeek(): Promise<NewsletterWeekRow | null> {
+  static async getLatestPublishedWeek(): Promise<NewsletterRow | null> {
     try {
-      const { data, error } = await table('newsletter_weeks')
+      const { data, error } = await table('newsletters')
         .select('*')
-        .eq('is_published', true)
+        .eq('status', 'published')
         .order('week_number', { ascending: false })
         .limit(1)
         .single()
 
       if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
         throw new WeekServiceError(
-          `Failed to fetch latest week: ${error.message}`,
+          `Failed to fetch latest newsletter: ${error.message}`,
           'FETCH_WEEK_ERROR',
           error as Error,
         )
@@ -308,7 +308,7 @@ export class WeekService {
     } catch (err) {
       if (err instanceof WeekServiceError) throw err
       throw new WeekServiceError(
-        `Unexpected error fetching latest week: ${err instanceof Error ? err.message : String(err)}`,
+        `Unexpected error fetching latest newsletter: ${err instanceof Error ? err.message : String(err)}`,
         'FETCH_WEEK_ERROR',
         err instanceof Error ? err : undefined,
       )
@@ -316,17 +316,17 @@ export class WeekService {
   }
 
   /**
-   * Check if a week exists
+   * Check if a newsletter with week number exists
    */
   static async weekExists(weekNumber: string): Promise<boolean> {
     try {
-      const { count, error } = await table('newsletter_weeks')
+      const { count, error } = await table('newsletters')
         .select('*', { count: 'exact', head: true })
         .eq('week_number', weekNumber)
 
       if (error) {
         throw new WeekServiceError(
-          `Failed to check week existence: ${error.message}`,
+          `Failed to check newsletter existence: ${error.message}`,
           'CHECK_WEEK_ERROR',
           error as Error,
         )
@@ -336,7 +336,7 @@ export class WeekService {
     } catch (err) {
       if (err instanceof WeekServiceError) throw err
       throw new WeekServiceError(
-        `Unexpected error checking week existence: ${err instanceof Error ? err.message : String(err)}`,
+        `Unexpected error checking newsletter existence: ${err instanceof Error ? err.message : String(err)}`,
         'CHECK_WEEK_ERROR',
         err instanceof Error ? err : undefined,
       )

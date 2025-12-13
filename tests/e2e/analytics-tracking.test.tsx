@@ -32,7 +32,7 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
 
 describe('E2E: Analytics Tracking Flow', () => {
   const mockUser = 'user-123'
-  const mockNewsletter = '2025-W01'
+  const mockNewsletterId = '11111111-1111-1111-1111-111111111111' // UUID format
   const mockArticle = 'article-123'
 
   beforeEach(() => {
@@ -45,7 +45,7 @@ describe('E2E: Analytics Tracking Flow', () => {
     const openEvent = {
         event_type: 'email_open',
         user_id: mockUser,
-        newsletter_id: mockNewsletter,
+        newsletter_id: mockNewsletterId,
         metadata: { source: 'email' }
     }
     await trackingService.logEvent(openEvent as any)
@@ -57,8 +57,8 @@ describe('E2E: Analytics Tracking Flow', () => {
     const clickEvent = {
         event_type: 'link_click',
         user_id: mockUser,
-        newsletter_id: mockNewsletter,
-        metadata: { target_url: `/week/${mockNewsletter}/article/${mockArticle}` }
+        newsletter_id: mockNewsletterId,
+        metadata: { target_url: `/article/${mockArticle}` }
     }
     await trackingService.logEvent(clickEvent as any)
     
@@ -66,7 +66,7 @@ describe('E2E: Analytics Tracking Flow', () => {
     vi.useFakeTimers()
     const { unmount } = renderHook(() => useAnalyticsTracking({
         articleId: mockArticle,
-        weekNumber: mockNewsletter,
+        newsletterId: mockNewsletterId,
         enabled: true
     }), { wrapper })
 
@@ -74,7 +74,7 @@ describe('E2E: Analytics Tracking Flow', () => {
     expect(trackingService.logEvent).toHaveBeenCalledWith(expect.objectContaining({
         event_type: 'page_view',
         article_id: mockArticle,
-        newsletter_id: mockNewsletter
+        newsletter_id: mockNewsletterId
     }))
 
     // Advance time by 5 seconds to satisfy the 3s threshold
@@ -94,9 +94,9 @@ describe('E2E: Analytics Tracking Flow', () => {
   it('should correlate dashboard data with interactions', async () => {
     vi.mocked(trackingService.getReadArticles).mockResolvedValue([mockArticle])
 
-    const readArticles = await trackingService.getReadArticles(mockUser, mockNewsletter)
+    const readArticles = await trackingService.getReadArticles(mockUser, mockNewsletterId)
     
     expect(readArticles).toContain(mockArticle)
-    expect(trackingService.getReadArticles).toHaveBeenCalledWith(mockUser, mockNewsletter)
+    expect(trackingService.getReadArticles).toHaveBeenCalledWith(mockUser, mockNewsletterId)
   })
 })

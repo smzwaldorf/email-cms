@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { trackingService } from '@/services/trackingService';
 import { useAuth } from '@/context/AuthContext';
 
@@ -10,24 +10,36 @@ export function useReadStatus(weekNumber?: string) {
   const { user } = useAuth();
   const [readArticleIds, setReadArticleIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(false);
+  const isMountedRef = useRef(true);
 
   // Fetch initial read status
   useEffect(() => {
+    isMountedRef.current = true;
+    
     if (!user?.id) return;
 
     const fetchReadStatus = async () => {
+      if (!isMountedRef.current) return;
       setIsLoading(true);
       try {
         const ids = await trackingService.getReadArticles(user.id, weekNumber);
-        setReadArticleIds(new Set(ids));
+        if (isMountedRef.current) {
+          setReadArticleIds(new Set(ids));
+        }
       } catch (error) {
         console.error('Failed to fetch read status', error);
       } finally {
-        setIsLoading(false);
+        if (isMountedRef.current) {
+          setIsLoading(false);
+        }
       }
     };
 
     fetchReadStatus();
+    
+    return () => {
+      isMountedRef.current = false;
+    };
   }, [user?.id, weekNumber]);
 
   /**

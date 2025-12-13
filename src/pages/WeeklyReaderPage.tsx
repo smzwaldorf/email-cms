@@ -46,13 +46,12 @@ export function WeeklyReaderPage() {
     currentArticleId
   )
 
-  // Tracking Hooks
+  // Tracking Hooks - use article's own newsletter ID for accurate analytics tracking
+  // This ensures the correct newsletter ID is logged even when viewing articles from different weeks
   useAnalyticsTracking({
     articleId: article?.id,
-    weekNumber: article?.weekNumber || weekNumber,
-    enabled: !!article?.id && article.weekNumber === weekNumber, // Only track when article matches the current week
-    // Add classId if available in user context or params? 
-    // For now omitting classId as it's not readily available in url params usually
+    newsletterId: article?.newsletterId, // Use article's newsletter ID, not the URL week's newsletter
+    enabled: !!article?.id && !!article?.newsletterId, // Only track when article and its newsletter ID are loaded
   });
 
   const { readArticleIds, markAsRead } = useReadStatus(weekNumber);
@@ -114,11 +113,12 @@ export function WeeklyReaderPage() {
         if (targetArticle) {
           navigation.setCurrentWeek(weekNumber)
           navigation.setArticleList(articles)
-          navigation.setCurrentArticle(targetArticle.id, targetArticle.order)
+          navigation.setCurrentArticle(targetArticle.id, targetArticle.order ?? 1)
           
           // Update next article
-          if (targetArticle.order < articles.length) {
-            navigation.setNextArticleId(articles[targetArticle.order].id)
+          const targetOrder = targetArticle.order ?? 1
+          if (targetOrder < articles.length) {
+            navigation.setNextArticleId(articles[targetOrder]?.id)
           } else {
             navigation.setNextArticleId(undefined)
           }
@@ -228,12 +228,13 @@ export function WeeklyReaderPage() {
 
     const selectedArticle = articles.find((a) => a.id === articleId)
     if (selectedArticle) {
-      navigation.setCurrentArticle(articleId, selectedArticle.order)
+      const selectedOrder = selectedArticle.order ?? 1
+      navigation.setCurrentArticle(articleId, selectedOrder)
 
       // 更新下一篇
-      if (selectedArticle.order < articles.length) {
+      if (selectedOrder < articles.length) {
         navigation.setNextArticleId(
-          articles[selectedArticle.order].id
+          articles[selectedOrder]?.id
         )
       } else {
         navigation.setNextArticleId(undefined)

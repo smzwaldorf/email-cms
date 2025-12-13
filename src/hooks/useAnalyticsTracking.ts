@@ -7,7 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 export interface UseAnalyticsTrackingProps {
   articleId?: string;
-  weekNumber?: string;
+  newsletterId?: string; // Newsletter UUID for analytics tracking
   classId?: string;
   enabled?: boolean; // Defaults to true, set to false to skip tracking
 }
@@ -16,7 +16,7 @@ export interface UseAnalyticsTrackingProps {
  * Hook to handle analytics tracking for pages.
  * Tracks page views on mount, time spent reading, and handles session management.
  */
-export function useAnalyticsTracking({ articleId, weekNumber, classId, enabled = true }: UseAnalyticsTrackingProps = {}) {
+export function useAnalyticsTracking({ articleId, newsletterId, classId, enabled = true }: UseAnalyticsTrackingProps = {}) {
   const location = useLocation();
   const { user } = useAuth();
   const sessionIdRef = useRef<string>('');
@@ -32,7 +32,7 @@ export function useAnalyticsTracking({ articleId, weekNumber, classId, enabled =
   // Store current values in refs for cleanup function access
   const currentContextRef = useRef({
     articleId: articleId,
-    weekNumber: weekNumber,
+    newsletterId: newsletterId,
     classId: classId,
     userId: user?.id,
     pathname: location.pathname
@@ -42,12 +42,12 @@ export function useAnalyticsTracking({ articleId, weekNumber, classId, enabled =
   useEffect(() => {
     currentContextRef.current = {
       articleId,
-      weekNumber,
+      newsletterId,
       classId,
       userId: user?.id,
       pathname: location.pathname
     };
-  }, [articleId, weekNumber, classId, user?.id, location.pathname]);
+  }, [articleId, newsletterId, classId, user?.id, location.pathname]);
 
   // Initialize Session ID
   useEffect(() => {
@@ -63,20 +63,21 @@ export function useAnalyticsTracking({ articleId, weekNumber, classId, enabled =
   useEffect(() => {
     if (!enabled) return;
     if (!sessionIdRef.current) return;
-    
-    const currentKey = `${location.pathname}:${articleId || ''}:${weekNumber || ''}`;
+
+    const currentKey = `${articleId || ''}:${newsletterId || ''}`;
 
     // Prevent duplicate logging for the same context
     if (lastLoggedKeyRef.current === currentKey) return;
 
     const trackView = async () => {
       const userId = user?.id;
-      
+      console.log('Tracking page view for user:', userId);
+
       await trackingService.logEvent({
         user_id: userId || null,
         session_id: sessionIdRef.current,
         event_type: 'page_view',
-        newsletter_id: weekNumber || null,
+        newsletter_id: newsletterId || null,
         article_id: articleId || null,
         metadata: {
           path: location.pathname,
@@ -84,12 +85,12 @@ export function useAnalyticsTracking({ articleId, weekNumber, classId, enabled =
           class_id: classId
         }
       });
-      
+
       lastLoggedKeyRef.current = currentKey;
     };
 
     trackView();
-  }, [enabled, articleId, weekNumber, classId, user?.id, location.pathname, location.search]);
+  }, [enabled, articleId, newsletterId, classId, user?.id]);
 
   // Time Tracking with Visibility API
   useEffect(() => {
@@ -139,7 +140,7 @@ export function useAnalyticsTracking({ articleId, weekNumber, classId, enabled =
         user_id: ctx.userId || null,
         session_id: sessionIdRef.current,
         event_type: 'session_end',
-        newsletter_id: ctx.weekNumber || null,
+        newsletter_id: ctx.newsletterId || null,
         article_id: ctx.articleId,
         metadata: {
           path: ctx.pathname,

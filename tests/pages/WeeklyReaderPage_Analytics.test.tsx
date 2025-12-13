@@ -57,6 +57,9 @@ vi.mock('@/context/NavigationContext', () => ({
 }))
 
 describe('WeeklyReaderPage Analytics', () => {
+    const mockNewsletterId = '11111111-1111-1111-1111-111111111111'
+    const mockNewsletterIdW47 = '22222222-2222-2222-2222-222222222222'
+
     beforeEach(() => {
         vi.clearAllMocks()
         
@@ -64,10 +67,12 @@ describe('WeeklyReaderPage Analytics', () => {
         vi.mocked(PermissionService.canEditArticle).mockResolvedValue(false)
     })
 
+    // Articles now include newsletterId since useFetchArticle returns it
     const mockArticleW48 = {
         id: 'article-w48',
         title: 'Article W48',
         weekNumber: '2025-W48',
+        newsletterId: mockNewsletterId, // Newsletter UUID from junction table
         order: 1,
         content: '',
         createdAt: '',
@@ -80,6 +85,7 @@ describe('WeeklyReaderPage Analytics', () => {
         id: 'article-w47',
         title: 'Article W47',
         weekNumber: '2025-W47',
+        newsletterId: mockNewsletterIdW47, // Newsletter UUID from junction table
         order: 1,
         content: '',
         createdAt: '',
@@ -88,19 +94,20 @@ describe('WeeklyReaderPage Analytics', () => {
         shortId: '456'
     }
 
-    it('should DISABLE analytics tracking when URL week (W47) mismatches loaded article week (W48)', async () => {
-        // Setup: Stale data scenario
-        // User navigates to W47, but useFetchArticle still returns the old W48 article momentarily
+    it('should DISABLE analytics tracking when article newsletterId is not loaded', async () => {
+        // Setup: Article without newsletterId
+        const articleWithoutNewsletterId = { ...mockArticleW48, newsletterId: undefined }
+
         vi.spyOn(useFetchWeeklyHook, 'useFetchWeekly').mockReturnValue({
-            articles: [mockArticleW47] as any, // The list might have updated
-            newsletter: { totalArticles: 1 } as any,
+            articles: [mockArticleW47] as any,
+            newsletter: null,
             isLoading: false,
             error: null,
             refetch: vi.fn(),
         })
 
         vi.spyOn(useFetchArticleHook, 'useFetchArticle').mockReturnValue({
-            article: mockArticleW48 as any, // STALE ARTICLE from W48
+            article: articleWithoutNewsletterId as any,
             isLoading: false,
             error: null,
             refetch: vi.fn(),
@@ -120,27 +127,26 @@ describe('WeeklyReaderPage Analytics', () => {
             const lastCall = calls[calls.length - 1]
             const props = lastCall[0]
 
-            // Expect enabled to be false because '2025-W47' (url) !== '2025-W48' (article)
+            // Expect enabled to be false because article.newsletterId is undefined
             expect(props).toEqual(expect.objectContaining({
                 enabled: false,
-                weekNumber: '2025-W48', // Should favor the article's week number for consistency if it were trying to log
                 articleId: 'article-w48'
             }))
         })
     })
 
-    it('should ENABLE analytics tracking when URL week (W47) matches loaded article week (W47)', async () => {
-        // Setup: Consistent data scenario
+    it('should ENABLE analytics tracking when article has newsletterId', async () => {
+        // Setup: Consistent data scenario with article having newsletterId
         vi.spyOn(useFetchWeeklyHook, 'useFetchWeekly').mockReturnValue({
             articles: [mockArticleW47] as any,
-            newsletter: { totalArticles: 1 } as any,
+            newsletter: null, // Newsletter from URL not needed anymore
             isLoading: false,
             error: null,
             refetch: vi.fn(),
         })
 
         vi.spyOn(useFetchArticleHook, 'useFetchArticle').mockReturnValue({
-            article: mockArticleW47 as any, // FRESH ARTICLE from W47
+            article: mockArticleW47 as any, // Article with newsletterId
             isLoading: false,
             error: null,
             refetch: vi.fn(),
@@ -161,7 +167,7 @@ describe('WeeklyReaderPage Analytics', () => {
 
             expect(props).toEqual(expect.objectContaining({
                 enabled: true,
-                weekNumber: '2025-W47',
+                newsletterId: mockNewsletterIdW47, // Uses article's newsletterId
                 articleId: 'article-w47'
             }))
         })

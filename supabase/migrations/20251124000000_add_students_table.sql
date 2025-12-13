@@ -72,7 +72,7 @@ CREATE POLICY articles_class_restricted_read
   ON public.articles FOR SELECT
   USING (
     visibility_type = 'class_restricted'
-    AND is_published = true
+    AND status = 'published'
     AND deleted_at IS NULL
     AND (
       -- Parent Check (New Schema with Students Table)
@@ -103,7 +103,7 @@ CREATE POLICY articles_class_restricted_read
 --   ON public.articles FOR SELECT
 --   USING (
 --     visibility_type = 'class_restricted'
---     AND is_published = true
+--     AND status = 'published'
 --     AND deleted_at IS NULL
 --     AND auth.uid() IN (
 --       SELECT fe_parent.parent_id

@@ -8,6 +8,9 @@ const mockEq = vi.fn()
 const mockGte = vi.fn()
 const mockLte = vi.fn()
 const mockDelete = vi.fn()
+const mockSingle = vi.fn()
+const mockOrder = vi.fn()
+const mockLimit = vi.fn()
 
 const mockFrom = vi.fn((table: string) => {
   return {
@@ -24,10 +27,12 @@ vi.mock('@/lib/supabase', () => ({
 }))
 
 describe('analyticsAggregator', () => {
+  const mockNewsletterId = '11111111-1111-1111-1111-111111111111'
+
   beforeEach(() => {
     vi.clearAllMocks()
 
-    // Default chain for select
+    // Default chain for select with single() support for newsletter lookup
     const queryBuilder = {
       select: mockSelect,
       eq: mockEq,
@@ -35,6 +40,9 @@ describe('analyticsAggregator', () => {
       lte: mockLte,
       delete: mockDelete,
       insert: mockInsert,
+      single: mockSingle,
+      order: mockOrder,
+      limit: mockLimit,
       then: (resolve: any) => resolve({ data: [], error: null })
     }
 
@@ -44,6 +52,11 @@ describe('analyticsAggregator', () => {
     mockGte.mockReturnValue(queryBuilder)
     mockLte.mockReturnValue(queryBuilder)
     mockDelete.mockReturnValue(queryBuilder)
+    mockOrder.mockReturnValue(queryBuilder)
+    mockLimit.mockReturnValue(queryBuilder)
+    
+    // Mock single() for newsletter lookup (resolveNewsletterId)
+    mockSingle.mockResolvedValue({ data: { id: mockNewsletterId }, error: null })
     
     // Default success for delete
     mockDelete.mockResolvedValue({ error: null })
@@ -59,46 +72,44 @@ describe('analyticsAggregator', () => {
       // Article 1: 2 views, 1 click, 2 sessions (30s, 60s) -> Avg 45s
       {
         event_type: 'page_view',
-        newsletter_id: 'W1',
+        newsletter_id: mockNewsletterId,
         article_id: 'A1',
         metadata: {}
       },
       {
         event_type: 'page_view',
-        newsletter_id: 'W1',
+        newsletter_id: mockNewsletterId,
         article_id: 'A1',
         metadata: {}
       },
       {
         event_type: 'link_click',
-        newsletter_id: 'W1',
+        newsletter_id: mockNewsletterId,
         article_id: 'A1',
         metadata: {}
       },
       {
         event_type: 'session_end',
-        newsletter_id: 'W1',
+        newsletter_id: mockNewsletterId,
         article_id: 'A1',
         metadata: { time_spent_seconds: 30 }
       },
       {
         event_type: 'session_end',
-        newsletter_id: 'W1',
+        newsletter_id: mockNewsletterId,
         article_id: 'A1',
         metadata: { time_spent_seconds: 60 }
       },
       // Article 2: 1 view, 0 clicks, 0 sessions
       {
         event_type: 'page_view',
-        newsletter_id: 'W1',
+        newsletter_id: mockNewsletterId,
         article_id: 'A2',
         metadata: {}
       }
     ]
 
     // Setup select return value
-    // The chain in generateDailySnapshot is: from().select().gte().lte()
-    // We need to ensure the final call returns our mock events
     const queryBuilder = {
       select: mockSelect,
       eq: mockEq,
@@ -106,19 +117,15 @@ describe('analyticsAggregator', () => {
       lte: mockLte,
       delete: mockDelete,
       insert: mockInsert,
+      single: mockSingle,
       then: (resolve: any) => resolve({ data: mockEvents, error: null })
     }
     
-    // Re-setup mock return to ensure chain works
     mockSelect.mockReturnValue(queryBuilder as any)
     mockGte.mockReturnValue(queryBuilder as any)
     mockLte.mockReturnValue(queryBuilder as any)
     
-    // Chain for Delete (from().delete().eq())
-    // Note: delete() is called before select()
-    // The previous mockDelete setup should handle it if chain is correct, 
-    // but code does: from().delete().eq()
-    // So delete() must return something with eq()
+    // Chain for Delete
     const deleteChain = {
       eq: mockEq,
       then: (resolve: any) => resolve({ error: null })
@@ -139,12 +146,6 @@ describe('analyticsAggregator', () => {
     expect(mockInsert).toHaveBeenCalledTimes(1)
     
     const insertedRows = mockInsert.mock.calls[0][0]
-    
-    // Expect 5 rows: 
-    // A1: total_views=2, total_clicks=1, avg_time_spent=45
-    // A2: total_views=1
-    // (A2 has no clicks or session_end, so no rows for them)
-    // Order depends on map iteration, so checking containment
     
     expect(insertedRows).toHaveLength(4)
     
@@ -178,7 +179,8 @@ describe('analyticsAggregator', () => {
   })
 
   it('should return stats from snapshots when available', async () => {
-    const newsletterId = 'W1'
+    // Use UUID format for newsletter ID
+    const newsletterId = mockNewsletterId
 
     // Mock Snapshots
     const mockSnapshots = [
@@ -187,9 +189,9 @@ describe('analyticsAggregator', () => {
         { article_id: 'A1', metric_name: 'avg_time_spent', metric_value: 30 }
     ]
 
-    // Mock Articles Metadata
-    const mockArticles = [
-        { id: 'A1', title: 'Test Article', created_at: '2025-01-01', article_order: 1 }
+    // Mock newsletter_articles junction for article lookup
+    const mockJunctionData = [
+        { article_order: 1, articles: { id: 'A1', title: 'Test Article', created_at: '2025-01-01' } }
     ]
 
     // Custom Builder for Snapshots
@@ -198,6 +200,7 @@ describe('analyticsAggregator', () => {
         eq: vi.fn(),
         insert: vi.fn(),
         delete: vi.fn(),
+        single: vi.fn().mockResolvedValue({ data: { id: newsletterId }, error: null }),
         then: (cb: any) => cb({ data: mockSnapshots, error: null })
     }
     snapshotBuilder.select.mockReturnValue(snapshotBuilder)
@@ -205,25 +208,34 @@ describe('analyticsAggregator', () => {
     snapshotBuilder.insert.mockReturnValue({ error: null })
     snapshotBuilder.delete.mockReturnValue(snapshotBuilder)
 
-    // Custom Builder for Articles
-    const articleBuilder = {
+    // Custom Builder for newsletter_articles junction
+    const junctionBuilder = {
         select: vi.fn(),
         eq: vi.fn(),
-        insert: vi.fn(),
-        delete: vi.fn(),
-        then: (cb: any) => cb({ data: mockArticles, error: null })
+        order: vi.fn(),
+        single: vi.fn().mockResolvedValue({ data: { id: newsletterId }, error: null }),
+        then: (cb: any) => cb({ data: mockJunctionData, error: null })
     }
-    articleBuilder.select.mockReturnValue(articleBuilder)
-    articleBuilder.eq.mockReturnValue(articleBuilder)
-    articleBuilder.insert.mockReturnValue({ error: null })
-    articleBuilder.delete.mockReturnValue(articleBuilder)
+    junctionBuilder.select.mockReturnValue(junctionBuilder)
+    junctionBuilder.eq.mockReturnValue(junctionBuilder)
+    junctionBuilder.order.mockReturnValue(junctionBuilder)
+
+    // Custom Builder for newsletters (for resolveNewsletterId)
+    const newsletterBuilder = {
+        select: vi.fn(),
+        eq: vi.fn(),
+        single: vi.fn().mockResolvedValue({ data: { id: newsletterId }, error: null }),
+        then: (cb: any) => cb({ data: { id: newsletterId }, error: null })
+    }
+    newsletterBuilder.select.mockReturnValue(newsletterBuilder)
+    newsletterBuilder.eq.mockReturnValue(newsletterBuilder)
 
     // Override mockFrom to separate tables
     mockFrom.mockImplementation((table) => {
         if (table === 'analytics_snapshots') return snapshotBuilder as any
-        if (table === 'articles') return articleBuilder as any
-        // Fallback to default mock chain for others (though shouldn't be called here)
-        return { select: mockSelect, insert: mockInsert, delete: mockDelete } as any
+        if (table === 'newsletter_articles') return junctionBuilder as any
+        if (table === 'newsletters') return newsletterBuilder as any
+        return snapshotBuilder as any
     })
 
     const result = await analyticsAggregator.getArticleStatsWithFallback(newsletterId)
@@ -243,7 +255,18 @@ describe('analyticsAggregator', () => {
   })
 
   it('should fallback to raw events when snapshots are empty', async () => {
-    const newsletterId = 'W2'
+    // Use UUID format for newsletter ID
+    const newsletterId = mockNewsletterId
+
+    // Custom Builder for newsletters (for resolveNewsletterId)
+    const newsletterBuilder = {
+        select: vi.fn(),
+        eq: vi.fn(),
+        single: vi.fn().mockResolvedValue({ data: { id: newsletterId }, error: null }),
+        then: (cb: any) => cb({ data: { id: newsletterId }, error: null })
+    }
+    newsletterBuilder.select.mockReturnValue(newsletterBuilder)
+    newsletterBuilder.eq.mockReturnValue(newsletterBuilder)
 
     // Custom Builder for Snapshots (Empty)
     const emptySnapshotBuilder = {
@@ -251,6 +274,7 @@ describe('analyticsAggregator', () => {
         eq: vi.fn(),
         insert: vi.fn(),
         delete: vi.fn(),
+        single: vi.fn().mockResolvedValue({ data: { id: newsletterId }, error: null }),
         then: (cb: any) => cb({ data: [], error: null })
     }
     emptySnapshotBuilder.select.mockReturnValue(emptySnapshotBuilder)
@@ -265,6 +289,7 @@ describe('analyticsAggregator', () => {
         not: vi.fn(), 
         insert: vi.fn(),
         delete: vi.fn(),
+        single: vi.fn().mockResolvedValue({ data: { id: newsletterId }, error: null }),
         then: (cb: any) => cb({ data: [], error: null })
     }
     rawEventsBuilder.select.mockReturnValue(rawEventsBuilder)
@@ -275,6 +300,7 @@ describe('analyticsAggregator', () => {
 
     // Override mockFrom
     mockFrom.mockImplementation((table) => {
+        if (table === 'newsletters') return newsletterBuilder as any
         if (table === 'analytics_snapshots') return emptySnapshotBuilder as any
         if (table === 'analytics_events') return rawEventsBuilder as any
         return rawEventsBuilder as any

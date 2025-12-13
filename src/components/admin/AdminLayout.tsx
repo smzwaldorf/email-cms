@@ -60,7 +60,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, activeTab, h
     try {
       const supabase = getSupabaseClient()
       const { data, error } = await supabase
-        .from('newsletter_weeks')
+        .from('newsletters')
         .select('week_number')
         .order('week_number', { ascending: false })
         .limit(1)

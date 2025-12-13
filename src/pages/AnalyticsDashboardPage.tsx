@@ -43,11 +43,19 @@ export const AnalyticsDashboardPage: React.FC = () => {
         }
     }, [weeks, selectedWeek, weekNumber, setSelectedWeek]);
     
-    const { metrics, loading: metricsLoading, refreshing: metricsRefreshing, refetch: refetchMetrics } = useNewsletterMetrics(selectedWeek, selectedClass);
-    const { stats: articleData, loading: articlesLoading, refreshing: articlesRefreshing, refetch: refetchArticles } = useArticleStats(selectedWeek);
+    // Get the newsletter UUID for the selected week
+    const selectedNewsletterId = useMemo(() => {
+        if (!selectedWeek || weeks.length === 0) return '';
+        // @ts-ignore - weeks contains newsletter objects with id and week_number
+        const newsletter = weeks.find((w: any) => w.week_number === selectedWeek);
+        return newsletter?.id || selectedWeek; // Fallback to week_number if id not found
+    }, [selectedWeek, weeks]);
+    
+    const { metrics, loading: metricsLoading, refreshing: metricsRefreshing, refetch: refetchMetrics } = useNewsletterMetrics(selectedNewsletterId, selectedClass);
+    const { stats: articleData, loading: articlesLoading, refreshing: articlesRefreshing, refetch: refetchArticles } = useArticleStats(selectedNewsletterId);
     const { trend: trendData, loading: trendsLoading, refreshing: trendsRefreshing, refetch: refetchTrends } = useTrendStats(selectedClass);
-    const { data: classEngagement, loading: classLoading, refreshing: classesRefreshing, refetch: refetchClasses } = useClassEngagement(selectedWeek);
-    const { hotness: hotnessData, refreshing: hotnessRefreshing, refetch: refetchHotness } = useTopicHotness(selectedWeek);
+    const { data: classEngagement, loading: classLoading, refreshing: classesRefreshing, refetch: refetchClasses } = useClassEngagement(selectedNewsletterId);
+    const { hotness: hotnessData, refreshing: hotnessRefreshing, refetch: refetchHotness } = useTopicHotness(selectedNewsletterId);
     const { generate, generating } = useGenerateSnapshots();
 
     const isRefreshing = metricsRefreshing || articlesRefreshing || trendsRefreshing || classesRefreshing || hotnessRefreshing;
@@ -136,15 +144,21 @@ export const AnalyticsDashboardPage: React.FC = () => {
                         <div className="relative">
                             <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-neutral-400" />
                             <select 
-                                value={selectedWeek} 
-                                onChange={(e) => handleWeekChange(e.target.value)}
+                                value={selectedNewsletterId} 
+                                onChange={(e) => {
+                                    // Find the week_number for the selected newsletter ID for URL routing
+                                    // @ts-ignore
+                                    const newsletter = weeks.find((w: any) => w.id === e.target.value);
+                                    if (newsletter) {
+                                        // @ts-ignore
+                                        handleWeekChange(newsletter.week_number);
+                                    }
+                                }}
                                 className="pl-9 pr-4 py-2 border border-brand-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20 min-w-[140px]"
                                 disabled={weeksLoading}
                             >
-                                {weeks.map(week => (
-                                    // @ts-ignore
-                                    <option key={week.week_number} value={week.week_number}>
-                                        {/* @ts-ignore */}
+                                {weeks.map((week: any) => (
+                                    <option key={week.id} value={week.id}>
                                         {week.week_number} ({new Date(week.release_date).toLocaleDateString()})
                                     </option>
                                 ))}

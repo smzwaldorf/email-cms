@@ -45,19 +45,25 @@ const supabase = createClient(supabaseUrl, supabaseServiceRoleKey)
 
 const testWeeks = [
   {
+    id: 'f0470000-0000-0000-0000-000000000047',
     week_number: '2025-W47',
+    title: 'Week 47 Newsletter',
     release_date: '2025-11-17',
-    is_published: true,
+    status: 'published',
   },
   {
+    id: 'f0480000-0000-0000-0000-000000000048',
     week_number: '2025-W48',
+    title: 'Week 48 Newsletter',
     release_date: '2025-11-24',
-    is_published: true,
+    status: 'published',
   },
   {
+    id: 'f0490000-0000-0000-0000-000000000049',
     week_number: '2025-W49',
+    title: 'Week 49 Newsletter (Draft)',
     release_date: '2025-12-01',
-    is_published: false,
+    status: 'draft',
   },
 ]
 
@@ -97,7 +103,8 @@ const testFamilies = [
 
 const testArticles = [
   {
-    week_number: '2025-W47',
+    id: 'a0470001-0001-0001-0001-000000000001',
+    newsletter_id: 'f0470000-0000-0000-0000-000000000047', // Week 47
     short_id: 'a00001',
     title: '週報開刊致詞 (Weekly Opening)',
     content: `<h1>歡迎閱讀本週電子報</h1>
@@ -112,14 +119,14 @@ const testArticles = [
 <hr>
 <p><strong>Published on:</strong> 2025-11-17<br>
 <strong>Week:</strong> 2025-W47</p>`,
-    author: 'Principal',
-    article_order: 1,
-    is_published: true,
+    status: 'published',
     visibility_type: 'public',
     restricted_to_classes: null,
+    article_order: 1,
   },
   {
-    week_number: '2025-W47',
+    id: 'a0470002-0002-0002-0002-000000000002',
+    newsletter_id: 'f0470000-0000-0000-0000-000000000047', // Week 47
     short_id: 'a00002',
     title: 'Grade 1A Class Updates (一年級甲班班級大小事)',
     content: `<h1>一年級甲班班級大小事</h1>
@@ -142,14 +149,14 @@ const testArticles = [
 <li>Reading journal entries (2 pages)</li>
 </ul>
 <p><strong>Note:</strong> This article is visible only to parents with children in Grade 1A.</p>`,
-    author: 'Ms. Chen',
-    article_order: 2,
-    is_published: true,
+    status: 'published',
     visibility_type: 'class_restricted',
     restricted_to_classes: ['A1'],
+    article_order: 2,
   },
   {
-    week_number: '2025-W47',
+    id: 'a0470003-0003-0003-0003-000000000003',
+    newsletter_id: 'f0470000-0000-0000-0000-000000000047', // Week 47
     short_id: 'a00003',
     title: 'Grade 1B Class Updates (一年級乙班班級大小事)',
     content: `<h1>一年級乙班班級大小事</h1>
@@ -172,14 +179,14 @@ const testArticles = [
 <li>Holiday celebration: Dec 15</li>
 </ul>
 <p><strong>Note:</strong> This article is visible only to parents with children in Grade 1B.</p>`,
-    author: 'Mr. Wang',
-    article_order: 3,
-    is_published: true,
+    status: 'published',
     visibility_type: 'class_restricted',
     restricted_to_classes: ['A2'],
+    article_order: 3,
   },
   {
-    week_number: '2025-W47',
+    id: 'a0470004-0004-0004-0004-000000000004',
+    newsletter_id: 'f0470000-0000-0000-0000-000000000047', // Week 47
     short_id: 'a00004',
     title: 'Grade 2A Class Updates (二年級甲班班級大小事)',
     content: `<h1>二年級甲班班級大小事</h1>
@@ -203,14 +210,14 @@ const testArticles = [
 <li>Reading club selections announced</li>
 </ul>
 <p><strong>Note:</strong> This article is visible only to parents with children in Grade 2A.</p>`,
-    author: 'Ms. Liu',
-    article_order: 4,
-    is_published: true,
+    status: 'published',
     visibility_type: 'class_restricted',
     restricted_to_classes: ['B1'],
+    article_order: 4,
   },
   {
-    week_number: '2025-W47',
+    id: 'a0470005-0005-0005-0005-000000000005',
+    newsletter_id: 'f0470000-0000-0000-0000-000000000047', // Week 47
     short_id: 'a00005',
     title: 'Grade 2B Class Updates (二年級乙班班級大小事)',
     content: `<h1>二年級乙班班級大小事</h1>
@@ -234,14 +241,14 @@ const testArticles = [
 <li>Parent volunteer sign-up: please help with field trip</li>
 </ul>
 <p><strong>Note:</strong> This article is visible only to parents with children in Grade 2B.</p>`,
-    author: 'Mr. Lee',
-    article_order: 5,
-    is_published: true,
+    status: 'published',
     visibility_type: 'class_restricted',
     restricted_to_classes: ['B2'],
+    article_order: 5,
   },
   {
-    week_number: '2025-W47',
+    id: 'a0470006-0006-0006-0006-000000000006',
+    newsletter_id: 'f0470000-0000-0000-0000-000000000047', // Week 47
     short_id: 'a00006',
     title: 'Important Announcements (重要公告)',
     content: `<h1>重要公告 - Important Announcements</h1>
@@ -273,15 +280,15 @@ const testArticles = [
 </ul>
 <hr>
 <p><strong>Visibility:</strong> This article is visible to all parents and visitors.</p>`,
-    author: 'Admin',
-    article_order: 6,
-    is_published: true,
+    status: 'published',
     visibility_type: 'public',
     restricted_to_classes: null,
+    article_order: 6,
   },
   // Week 2025-W48 Articles
   {
-    week_number: '2025-W48',
+    id: 'a0480001-0001-0001-0001-000000000001',
+    newsletter_id: 'f0480000-0000-0000-0000-000000000048', // Week 48
     short_id: 'a00007',
     title: '週報開刊致詞 (Weekly Opening - Week 48)',
     content: `<h1>歡迎閱讀第 48 週電子報</h1>
@@ -302,14 +309,14 @@ const testArticles = [
 <hr>
 <p><strong>Published on:</strong> 2025-11-24<br>
 <strong>Week:</strong> 2025-W48</p>`,
-    author: 'Principal',
-    article_order: 1,
-    is_published: true,
+    status: 'published',
     visibility_type: 'public',
     restricted_to_classes: null,
+    article_order: 1,
   },
   {
-    week_number: '2025-W48',
+    id: 'a0480002-0002-0002-0002-000000000002',
+    newsletter_id: 'f0480000-0000-0000-0000-000000000048', // Week 48
     short_id: 'a00008',
     title: 'Thanksgiving Activities & Gratitude (感恩節活動)',
     content: `<h1>感恩節特別活動</h1>
@@ -335,14 +342,14 @@ const testArticles = [
 </ul>
 <hr>
 <p><strong>Note:</strong> All grades participating in special Thanksgiving programming.</p>`,
-    author: 'Ms. Chen & Mr. Wang',
-    article_order: 2,
-    is_published: true,
+    status: 'published',
     visibility_type: 'public',
     restricted_to_classes: null,
+    article_order: 2,
   },
   {
-    week_number: '2025-W48',
+    id: 'a0480003-0003-0003-0003-000000000003',
+    newsletter_id: 'f0480000-0000-0000-0000-000000000048', // Week 48
     short_id: 'a00009',
     title: 'Winter Break Logistics & Holiday Closure',
     content: `<h1>冬季假期說明與校園關閉</h1>
@@ -373,11 +380,10 @@ const testArticles = [
 </ul>
 <hr>
 <p><strong>Questions?</strong> Contact the main office by December 12.</p>`,
-    author: 'Admin',
-    article_order: 3,
-    is_published: true,
+    status: 'published',
     visibility_type: 'public',
     restricted_to_classes: null,
+    article_order: 3,
   },
 ]
 
@@ -483,9 +489,9 @@ async function setupDevelopment() {
     // ========================================================================
     console.log('📊 PHASE 1: Seeding test data\n')
 
-    // Seed newsletter weeks
-    console.log('📅 Seeding newsletter weeks...')
-    const weeksResult = await seedData('newsletter_weeks', testWeeks)
+    // Seed newsletters (was newsletter_weeks)
+    console.log('📅 Seeding newsletters...')
+    const weeksResult = await seedData('newsletters', testWeeks)
     console.log(`   ✅ Created: ${weeksResult.success} | ⏭️  Skipped: ${weeksResult.skipped}\n`)
 
     // Seed classes
@@ -498,10 +504,29 @@ async function setupDevelopment() {
     const familiesResult = await seedData('families', testFamilies)
     console.log(`   ✅ Created: ${familiesResult.success} | ⏭️  Skipped: ${familiesResult.skipped}\n`)
 
-    // Seed articles
+    // Seed articles (without newsletter_id and article_order - those go in junction)
     console.log('📰 Seeding articles...')
-    const articlesResult = await seedData('articles', testArticles)
+    const articlesToSeed = testArticles.map(({ id, short_id, title, content, status, visibility_type, restricted_to_classes }) => ({
+      id,
+      short_id,
+      title,
+      content,
+      status,
+      visibility_type,
+      restricted_to_classes,
+    }))
+    const articlesResult = await seedData('articles', articlesToSeed)
     console.log(`   ✅ Created: ${articlesResult.success} | ⏭️  Skipped: ${articlesResult.skipped}\n`)
+
+    // Seed newsletter_articles junction table
+    console.log('🔗 Seeding newsletter_articles junction...')
+    const junctionData = testArticles.map((article) => ({
+      newsletter_id: article.newsletter_id,
+      article_id: article.id,
+      article_order: article.article_order,
+    }))
+    const junctionResult = await seedData('newsletter_articles', junctionData)
+    console.log(`   ✅ Created: ${junctionResult.success} | ⏭️  Skipped: ${junctionResult.skipped}\n`)
 
     // ========================================================================
     // PHASE 2: Create Auth Users & Enrollments

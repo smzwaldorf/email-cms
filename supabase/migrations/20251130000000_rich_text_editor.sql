@@ -143,7 +143,7 @@ CREATE POLICY "Anyone can view published article media"
   USING (
     EXISTS (
       SELECT 1 FROM articles
-      WHERE id = article_id AND is_published = true
+      WHERE id = article_id AND status = 'published'
     )
   );
 

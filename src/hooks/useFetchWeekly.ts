@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react'
 import { Article, NewsletterWeek } from '@/types'
 import WeekService from '@/services/WeekService'
 import ArticleService from '@/services/ArticleService'
-import type { ArticleRow, NewsletterWeekRow } from '@/types/database'
+import type { ArticleRow, NewsletterRow } from '@/types/database'
 
 interface UseFetchWeeklyResult {
   newsletter: NewsletterWeek | null
@@ -19,36 +19,39 @@ interface UseFetchWeeklyResult {
 
 /**
  * Convert ArticleRow from database to Article type for UI
+ * Note: weekNumber is now from junction table, passed as parameter
  */
-function convertArticleRow(row: ArticleRow, order: number): Article {
+function convertArticleRow(row: ArticleRow, order: number, weekNumber?: string): Article {
   return {
     id: row.id,
     shortId: row.short_id,
     title: row.title,
     content: row.content,
-    author: row.author || undefined,
+    author: undefined, // Author name fetched from user_roles via author_id
+    authorId: row.author_id || undefined,
     summary: row.title, // Use title as summary since DB doesn't have summary
-    weekNumber: row.week_number,
+    weekNumber: weekNumber,
     order,
     slug: row.id, // Use ID as slug
     publicUrl: `/article/${row.id}`,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-    isPublished: row.is_published,
+    isPublished: row.status === 'published',
     viewCount: 0, // Database doesn't track view count yet
   }
 }
 
 /**
- * Convert NewsletterWeekRow from database to NewsletterWeek type for UI
+ * Convert NewsletterRow from database to NewsletterWeek type for UI
  */
-function convertWeekRow(row: NewsletterWeekRow, articleCount: number): NewsletterWeek {
+function convertWeekRow(row: NewsletterRow, articleCount: number): NewsletterWeek {
   return {
-    weekNumber: row.week_number,
+    id: row.id, // Newsletter UUID
+    weekNumber: row.week_number ?? '',
     releaseDate: row.release_date,
     totalArticles: articleCount,
     articleIds: [], // Will be populated with article IDs
-    isPublished: row.is_published,
+    isPublished: row.status === 'published',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
@@ -77,7 +80,7 @@ export function useFetchWeekly(weekNumber: string): UseFetchWeeklyResult {
       
       // Convert to UI types
       const convertedArticles = articlesData.map((row, index) =>
-        convertArticleRow(row, index + 1)
+        convertArticleRow(row, index + 1, weekNumber)
       )
 
       const convertedWeek = convertWeekRow(weekData, articlesData.length)

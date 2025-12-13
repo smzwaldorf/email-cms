@@ -57,7 +57,7 @@ export class ArticleRepository {
     try {
       // Validate week exists
       const { data: week, error: weekError } = await getSupabaseClient()
-        .from('newsletter_weeks')
+        .from('newsletters')
         .select('*')
         .eq('week_number', weekNumber)
         .single()

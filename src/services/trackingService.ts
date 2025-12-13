@@ -9,6 +9,7 @@ export const trackingService = {
   /**
    * Logs an analytics event to the database.
    * Silently fails in production to avoid disrupting user experience, but logs to console in dev.
+   * Note: newsletter_id is expected to be a UUID.
    */
   async logEvent(event: Omit<AnalyticsEvent, 'id' | 'created_at'>): Promise<void> {
     if (!import.meta.env.VITE_TRACKING_ENABLED) {
@@ -51,7 +52,16 @@ export const trackingService = {
         .not('article_id', 'is', null);
 
       if (weekNumber) {
-        query = query.eq('newsletter_id', weekNumber);
+        // Resolve week_number to newsletter UUID
+        const { data: newsletter } = await getSupabaseClient()
+          .from('newsletters')
+          .select('id')
+          .eq('week_number', weekNumber)
+          .single();
+        
+        if (newsletter?.id) {
+          query = query.eq('newsletter_id', newsletter.id);
+        }
       }
 
       const { data, error } = await query;
