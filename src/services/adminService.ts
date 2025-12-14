@@ -231,7 +231,7 @@ class AdminService {
    * Create new newsletter
    */
   async createNewsletter(
-    weekNumber: string,
+    weekNumber: string | null,
     releaseDate: string
   ): Promise<AdminNewsletter> {
     try {
@@ -240,7 +240,7 @@ class AdminService {
       const { data, error } = await supabase
         .from('newsletters')
         .insert({
-          week_number: weekNumber,
+          week_number: weekNumber || null,
           release_date: releaseDate,
           status: 'draft',
         })
@@ -483,6 +483,61 @@ class AdminService {
         createdAt: row.articles.created_at,
         updatedAt: row.articles.updated_at,
         lastEditedBy: row.articles.last_edited_by,
+        editedAt: row.articles.edited_at,
+      }))
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error fetching articles: ${err instanceof Error ? err.message : String(err)}`,
+        'FETCH_ARTICLES_ERROR',
+        err as any
+      )
+    }
+  }
+
+  /**
+   * Fetch articles by newsletter ID (supports newsletters without week_number)
+   */
+  async fetchArticlesByNewsletterId(
+    newsletterId: string
+  ): Promise<AdminArticle[]> {
+    try {
+      const supabase = getSupabaseClient()
+
+      const { data, error } = await supabase
+        .from('newsletter_articles')
+        .select(`
+          article_order,
+          articles!inner (*)
+        `)
+        .eq('newsletter_id', newsletterId)
+        .order('article_order', { ascending: true })
+
+      if (error) {
+        throw new AdminServiceError(
+          `Failed to fetch articles: ${error.message}`,
+          'FETCH_ARTICLES_ERROR',
+          error as any
+        )
+      }
+
+      // Fetch newsletter to get week_number (may be null)
+      const newsletterData = await this.fetchNewsletter(newsletterId)
+
+      return (data || []).map((row: any) => ({
+        id: row.articles.id,
+        title: row.articles.title,
+        content: row.articles.content,
+        author: row.articles.author_id,
+        summary: row.articles.summary,
+        weekNumber: newsletterData.weekNumber || '',
+        order: row.article_order,
+        classIds: row.articles.class_ids || [],
+        familyIds: row.articles.family_ids || [],
+        status: row.articles.status,
+        createdAt: row.articles.created_at,
+        updatedAt: row.articles.updated_at,
+        publishedAt: row.articles.published_at,
         editedAt: row.articles.edited_at,
       }))
     } catch (err) {

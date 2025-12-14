@@ -48,30 +48,37 @@ const TabLink: React.FC<{
   </Link>
 )
 
+interface LatestNewsletter {
+  id: string
+  week_number: number | null
+}
+
 export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, activeTab, headerAction }) => {
-  const [latestWeek, setLatestWeek] = useState<number>(1)
+  const [latestNewsletter, setLatestNewsletter] = useState<LatestNewsletter | null>(null)
   const navigate = useNavigate()
 
   useEffect(() => {
-    fetchLatestWeek()
+    fetchLatestNewsletter()
   }, [])
 
-  const fetchLatestWeek = async () => {
+  const fetchLatestNewsletter = async () => {
     try {
       const supabase = getSupabaseClient()
       const { data, error } = await supabase
         .from('newsletters')
-        .select('week_number')
+        .select('id, week_number')
+        .eq('status', 'published')
         .order('week_number', { ascending: false })
         .limit(1)
         .single()
 
       if (error) throw error
-      if (data) {
-        setLatestWeek(data.week_number)
+      if (data && (data.week_number || data.id)) {
+        setLatestNewsletter(data as LatestNewsletter)
       }
     } catch (err: any) {
-      console.error('Error fetching latest week:', err)
+      console.error('Error fetching latest published newsletter:', err)
+      // Default fallback: keep latestNewsletter as null, which disables the link
     }
   }
 
@@ -90,15 +97,24 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, activeTab, h
         {/* Navigation Toolbar */}
         <div className="mb-8">
           <div className="flex items-center justify-between bg-white/70 backdrop-blur-sm shadow-sm rounded-2xl px-6 py-4 border border-waldorf-cream-200">
-            <a
-              href={`/week/${latestWeek}`}
-              className="group flex items-center text-waldorf-clay-500 hover:text-waldorf-peach-600 transition-all duration-300"
-            >
-              <svg className="w-5 h-5 mr-2 transform group-hover:-translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              <span className="font-medium">Back to Weekly Articles</span>
-            </a>
+            {latestNewsletter ? (
+              <a
+                href={`/week/${latestNewsletter.week_number || latestNewsletter.id}`}
+                className="group flex items-center text-waldorf-clay-500 hover:text-waldorf-peach-600 transition-all duration-300"
+              >
+                <svg className="w-5 h-5 mr-2 transform group-hover:-translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                <span className="font-medium">Back to Weekly Articles</span>
+              </a>
+            ) : (
+              <div className="flex items-center text-waldorf-clay-400 cursor-not-allowed opacity-50">
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                <span className="font-medium">No Published Articles</span>
+              </div>
+            )}
             <div className="flex items-center space-x-2">
               <span className="w-2 h-2 rounded-full bg-waldorf-sage-400 animate-pulse" />
               <span className="text-sm font-medium text-waldorf-clay-400 tracking-wide uppercase">Admin Portal</span>

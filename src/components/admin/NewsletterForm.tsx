@@ -15,18 +15,18 @@ export function NewsletterForm() {
     setIsSubmitting(true)
 
     try {
-      // Basic validation
-      if (!weekNumber.match(/^\d{4}-W\d{2}$/)) {
+      // Validate week number format if provided
+      if (weekNumber && !weekNumber.match(/^\d{4}-W\d{2}$/)) {
         throw new Error('週次格式錯誤，應為 YYYY-Www (例如: 2025-W48)')
       }
 
-      await adminService.createNewsletter(weekNumber, releaseDate)
+      await adminService.createNewsletter(weekNumber || null, releaseDate)
       navigate('/admin')
     } catch (err) {
-      const message = err instanceof AdminServiceError 
-        ? err.message 
-        : err instanceof Error 
-          ? err.message 
+      const message = err instanceof AdminServiceError
+        ? err.message
+        : err instanceof Error
+          ? err.message
           : '建立失敗'
       setError(message)
     } finally {
@@ -67,7 +67,7 @@ export function NewsletterForm() {
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
           <label htmlFor="weekNumber" className="block text-sm font-semibold text-waldorf-clay-700 mb-2">
-            週次 (Week Number) <span className="text-waldorf-rose-500">*</span>
+            週次 (Week Number)
           </label>
           <div className="flex gap-3">
             <input
@@ -76,7 +76,6 @@ export function NewsletterForm() {
               value={weekNumber}
               onChange={(e) => setWeekNumber(e.target.value)}
               placeholder="2025-W48"
-              required
               className="flex-1 px-4 py-3 border border-waldorf-cream-300 rounded-xl bg-waldorf-cream-50 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-300 focus:border-waldorf-sage-400 text-waldorf-clay-700 placeholder-waldorf-clay-400 transition-all duration-200"
             />
             <button
@@ -87,7 +86,7 @@ export function NewsletterForm() {
               自動填寫下週
             </button>
           </div>
-          <p className="mt-2 text-xs text-waldorf-clay-500 font-medium">格式: YYYY-Www (例如: 2025-W48)</p>
+          <p className="mt-2 text-xs text-waldorf-clay-500 font-medium">格式: YYYY-Www (例如: 2025-W48) · 選填</p>
         </div>
 
         <div className="animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
