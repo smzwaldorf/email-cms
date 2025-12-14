@@ -10,7 +10,7 @@
  * - Type-safe: TypeScript ensures only valid event types are logged
  */
 
-import { getSupabaseServiceClient } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase'
 
 /**
  * Valid authentication event types
@@ -65,12 +65,13 @@ class AuditLoggerService {
    * - Never throws - logging failures are non-fatal
    * - Errors are logged to console for debugging
    * - Safe to call from auth operations - won't break authentication
+   * - Uses regular client with RLS - no service role key needed
    */
   async logAuthEvent(options: AuditLogOptions): Promise<void> {
     try {
-      const supabaseAdmin = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
-      const { error } = await supabaseAdmin
+      const { error } = await supabase
         .from('auth_events')
         .insert({
           user_id: options.userId || null,
