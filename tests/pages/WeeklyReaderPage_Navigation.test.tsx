@@ -66,7 +66,7 @@ const mockArticles = [
     title: 'Article 1',
     content: 'Content 1',
     order: 1,
-    weekNumber: '2025-W47',
+    weekNumber: '11111111-1111-1111-1111-111111111111',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     isPublished: true,
@@ -76,7 +76,7 @@ const mockArticles = [
     title: 'Article 2',
     content: 'Content 2',
     order: 2,
-    weekNumber: '2025-W47',
+    weekNumber: '11111111-1111-1111-1111-111111111111',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     isPublished: true,
@@ -84,7 +84,7 @@ const mockArticles = [
 ]
 
 describe('WeeklyReaderPage Navigation', () => {
-  const mockSetCurrentWeek = vi.fn()
+  const mockSetCurrentNewsletter = vi.fn()
   const mockSetArticleList = vi.fn()
   const mockSetCurrentArticle = vi.fn()
   const mockSetNextArticleId = vi.fn()
@@ -111,7 +111,7 @@ describe('WeeklyReaderPage Navigation', () => {
 
     // Mock useAuth
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: 'user-1', email: 'test@example.com' } as any,
+      user: { id: '00000000-0000-0000-0000-000000000000', email: 'test@example.com' } as any,
       isAuthenticated: true,
       isLoading: false,
       signIn: vi.fn(),
@@ -121,7 +121,7 @@ describe('WeeklyReaderPage Navigation', () => {
     // Mock useNavigation
     vi.mocked(useNavigation).mockReturnValue({
       navigationState: {
-        currentWeekNumber: '2025-W47',
+        currentNewsletterId: '11111111-1111-1111-1111-111111111111',
         currentArticleId: 'article-1',
         currentArticleOrder: 1,
         totalArticlesInWeek: 2,
@@ -131,7 +131,7 @@ describe('WeeklyReaderPage Navigation', () => {
         previousArticleId: undefined,
         nextArticleId: 'article-2',
       },
-      setCurrentWeek: mockSetCurrentWeek,
+      setCurrentNewsletter: mockSetCurrentNewsletter,
       setCurrentArticle: mockSetCurrentArticle,
       setLoading: vi.fn(),
       setError: vi.fn(),
@@ -148,9 +148,9 @@ describe('WeeklyReaderPage Navigation', () => {
 
   const renderPage = () => {
     return render(
-      <MemoryRouter initialEntries={['/week/2025-W47']}>
+      <MemoryRouter initialEntries={['/newsletter/11111111-1111-1111-1111-111111111111']}>
         <Routes>
-          <Route path="/week/:weekNumber" element={<WeeklyReaderPage />} />
+          <Route path="/newsletter/:newsletterId" element={<WeeklyReaderPage />} />
         </Routes>
       </MemoryRouter>
     )

@@ -36,19 +36,20 @@ vi.mock('@/services/ArticleService', () => ({
 }))
 
 vi.mock('@/context/AuthContext', () => ({
-  useAuth: () => ({ user: { id: 'user-1' }, isAuthenticated: true }),
+  useAuth: () => ({ user: { id: '00000000-0000-0000-0000-000000000000' }, isAuthenticated: true }),
   AuthProvider: ({ children }: any) => <div>{children}</div>,
 }))
 
 vi.mock('@/context/NavigationContext', () => ({
   useNavigation: () => ({
     navigationState: {
+      currentNewsletterId: '11111111-1111-1111-1111-111111111111',
       currentArticleId: 'article-1',
       currentArticleOrder: 1,
       totalArticlesInWeek: 1,
       articleList: [],
     },
-    setCurrentWeek: vi.fn(),
+    setCurrentNewsletter: vi.fn(),
     setCurrentArticle: vi.fn(),
     setArticleList: vi.fn(),
     setNextArticleId: vi.fn(),
@@ -58,7 +59,7 @@ vi.mock('@/context/NavigationContext', () => ({
 
 describe('WeeklyReaderPage Analytics', () => {
     const mockNewsletterId = '11111111-1111-1111-1111-111111111111'
-    const mockNewsletterIdW47 = '22222222-2222-2222-2222-222222222222'
+    const mockNewsletterIdW47 = '11111111-1111-1111-1111-111111111111'
 
     beforeEach(() => {
         vi.clearAllMocks()
@@ -114,9 +115,9 @@ describe('WeeklyReaderPage Analytics', () => {
         })
 
         render(
-            <MemoryRouter initialEntries={['/week/2025-W47']}>
+            <MemoryRouter initialEntries={['/newsletter/11111111-1111-1111-1111-111111111111']}>
                 <Routes>
-                    <Route path="/week/:weekNumber" element={<WeeklyReaderPage />} />
+                    <Route path="/newsletter/:newsletterId" element={<WeeklyReaderPage />} />
                 </Routes>
             </MemoryRouter>
         )
@@ -153,9 +154,9 @@ describe('WeeklyReaderPage Analytics', () => {
         })
 
         render(
-            <MemoryRouter initialEntries={['/week/2025-W47']}>
+            <MemoryRouter initialEntries={['/newsletter/11111111-1111-1111-1111-111111111111']}>
                 <Routes>
-                    <Route path="/week/:weekNumber" element={<WeeklyReaderPage />} />
+                    <Route path="/newsletter/:newsletterId" element={<WeeklyReaderPage />} />
                 </Routes>
             </MemoryRouter>
         )

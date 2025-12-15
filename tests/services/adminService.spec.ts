@@ -14,7 +14,7 @@ const mockBuilder = {
   gte: vi.fn().mockReturnThis(),
   lte: vi.fn().mockReturnThis(),
   or: vi.fn().mockReturnThis(),
-  then: vi.fn((resolve, reject) => resolve({ data: [], error: null })),
+  then: vi.fn((resolve) => resolve({ data: [], error: null })),
 }
 
 const mockSupabase = {
@@ -121,6 +121,29 @@ describe('AdminService', () => {
       await expect(adminService.createNewsletter('2025-W48', '2025-11-30'))
         .rejects.toThrow('Newsletter for week 2025-W48 already exists')
     })
+
+
+    it('creates newsletter without week_number (special edition)', async () => {
+      const mockResponse = {
+        id: 'a4444444-4444-4444-4444-444444444444',
+        week_number: null,
+        title: 'Special Edition',
+        release_date: '2025-12-25',
+        status: 'draft',
+        created_at: '2025-12-25',
+        updated_at: '2025-12-25',
+      }
+      mockBuilder.then.mockImplementation((resolve) => resolve({ data: mockResponse, error: null }))
+
+      await adminService.createNewsletter(null, '2025-12-25')
+
+      expect(mockSupabase.from).toHaveBeenCalledWith('newsletters')
+      expect(mockBuilder.insert).toHaveBeenCalledWith(expect.objectContaining({
+        week_number: null,
+        release_date: '2025-12-25',
+        status: 'draft',
+      }))
+    })
   })
 
   describe('publishNewsletter', () => {
@@ -173,6 +196,123 @@ describe('AdminService', () => {
       expect(mockBuilder.update).toHaveBeenCalledWith(expect.objectContaining({
         status: 'archived',
       }))
+    })
+  })
+
+
+  describe('fetchArticlesByNewsletterId', () => {
+    it('fetches articles using junction table', async () => {
+      const newsletterId = 'a1111111-1111-1111-1111-111111111111'
+      const mockJunctionData = [
+        {
+          article_order: 1,
+          articles: {
+            id: 'article-1',
+            title: 'Test Article',
+            content: 'Content',
+            status: 'published',
+            author_id: 'user-1',
+            created_at: '2025-01-01',
+            updated_at: '2025-01-01',
+          }
+        }
+      ]
+      const mockNewsletterData = {
+        id: newsletterId,
+        week_number: '2025-W01',
+        title: 'Week 1',
+      }
+
+      // First call: fetch articles from junction
+      // Second call: fetch newsletter details
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({ data: mockJunctionData, error: null }))
+        .mockImplementationOnce((resolve) => resolve({ data: mockNewsletterData, error: null }))
+
+      const result = await adminService.fetchArticlesByNewsletterId(newsletterId)
+
+      expect(result).toHaveLength(1)
+      expect(result[0].id).toBe('article-1')
+      expect(result[0].weekNumber).toBe('2025-W01')
+      expect(result[0].order).toBe(1)
+    })
+  })
+
+  describe('addArticleToNewsletter', () => {
+    it('adds article to junction table with order', async () => {
+      // Mock getNewsletterIdByWeek (internal call)
+      const mockNewsletterId = 'a1111111-1111-1111-1111-111111111111'
+      const mockNewsletterResponse = { data: { id: mockNewsletterId }, error: null }
+      
+      // Mock insert response
+      const mockInsertResponse = { 
+        data: { 
+          newsletter_id: mockNewsletterId, 
+          article_id: 'article-1', 
+          article_order: 5 
+        }, 
+        error: null 
+      }
+
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve(mockNewsletterResponse)) // getNewsletterIdByWeek
+        .mockImplementationOnce((resolve) => resolve(mockInsertResponse))     // insert
+
+      await adminService.addArticleToNewsletter('article-1', '2025-W01', 5)
+
+      expect(mockSupabase.from).toHaveBeenCalledWith('newsletter_articles')
+      expect(mockBuilder.insert).toHaveBeenCalledWith(expect.objectContaining({
+        newsletter_id: mockNewsletterId,
+        article_id: 'article-1',
+        article_order: 5
+      }))
+    })
+
+    it('auto-increments order if not provided', async () => {
+      const mockNewsletterId = 'a1111111-1111-1111-1111-111111111111'
+      
+      // 1. getNewsletterIdByWeek
+      // 2. get max order
+      // 3. insert
+      
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({ data: { id: mockNewsletterId }, error: null }))
+        .mockImplementationOnce((resolve) => resolve({ data: [{ article_order: 4 }], error: null }))
+        .mockImplementationOnce((resolve) => resolve({ data: {}, error: null }))
+
+      await adminService.addArticleToNewsletter('article-1', '2025-W01')
+
+      expect(mockBuilder.insert).toHaveBeenCalledWith(expect.objectContaining({
+        article_order: 5
+      }))
+    })
+
+    it('throws error if article already in newsletter', async () => {
+          const mockNewsletterId = 'a1111111-1111-1111-1111-111111111111'
+      const duplicateError = { code: '23505', message: 'duplicate key' }
+
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({ data: { id: mockNewsletterId }, error: null }))
+        .mockImplementationOnce((resolve) => resolve({ data: null, error: duplicateError }))
+
+      await expect(adminService.addArticleToNewsletter('article-1', '2025-W01', 1))
+        .rejects.toThrow('Article is already in newsletter')
+    })
+  })
+
+  describe('removeArticleFromNewsletter', () => {
+    it('removes article from junction table', async () => {
+      const mockNewsletterId = 'a1111111-1111-1111-1111-111111111111'
+
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({ data: { id: mockNewsletterId }, error: null }))
+        .mockImplementationOnce((resolve) => resolve({ error: null }))
+
+      await adminService.removeArticleFromNewsletter('article-1', '2025-W01')
+
+      expect(mockSupabase.from).toHaveBeenCalledWith('newsletter_articles')
+      expect(mockBuilder.delete).toHaveBeenCalled()
+      expect(mockBuilder.eq).toHaveBeenCalledWith('newsletter_id', mockNewsletterId)
     })
   })
 })
