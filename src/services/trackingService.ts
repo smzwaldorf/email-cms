@@ -39,10 +39,10 @@ export const trackingService = {
   /**
    * Fetches the list of article IDs that the user has read (viewed) in a specific week.
    * @param userId The user ID to check.
-   * @param weekNumber The newsletter week number.
+   * @param newsletterId The newsletter week number or UUID.
    * @returns Array of article IDs.
    */
-  async getReadArticles(userId: string, weekNumber?: string): Promise<string[]> {
+  async getReadArticles(userId: string, newsletterId?: string): Promise<string[]> {
     try {
       let query = getSupabaseClient()
         .from('analytics_events')
@@ -51,16 +51,24 @@ export const trackingService = {
         .eq('event_type', 'page_view')
         .not('article_id', 'is', null);
 
-      if (weekNumber) {
-        // Resolve week_number to newsletter UUID
-        const { data: newsletter } = await getSupabaseClient()
-          .from('newsletters')
-          .select('id')
-          .eq('week_number', weekNumber)
-          .single();
+      if (newsletterId) {
+        // Check if it's a UUID (newsletter id) or week_number
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(newsletterId);
         
-        if (newsletter?.id) {
-          query = query.eq('newsletter_id', newsletter.id);
+        if (isUUID) {
+          // Use newsletter_id directly
+          query = query.eq('newsletter_id', newsletterId);
+        } else {
+          // Resolve week_number to newsletter UUID
+          const { data: newsletter } = await getSupabaseClient()
+            .from('newsletters')
+            .select('id')
+            .eq('week_number', newsletterId)
+            .single();
+          
+          if (newsletter?.id) {
+            query = query.eq('newsletter_id', newsletter.id);
+          }
         }
       }
 
@@ -90,3 +98,4 @@ export const trackingService = {
     // For now, we just pass sessionId with events.
   }
 };
+

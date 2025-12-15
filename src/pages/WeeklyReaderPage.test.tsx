@@ -132,7 +132,7 @@ describe('WeeklyReaderPage Short URL Logic', () => {
     // Mock useNavigation
     vi.mocked(useNavigation).mockReturnValue({
       navigationState: {
-        currentWeekNumber: '2025-W47',
+        currentNewsletterId: '2025-W47',
         currentArticleId: 'article-1',
         currentArticleOrder: 1,
         totalArticlesInWeek: 2,
@@ -142,7 +142,7 @@ describe('WeeklyReaderPage Short URL Logic', () => {
         previousArticleId: undefined,
         nextArticleId: 'article-2',
       },
-      setCurrentWeek: mockSetCurrentWeek,
+      setCurrentNewsletter: mockSetCurrentWeek,
       setCurrentArticle: mockSetCurrentArticle,
       setLoading: vi.fn(),
       setError: vi.fn(),

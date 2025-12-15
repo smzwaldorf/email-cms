@@ -44,11 +44,12 @@ export const AnalyticsDashboardPage: React.FC = () => {
     }, [weeks, selectedWeek, weekNumber, setSelectedWeek]);
     
     // Get the newsletter UUID for the selected week
+    // selectedWeek can be either week_number or newsletter id
     const selectedNewsletterId = useMemo(() => {
         if (!selectedWeek || weeks.length === 0) return '';
         // @ts-ignore - weeks contains newsletter objects with id and week_number
-        const newsletter = weeks.find((w: any) => w.week_number === selectedWeek);
-        return newsletter?.id || selectedWeek; // Fallback to week_number if id not found
+        const newsletter = weeks.find((w: any) => w.week_number === selectedWeek || w.id === selectedWeek);
+        return newsletter?.id || selectedWeek; // Fallback to selectedWeek if id not found
     }, [selectedWeek, weeks]);
     
     const { metrics, loading: metricsLoading, refreshing: metricsRefreshing, refetch: refetchMetrics } = useNewsletterMetrics(selectedNewsletterId, selectedClass);
@@ -146,22 +147,29 @@ export const AnalyticsDashboardPage: React.FC = () => {
                             <select 
                                 value={selectedNewsletterId} 
                                 onChange={(e) => {
-                                    // Find the week_number for the selected newsletter ID for URL routing
+                                    // Find the newsletter by ID and navigate using week_number or id
                                     // @ts-ignore
                                     const newsletter = weeks.find((w: any) => w.id === e.target.value);
                                     if (newsletter) {
-                                        // @ts-ignore
-                                        handleWeekChange(newsletter.week_number);
+                                        // @ts-ignore - Use week_number if available, otherwise use id
+                                        const routeKey = newsletter.week_number || newsletter.id;
+                                        handleWeekChange(routeKey);
                                     }
                                 }}
-                                className="pl-9 pr-4 py-2 border border-brand-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20 min-w-[140px]"
+                                className="pl-9 pr-4 py-2 border border-brand-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20 min-w-[180px]"
                                 disabled={weeksLoading}
                             >
-                                {weeks.map((week: any) => (
-                                    <option key={week.id} value={week.id}>
-                                        {week.week_number} ({new Date(week.release_date).toLocaleDateString()})
-                                    </option>
-                                ))}
+                                {weeks.map((week: any) => {
+                                    // Display title for newsletters without week_number
+                                    const displayLabel = week.week_number 
+                                        ? `${week.week_number} (${new Date(week.release_date).toLocaleDateString()})`
+                                        : `${week.title || 'Special Edition'} (${new Date(week.release_date).toLocaleDateString()})`;
+                                    return (
+                                        <option key={week.id} value={week.id}>
+                                            {displayLabel}
+                                        </option>
+                                    );
+                                })}
                             </select>
                         </div>
 

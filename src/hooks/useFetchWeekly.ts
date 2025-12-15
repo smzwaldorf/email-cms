@@ -1,6 +1,7 @@
 /**
  * 自定義 Hook - 取得週報及其文章清單
  * Uses real Supabase services instead of mock data
+ * Supports both week_number (e.g., "2025-W47") and newsletter UUID for newsletters without week_number
  */
 
 import { useState, useEffect } from 'react'
@@ -21,7 +22,7 @@ interface UseFetchWeeklyResult {
  * Convert ArticleRow from database to Article type for UI
  * Note: weekNumber is now from junction table, passed as parameter
  */
-function convertArticleRow(row: ArticleRow, order: number, weekNumber?: string): Article {
+function convertArticleRow(row: ArticleRow, order: number, weekNumber?: string, newsletterId?: string): Article {
   return {
     id: row.id,
     shortId: row.short_id,
@@ -31,6 +32,7 @@ function convertArticleRow(row: ArticleRow, order: number, weekNumber?: string):
     authorId: row.author_id || undefined,
     summary: row.title, // Use title as summary since DB doesn't have summary
     weekNumber: weekNumber,
+    newsletterId: newsletterId,
     order,
     slug: row.id, // Use ID as slug
     publicUrl: `/article/${row.id}`,
@@ -59,7 +61,11 @@ function convertWeekRow(row: NewsletterRow, articleCount: number): NewsletterWee
 
 import { useAuth } from '@/context/AuthContext'
 
-export function useFetchWeekly(weekNumber: string): UseFetchWeeklyResult {
+/**
+ * Hook to fetch newsletter and its articles
+ * @param newsletterId ISO week format (e.g., "2025-W47") or newsletter UUID
+ */
+export function useFetchWeekly(newsletterId: string): UseFetchWeeklyResult {
   const { user } = useAuth()
   const [newsletter, setNewsletter] = useState<NewsletterWeek | null>(null)
   const [articles, setArticles] = useState<Article[]>([])
@@ -70,17 +76,17 @@ export function useFetchWeekly(weekNumber: string): UseFetchWeeklyResult {
     setIsLoading(true)
     setError(null)
     try {
-      // Fetch the week from Supabase
-      const weekData = await WeekService.getWeek(weekNumber)
+      // Fetch the week from Supabase (supports both week_number and UUID)
+      const weekData = await WeekService.getWeek(newsletterId)
 
-      // Fetch articles for the week
-      const articlesData = await ArticleService.getArticlesByWeek(weekNumber, {
+      // Fetch articles for the newsletter (supports both week_number and UUID)
+      const articlesData = await ArticleService.getArticlesByWeek(newsletterId, {
         excludeDeleted: true,
       })
       
-      // Convert to UI types
+      // Convert to UI types - pass weekNumber from newsletter data
       const convertedArticles = articlesData.map((row, index) =>
-        convertArticleRow(row, index + 1, weekNumber)
+        convertArticleRow(row, index + 1, weekData.week_number || undefined, weekData.id)
       )
 
       const convertedWeek = convertWeekRow(weekData, articlesData.length)
@@ -102,7 +108,8 @@ export function useFetchWeekly(weekNumber: string): UseFetchWeeklyResult {
     setArticles([])
     setNewsletter(null)
     refetch()
-  }, [weekNumber, user?.id])
+  }, [newsletterId, user?.id])
 
   return { newsletter, articles, isLoading, error, refetch }
 }
+

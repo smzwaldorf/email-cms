@@ -94,7 +94,11 @@ export function useAnalyticsTracking({ articleId, newsletterId, classId, enabled
 
   // Time Tracking with Visibility API
   useEffect(() => {
-    if (!articleId || !enabled) return;
+    console.log('[Analytics] Time tracking effect - articleId:', articleId, 'enabled:', enabled, 'newsletterId:', newsletterId);
+    if (!articleId || !enabled) {
+      console.log('[Analytics] Time tracking skipped - articleId:', articleId, 'enabled:', enabled);
+      return;
+    }
     
     // Reset time tracking for new article
     startTimeRef.current = Date.now();
@@ -159,11 +163,13 @@ export function useAnalyticsTracking({ articleId, newsletterId, classId, enabled
     window.addEventListener('pagehide', handleBeforeUnload);
     
     return () => {
+      console.log('[Analytics] Cleanup running for articleId:', articleId);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('pagehide', handleBeforeUnload);
       
       // Log session end when navigating away (component unmount)
+      console.log('[Analytics] About to call logSessionEnd from cleanup');
       logSessionEnd();
     };
   }, [articleId, enabled]); // Minimal dependencies - reads other values from refs

@@ -42,7 +42,8 @@ export interface Article {
   summary?: string; // 摘要（可選）
 
   // 分類與排序 (now from newsletter_articles junction)
-  weekNumber?: string; // 所屬週份 (from junction table)
+  weekNumber?: string; // 所屬週份 (from junction table, for display)
+  newsletterId?: string; // 所屬 newsletter UUID (from junction table)
   order?: number; // 該週內的排序序號（from junction table）
 
   // 連結與訪問
@@ -63,7 +64,7 @@ export interface Article {
 
 export interface NavigationState {
   // 當前位置
-  currentWeekNumber: string; // 當前週份
+  currentNewsletterId: string; // 當前 newsletter ID (week_number or UUID)
   currentArticleId: string; // 當前文章 ID
   currentArticleOrder: number; // 當前文章在週內的序號
 

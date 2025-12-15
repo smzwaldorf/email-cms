@@ -53,8 +53,12 @@ export const LoginPage: React.FC = () => {
     try {
       const latestWeek = await WeekService.getLatestPublishedWeek()
       if (latestWeek) {
-        console.log(`✅ Redirecting to latest week: ${latestWeek.week_number}`)
-        navigate(`/week/${latestWeek.week_number}`)
+        // Use week_number if available, otherwise use newsletter id (for special editions)
+        const routeKey = latestWeek.week_number || latestWeek.id
+        console.log(`✅ Redirecting to latest newsletter: ${routeKey}`)
+        // Use generateWeeklyUrl to get correct route (/week or /newsletter)
+        const { generateWeeklyUrl } = await import('@/utils/urlUtils')
+        navigate(generateWeeklyUrl(routeKey))
       } else {
         console.warn('⚠️ No published weeks found, using fallback week')
         navigate('/week/2025-W47')

@@ -91,7 +91,15 @@ export default function App() {
                 }
               />
               <Route
-                path="/newsletter/:weekNumber"
+                path="/newsletter/:newsletterId"
+                element={
+                  <ProtectedRoute>
+                    <WeeklyReaderPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/newsletter/:newsletterId/:shortId"
                 element={
                   <ProtectedRoute>
                     <WeeklyReaderPage />

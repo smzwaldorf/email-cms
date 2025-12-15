@@ -44,7 +44,12 @@ function convertArticleRow(
   }
 }
 
-export function useFetchArticle(articleId: string): UseFetchArticleResult {
+/**
+ * Fetch article hook with optional weekNumber context
+ * @param articleId The article ID to fetch
+ * @param weekNumber Optional week number context (for shared articles that appear in multiple newsletters)
+ */
+export function useFetchArticle(articleId: string, weekNumber?: string): UseFetchArticleResult {
   const [article, setArticle] = useState<(Article & { newsletterId?: string }) | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
@@ -59,12 +64,19 @@ export function useFetchArticle(articleId: string): UseFetchArticleResult {
       return
     }
 
+    // Reset article to null to avoid stale data while fetching new article
+    setArticle(null)
+
     try {
       // Use getArticleWithNewsletter to also fetch the associated newsletter ID
-      const articleRow = await ArticleService.getArticleWithNewsletter(articleId)
+      // Pass weekNumber context to resolve the correct newsletter for shared articles
+      const articleRow = await ArticleService.getArticleWithNewsletter(articleId, weekNumber)
+      console.log('[useFetchArticle] Got article:', articleRow?.id, 'newsletter_id:', articleRow?.newsletter_id, 'week_number:', articleRow?.week_number)
       
       if (articleRow) {
-        setArticle(convertArticleRow(articleRow))
+        const convertedArticle = convertArticleRow(articleRow)
+        console.log('[useFetchArticle] Converted article newsletterId:', convertedArticle.newsletterId)
+        setArticle(convertedArticle)
       } else {
         setError(new Error('Article not found'))
       }
@@ -74,7 +86,7 @@ export function useFetchArticle(articleId: string): UseFetchArticleResult {
     } finally {
       setIsLoading(false)
     }
-  }, [articleId])
+  }, [articleId, weekNumber])
 
   useEffect(() => {
     refetch()
@@ -82,3 +94,4 @@ export function useFetchArticle(articleId: string): UseFetchArticleResult {
 
   return { article, isLoading, error, refetch }
 }
+

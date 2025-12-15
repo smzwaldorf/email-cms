@@ -26,7 +26,10 @@ export const MagicLinkForm: React.FC<MagicLinkFormProps> = ({ onSuccess, isLoadi
     const cachedShortId = localStorage.getItem('pending_short_id')
     const cachedWeekNumber = localStorage.getItem('pending_week_number')
     if (cachedShortId && cachedWeekNumber) {
-      return `/week/${cachedWeekNumber}/${cachedShortId}`
+      // Use /week for week_number format, /newsletter for UUIDs
+      const isWeekNumber = /^\d{4}-W\d{2}$/.test(cachedWeekNumber)
+      const route = isWeekNumber ? '/week' : '/newsletter'
+      return `${route}/${cachedWeekNumber}/${cachedShortId}`
     }
     return undefined
   }, [redirectTo])

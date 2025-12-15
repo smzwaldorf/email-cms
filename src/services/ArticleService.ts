@@ -83,26 +83,37 @@ export class ArticleService {
     return data.id
   }
   /**
-   * Get articles by week number using the newsletter_articles junction table
-   * @param weekNumber ISO week format (e.g., "2025-W47")
+   * Helper to check if a string looks like a UUID
+   */
+  private static isUUID(str: string): boolean {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)
+  }
+
+  /**
+   * Get articles by week number or newsletter id using the newsletter_articles junction table
+   * @param newsletterId ISO week format (e.g., "2025-W47") or newsletter UUID
    * @param filters Optional filtering options
    */
   static async getArticlesByWeek(
-    weekNumber: string,
+    newsletterId: string,
     filters?: ArticleFilter,
   ): Promise<ArticleRow[]> {
     try {
       const supabase = getSupabaseClient()
       
-      // First, find the newsletter by week_number
+      // Determine if the input is a UUID or week_number
+      const isId = this.isUUID(newsletterId)
+      const queryField = isId ? 'id' : 'week_number'
+      
+      // Find the newsletter
       const { data: newsletter, error: newsletterError } = await supabase
         .from('newsletters')
         .select('id')
-        .eq('week_number', weekNumber)
+        .eq(queryField, newsletterId)
         .single()
       
       if (newsletterError || !newsletter) {
-        // No newsletter found for this week
+        // No newsletter found
         return []
       }
       
@@ -118,7 +129,7 @@ export class ArticleService {
 
       if (error) {
         throw new ArticleServiceError(
-          `Failed to fetch articles for week ${weekNumber}: ${error.message}`,
+          `Failed to fetch articles for newsletter ${newsletterId}: ${error.message}`,
           'FETCH_ARTICLES_ERROR',
           error as Error,
         )
@@ -199,8 +210,10 @@ export class ArticleService {
   /**
    * Get a single article by ID with its associated newsletter ID
    * This is useful for analytics tracking to ensure the correct newsletter ID is used
+   * @param id Article ID
+   * @param newsletterId Optional week number or newsletter UUID to filter by (for shared articles that appear in multiple newsletters)
    */
-  static async getArticleWithNewsletter(id: string): Promise<ArticleRow & { newsletter_id?: string; week_number?: string }> {
+  static async getArticleWithNewsletter(id: string, newsletterId?: string): Promise<ArticleRow & { newsletter_id?: string; week_number?: string }> {
     try {
       const supabase = getSupabaseClient()
       
@@ -219,20 +232,79 @@ export class ArticleService {
         )
       }
 
-      // Then get the newsletter info from the junction table
-      const { data: junctionData } = await supabase
-        .from('newsletter_articles')
-        .select('newsletter_id, newsletters!inner(week_number)')
-        .eq('article_id', id)
-        .limit(1)
-        .single()
+      // Build junction query - filter by week_number or newsletter id if provided
+      // If newsletterId is a UUID, we already have the ID - just verify it exists in junction
+      if (newsletterId && this.isUUID(newsletterId)) {
+        // Simple query - just check if the article is in this newsletter
+        const { data: junctionData, error: junctionError } = await supabase
+          .from('newsletter_articles')
+          .select('newsletter_id')
+          .eq('article_id', id)
+          .eq('newsletter_id', newsletterId)
+          .limit(1)
+          .maybeSingle()
 
-      // Attach newsletter info to the article
-      if (junctionData) {
-        return {
-          ...article,
-          newsletter_id: junctionData.newsletter_id,
-          week_number: (junctionData.newsletters as any)?.week_number
+        if (junctionData && !junctionError) {
+          // Get week_number from newsletters table separately
+          const { data: newsletterData } = await supabase
+            .from('newsletters')
+            .select('week_number')
+            .eq('id', newsletterId)
+            .single()
+
+          return {
+            ...article,
+            newsletter_id: junctionData.newsletter_id,
+            week_number: newsletterData?.week_number
+          }
+        }
+      } else {
+        // Need to join to filter by week_number or get any association
+        let junctionQuery = supabase
+          .from('newsletter_articles')
+          .select('newsletter_id, newsletters!inner(id, week_number)')
+          .eq('article_id', id)
+
+        if (newsletterId) {
+          // Filter by week_number
+          junctionQuery = junctionQuery.eq('newsletters.week_number', newsletterId)
+        }
+
+        const { data: junctionData, error: junctionError } = await junctionQuery.limit(1).maybeSingle()
+
+        if (junctionData && !junctionError) {
+          return {
+            ...article,
+            newsletter_id: junctionData.newsletter_id,
+            week_number: (junctionData.newsletters as any)?.week_number
+          }
+        }
+      }
+
+      // If filtered query failed but newsletterId was provided, 
+      // try fetching any newsletter association as fallback
+      if (newsletterId) {
+        console.warn(`[ArticleService] Junction query failed for ${newsletterId}, trying fallback...`)
+        const { data: fallbackData } = await supabase
+          .from('newsletter_articles')
+          .select('newsletter_id')
+          .eq('article_id', id)
+          .limit(1)
+          .maybeSingle()
+
+        if (fallbackData) {
+          // Get week_number from newsletters table
+          const { data: newsletterData } = await supabase
+            .from('newsletters')
+            .select('week_number')
+            .eq('id', fallbackData.newsletter_id)
+            .single()
+
+          return {
+            ...article,
+            newsletter_id: fallbackData.newsletter_id,
+            week_number: newsletterData?.week_number
+          }
         }
       }
 

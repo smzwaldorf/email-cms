@@ -23,38 +23,83 @@ import { Article } from '@/types'
 import PermissionService from '@/services/PermissionService'
 import ArticleService from '@/services/ArticleService'
 
+import WeekService from '@/services/WeekService'
+
 export function WeeklyReaderPage() {
-  const { weekNumber: paramWeekNumber, shortId } = useParams<{ weekNumber: string, shortId?: string }>()
-  const weekNumber = paramWeekNumber || '2025-W43'
+  // Parameters can come from different routes:
+  // - /week/:weekNumber - regular newsletters with week_number (e.g., "2025-W47")
+  // - /newsletter/:newsletterId - special editions using UUID
+  const { weekNumber, newsletterId, shortId } = useParams<{ 
+    weekNumber?: string, 
+    newsletterId?: string, 
+    shortId?: string 
+  }>()
   const navigate = useNavigate()
 
   const { user } = useAuth()
   const navigation = useNavigation()
+
+  // Resolve newsletter ID based on which route was used
+  // - /newsletter/:newsletterId - use directly, no conversion needed
+  // - /week/:weekNumber - convert week_number to newsletter UUID
+  const [resolvedNewsletterId, setResolvedNewsletterId] = useState<string | null>(
+    newsletterId || null
+  )
+
+  useEffect(() => {
+    if (newsletterId) {
+      // /newsletter/:newsletterId route - use directly
+      setResolvedNewsletterId(newsletterId)
+    } else if (weekNumber) {
+      // /week/:weekNumber route - look up newsletter UUID from week_number
+      WeekService.getWeek(weekNumber)
+        .then(newsletter => {
+          setResolvedNewsletterId(newsletter.id)
+        })
+        .catch(err => {
+          console.error('[WeeklyReaderPage] Failed to resolve week number:', err)
+          // Keep weekNumber as fallback (will likely fail downstream)
+          setResolvedNewsletterId(weekNumber)
+        })
+    }
+  }, [weekNumber, newsletterId])
+
+  // Use resolved newsletter ID
+  const currentNewsletterId = resolvedNewsletterId || weekNumber || newsletterId || ''
+
   const {
     articles,
     isLoading: isLoadingWeekly,
     error: weeklyError,
     refetch: refetchWeekly,
-  } = useFetchWeekly(weekNumber)
+  } = useFetchWeekly(currentNewsletterId)
 
-  const currentArticleId = navigation.navigationState.currentArticleId
+  // Check if the navigation state is synchronized with the current newsletter
+  // This prevents fetching a stale article ID from a previous newsletter when switching
+  const isNavigationSynced = navigation.navigationState.currentNewsletterId === currentNewsletterId
+  const currentArticleId = isNavigationSynced 
+    ? navigation.navigationState.currentArticleId 
+    : '' // Don't fetch stale article when newsletter is changing
+  
   const { 
     article, 
     isLoading: isLoadingArticle,
     refetch: refetchArticle
   } = useFetchArticle(
-    currentArticleId
+    currentArticleId,
+    currentNewsletterId // Pass context for correct newsletter resolution on shared articles
   )
 
   // Tracking Hooks - use article's own newsletter ID for accurate analytics tracking
   // This ensures the correct newsletter ID is logged even when viewing articles from different weeks
+  // Note: isNavigationSynced check above prevents fetching stale articles during newsletter transitions
   useAnalyticsTracking({
     articleId: article?.id,
     newsletterId: article?.newsletterId, // Use article's newsletter ID, not the URL week's newsletter
-    enabled: !!article?.id && !!article?.newsletterId, // Only track when article and its newsletter ID are loaded
+    enabled: !!article?.id && !!article?.newsletterId && isNavigationSynced, // Only track when navigation is synced
   });
 
-  const { readArticleIds, markAsRead } = useReadStatus(weekNumber);
+  const { readArticleIds, markAsRead } = useReadStatus(currentNewsletterId);
 
   // Mark current article as read when loaded
   useEffect(() => {
@@ -81,7 +126,7 @@ export function WeeklyReaderPage() {
   useEffect(() => {
     if (articles.length > 0) {
       // 檢查是否需要初始化：週份改變或文章清單為空
-      const weekChanged = navigation.navigationState.currentWeekNumber !== weekNumber
+      const weekChanged = navigation.navigationState.currentNewsletterId !== currentNewsletterId
       const currentList = navigation.navigationState.articleList
       const isFirstLoad = currentList.length === 0
       
@@ -98,7 +143,7 @@ export function WeeklyReaderPage() {
       const cachedWeekNumber = localStorage.getItem('pending_week_number')
       
       // Determine which shortId to use: URL param or cached
-      const targetShortId = shortId || (cachedWeekNumber === weekNumber ? cachedShortId : null)
+      const targetShortId = shortId || (cachedWeekNumber === currentNewsletterId ? cachedShortId : null)
 
       if (targetShortId) {
         // Handle short URL redirection
@@ -111,7 +156,7 @@ export function WeeklyReaderPage() {
         }
 
         if (targetArticle) {
-          navigation.setCurrentWeek(weekNumber)
+          navigation.setCurrentNewsletter(currentNewsletterId)
           navigation.setArticleList(articles)
           navigation.setCurrentArticle(targetArticle.id, targetArticle.order ?? 1)
           
@@ -124,18 +169,25 @@ export function WeeklyReaderPage() {
           }
 
           // Replace URL to clean version
-          navigate(`/week/${weekNumber}`, { replace: true })
+          // Use /week/:week_number for regular newsletters, /newsletter/:uuid for special editions
+          const redirectPath = targetArticle.weekNumber 
+            ? `/week/${targetArticle.weekNumber}` 
+            : `/newsletter/${currentNewsletterId}`
+          navigate(redirectPath, { replace: true })
           return
         }
       }
 
-      // Ensure the articles we have actually belong to the requested week
-      // This prevents using stale data from previous week before the new fetch completes
-      const isCorrectWeek = articles[0].weekNumber === weekNumber
+      // Verify articles belong to the current newsletter using newsletterId
+      // This handles both regular newsletters (with week_number) and special editions (UUID only)
+      const firstArticleNewsletterId = articles[0].newsletterId
+      const isCorrectNewsletter = firstArticleNewsletterId === currentNewsletterId || 
+        // Fallback: if newsletterId not set but weekNumber matches, still valid
+        articles[0].weekNumber === currentNewsletterId
 
-      if ((weekChanged || isFirstLoad) && isCorrectWeek) {
+      if ((weekChanged || isFirstLoad) && isCorrectNewsletter) {
         const firstArticle = articles[0]
-        navigation.setCurrentWeek(weekNumber)
+        navigation.setCurrentNewsletter(currentNewsletterId)
         navigation.setCurrentArticle(firstArticle.id, 1)
         navigation.setArticleList(articles)
 
@@ -145,12 +197,12 @@ export function WeeklyReaderPage() {
         } else {
           navigation.setNextArticleId(undefined)
         }
-      } else if (listChanged && isCorrectWeek) {
+      } else if (listChanged && isCorrectNewsletter) {
         // Only update the list, preserve current selection
         navigation.setArticleList(articles)
       }
     }
-  }, [articles, weekNumber, navigation, shortId, navigate])
+  }, [articles, currentNewsletterId, navigation, shortId, navigate])
 
   // 檢查編輯權限 - 當文章或使用者改變時
   useEffect(() => {
@@ -382,7 +434,7 @@ export function WeeklyReaderPage() {
         {/* 文章列表面板 */}
         <div className="w-72 bg-waldorf-cream-50 border-r border-waldorf-cream-200 flex flex-col">
           <ArticleListView
-            weekNumber={weekNumber}
+            weekNumber={currentNewsletterId}
             articles={articles}
             selectedArticleId={navigation.navigationState.currentArticleId}
             onSelectArticle={handleSelectArticle}

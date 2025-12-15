@@ -65,6 +65,13 @@ const testWeeks = [
     release_date: '2025-12-01',
     status: 'draft',
   },
+  {
+    id: 'f0000000-0000-0000-0000-000000000001',
+    week_number: null, // Special edition without week number
+    title: 'Holiday Special Edition 2025',
+    release_date: '2025-12-15',
+    status: 'published',
+  },
 ]
 
 const testClasses = [
@@ -385,6 +392,67 @@ const testArticles = [
     restricted_to_classes: null,
     article_order: 3,
   },
+  // Featured Article (shared across multiple newsletters)
+  {
+    id: 'fa000001-0001-0001-0001-000000000001',
+    newsletter_id: null, // This article appears in multiple newsletters via junction table
+    short_id: 'fa0001',
+    title: 'School Calendar & Key Dates (學校行事曆與重要日期)',
+    content: `<h1>🗓️ School Calendar & Key Dates</h1>
+<p>Dear Parents and Community Members,</p>
+<p>This is a recurring article that provides important school calendar information. It appears in multiple weekly newsletters for your convenience.</p>
+<h2>November 2025</h2>
+<ul>
+<li><strong>Nov 17-21:</strong> Parent-Teacher Conference Week</li>
+<li><strong>Nov 24:</strong> Thanksgiving Celebration</li>
+<li><strong>Nov 27-28:</strong> Thanksgiving Holiday (No School)</li>
+</ul>
+<h2>December 2025</h2>
+<ul>
+<li><strong>Dec 5:</strong> Winter Concert</li>
+<li><strong>Dec 12:</strong> Last day for After-School Programs</li>
+<li><strong>Dec 15:</strong> Holiday Art Show</li>
+<li><strong>Dec 19:</strong> Last Day of School (Early Dismissal 12:00 PM)</li>
+<li><strong>Dec 20 - Jan 4:</strong> Winter Break</li>
+</ul>
+<h2>January 2026</h2>
+<ul>
+<li><strong>Jan 5:</strong> School Resumes</li>
+<li><strong>Jan 19:</strong> Martin Luther King Jr. Day (No School)</li>
+<li><strong>Jan 26-30:</strong> International Week</li>
+</ul>
+<h2>Contact Information</h2>
+<ul>
+<li><strong>Main Office:</strong> (123) 456-7890</li>
+<li><strong>Email:</strong> office@waldorf-school.edu</li>
+<li><strong>Office Hours:</strong> Mon-Fri, 8:00 AM - 4:00 PM</li>
+</ul>
+<hr>
+<p><em>This calendar is updated regularly. Check back each week for the latest information.</em></p>`,
+    status: 'published',
+    visibility_type: 'public',
+    restricted_to_classes: null,
+    article_order: null, // Order is set per-newsletter in junction table
+  },
+]
+
+// Featured article junction entries (article appears in multiple newsletters)
+const featuredArticleJunctions = [
+  {
+    newsletter_id: 'f0470000-0000-0000-0000-000000000047', // Week 47
+    article_id: 'fa000001-0001-0001-0001-000000000001',
+    article_order: 7, // Last article in Week 47
+  },
+  {
+    newsletter_id: 'f0480000-0000-0000-0000-000000000048', // Week 48
+    article_id: 'fa000001-0001-0001-0001-000000000001',
+    article_order: 4, // Last article in Week 48
+  },
+  {
+    newsletter_id: 'f0000000-0000-0000-0000-000000000001', // Holiday Special Edition (no week_number)
+    article_id: 'fa000001-0001-0001-0001-000000000001',
+    article_order: 1, // First (and only) article in Holiday Special
+  },
 ]
 
 const testUsers = [
@@ -520,13 +588,21 @@ async function setupDevelopment() {
 
     // Seed newsletter_articles junction table
     console.log('🔗 Seeding newsletter_articles junction...')
-    const junctionData = testArticles.map((article) => ({
-      newsletter_id: article.newsletter_id,
-      article_id: article.id,
-      article_order: article.article_order,
-    }))
+    // Filter out articles with null newsletter_id (multi-newsletter articles)
+    const junctionData = testArticles
+      .filter((article) => article.newsletter_id !== null)
+      .map((article) => ({
+        newsletter_id: article.newsletter_id,
+        article_id: article.id,
+        article_order: article.article_order,
+      }))
     const junctionResult = await seedData('newsletter_articles', junctionData)
-    console.log(`   ✅ Created: ${junctionResult.success} | ⏭️  Skipped: ${junctionResult.skipped}\n`)
+    console.log(`   ✅ Created: ${junctionResult.success} | ⏭️  Skipped: ${junctionResult.skipped}`)
+    
+    // Seed featured article junctions (articles in multiple newsletters)
+    console.log('🔗 Seeding featured article junctions...')
+    const featuredResult = await seedData('newsletter_articles', featuredArticleJunctions)
+    console.log(`   ✅ Created: ${featuredResult.success} | ⏭️  Skipped: ${featuredResult.skipped}\n`)
 
     // ========================================================================
     // PHASE 2: Create Auth Users & Enrollments

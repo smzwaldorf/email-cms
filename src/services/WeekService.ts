@@ -36,19 +36,30 @@ export class WeekServiceError extends Error {
  */
 export class WeekService {
   /**
-   * Get a specific newsletter by week number
-   * @param weekNumber ISO week format (e.g., "2025-W47")
+   * Helper to check if a string looks like a UUID
    */
-  static async getWeek(weekNumber: string): Promise<NewsletterRow> {
+  private static isUUID(str: string): boolean {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)
+  }
+
+  /**
+   * Get a specific newsletter by week number or newsletter id
+   * @param newsletterId ISO week format (e.g., "2025-W47") or newsletter UUID
+   */
+  static async getWeek(newsletterId: string): Promise<NewsletterRow> {
     try {
+      // Determine if the input is a UUID or week_number
+      const isId = this.isUUID(newsletterId)
+      const queryField = isId ? 'id' : 'week_number'
+      
       const { data, error } = await table('newsletters')
         .select('*')
-        .eq('week_number', weekNumber)
+        .eq(queryField, newsletterId)
         .single()
 
       if (error) {
         throw new WeekServiceError(
-          `Failed to fetch week ${weekNumber}: ${error.message}`,
+          `Failed to fetch newsletter ${newsletterId}: ${error.message}`,
           'FETCH_WEEK_ERROR',
           error as Error,
         )
@@ -56,7 +67,7 @@ export class WeekService {
 
       if (!data) {
         throw new WeekServiceError(
-          `Week ${weekNumber} not found`,
+          `Newsletter ${newsletterId} not found`,
           'WEEK_NOT_FOUND',
         )
       }
@@ -286,13 +297,14 @@ export class WeekService {
 
   /**
    * Get the latest published newsletter
+   * Orders by release_date to correctly handle newsletters without week_number
    */
   static async getLatestPublishedWeek(): Promise<NewsletterRow | null> {
     try {
       const { data, error } = await table('newsletters')
         .select('*')
         .eq('status', 'published')
-        .order('week_number', { ascending: false })
+        .order('release_date', { ascending: false })
         .limit(1)
         .single()
 
