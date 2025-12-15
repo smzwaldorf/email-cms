@@ -117,7 +117,7 @@ TipTap 編輯器
     ↓ 儲存
 ContentConverter.tiptapToMarkdown()
     ↓
-資料庫 (Markdown) + content_json (TipTap JSON)
+資料庫 (Markdown)
 ```
 
 ---

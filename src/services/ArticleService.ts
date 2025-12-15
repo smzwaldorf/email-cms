@@ -334,7 +334,7 @@ export class ArticleService {
         restricted_to_classes: dto.visibilityType === 'class_restricted'
           ? (dto.restrictedToClasses || [])
           : null,
-        is_published: false,
+        status: 'draft',
         created_at: new Date().toISOString(),
       }
 
@@ -398,7 +398,7 @@ export class ArticleService {
             ? (dto.restrictedToClasses || [])
             : null
       }
-      if (dto.isPublished !== undefined) updateData.is_published = dto.isPublished
+      if (dto.isPublished !== undefined) updateData.status = dto.isPublished ? 'published' : 'draft'
 
       if (Object.keys(updateData).length === 0) {
         // No fields to update, just return the article
@@ -457,7 +457,7 @@ export class ArticleService {
       const { data, error } = await table('articles')
         .update({
           deleted_at: new Date().toISOString(),
-          is_published: false, // Unpublish on delete
+          status: 'draft', // Reset to draft on delete
         })
         .eq('id', id)
         .select()
@@ -609,7 +609,7 @@ export class ArticleService {
       let query = table('articles')
         .select('*')
         .eq('week_number', weekNumber)
-        .eq('is_published', true)
+        .eq('status', 'published')
         .is('deleted_at', null)
 
       const { data, error } = await query.order('article_order', { ascending: true })
@@ -752,17 +752,14 @@ export class ArticleService {
   }
 
   /**
-   * 更新文章內容
-   * Update article content with content format tracking
+   * Update article content
    * @param articleId Article ID to update
    * @param content New content
-   * @param contentFormat Content format (markdown or rich_text) - for future use with content_format column
    * @param userId Optional user ID for permission checking
    */
   static async updateArticleContent(
     articleId: string,
     content: string,
-    _contentFormat: 'markdown' | 'rich_text' = 'markdown',
     userId?: string,
   ): Promise<ArticleRow> {
     try {
