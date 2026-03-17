@@ -199,4 +199,32 @@ describe('AnalyticsDashboardPage Integration', () => {
             expect(mockRefetch).toHaveBeenCalled();
         });
     });
+
+    it('uses newsletter UUID when the default newsletter has no week number', async () => {
+        vi.mocked(useAnalyticsQuery.useAvailableWeeks).mockReturnValue({
+            weeks: [
+                {
+                    id: mockNewsletterId1,
+                    week_number: null,
+                    title: 'Special Edition',
+                    release_date: '2025-01-02',
+                },
+                {
+                    id: mockNewsletterId2,
+                    week_number: '2024-W52',
+                    release_date: '2024-12-25',
+                },
+            ],
+            loading: false,
+        } as any)
+
+        renderDashboard()
+
+        await waitFor(() => {
+            expect(useAnalyticsQuery.useNewsletterMetrics).toHaveBeenCalledWith(
+                mockNewsletterId1,
+                expect.anything()
+            )
+        })
+    })
 });

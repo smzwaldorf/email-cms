@@ -37,9 +37,14 @@ export const AnalyticsDashboardPage: React.FC = () => {
     // Set default selected week when weeks load (if no URL param and no context state)
     React.useEffect(() => {
         if (weeks.length > 0 && !selectedWeek && !weekNumber) {
-             // @ts-ignore
-             const defaultWeek = weeks[0].week_number || weeks[0].toString();
-             setSelectedWeek(defaultWeek);
+             // Use week_number when present, otherwise fall back to newsletter UUID.
+             // Avoid `.toString()` on the newsletter object, which becomes "[object Object]"
+             // and breaks downstream Supabase filters.
+             const defaultNewsletter = weeks[0] as any;
+             const defaultWeek = defaultNewsletter.week_number || defaultNewsletter.id || '';
+             if (defaultWeek) {
+                 setSelectedWeek(defaultWeek);
+             }
         }
     }, [weeks, selectedWeek, weekNumber, setSelectedWeek]);
     
