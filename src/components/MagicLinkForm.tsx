@@ -79,26 +79,26 @@ export const MagicLinkForm: React.FC<MagicLinkFormProps> = ({ onSuccess, isLoadi
     return (
       <div className="space-y-4 text-center">
         <div className="flex justify-center">
-          <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-            <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="w-12 h-12 bg-waldorf-sage-100 rounded-full flex items-center justify-center">
+            <svg className="w-6 h-6 text-waldorf-sage-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
         </div>
 
         <div>
-          <h3 className="text-lg font-medium text-gray-900 mb-1">檢查您的電子郵件</h3>
-          <p className="text-sm text-gray-600">
+          <h3 className="text-lg font-medium text-waldorf-clay-800 mb-1">檢查您的電子郵件</h3>
+          <p className="text-sm text-waldorf-clay-500">
             我們已向 <span className="font-medium">{email}</span> 發送了登入連結
           </p>
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-900">
+        <div className="bg-waldorf-peach-50 border border-waldorf-peach-200 rounded-lg p-3 text-sm text-waldorf-peach-900">
           <p className="font-medium mb-1">📝 下一步：</p>
           <p>點擊電子郵件中的連結完成登入。連結在 15 分鐘內有效。</p>
         </div>
 
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-waldorf-clay-500">
           在一切就緒後，您將被自動重新導向
         </p>
 
@@ -108,7 +108,7 @@ export const MagicLinkForm: React.FC<MagicLinkFormProps> = ({ onSuccess, isLoadi
             setStep('email-input')
             setEmail('')
           }}
-          className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+          className="text-sm text-waldorf-peach-600 hover:text-waldorf-peach-700 font-medium"
         >
           使用不同的電子郵件
         </button>
@@ -119,7 +119,7 @@ export const MagicLinkForm: React.FC<MagicLinkFormProps> = ({ onSuccess, isLoadi
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label htmlFor="magic-email" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="magic-email" className="block text-sm font-medium text-waldorf-clay-700 mb-1.5">
           電子郵件地址
         </label>
         <input
@@ -128,18 +128,19 @@ export const MagicLinkForm: React.FC<MagicLinkFormProps> = ({ onSuccess, isLoadi
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="your-email@example.com"
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-waldorf-peach disabled:bg-gray-100"
+          autoComplete="email"
+          className="w-full px-4 py-2.5 border border-waldorf-cream-300 rounded-lg text-waldorf-clay-800 focus:outline-none focus:ring-2 focus:ring-waldorf-peach-300 focus:border-waldorf-peach-400 disabled:bg-waldorf-cream-100"
           disabled={isLoading || isSubmitting}
         />
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+        <div className="bg-waldorf-rose-50 border border-waldorf-rose-200 text-waldorf-rose-700 px-4 py-3 rounded-lg text-sm" role="alert" aria-live="polite">
           {error}
         </div>
       )}
 
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs text-gray-600">
+      <div className="bg-waldorf-cream-50 border border-waldorf-cream-200 rounded-lg p-3 text-xs text-waldorf-clay-500">
         <p>
           ✨ 我們將向您發送一個安全連結。不需要密碼 - 只需點擊連結即可登入。
         </p>
@@ -148,7 +149,7 @@ export const MagicLinkForm: React.FC<MagicLinkFormProps> = ({ onSuccess, isLoadi
       <button
         type="submit"
         disabled={isLoading || isSubmitting}
-        className="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold py-3 px-4 rounded-lg transition-all duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
+        className="w-full bg-gradient-to-r from-waldorf-peach-500 to-waldorf-peach-600 hover:from-waldorf-peach-600 hover:to-waldorf-peach-700 active:scale-[0.99] text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed shadow-md shadow-waldorf-peach-200/40"
       >
         {isSubmitting ? '發送中...' : '發送登入連結'}
       </button>

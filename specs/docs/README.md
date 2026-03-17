@@ -27,6 +27,12 @@ A comprehensive 786-line guide covering:
 - Configuration reference
 - **Read time:** 15-20 minutes for full guide, 5 minutes for quick start
 
+**[UX_UI_AUDIT_DESIGN_SYSTEM.md](UX_UI_AUDIT_DESIGN_SYSTEM.md)** - UX audit and design system baseline
+- Interface audit findings (priority-ranked)
+- Design token role mapping from current Tailwind palette
+- Actionable component specs and acceptance criteria
+- Engineering + QA handoff checklist
+
 ## 🎯 Quick Navigation
 
 ### I want to...

@@ -113,131 +113,178 @@ export const LoginPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-waldorf-sage to-waldorf-cream flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
-        {/* Header */}
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">電子報閱讀器</h1>
-          <p className="text-gray-600">Newsletter Viewer</p>
-        </div>
+    <div className="relative min-h-screen bg-gradient-to-br from-waldorf-sage-100 via-waldorf-cream-100 to-waldorf-clay-50 flex items-center justify-center p-4 sm:p-6">
+      <div className="pointer-events-none absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_top_right,_rgba(233,125,67,0.25),transparent_45%),radial-gradient(circle_at_bottom_left,_rgba(135,153,107,0.20),transparent_40%)]" />
 
-        {/* Google Sign-in */}
-        <div className="mb-6">
-          <GoogleButton disabled={isLoading} />
-        </div>
-
-        {/* Divider */}
-        <div className="relative mb-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-300"></div>
+      <div className="relative w-full max-w-5xl overflow-hidden rounded-3xl border border-waldorf-cream-200 bg-white/85 backdrop-blur-sm shadow-2xl shadow-waldorf-clay-200/40 lg:grid lg:grid-cols-[1.1fr,0.9fr]">
+        <section className="hidden lg:flex flex-col justify-between p-10 bg-gradient-to-br from-waldorf-clay-700 via-waldorf-clay-800 to-waldorf-clay-900 text-white">
+          <div>
+            <p className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs tracking-wide uppercase">
+              <span className="h-2 w-2 rounded-full bg-waldorf-peach-300" />
+              Secure Access
+            </p>
+            <h1 className="mt-6 font-display text-4xl leading-tight">
+              電子報閱讀器
+            </h1>
+            <p className="mt-3 text-waldorf-cream-100/90">
+              Newsletter Viewer for families, teachers, and admins.
+            </p>
           </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-gray-500">或</span>
-          </div>
-        </div>
 
-        {/* Auth Method Tabs */}
-        <div className="flex gap-2 mb-6 border-b border-gray-200">
-          <button
-            type="button"
-            onClick={() => setAuthMethod('password')}
-            className={`flex-1 py-2 px-3 text-sm font-medium transition-colors duration-150 ${
-              authMethod === 'password'
-                ? 'text-blue-600 border-b-2 border-blue-600'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            密碼登入
-          </button>
-          <button
-            type="button"
-            onClick={() => setAuthMethod('magic-link')}
-            className={`flex-1 py-2 px-3 text-sm font-medium transition-colors duration-150 ${
-              authMethod === 'magic-link'
-                ? 'text-blue-600 border-b-2 border-blue-600'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            魔法連結
-          </button>
-        </div>
-
-        {/* Error Message (shown for both forms) */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">
-            {error}
-          </div>
-        )}
-
-        {/* Password Form */}
-        {authMethod === 'password' && (
-          <form onSubmit={handlePasswordSubmit} data-form-type="password" className="space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="parent1@example.com"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-waldorf-peach disabled:bg-gray-100"
-                disabled={isLoading}
-              />
+          <div className="space-y-4 text-sm text-waldorf-cream-100/90">
+            <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
+              <p className="font-semibold text-white">Fast authentication</p>
+              <p className="mt-1">Use Google OAuth or passwordless magic link.</p>
             </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-waldorf-peach disabled:bg-gray-100"
-                disabled={isLoading}
-              />
+            <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
+              <p className="font-semibold text-white">Role-based access</p>
+              <p className="mt-1">Parents, teachers, and admins see the right content.</p>
             </div>
+          </div>
+        </section>
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full mt-6 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold py-3 px-4 rounded-lg transition-all duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
+        <section className="p-6 sm:p-8 lg:p-10">
+          <div className="mb-8 text-center lg:text-left">
+            <h2 className="text-3xl font-display font-semibold text-waldorf-clay-800 mb-2">歡迎回來</h2>
+            <p className="text-waldorf-clay-500">Sign in to continue reading and managing newsletters.</p>
+          </div>
+
+          {/* Google Sign-in */}
+          <div className="mb-6">
+            <GoogleButton disabled={isLoading} />
+            <p className="mt-2 text-center text-xs text-waldorf-clay-500">
+              Recommended for the quickest sign-in experience
+            </p>
+          </div>
+
+          {/* Divider */}
+          <div className="relative mb-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-waldorf-cream-300"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white/90 text-waldorf-clay-500">或</span>
+            </div>
+          </div>
+
+          {/* Auth Method Tabs */}
+          <div className="mb-6 rounded-xl border border-waldorf-cream-300 bg-waldorf-cream-50/60 p-1">
+            <div className="grid grid-cols-2 gap-1">
+              <button
+                type="button"
+                onClick={() => setAuthMethod('password')}
+                aria-pressed={authMethod === 'password'}
+                className={`rounded-lg py-2.5 px-3 text-sm font-medium transition-all duration-150 ${
+                  authMethod === 'password'
+                    ? 'bg-white text-waldorf-clay-800 shadow-sm border border-waldorf-cream-300'
+                    : 'text-waldorf-clay-500 hover:text-waldorf-clay-700'
+                }`}
+              >
+                密碼登入
+              </button>
+              <button
+                type="button"
+                onClick={() => setAuthMethod('magic-link')}
+                aria-pressed={authMethod === 'magic-link'}
+                className={`rounded-lg py-2.5 px-3 text-sm font-medium transition-all duration-150 ${
+                  authMethod === 'magic-link'
+                    ? 'bg-white text-waldorf-clay-800 shadow-sm border border-waldorf-cream-300'
+                    : 'text-waldorf-clay-500 hover:text-waldorf-clay-700'
+                }`}
+              >
+                魔法連結
+              </button>
+            </div>
+            <p className="px-2 pt-2 text-xs text-waldorf-clay-500">
+              {authMethod === 'password'
+                ? 'Use your account email and password.'
+                : 'Receive a one-time login link via email.'}
+            </p>
+          </div>
+
+          {/* Error Message (shown for both forms) */}
+          {error && (
+            <div
+              className="mb-4 rounded-xl border border-waldorf-rose-200 bg-waldorf-rose-50 px-4 py-3 text-sm text-waldorf-rose-700"
+              role="alert"
+              aria-live="polite"
             >
-              {isLoading ? '登入中...' : '登入'}
-            </button>
-          </form>
-        )}
-
-        {/* Magic Link Form */}
-        {authMethod === 'magic-link' && (
-          <MagicLinkForm onSuccess={handleMagicLinkSuccess} isLoading={isLoading} />
-        )}
-
-        {/* Test Users Quick Fill (Dev Mode Only) */}
-        {import.meta.env.DEV && (
-          <div className="mt-8 pt-6 border-t border-gray-200">
-            <p className="text-sm text-gray-600 mb-3 font-medium">🧪 Quick Fill (Dev Mode):</p>
-            <div className="space-y-2">
-              {testUsers.map((user) => (
-                <button
-                  key={user.email}
-                  type="button"
-                  onClick={() => handleQuickFill(user.email, user.password)}
-                  disabled={isLoading}
-                  className="w-full text-left px-3 py-2 bg-gray-50 hover:bg-gray-100 active:bg-gray-200 border border-gray-200 rounded-lg transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <div className="font-medium text-sm text-gray-900">{user.label}</div>
-                  <div className="text-xs text-gray-600 font-mono">{user.email}</div>
-                  <div className="text-xs text-gray-500 mt-1">{user.description}</div>
-                </button>
-              ))}
+              {error}
             </div>
-          </div>
-        )}
+          )}
+
+          {/* Password Form */}
+          {authMethod === 'password' && (
+            <form onSubmit={handlePasswordSubmit} data-form-type="password" className="space-y-4">
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-waldorf-clay-700 mb-1.5">
+                  Email
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                  placeholder="parent1@example.com"
+                  className="w-full rounded-lg border border-waldorf-cream-300 bg-white px-4 py-2.5 text-waldorf-clay-800 placeholder:text-waldorf-clay-400 focus:outline-none focus:ring-2 focus:ring-waldorf-peach-300 focus:border-waldorf-peach-400 disabled:bg-waldorf-cream-100"
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-waldorf-clay-700 mb-1.5">
+                  Password
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  className="w-full rounded-lg border border-waldorf-cream-300 bg-white px-4 py-2.5 text-waldorf-clay-800 placeholder:text-waldorf-clay-400 focus:outline-none focus:ring-2 focus:ring-waldorf-peach-300 focus:border-waldorf-peach-400 disabled:bg-waldorf-cream-100"
+                  disabled={isLoading}
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full mt-6 rounded-lg bg-gradient-to-r from-waldorf-peach-500 to-waldorf-peach-600 px-4 py-3 font-semibold text-white shadow-md shadow-waldorf-peach-200/40 transition-all duration-200 hover:from-waldorf-peach-600 hover:to-waldorf-peach-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:from-gray-400 disabled:to-gray-400"
+              >
+                {isLoading ? '登入中...' : '登入'}
+              </button>
+            </form>
+          )}
+
+          {/* Magic Link Form */}
+          {authMethod === 'magic-link' && (
+            <MagicLinkForm onSuccess={handleMagicLinkSuccess} isLoading={isLoading} />
+          )}
+
+          {/* Test Users Quick Fill (Dev Mode Only) */}
+          {import.meta.env.DEV && (
+            <div className="mt-8 border-t border-waldorf-cream-200 pt-6">
+              <p className="mb-3 text-sm font-medium text-waldorf-clay-600">🧪 Quick Fill (Dev Mode):</p>
+              <div className="grid gap-2">
+                {testUsers.map((user) => (
+                  <button
+                    key={user.email}
+                    type="button"
+                    onClick={() => handleQuickFill(user.email, user.password)}
+                    disabled={isLoading}
+                    className="w-full rounded-lg border border-waldorf-cream-200 bg-waldorf-cream-50 px-3 py-2 text-left transition-colors duration-150 hover:border-waldorf-cream-300 hover:bg-waldorf-cream-100 active:bg-waldorf-cream-200 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <div className="text-sm font-medium text-waldorf-clay-800">{user.label}</div>
+                    <div className="font-mono text-xs text-waldorf-clay-500">{user.email}</div>
+                    <div className="mt-1 text-xs text-waldorf-clay-400">{user.description}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
       </div>
     </div>
   )
