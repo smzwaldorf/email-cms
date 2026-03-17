@@ -2116,6 +2116,46 @@ class AdminService {
   }
 
   /**
+   * Fetch all students for admin UI pickers
+   */
+  async fetchStudents(): Promise<AdminUser[]> {
+    try {
+      const supabase = getSupabaseClient()
+
+      const { data, error } = await supabase
+        .from('students')
+        .select('id, name, created_at, updated_at')
+        .order('name', { ascending: true })
+
+      if (error) {
+        throw new AdminServiceError(
+          `Failed to fetch students: ${error.message}`,
+          'FETCH_STUDENTS_ERROR',
+          error as any
+        )
+      }
+
+      return (data || []).map((row: any) => ({
+        id: row.id,
+        email: row.name || '',
+        name: row.name || 'Unknown',
+        role: 'student' as const,
+        status: 'active' as const,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        lastLoginAt: null,
+      }))
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error fetching students: ${err instanceof Error ? err.message : String(err)}`,
+        'FETCH_STUDENTS_ERROR',
+        err as any
+      )
+    }
+  }
+
+  /**
    * ============ USER OPERATIONS ============
    */
 
