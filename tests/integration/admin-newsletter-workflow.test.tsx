@@ -43,7 +43,7 @@ vi.mock('@/components/admin/NewsletterForm', () => ({
 
 import { adminService } from '@/services/adminService'
 
-const mockNewsletter = {
+const draftNewsletter = {
   id: 'newsletter-1',
   weekNumber: '2025-W48',
   title: 'Week 48',
@@ -55,6 +55,32 @@ const mockNewsletter = {
   updatedAt: '2025-11-01',
   publishedAt: null,
   isPublished: false,
+}
+
+const publishedNewsletter = {
+  ...draftNewsletter,
+  status: 'published' as const,
+  isPublished: true,
+  publishedAt: '2025-11-30T10:00:00Z',
+}
+
+const archivedNewsletter = {
+  ...publishedNewsletter,
+  status: 'archived' as const,
+}
+
+const specialEditionPublishedNewsletter = {
+  id: 'special-newsletter-1',
+  weekNumber: null,
+  title: 'Special Edition',
+  description: 'Special issue',
+  releaseDate: '2025-12-10',
+  status: 'published' as const,
+  articleCount: 1,
+  createdAt: '2025-12-01',
+  updatedAt: '2025-12-01',
+  publishedAt: '2025-12-10T08:00:00Z',
+  isPublished: true,
 }
 
 const mockArticles = [
@@ -85,9 +111,13 @@ const mockArticles = [
 ]
 
 describe('Admin newsletter workflow page', () => {
+  let currentWeekNewsletter = { ...draftNewsletter }
+
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(adminService.fetchNewsletterByWeek).mockResolvedValue(mockNewsletter)
+    currentWeekNewsletter = { ...draftNewsletter }
+    vi.mocked(adminService.fetchNewsletterByWeek).mockImplementation(async () => currentWeekNewsletter)
+    vi.mocked(adminService.fetchNewsletter).mockImplementation(async () => specialEditionPublishedNewsletter as any)
     vi.mocked(adminService.fetchArticlesByNewsletterId).mockResolvedValue(mockArticles as any)
     vi.mocked(adminService.getAvailableArticlesByNewsletterId).mockResolvedValue([
       {
@@ -113,19 +143,22 @@ describe('Admin newsletter workflow page', () => {
       article_id: 'article-3',
       article_order: 3,
     })
-    vi.mocked(adminService.publishNewsletter).mockResolvedValue({
-      ...mockNewsletter,
-      status: 'published',
-      isPublished: true,
-      publishedAt: '2025-11-30T10:00:00Z',
+    vi.mocked(adminService.publishNewsletter).mockImplementation(async () => {
+      currentWeekNewsletter = { ...publishedNewsletter }
+      return currentWeekNewsletter as any
+    })
+    vi.mocked(adminService.archiveNewsletter).mockImplementation(async () => {
+      currentWeekNewsletter = { ...archivedNewsletter }
+      return currentWeekNewsletter as any
     })
   })
 
-  const renderPage = () =>
+  const renderPage = (entry = '/admin/newsletters/2025-W48') =>
     render(
-      <MemoryRouter initialEntries={['/admin/newsletters/2025-W48']}>
+      <MemoryRouter initialEntries={[entry]}>
         <Routes>
           <Route path="/admin/newsletters/:weekNumber" element={<AdminArticleListPage />} />
+          <Route path="/admin/newsletters/id/:id" element={<AdminArticleListPage />} />
         </Routes>
       </MemoryRouter>
     )
@@ -159,6 +192,52 @@ describe('Admin newsletter workflow page', () => {
 
     await waitFor(() => {
       expect(adminService.addArticleToNewsletterById).toHaveBeenCalledWith('article-3', 'newsletter-1')
+    })
+  })
+
+  it('updates lifecycle actions from publish to archive in the same workflow', async () => {
+    renderPage()
+
+    fireEvent.click(await screen.findByRole('button', { name: '發布電子報' }))
+
+    await waitFor(() => {
+      expect(adminService.publishNewsletter).toHaveBeenCalledWith('newsletter-1')
+      expect(screen.getByRole('button', { name: '封存電子報' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: '發布電子報' })).not.toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '封存電子報' }))
+
+    await waitFor(() => {
+      expect(adminService.archiveNewsletter).toHaveBeenCalledWith('newsletter-1')
+      expect(screen.getByText('已封存')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: '封存電子報' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: '發布電子報' })).not.toBeInTheDocument()
+    })
+  })
+
+  it('loads and manages special-edition newsletters via id routes', async () => {
+    let currentSpecialNewsletter = { ...specialEditionPublishedNewsletter }
+    vi.mocked(adminService.fetchNewsletter).mockImplementation(async () => currentSpecialNewsletter as any)
+    vi.mocked(adminService.archiveNewsletter).mockImplementation(async () => {
+      currentSpecialNewsletter = { ...currentSpecialNewsletter, status: 'archived' as const }
+      return currentSpecialNewsletter as any
+    })
+
+    renderPage('/admin/newsletters/id/special-newsletter-1')
+
+    expect(await screen.findByText('Special Edition')).toBeInTheDocument()
+    expect(adminService.fetchNewsletter).toHaveBeenCalledWith('special-newsletter-1')
+    expect(adminService.fetchNewsletterByWeek).not.toHaveBeenCalled()
+
+    const publicLink = screen.getByRole('link', { name: '查看公開頁面' })
+    expect(publicLink).toHaveAttribute('href', '/newsletter/special-newsletter-1')
+
+    fireEvent.click(screen.getByRole('button', { name: '封存電子報' }))
+
+    await waitFor(() => {
+      expect(adminService.archiveNewsletter).toHaveBeenCalledWith('special-newsletter-1')
+      expect(screen.getByText('已封存')).toBeInTheDocument()
     })
   })
 })
