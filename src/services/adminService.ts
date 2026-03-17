@@ -19,6 +19,7 @@ import type {
   AdminUser,
   ParentStudentRelationship,
   NewsletterFilterOptions,
+  NewsletterPublishReadiness,
 } from '@/types/admin'
 
 /**
@@ -40,6 +41,22 @@ export class AdminServiceError extends Error {
  * Provides methods for admin dashboard operations
  */
 class AdminService {
+  private mapNewsletterRow(row: any, articleCount: number = 0): AdminNewsletter {
+    return {
+      id: row.id,
+      weekNumber: row.week_number,
+      title: row.title,
+      description: row.description,
+      releaseDate: row.release_date,
+      status: row.status,
+      articleCount,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      publishedAt: row.published_at,
+      isPublished: row.status === 'published',
+    }
+  }
+
   /**
    * Helper: Get newsletter UUID by week_number
    */
@@ -232,7 +249,11 @@ class AdminService {
    */
   async createNewsletter(
     weekNumber: string | null,
-    releaseDate: string
+    releaseDate: string,
+    metadata?: {
+      title?: string | null
+      description?: string | null
+    }
   ): Promise<AdminNewsletter> {
     try {
       const supabase = getSupabaseClient()
@@ -241,6 +262,8 @@ class AdminService {
         .from('newsletters')
         .insert({
           week_number: weekNumber || null,
+          title: metadata?.title?.trim() || null,
+          description: metadata?.description?.trim() || null,
           release_date: releaseDate,
           status: 'draft',
         })
@@ -255,19 +278,7 @@ class AdminService {
         )
       }
 
-      return {
-        id: data.id,
-        weekNumber: data.week_number,
-        title: data.title,
-        description: data.description,
-        releaseDate: data.release_date,
-        status: data.status,
-        articleCount: 0,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at,
-        publishedAt: data.published_at,
-        isPublished: data.status === 'published',
-      }
+      return this.mapNewsletterRow(data, 0)
     } catch (err: any) {
       if (err instanceof AdminServiceError) throw err
       
@@ -283,6 +294,219 @@ class AdminService {
       throw new AdminServiceError(
         `Error creating newsletter: ${err instanceof Error ? err.message : String(err)}`,
         'CREATE_NEWSLETTER_ERROR',
+        err as any
+      )
+    }
+  }
+
+  async updateNewsletter(
+    id: string,
+    updates: {
+      weekNumber?: string | null
+      title?: string | null
+      description?: string | null
+      releaseDate?: string
+    }
+  ): Promise<AdminNewsletter> {
+    try {
+      const supabase = getSupabaseClient()
+
+      const existing = await this.fetchNewsletter(id)
+      if (existing.status !== 'draft') {
+        throw new AdminServiceError(
+          'Only draft newsletters can be updated',
+          'NEWSLETTER_NOT_EDITABLE'
+        )
+      }
+
+      const payload: Record<string, any> = {}
+      if (updates.weekNumber !== undefined) payload.week_number = updates.weekNumber || null
+      if (updates.title !== undefined) payload.title = updates.title?.trim() || null
+      if (updates.description !== undefined) payload.description = updates.description?.trim() || null
+      if (updates.releaseDate !== undefined) payload.release_date = updates.releaseDate
+
+      const { data, error } = await supabase
+        .from('newsletters')
+        .update(payload)
+        .eq('id', id)
+        .select('*, newsletter_articles(count)')
+        .single()
+
+      if (error) {
+        throw new AdminServiceError(
+          `Failed to update newsletter: ${error.message}`,
+          'UPDATE_NEWSLETTER_ERROR',
+          error as any
+        )
+      }
+
+      return this.mapNewsletterRow(data, data.newsletter_articles?.[0]?.count || 0)
+    } catch (err: any) {
+      if (err instanceof AdminServiceError) throw err
+
+      if (err?.code === '23505') {
+        throw new AdminServiceError(
+          `Newsletter for week ${updates.weekNumber} already exists`,
+          'DUPLICATE_NEWSLETTER_ERROR',
+          err
+        )
+      }
+
+      throw new AdminServiceError(
+        `Error updating newsletter: ${err instanceof Error ? err.message : String(err)}`,
+        'UPDATE_NEWSLETTER_ERROR',
+        err as any
+      )
+    }
+  }
+
+  async getNewsletterPublishReadiness(id: string): Promise<NewsletterPublishReadiness> {
+    const newsletter = await this.fetchNewsletter(id)
+    const articles = await this.fetchArticlesByNewsletterId(id)
+    const issues: string[] = []
+
+    if (!newsletter.releaseDate) {
+      issues.push('請設定發布日期')
+    }
+
+    if (!articles.length) {
+      issues.push('至少需要一篇文章才能發布')
+    }
+
+    if (newsletter.status === 'archived') {
+      issues.push('已封存的電子報無法直接發布')
+    }
+
+    return {
+      canPublish: issues.length === 0,
+      issues,
+    }
+  }
+
+  async createNewsletterFromTemplate(
+    sourceNewsletterId: string,
+    overrides: {
+      weekNumber?: string | null
+      title?: string | null
+      description?: string | null
+      releaseDate: string
+    }
+  ): Promise<AdminNewsletter> {
+    try {
+      const supabase = getSupabaseClient()
+
+      const { data: sourceNewsletter, error: sourceNewsletterError } = await supabase
+        .from('newsletters')
+        .select('*')
+        .eq('id', sourceNewsletterId)
+        .single()
+
+      if (sourceNewsletterError || !sourceNewsletter) {
+        throw new AdminServiceError(
+          `Source newsletter not found: ${sourceNewsletterId}`,
+          'NEWSLETTER_NOT_FOUND',
+          sourceNewsletterError as any
+        )
+      }
+
+      const newNewsletter = await this.createNewsletter(
+        overrides.weekNumber ?? null,
+        overrides.releaseDate,
+        {
+          title: overrides.title ?? sourceNewsletter.title,
+          description: overrides.description ?? sourceNewsletter.description,
+        }
+      )
+
+      const { data: sourceArticles, error: sourceArticlesError } = await supabase
+        .from('newsletter_articles')
+        .select(`
+          article_order,
+          articles!inner (
+            title,
+            content,
+            author_id,
+            author,
+            summary,
+            visibility_type,
+            restricted_to_classes,
+            class_ids,
+            family_ids
+          )
+        `)
+        .eq('newsletter_id', sourceNewsletterId)
+        .order('article_order', { ascending: true })
+
+      if (sourceArticlesError) {
+        throw new AdminServiceError(
+          `Failed to fetch template articles: ${sourceArticlesError.message}`,
+          'FETCH_ARTICLES_ERROR',
+          sourceArticlesError as any
+        )
+      }
+
+      if (!sourceArticles?.length) {
+        return newNewsletter
+      }
+
+      const copiedArticlePayload = sourceArticles.map((row: any) => ({
+        title: row.articles.title,
+        content: row.articles.content,
+        author_id: row.articles.author_id ?? null,
+        author: row.articles.author ?? null,
+        summary: row.articles.summary ?? null,
+        status: 'draft',
+        visibility_type: row.articles.visibility_type ?? 'public',
+        restricted_to_classes: row.articles.restricted_to_classes ?? null,
+        class_ids: row.articles.class_ids ?? [],
+        family_ids: row.articles.family_ids ?? [],
+        week_number: newNewsletter.weekNumber ?? null,
+        article_order: row.article_order,
+        published_at: null,
+        edited_at: null,
+        last_edited_by: null,
+      }))
+
+      const { data: copiedArticles, error: copiedArticlesError } = await supabase
+        .from('articles')
+        .insert(copiedArticlePayload)
+        .select('id')
+
+      if (copiedArticlesError) {
+        throw new AdminServiceError(
+          `Failed to copy template articles: ${copiedArticlesError.message}`,
+          'CREATE_ARTICLE_ERROR',
+          copiedArticlesError as any
+        )
+      }
+
+      const copiedLinks = (copiedArticles || []).map((article: any, index: number) => ({
+        newsletter_id: newNewsletter.id,
+        article_id: article.id,
+        article_order: sourceArticles[index].article_order,
+      }))
+
+      const { error: linkError } = await supabase
+        .from('newsletter_articles')
+        .insert(copiedLinks)
+
+      if (linkError) {
+        throw new AdminServiceError(
+          `Failed to attach copied articles: ${linkError.message}`,
+          'ADD_ARTICLE_TO_NEWSLETTER_ERROR',
+          linkError as any
+        )
+      }
+
+      return {
+        ...newNewsletter,
+        articleCount: copiedLinks.length,
+      }
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error creating newsletter from template: ${err instanceof Error ? err.message : String(err)}`,
+        'CREATE_NEWSLETTER_FROM_TEMPLATE_ERROR',
         err as any
       )
     }
@@ -759,6 +983,69 @@ class AdminService {
     }
   }
 
+  async addArticleToNewsletterById(
+    articleId: string,
+    newsletterId: string,
+    order?: number,
+    userId?: string
+  ): Promise<{ id: string; newsletter_id: string; article_id: string; article_order: number }> {
+    try {
+      const supabase = getSupabaseClient()
+
+      let articleOrder = order
+      if (articleOrder === undefined) {
+        const { data: existing, error: orderError } = await supabase
+          .from('newsletter_articles')
+          .select('article_order')
+          .eq('newsletter_id', newsletterId)
+          .order('article_order', { ascending: false })
+          .limit(1)
+
+        if (orderError) {
+          console.error('Error getting article order:', orderError)
+        }
+
+        articleOrder = (existing?.[0]?.article_order || 0) + 1
+      }
+
+      const { data, error } = await supabase
+        .from('newsletter_articles')
+        .insert({
+          newsletter_id: newsletterId,
+          article_id: articleId,
+          article_order: articleOrder,
+          added_by: userId || null,
+        })
+        .select()
+        .single()
+
+      if (error) {
+        if (error.code === '23505') {
+          throw new AdminServiceError(
+            `Article is already in newsletter ${newsletterId}`,
+            'DUPLICATE_ARTICLE_ERROR',
+            error as any
+          )
+        }
+
+        throw new AdminServiceError(
+          `Failed to add article to newsletter: ${error.message}`,
+          'ADD_ARTICLE_TO_NEWSLETTER_ERROR',
+          error as any
+        )
+      }
+
+      return data
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error adding article to newsletter: ${err instanceof Error ? err.message : String(err)}`,
+        'ADD_ARTICLE_TO_NEWSLETTER_ERROR',
+        err as any
+      )
+    }
+  }
+
   /**
    * Remove an article from a newsletter
    * @param articleId Article UUID
@@ -776,6 +1063,33 @@ class AdminService {
           'NEWSLETTER_NOT_FOUND'
         )
       }
+
+      const { error } = await supabase
+        .from('newsletter_articles')
+        .delete()
+        .eq('newsletter_id', newsletterId)
+        .eq('article_id', articleId)
+
+      if (error) {
+        throw new AdminServiceError(
+          `Failed to remove article from newsletter: ${error.message}`,
+          'REMOVE_ARTICLE_FROM_NEWSLETTER_ERROR',
+          error as any
+        )
+      }
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error removing article from newsletter: ${err instanceof Error ? err.message : String(err)}`,
+        'REMOVE_ARTICLE_FROM_NEWSLETTER_ERROR',
+        err as any
+      )
+    }
+  }
+
+  async removeArticleFromNewsletterById(articleId: string, newsletterId: string): Promise<void> {
+    try {
+      const supabase = getSupabaseClient()
 
       const { error } = await supabase
         .from('newsletter_articles')
@@ -924,6 +1238,70 @@ class AdminService {
     }
   }
 
+  async getAvailableArticlesByNewsletterId(
+    newsletterId?: string,
+    limit: number = 50
+  ): Promise<AdminArticle[]> {
+    try {
+      const supabase = getSupabaseClient()
+
+      const { data, error } = await supabase
+        .from('articles')
+        .select('*')
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+        .limit(limit)
+
+      if (error) {
+        throw new AdminServiceError(
+          `Failed to fetch available articles: ${error.message}`,
+          'FETCH_ARTICLES_ERROR',
+          error as any
+        )
+      }
+
+      let articles = data || []
+
+      if (newsletterId) {
+        const { data: existingArticles, error: existingError } = await supabase
+          .from('newsletter_articles')
+          .select('article_id')
+          .eq('newsletter_id', newsletterId)
+
+        if (existingError) {
+          console.error('Error fetching existing articles:', existingError)
+        } else {
+          const existingIds = new Set((existingArticles || []).map((a: any) => a.article_id))
+          articles = articles.filter((article: any) => !existingIds.has(article.id))
+        }
+      }
+
+      return articles.map((row: any) => ({
+        id: row.id,
+        title: row.title,
+        content: row.content,
+        author: row.author,
+        summary: row.summary,
+        weekNumber: row.week_number,
+        order: row.article_order,
+        classIds: row.class_ids || [],
+        familyIds: row.family_ids || [],
+        status: row.status,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        lastEditedBy: row.last_edited_by,
+        editedAt: row.edited_at,
+      }))
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error fetching available articles: ${err instanceof Error ? err.message : String(err)}`,
+        'FETCH_ARTICLES_ERROR',
+        err as any
+      )
+    }
+  }
+
   /**
    * Reorder articles within a newsletter
    * @param weekNumber Newsletter week number
@@ -963,6 +1341,109 @@ class AdminService {
       throw new AdminServiceError(
         `Error reordering articles: ${err instanceof Error ? err.message : String(err)}`,
         'REORDER_ARTICLES_ERROR',
+        err as any
+      )
+    }
+  }
+
+  async reorderArticlesInNewsletterById(newsletterId: string, articleIds: string[]): Promise<void> {
+    try {
+      const supabase = getSupabaseClient()
+
+      for (let i = 0; i < articleIds.length; i++) {
+        const { error } = await supabase
+          .from('newsletter_articles')
+          .update({ article_order: i + 1 })
+          .eq('newsletter_id', newsletterId)
+          .eq('article_id', articleIds[i])
+
+        if (error) {
+          throw new AdminServiceError(
+            `Failed to update article order: ${error.message}`,
+            'REORDER_ARTICLES_ERROR',
+            error as any
+          )
+        }
+      }
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error reordering articles: ${err instanceof Error ? err.message : String(err)}`,
+        'REORDER_ARTICLES_ERROR',
+        err as any
+      )
+    }
+  }
+
+  async createArticleForNewsletter(newsletterId: string): Promise<AdminArticle> {
+    try {
+      const supabase = getSupabaseClient()
+      const newsletter = await this.fetchNewsletter(newsletterId)
+
+      const { data: existing, error: orderError } = await supabase
+        .from('newsletter_articles')
+        .select('article_order')
+        .eq('newsletter_id', newsletterId)
+        .order('article_order', { ascending: false })
+        .limit(1)
+
+      if (orderError) {
+        throw new AdminServiceError(
+          `Failed to determine article order: ${orderError.message}`,
+          'CREATE_ARTICLE_ERROR',
+          orderError as any
+        )
+      }
+
+      const nextOrder = (existing?.[0]?.article_order || 0) + 1
+      const now = new Date().toISOString()
+
+      const { data: article, error: articleError } = await supabase
+        .from('articles')
+        .insert({
+          title: '未命名文章',
+          content: '',
+          status: 'draft',
+          summary: null,
+          week_number: newsletter.weekNumber || null,
+          article_order: nextOrder,
+          published_at: null,
+          edited_at: now,
+        })
+        .select()
+        .single()
+
+      if (articleError || !article) {
+        throw new AdminServiceError(
+          `Failed to create article: ${articleError?.message || 'Unknown error'}`,
+          'CREATE_ARTICLE_ERROR',
+          articleError as any
+        )
+      }
+
+      await this.addArticleToNewsletterById(article.id, newsletterId, nextOrder)
+
+      return {
+        id: article.id,
+        title: article.title,
+        content: article.content,
+        author: article.author,
+        summary: article.summary,
+        weekNumber: newsletter.weekNumber || '',
+        order: nextOrder,
+        classIds: article.class_ids || [],
+        familyIds: article.family_ids || [],
+        status: article.status,
+        createdAt: article.created_at,
+        updatedAt: article.updated_at,
+        lastEditedBy: article.last_edited_by,
+        editedAt: article.edited_at,
+      }
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error creating article: ${err instanceof Error ? err.message : String(err)}`,
+        'CREATE_ARTICLE_ERROR',
         err as any
       )
     }

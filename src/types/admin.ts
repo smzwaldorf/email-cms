@@ -111,6 +111,11 @@ export interface AdminNewsletter {
   isPublished: boolean
 }
 
+export interface NewsletterPublishReadiness {
+  canPublish: boolean
+  issues: string[]
+}
+
 /**
  * Admin Article (用於管理面板的文章編輯視圖)
  */

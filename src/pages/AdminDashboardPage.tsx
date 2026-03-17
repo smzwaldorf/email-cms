@@ -17,6 +17,7 @@ import NewsletterTable from '@/components/admin/NewsletterTable'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { getSupabaseClient } from '@/lib/supabase'
+import { getAdminNewsletterPath } from '@/utils/adminNewsletterRoutes'
 import { useAuth } from '@/context/AuthContext'
 import { UserRole } from '@/types/auth'
 import { ROLES } from '@/lib/rbac'
@@ -358,16 +359,14 @@ export function AdminDashboardPage() {
   const handleEdit = (id: string) => {
     const newsletter = newsletters.find((n) => n.id === id)
     if (newsletter) {
-      if (newsletter.weekNumber) {
-        navigate(`/admin/articles/${newsletter.weekNumber}`, {
-          state: { newsletterId: id },
-        })
-      } else {
-        navigate(`/admin/articles/id/${id}`, {
-          state: { newsletterId: id },
-        })
-      }
+      navigate(getAdminNewsletterPath(newsletter), {
+        state: { newsletterId: id },
+      })
     }
+  }
+
+  const handleUseTemplate = (id: string) => {
+    navigate(`/admin/newsletter/create?template=${id}`)
   }
 
   const handlePublish = async (id: string) => {
@@ -610,6 +609,7 @@ export function AdminDashboardPage() {
                   onPublish={handlePublish}
                   onArchive={handleArchive}
                   onDelete={handleDelete}
+                  onUseTemplate={handleUseTemplate}
                   onFilterChange={handleFilterChange}
                 />
               </>

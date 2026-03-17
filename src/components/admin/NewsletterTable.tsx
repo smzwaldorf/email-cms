@@ -14,6 +14,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { AdminNewsletter, NewsletterFilterOptions } from '@/types/admin'
+import { getAdminNewsletterPath } from '@/utils/adminNewsletterRoutes'
 
 export interface NewsletterTableProps {
   newsletters: AdminNewsletter[]
@@ -23,6 +24,7 @@ export interface NewsletterTableProps {
   onPublish?: (id: string) => void
   onArchive?: (id: string) => void
   onDelete?: (id: string) => void
+  onUseTemplate?: (id: string) => void
   onFilterChange?: (filters: NewsletterFilterOptions) => void
 }
 
@@ -67,6 +69,7 @@ export function NewsletterTable({
   onPublish,
   onArchive,
   onDelete,
+  onUseTemplate,
   onFilterChange,
 }: NewsletterTableProps) {
   const [sortField, setSortField] = useState<SortField>('weekNumber')
@@ -305,7 +308,7 @@ export function NewsletterTable({
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <Link
-                    to={`/admin/articles/${newsletter.weekNumber}`}
+                    to={getAdminNewsletterPath(newsletter)}
                     className="inline-flex items-center gap-1.5 text-waldorf-clay-600 hover:text-waldorf-peach-600 transition-colors duration-200 group"
                     title="View Articles"
                   >
@@ -343,7 +346,7 @@ export function NewsletterTable({
                     })()}
                     {newsletter.status === 'published' && (() => {
                       // Use /week for week_number format, /newsletter for UUIDs
-                      const isWeekNumber = /^\d{4}-W\d{2}$/.test(newsletter.weekNumber)
+                      const isWeekNumber = /^\d{4}-W\d{2}$/.test(newsletter.weekNumber || '')
                       const route = isWeekNumber ? `/week/${newsletter.weekNumber}` : `/newsletter/${newsletter.id}`
                       return (
                         <a
@@ -381,7 +384,25 @@ export function NewsletterTable({
                         >
                           發布
                         </button>
+                        <button
+                          onClick={() => onUseTemplate?.(newsletter.id)}
+                          className="px-3 py-1.5 bg-white border border-waldorf-peach-200 text-waldorf-peach-700 text-xs font-medium rounded-lg hover:bg-waldorf-peach-50 transition-all duration-200 disabled:opacity-50"
+                          data-testid={`template-btn-${newsletter.id}`}
+                          disabled={!onUseTemplate}
+                        >
+                          作為模板
+                        </button>
                       </>
+                    )}
+                    {newsletter.status !== 'draft' && (
+                      <button
+                        onClick={() => onUseTemplate?.(newsletter.id)}
+                        className="px-3 py-1.5 bg-white border border-waldorf-peach-200 text-waldorf-peach-700 text-xs font-medium rounded-lg hover:bg-waldorf-peach-50 transition-all duration-200 disabled:opacity-50"
+                        data-testid={`template-btn-${newsletter.id}`}
+                        disabled={!onUseTemplate}
+                      >
+                        作為模板
+                      </button>
                     )}
                     {newsletter.status === 'published' && (
                       <button

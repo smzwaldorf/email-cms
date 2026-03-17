@@ -14,6 +14,7 @@ const mockBuilder = {
   gte: vi.fn().mockReturnThis(),
   lte: vi.fn().mockReturnThis(),
   or: vi.fn().mockReturnThis(),
+  is: vi.fn().mockReturnThis(),
   then: vi.fn((resolve) => resolve({ data: [], error: null })),
 }
 
@@ -110,8 +111,34 @@ describe('AdminService', () => {
       expect(mockSupabase.from).toHaveBeenCalledWith('newsletters')
       expect(mockBuilder.insert).toHaveBeenCalledWith(expect.objectContaining({
         week_number: '2025-W48',
+        title: null,
+        description: null,
         release_date: '2025-11-30',
         status: 'draft',
+      }))
+    })
+
+    it('accepts metadata fields when creating a newsletter', async () => {
+      const mockResponse = {
+        id: 'a3333333-3333-3333-3333-333333333333',
+        week_number: null,
+        title: 'Special Edition',
+        description: 'December update',
+        release_date: '2025-12-20',
+        status: 'draft',
+        created_at: '2025-12-20',
+        updated_at: '2025-12-20',
+      }
+      mockBuilder.then.mockImplementation((resolve) => resolve({ data: mockResponse, error: null }))
+
+      await adminService.createNewsletter(null, '2025-12-20', {
+        title: 'Special Edition',
+        description: 'December update',
+      })
+
+      expect(mockBuilder.insert).toHaveBeenCalledWith(expect.objectContaining({
+        title: 'Special Edition',
+        description: 'December update',
       }))
     })
 
@@ -176,6 +203,78 @@ describe('AdminService', () => {
       expect(mockBuilder.update).toHaveBeenCalledWith(expect.objectContaining({
         status: 'published',
       }))
+    })
+  })
+
+  describe('updateNewsletter', () => {
+    it('updates draft newsletter metadata', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({
+          data: {
+            id: 'newsletter-1',
+            week_number: '2025-W48',
+            title: 'Before',
+            description: null,
+            release_date: '2025-11-30',
+            status: 'draft',
+            created_at: '2025-11-01',
+            updated_at: '2025-11-01',
+          },
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({
+          data: {
+            id: 'newsletter-1',
+            week_number: '2025-W49',
+            title: 'After',
+            description: 'Updated',
+            release_date: '2025-12-07',
+            status: 'draft',
+            created_at: '2025-11-01',
+            updated_at: '2025-11-02',
+            newsletter_articles: [{ count: 2 }],
+          },
+          error: null,
+        }))
+
+      const result = await adminService.updateNewsletter('newsletter-1', {
+        weekNumber: '2025-W49',
+        title: 'After',
+        description: 'Updated',
+        releaseDate: '2025-12-07',
+      })
+
+      expect(mockBuilder.update).toHaveBeenCalledWith(expect.objectContaining({
+        week_number: '2025-W49',
+        title: 'After',
+        description: 'Updated',
+        release_date: '2025-12-07',
+      }))
+      expect(result.weekNumber).toBe('2025-W49')
+    })
+  })
+
+  describe('getNewsletterPublishReadiness', () => {
+    it('flags newsletters without articles as not publishable', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({
+          data: {
+            id: 'newsletter-1',
+            week_number: '2025-W48',
+            title: 'Week 48',
+            release_date: '2025-11-30',
+            status: 'draft',
+            created_at: '2025-11-01',
+            updated_at: '2025-11-01',
+          },
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({ data: [], error: null }))
+
+      const result = await adminService.getNewsletterPublishReadiness('newsletter-1')
+
+      expect(result.canPublish).toBe(false)
+      expect(result.issues).toContain('至少需要一篇文章才能發布')
     })
   })
 
@@ -375,6 +474,25 @@ describe('AdminService', () => {
     })
   })
 
+  describe('addArticleToNewsletterById', () => {
+    it('adds article using newsletter id directly', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({ data: [{ article_order: 1 }], error: null }))
+        .mockImplementationOnce((resolve) => resolve({
+          data: { newsletter_id: 'newsletter-1', article_id: 'article-2', article_order: 2 },
+          error: null,
+        }))
+
+      await adminService.addArticleToNewsletterById('article-2', 'newsletter-1')
+
+      expect(mockBuilder.insert).toHaveBeenCalledWith(expect.objectContaining({
+        newsletter_id: 'newsletter-1',
+        article_id: 'article-2',
+        article_order: 2,
+      }))
+    })
+  })
+
   describe('removeArticleFromNewsletter', () => {
     it('removes article from junction table', async () => {
       const mockNewsletterId = 'a1111111-1111-1111-1111-111111111111'
@@ -388,6 +506,74 @@ describe('AdminService', () => {
       expect(mockSupabase.from).toHaveBeenCalledWith('newsletter_articles')
       expect(mockBuilder.delete).toHaveBeenCalled()
       expect(mockBuilder.eq).toHaveBeenCalledWith('newsletter_id', mockNewsletterId)
+    })
+  })
+
+  describe('createNewsletterFromTemplate', () => {
+    it('creates a draft newsletter and copies source articles', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({
+          data: {
+            id: 'source-newsletter',
+            week_number: '2025-W47',
+            title: 'Source',
+            description: 'Source desc',
+            release_date: '2025-11-23',
+            status: 'published',
+            created_at: '2025-11-20',
+            updated_at: '2025-11-20',
+          },
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({
+          data: {
+            id: 'new-newsletter',
+            week_number: '2025-W48',
+            title: 'Source',
+            description: 'Source desc',
+            release_date: '2025-11-30',
+            status: 'draft',
+            created_at: '2025-11-24',
+            updated_at: '2025-11-24',
+          },
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({
+          data: [
+            {
+              article_order: 1,
+              articles: {
+                title: 'Copied article',
+                content: '<p>Hello</p>',
+                author_id: null,
+                author: null,
+                summary: null,
+                visibility_type: 'public',
+                restricted_to_classes: null,
+                class_ids: [],
+                family_ids: [],
+              },
+            },
+          ],
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({
+          data: [{ id: 'new-article' }],
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({ data: null, error: null }))
+
+      const result = await adminService.createNewsletterFromTemplate('source-newsletter', {
+        weekNumber: '2025-W48',
+        releaseDate: '2025-11-30',
+      })
+
+      expect(mockBuilder.insert).toHaveBeenCalledWith(expect.objectContaining({
+        week_number: '2025-W48',
+        status: 'draft',
+      }))
+      expect(mockBuilder.update).not.toHaveBeenCalled()
+      expect(result.articleCount).toBe(1)
     })
   })
 })
