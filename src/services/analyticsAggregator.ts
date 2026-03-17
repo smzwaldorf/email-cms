@@ -304,19 +304,22 @@ export const analyticsAggregator = {
 
   /**
    * Fetches detailed statistics for all articles in a newsletter.
+   * @param newsletterId Newsletter UUID
    */
   async getArticleStats(newsletterId: string) {
     const supabase = getSupabaseClient();
     
+    if (!newsletterId) {
+      console.warn(`[Analytics] Newsletter ID is required`);
+      return [];
+    }
+
     // 1. Fetch Views per article
-    // Use !inner to force join and filter by article's actual week number
-    // This prevents "pollution" where an event logged with the wrong newsletter_id 
-    // (or cross-week navigation) causes an old article to show up in the wrong week's report.
+    // Note: articles no longer have week_number - we filter by newsletter_id on events
     const { data: viewEvents, error: viewError } = await supabase
       .from('analytics_events')
-      .select('article_id, user_id, session_id, articles!inner ( title, created_at, article_order, week_number )')
+      .select('article_id, user_id, session_id, articles!inner ( title, created_at )')
       .eq('newsletter_id', newsletterId)
-      .eq('articles.week_number', newsletterId)
       .eq('event_type', 'page_view');
 
     if (viewError) throw viewError;
@@ -344,7 +347,6 @@ export const analyticsAggregator = {
       id: string; 
       title: string; 
       publishedAt: string; 
-      order: number;
       views: number; 
       uniqueViews: Set<string>;
       clicks: number;
@@ -361,7 +363,6 @@ export const analyticsAggregator = {
                 id: event.article_id,
                 title: article?.title || 'Unknown Article',
                 publishedAt: article?.created_at ? new Date(article.created_at).toLocaleDateString() : '-',
-                order: article?.article_order || 999,
                 views: 0,
                 uniqueViews: new Set(),
                 clicks: 0,
@@ -402,7 +403,7 @@ export const analyticsAggregator = {
             avgTimeSpent: avgSeconds, // Now returns seconds as number
             avgTimeSpentFormatted: avgSeconds > 0 ? this.formatDuration(avgSeconds) : '-'
         };
-      }).sort((a, b) => a.order - b.order);
+      });
   },
 
   /**
@@ -456,17 +457,17 @@ export const analyticsAggregator = {
         });
 
         // We need article titles/metadata. Snapshots don't have them.
-        // So we still need to join with articles, OR fetch articles separately.
-        // Let's fetch articles for this newsletter to enrich data.
-        const { data: articles } = await supabase
-           .from('articles')
-           .select('id, title, created_at, article_order')
-           .eq('week_number', newsletterId);
+        // Use junction table since articles no longer have week_number
+        const { data: junctionData } = await supabase
+           .from('newsletter_articles')
+           .select('article_order, articles!inner (id, title, created_at)')
+           .eq('newsletter_id', newsletterId)
+           .order('article_order', { ascending: true });
            
-        const articleLookup = new Map(articles?.map(a => [a.id, a]));
+        const articleLookup = new Map(junctionData?.map((j: any) => [j.articles.id, { ...j.articles, article_order: j.article_order }]));
 
         return Array.from(map.values()).map(stat => {
-           const article = articleLookup.get(stat.article_id);
+           const article = articleLookup.get(stat.article_id) as any;
            const avgTime = stat.timeCount > 0 ? Math.round(stat.weightedTime / stat.timeCount) : 0;
            
            return {
@@ -523,8 +524,8 @@ export const analyticsAggregator = {
       // This is slow but guaranteed to work without cron jobs.
       
       const { data: newsletters } = await supabase
-        .from('newsletter_weeks')
-        .select('week_number')
+        .from('newsletters')
+        .select('id, week_number')
         .order('week_number', { ascending: false })
         .limit(limit);
         
@@ -536,8 +537,7 @@ export const analyticsAggregator = {
       // Reverse to show oldest first in chart
       for (const nl of newsletters.reverse()) {
           try {
-              console.log(`[Analytics] Processing week ${nl.week_number}...`);
-              const metrics = await this.getNewsletterMetrics(nl.week_number, className);
+              const metrics = await this.getNewsletterMetrics(nl.id, className);
               results.push({
                   name: nl.week_number,
                   openRate: parseFloat(metrics.openRate.toFixed(1)),
@@ -560,8 +560,8 @@ export const analyticsAggregator = {
   async getAvailableWeeks() {
       const supabase = getSupabaseClient();
       const { data, error } = await supabase
-          .from('newsletter_weeks')
-          .select('week_number, release_date')
+          .from('newsletters')
+          .select('id, week_number, release_date')
           .order('week_number', { ascending: false });
           
       if (error) throw error;
@@ -716,11 +716,17 @@ export const analyticsAggregator = {
   /**
    * Calculates topic hotness based on how quickly parents read articles after publishing.
    * Hotness score: 100 = read immediately, decreases as average read latency increases.
+   * @param newsletterId Newsletter UUID
    */
   async getTopicHotness(newsletterId: string): Promise<ArticleHotness[]> {
       const supabase = getSupabaseClient();
       
       try {
+          if (!newsletterId) {
+            console.warn(`[Analytics] Newsletter ID is required`);
+            return [];
+          }
+
           // 1. Fetch all page_view events with article publish time
           const { data: events, error } = await supabase
             .from('analytics_events')
@@ -830,18 +836,31 @@ export const analyticsAggregator = {
 
   async getArticleMetadata(articleId: string) {
       const supabase = getSupabaseClient();
-      const { data, error } = await supabase
+      
+      // Get article data
+      const { data: article, error: articleError } = await supabase
         .from('articles')
-        .select('title, created_at, week_number')
+        .select('title, created_at')
         .eq('id', articleId)
         .single();
         
-      if (error) throw error;
+      if (articleError) throw articleError;
+      
+      // Get newsletter info from junction table
+      const { data: junction } = await supabase
+        .from('newsletter_articles')
+        .select('newsletter_id, newsletters!inner (week_number)')
+        .eq('article_id', articleId)
+        .limit(1)
+        .single();
+      
+      const weekNumber = (junction?.newsletters as any)?.week_number || null;
+      
       return {
-          title: data.title,
-          publishedAt: data.created_at,
-          newsletterId: data.week_number, // week_number acts as the newsletter identifier
-          weekNumber: data.week_number
+          title: article.title,
+          publishedAt: article.created_at,
+          newsletterId: junction?.newsletter_id || null,
+          weekNumber: weekNumber
       };
   },
 

@@ -5,21 +5,32 @@
  */
 
 // ============================================================================
-// Newsletter Weeks (週次)
+// Newsletters (電子報)
 // ============================================================================
 
-export interface NewsletterWeekRow {
-  /** Format: "YYYY-Www" (e.g., "2025-W47") - ISO 8601 week format */
-  week_number: string;
+export interface NewsletterRow {
+  /** UUID primary key */
+  id: string;
+  /** Optional: Format "YYYY-Www" (e.g., "2025-W47") - ISO 8601 week format */
+  week_number?: string | null;
+  /** Newsletter headline */
+  title?: string | null;
+  /** Newsletter summary/description */
+  description?: string | null;
   /** Expected publication date */
   release_date: string; // DATE
-  /** Controls visibility to public */
-  is_published: boolean;
+  /** Newsletter status: draft, published, or archived */
+  status: 'draft' | 'published' | 'archived';
+  /** Timestamp when the newsletter was published */
+  published_at?: string | null; // TIMESTAMP WITH TIME ZONE
   /** Auto-managed creation timestamp */
   created_at: string; // TIMESTAMP WITH TIME ZONE
   /** Auto-updated on any change */
   updated_at: string; // TIMESTAMP WITH TIME ZONE
 }
+
+/** @deprecated Use NewsletterRow instead */
+export type NewsletterWeekRow = NewsletterRow;
 
 // ============================================================================
 // Articles (文章)
@@ -28,18 +39,14 @@ export interface NewsletterWeekRow {
 export interface ArticleRow {
   /** UUID primary key */
   id: string;
-  /** Foreign key to newsletter_weeks */
-  week_number: string;
   /** Article headline */
   title: string;
   /** Markdown-formatted content */
   content: string;
-  /** Author name (optional) */
-  author?: string | null;
-  /** Display sequence within week (1, 2, 3...) */
-  article_order: number;
-  /** Public visibility flag */
-  is_published: boolean;
+  /** UUID of the teacher/admin who wrote the article */
+  author_id?: string | null;
+  /** Article status: draft, published, or archived */
+  status: 'draft' | 'published' | 'archived';
   /** Enum: 'public' | 'class_restricted' */
   visibility_type: 'public' | 'class_restricted';
   /** JSON array of class IDs if visibility_type = 'class_restricted' */
@@ -54,6 +61,42 @@ export interface ArticleRow {
   deleted_at?: string | null; // TIMESTAMP WITH TIME ZONE
   /** Unique short ID for URL sharing */
   short_id: string; // VARCHAR(10)
+}
+
+// ============================================================================
+// Newsletter Articles Junction Table (文章-電子報關聯)
+// Enables many-to-many relationship between articles and newsletters
+// ============================================================================
+
+export interface NewsletterArticleRow {
+  /** UUID primary key */
+  id: string;
+  /** Foreign key to newsletters (UUID) */
+  newsletter_id: string;
+  /** Foreign key to articles */
+  article_id: string;
+  /** Position within this specific newsletter (1-based) */
+  article_order: number;
+  /** Timestamp when article was added to this newsletter */
+  added_at: string; // TIMESTAMP WITH TIME ZONE
+  /** UUID of user who added the article to this newsletter */
+  added_by?: string | null;
+}
+
+/**
+ * Article with all its newsletter associations
+ * Used when querying articles with their newsletter placements
+ */
+export interface ArticleWithNewsletters extends ArticleRow {
+  /** All newsletters this article belongs to */
+  newsletters: Array<{
+    newsletter_id: string;
+    article_order: number;
+    week_number?: string | null;
+    title?: string | null;
+    release_date?: string;
+    status?: 'draft' | 'published' | 'archived';
+  }>;
 }
 
 // ============================================================================
@@ -185,6 +228,7 @@ export interface ArticleAuditLogRow {
 export type DatabaseRow =
   | NewsletterWeekRow
   | ArticleRow
+  | NewsletterArticleRow
   | ClassRow
   | UserRoleRow
   | FamilyRow

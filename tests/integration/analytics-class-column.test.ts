@@ -67,6 +67,7 @@ describe('Analytics - Article Reader Class Info', () => {
     let familyId: string;
     let studentId: string;
     let articleId: string;
+    let newsletterId: string; // Newsletter UUID for analytics events
 
     beforeEach(async () => {
         // Reset tracking
@@ -133,32 +134,30 @@ describe('Analytics - Article Reader Class Info', () => {
              throw new Error(`Enrollment failed: ${enrollError.message} (details: ${enrollError.details})`);
         }
 
-        // 9. Article Setup
-        
-        // Clean events first (fk)
-        await adminSupabase.from('analytics_events').delete().eq('newsletter_id', weekNum);
-        
-        // Clean snapshots too (potential FK blocker)
-        await adminSupabase.from('analytics_snapshots').delete().eq('newsletter_id', weekNum);
+        // Clean events first using newsletterId if available
+        if (newsletterId) {
+            await adminSupabase.from('analytics_events').delete().eq('newsletter_id', newsletterId);
+            await adminSupabase.from('analytics_snapshots').delete().eq('newsletter_id', newsletterId);
+        }
 
-        // Ensure week exists (Newsletter Weeks)
-        const { error: weekError } = await adminSupabase.from('newsletter_weeks').upsert({
+        // Ensure newsletter exists (newsletters table)
+        const { data: newsletter, error: weekError } = await adminSupabase.from('newsletters').upsert({
             week_number: weekNum,
+            title: `Test Newsletter ${weekNum}`,
             release_date: '2099-01-01',
-            is_published: true
-        }, { onConflict: 'week_number' });
+            status: 'published'
+        }, { onConflict: 'week_number' }).select().single();
         
         if (weekError) throw weekError;
+        newsletterId = newsletter?.id;
 
-        // Create Article (Upsert to avoid unique constraint violation)
+        // Create Article
         const { data: article, error: articleError } = await adminSupabase.from('articles').upsert({
-            week_number: weekNum,
             title: 'Test Analytics Article',
             content: 'Content',
-            article_order: 1, 
-            is_published: true,
+            status: 'published',
             visibility_type: 'public'
-        }, { onConflict: 'week_number, article_order' }).select().single();
+        }).select().single();
 
         if (!article) {
              console.error('Article creation error:', articleError);
@@ -166,10 +165,19 @@ describe('Analytics - Article Reader Class Info', () => {
         }
         articleId = article.id;
 
-        // 10. Log View
+        // Link article to newsletter via junction table
+        if (newsletterId) {
+            await adminSupabase.from('newsletter_articles').upsert({
+                newsletter_id: newsletterId,
+                article_id: articleId,
+                article_order: 1
+            }, { onConflict: 'newsletter_id,article_id' });
+        }
+
+        // 10. Log View - use newsletterId (UUID) instead of weekNum
         await adminSupabase.from('analytics_events').insert({
             article_id: articleId,
-            newsletter_id: weekNum,
+            newsletter_id: newsletterId,
             user_id: parentUserId,
             event_type: 'page_view',
             metadata: { ua: 'test-agent' }
@@ -187,8 +195,10 @@ describe('Analytics - Article Reader Class Info', () => {
             }
 
             // 2. Delete analytics snapshots
-            const { error: snapError } = await adminSupabase.from('analytics_snapshots').delete().eq('newsletter_id', weekNum);
-            if (snapError) console.error('Failed to delete analytics_snapshots:', snapError);
+            if (newsletterId) {
+                const { error: snapError } = await adminSupabase.from('analytics_snapshots').delete().eq('newsletter_id', newsletterId);
+                if (snapError) console.error('Failed to delete analytics_snapshots:', snapError);
+            }
 
             // 3. Delete articles (and normally audit logs cascade, but we want to ensure we don't block)
             if (articleId) {
@@ -241,8 +251,9 @@ describe('Analytics - Article Reader Class Info', () => {
                 if (error) console.error('Failed to delete families:', error);
             }
 
-            // 8. Delete newsletter weeks
-            await adminSupabase.from('newsletter_weeks').delete().eq('week_number', weekNum);
+            // 8. Delete newsletters (was newsletter_weeks)
+            await adminSupabase.from('newsletter_articles').delete().eq('article_id', articleId);
+            await adminSupabase.from('newsletters').delete().eq('week_number', weekNum);
 
             // 9. Delete classes
             const { error: classError } = await adminSupabase.from('classes').delete().eq('id', mockClassName);

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, waitFor } from '@testing-library/react'
+import { render, waitFor, act } from '@testing-library/react'
 import { WeeklyReaderPage } from './WeeklyReaderPage'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import * as useFetchWeeklyHook from '@/hooks/useFetchWeekly'
@@ -17,6 +17,9 @@ vi.mock('@/components/LoadingTimeout', () => ({ useLoadingTimeout: () => ({ isTi
 // Mock dependencies
 vi.mock('@/hooks/useFetchWeekly')
 vi.mock('@/hooks/useFetchArticle')
+vi.mock('@/hooks/useAnalyticsTracking', () => ({
+  useAnalyticsTracking: vi.fn()
+}))
 vi.mock('@/context/AuthContext', () => ({
   useAuth: vi.fn(),
   AuthProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -24,6 +27,13 @@ vi.mock('@/context/AuthContext', () => ({
 vi.mock('@/context/NavigationContext', () => ({
   useNavigation: vi.fn(),
   NavigationProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}))
+
+// Mock PermissionService to prevent async operations after test teardown
+vi.mock('@/services/PermissionService', () => ({
+  default: {
+    canEditArticle: vi.fn(() => Promise.resolve(false)),
+  }
 }))
 
 const mockNavigate = vi.fn()
@@ -38,7 +48,10 @@ vi.mock('react-router-dom', async () => {
 import { useAuth } from '@/context/AuthContext'
 import { useNavigation } from '@/context/NavigationContext'
 
-// Mock data
+// Mock newsletter UUID
+const mockNewsletterId = '11111111-1111-1111-1111-111111111111'
+
+// Mock data - articles now include newsletterId
 const mockArticles = [
   {
     id: 'article-1',
@@ -47,6 +60,7 @@ const mockArticles = [
     order: 1,
     shortId: 'validId',
     weekNumber: '2025-W47',
+    newsletterId: mockNewsletterId,
     publicUrl: 'http://example.com/article-1',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -60,6 +74,7 @@ const mockArticles = [
     order: 2,
     shortId: 'otherId',
     weekNumber: '2025-W47',
+    newsletterId: mockNewsletterId,
     publicUrl: 'http://example.com/article-2',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -83,6 +98,7 @@ describe('WeeklyReaderPage Short URL Logic', () => {
     vi.spyOn(useFetchWeeklyHook, 'useFetchWeekly').mockReturnValue({
       articles: mockArticles as any,
       newsletter: { 
+        id: mockNewsletterId,
         weekNumber: '2025-W47', 
         isPublished: true, 
         releaseDate: '2025-11-17',
@@ -96,7 +112,7 @@ describe('WeeklyReaderPage Short URL Logic', () => {
       refetch: vi.fn(),
     })
 
-    // Mock useFetchArticle
+    // Mock useFetchArticle with newsletterId
     vi.spyOn(useFetchArticleHook, 'useFetchArticle').mockReturnValue({
       article: mockArticles[0] as any,
       isLoading: false,
@@ -116,7 +132,7 @@ describe('WeeklyReaderPage Short URL Logic', () => {
     // Mock useNavigation
     vi.mocked(useNavigation).mockReturnValue({
       navigationState: {
-        currentWeekNumber: '2025-W47',
+        currentNewsletterId: '2025-W47',
         currentArticleId: 'article-1',
         currentArticleOrder: 1,
         totalArticlesInWeek: 2,
@@ -126,7 +142,7 @@ describe('WeeklyReaderPage Short URL Logic', () => {
         previousArticleId: undefined,
         nextArticleId: 'article-2',
       },
-      setCurrentWeek: mockSetCurrentWeek,
+      setCurrentNewsletter: mockSetCurrentWeek,
       setCurrentArticle: mockSetCurrentArticle,
       setLoading: vi.fn(),
       setError: vi.fn(),
@@ -168,7 +184,9 @@ describe('WeeklyReaderPage Short URL Logic', () => {
     // The default behavior is to just show the list, and the URL remains as is 
     // (or strictly speaking, the component doesn't force a redirect for invalid IDs, it just ignores them)
     // Wait a bit to ensure no navigation happens
-    await new Promise(resolve => setTimeout(resolve, 100))
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 100))
+    })
     expect(mockNavigate).not.toHaveBeenCalledWith('/week/2025-W47', { replace: true })
   })
 
@@ -193,7 +211,9 @@ describe('WeeklyReaderPage Short URL Logic', () => {
 
     renderPage('/week/2025-W47')
 
-    await new Promise(resolve => setTimeout(resolve, 100))
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 100))
+    })
     expect(mockNavigate).not.toHaveBeenCalled()
     
     // Cache should remain (or at least not be consumed by this page)

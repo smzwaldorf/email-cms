@@ -21,7 +21,7 @@ vi.mock('@/components/LoadingTimeout', () => ({
 // Wrapper for hooks
 const wrapper = ({ children }: { children: React.ReactNode }) => (
   <AuthProvider>
-    <MemoryRouter initialEntries={['/week/2025-W01/article/123']}>
+    <MemoryRouter initialEntries={['/article/123']}>
       {children}
     </MemoryRouter>
   </AuthProvider>
@@ -35,9 +35,10 @@ describe('Integration: Analytics Tracking Flow (T040)', () => {
   })
 
   it('should initialize session and log page view on mount', async () => {
+    const mockNewsletterId = '11111111-1111-1111-1111-111111111111' // UUID format
     const props = {
       articleId: 'article-123',
-      weekNumber: '2025-W01',
+      newsletterId: mockNewsletterId,
       classId: 'class-abc'
     }
 
@@ -50,9 +51,9 @@ describe('Integration: Analytics Tracking Flow (T040)', () => {
     expect(trackingService.logEvent).toHaveBeenCalledWith(expect.objectContaining({
       event_type: 'page_view',
       article_id: 'article-123',
-      newsletter_id: '2025-W01',
+      newsletter_id: mockNewsletterId,
       metadata: expect.objectContaining({
-        path: '/week/2025-W01/article/123',
+        path: '/article/123',
         class_id: 'class-abc'
       })
     }))

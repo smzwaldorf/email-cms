@@ -7,10 +7,17 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as useAnalyticsQuery from '@/hooks/useAnalyticsQuery';
 import React from 'react';
 
+// Mock newsletter UUIDs
+const mockNewsletterId1 = '11111111-1111-1111-1111-111111111111';
+const mockNewsletterId2 = '22222222-2222-2222-2222-222222222222';
+
 // Mock Hooks (Simplified for persistence verification)
 vi.mock('@/hooks/useAnalyticsQuery', () => ({
     useAvailableWeeks: vi.fn(() => ({ 
-        weeks: [{ week_number: '2025-W01', release_date: '2025-01-01' }, { week_number: '2024-W52', release_date: '2024-12-25' }],
+        weeks: [
+          { id: mockNewsletterId1, week_number: '2025-W01', release_date: '2025-01-01' }, 
+          { id: mockNewsletterId2, week_number: '2024-W52', release_date: '2024-12-25' }
+        ],
         loading: false 
     })),
     // Other hooks need to return valid objects to prevent crash
@@ -63,8 +70,8 @@ describe('Analytics Persistence', () => {
         const selects = await screen.findAllByRole('combobox');
         const weekSelect = selects[1];
         
-        // Change to 2024-W52
-        fireEvent.change(weekSelect, { target: { value: '2024-W52' } });
+        // Change to newsletter ID for 2024-W52
+        fireEvent.change(weekSelect, { target: { value: mockNewsletterId2 } });
 
         // 2. Click "Go Away" to unmount Dashboard (but keep Provider)
         fireEvent.click(screen.getByText('Go Away'));
@@ -76,11 +83,11 @@ describe('Analytics Persistence', () => {
         // 3. Click "Back to Dashboard" to remount
         fireEvent.click(screen.getByText('Back to Dashboard'));
 
-        // 4. Verify Week 2024-W52 is still selected (hook called with it)
+        // 4. Verify the newsletter ID is still selected (hook called with it)
         // Since we are checking if the component *remembers* the state on mount.
         await waitFor(() => {
-             // The most recent call should be with the persisted week
-             expect(useAnalyticsQuery.useNewsletterMetrics).toHaveBeenLastCalledWith('2024-W52', expect.anything());
+             // The most recent call should be with the persisted newsletter ID (UUID)
+             expect(useAnalyticsQuery.useNewsletterMetrics).toHaveBeenLastCalledWith(mockNewsletterId2, expect.anything());
         });
     });
 

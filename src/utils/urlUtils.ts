@@ -13,11 +13,14 @@ export function generateArticleUrl(articleId: string): string {
 
 /**
  * 生成週報的網址
- * @param weekNumber - 週份 (例: "2025-W42")
+ * Uses /week route for week_number format (e.g., "2025-W42")
+ * Uses /newsletter route for UUIDs (special editions)
+ * @param weekNumberOrId - 週份 (例: "2025-W42") 或 newsletter UUID
  * @returns 週報的完整網址
  */
-export function generateWeeklyUrl(weekNumber: string): string {
-  return `/week/${weekNumber}`
+export function generateWeeklyUrl(weekNumberOrId: string): string {
+  const isWeekNumber = /^\d{4}-W\d{2}$/.test(weekNumberOrId)
+  return isWeekNumber ? `/week/${weekNumberOrId}` : `/newsletter/${weekNumberOrId}`
 }
 
 /**

@@ -43,14 +43,14 @@ CREATE INDEX IF NOT EXISTS idx_teacher_assignment_teacher_class
 COMMENT ON INDEX idx_teacher_assignment_teacher_class IS
 'Composite index for RLS policy evaluation when checking if teacher can access class-restricted articles.';
 
--- Index for article queries by creator and week
--- Query pattern: SELECT * FROM articles WHERE created_by = ? AND week_number = ?
-CREATE INDEX IF NOT EXISTS idx_articles_created_by_week
-  ON public.articles(created_by, week_number)
+-- Index for article queries by creator (for permissions/author filtering)
+-- Note: week_number is no longer on articles table (moved to newsletter_articles junction)
+CREATE INDEX IF NOT EXISTS idx_articles_created_by_status
+  ON public.articles(created_by, status)
   WHERE deleted_at IS NULL;
 
-COMMENT ON INDEX idx_articles_created_by_week IS
-'Optimizes queries for fetching articles created by a specific user in a specific week (article editor).';
+COMMENT ON INDEX idx_articles_created_by_status IS
+'Optimizes queries for fetching articles created by a specific user, filtered by status (article editor, teacher dashboard).';
 
 -- Index for active student class enrollments (excluding graduated students)
 -- Query pattern: SELECT * FROM student_class_enrollment WHERE family_id = ? AND graduated_at IS NULL

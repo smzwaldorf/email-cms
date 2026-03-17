@@ -8,6 +8,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 const mockRefetch = vi.fn();
 const mockGenerate = vi.fn();
 
+// Mock newsletter UUIDs
+const mockNewsletterId1 = '11111111-1111-1111-1111-111111111111';
+const mockNewsletterId2 = '22222222-2222-2222-2222-222222222222';
+
 // Mock react-window
 vi.mock('react-window', () => ({
   FixedSizeList: ({ children, itemCount, itemSize, height, width }: any) => (
@@ -21,11 +25,14 @@ vi.mock('react-window', () => ({
 
 vi.mock('@/hooks/useAnalyticsQuery', () => ({
     useAvailableWeeks: vi.fn(() => ({ 
-        weeks: [{ week_number: '2025-W01', release_date: '2025-01-01' }, { week_number: '2024-W52', release_date: '2024-12-25' }],
+        weeks: [
+          { id: mockNewsletterId1, week_number: '2025-W01', release_date: '2025-01-01' }, 
+          { id: mockNewsletterId2, week_number: '2024-W52', release_date: '2024-12-25' }
+        ],
         loading: false 
     })),
-    useNewsletterMetrics: vi.fn((week) => ({ 
-        metrics: week ? { openRate: 45.5, clickRate: 12.3, totalViews: 1200, avgTimeSpent: 185 } : null,
+    useNewsletterMetrics: vi.fn((newsletterId) => ({ 
+        metrics: newsletterId ? { openRate: 45.5, clickRate: 12.3, totalViews: 1200, avgTimeSpent: 185 } : null,
         loading: false,
         refetch: mockRefetch
     })),
@@ -143,23 +150,21 @@ describe('AnalyticsDashboardPage Integration', () => {
         expect(screen.getByText(/3m 5s/)).toBeInTheDocument(); // Avg Time
     });
 
-    it('fetches metrics for the selected week', async () => {
+    it('fetches metrics for the selected week using newsletter ID', async () => {
         renderDashboard();
 
         await waitFor(() => {
             expect(screen.getByText('45.5%')).toBeInTheDocument();
         });
 
-        // Change Week
+        // Change Week - now selects by newsletter ID, not week_number
         const selects = await screen.findAllByRole('combobox');
         const weekSelect = selects[1]; // 0 is class, 1 is week
-        fireEvent.change(weekSelect, { target: { value: '2024-W52' } });
+        fireEvent.change(weekSelect, { target: { value: mockNewsletterId2 } });
 
-        // Note: verifying data change is tricky with the current static mock in this file
-        // unless we make the mock dynamic. But calling the hook with different arg is verified by Hook mock.
+        // Verify hook was called with the newsletter ID (UUID format)
         await waitFor(() => {
-             // Verify hook was called with new week and empty class
-             expect(useAnalyticsQuery.useNewsletterMetrics).toHaveBeenCalledWith('2024-W52', expect.anything());
+             expect(useAnalyticsQuery.useNewsletterMetrics).toHaveBeenCalledWith(mockNewsletterId2, expect.anything());
         });
     });
 

@@ -110,79 +110,6 @@ CREATE TRIGGER update_media_files_updated_at
 
 ---
 
-### 2. article_content (增強的文章內容)
-
-擴展現有的 `articles` 表，支援富文本內容格式。
-
-**選項 A: 擴展現有 articles 表**（推薦）
-
-```sql
--- 擴展現有 articles 表
-ALTER TABLE articles ADD COLUMN IF NOT EXISTS content_format TEXT NOT NULL DEFAULT 'markdown';
-ALTER TABLE articles ADD COLUMN IF NOT EXISTS content_json JSONB;
-ALTER TABLE articles ADD COLUMN IF NOT EXISTS embedded_media UUID[];
-
--- 檢查約束
-ALTER TABLE articles ADD CONSTRAINT content_format_check
-  CHECK (content_format IN ('markdown', 'html', 'tiptap_json'));
-
--- 索引
-CREATE INDEX idx_articles_content_format ON articles(content_format);
-CREATE INDEX idx_articles_embedded_media ON articles USING GIN(embedded_media);
-```
-
-**TypeScript 類型擴展**:
-```typescript
-// src/types/index.ts (擴展現有 Article 類型)
-interface Article {
-  // ... 現有欄位
-  content: string                      // 原始 Markdown 內容（向後相容）
-  content_format: ContentFormat        // 'markdown' | 'html' | 'tiptap_json'
-  content_json?: TiptapDocument        // TipTap JSON 格式（可選）
-  embedded_media?: string[]            // 嵌入的媒體檔案 ID 陣列
-}
-
-type ContentFormat = 'markdown' | 'html' | 'tiptap_json'
-
-interface TiptapDocument {
-  type: 'doc'
-  content: TiptapNode[]
-}
-
-interface TiptapNode {
-  type: string
-  attrs?: Record<string, any>
-  content?: TiptapNode[]
-  marks?: TiptapMark[]
-  text?: string
-}
-
-interface TiptapMark {
-  type: string
-  attrs?: Record<string, any>
-}
-```
-
-**資料遷移策略**:
-```typescript
-// 遷移現有 Markdown 文章到新格式
-async function migrateArticleToRichText(articleId: string) {
-  const article = await ArticleService.getArticleById(articleId)
-
-  if (article.content_format === 'markdown') {
-    const tiptapDoc = await contentConverter.markdownToTiptap(article.content)
-
-    await supabase
-      .from('articles')
-      .update({
-        content_json: tiptapDoc,
-        content_format: 'tiptap_json',
-        updated_at: new Date(),
-      })
-      .eq('id', articleId)
-  }
-}
-```
 
 ---
 
@@ -317,10 +244,9 @@ CREATE TRIGGER trigger_update_media_usage_count
 ├─────────────────────────────┤      ├─────────────────────┤
 │ article_id (FK, PK)         │ N:1  │ id (PK)             │
 │ media_id (FK, PK)           │      │ content             │
-│ reference_type              │      │ content_format      │
-│ position                    │      │ content_json        │
-└─────────────────────────────┘      │ embedded_media[]    │
-                                      └─────────────────────┘
+│ reference_type              │      │ ...other fields...  │
+│ position                    │      │                     │
+└─────────────────────────────┘      └─────────────────────┘
 
 ┌─────────────────────────────┐
 │   editor_preferences        │
@@ -340,33 +266,6 @@ CREATE TRIGGER trigger_update_media_usage_count
 ---
 
 ## 狀態轉換
-
-### 文章內容格式遷移
-
-```
-[現有 Markdown 文章]
-      │
-      │ 使用者選擇「切換到富文本編輯器」
-      ▼
-[Markdown → TipTap 轉換]
-      │
-      ├─→ content_format = 'tiptap_json'
-      ├─→ content_json = {...}
-      └─→ content 保留（向後相容）
-      │
-      │ 使用者編輯
-      ▼
-[儲存時雙向同步]
-      │
-      ├─→ TipTap JSON → Markdown (更新 content)
-      └─→ Markdown → TipTap JSON (更新 content_json)
-      │
-      │ 使用者選擇「切換到 Markdown 編輯器」
-      ▼
-[Markdown 編輯模式]
-      │
-      └─→ 編輯 content 欄位
-```
 
 ### 媒體檔案生命週期
 
@@ -611,14 +510,7 @@ CREATE TABLE IF NOT EXISTS media_files (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 3. 擴展 articles 表
-ALTER TABLE articles ADD COLUMN IF NOT EXISTS content_format TEXT NOT NULL DEFAULT 'markdown';
-ALTER TABLE articles ADD COLUMN IF NOT EXISTS content_json JSONB;
-ALTER TABLE articles ADD COLUMN IF NOT EXISTS embedded_media UUID[];
-ALTER TABLE articles ADD CONSTRAINT content_format_check
-  CHECK (content_format IN ('markdown', 'html', 'tiptap_json'));
-
--- 4. 建立 editor_preferences 表
+-- 3. 建立 editor_preferences 表
 CREATE TABLE IF NOT EXISTS editor_preferences (
   user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   preferred_editor editor_type NOT NULL DEFAULT 'rich_text',
@@ -628,7 +520,7 @@ CREATE TABLE IF NOT EXISTS editor_preferences (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 5. 建立 article_media_references 表
+-- 4. 建立 article_media_references 表
 CREATE TABLE IF NOT EXISTS article_media_references (
   article_id UUID NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
   media_id UUID NOT NULL REFERENCES media_files(id) ON DELETE RESTRICT,
@@ -638,17 +530,15 @@ CREATE TABLE IF NOT EXISTS article_media_references (
   PRIMARY KEY (article_id, media_id)
 );
 
--- 6. 建立索引
+-- 5. 建立索引
 CREATE INDEX IF NOT EXISTS idx_media_files_uploaded_by ON media_files(uploaded_by);
 CREATE INDEX IF NOT EXISTS idx_media_files_file_type ON media_files(file_type);
 CREATE INDEX IF NOT EXISTS idx_media_files_storage_path ON media_files(storage_path);
 CREATE INDEX IF NOT EXISTS idx_media_files_uploaded_at ON media_files(uploaded_at DESC);
-CREATE INDEX IF NOT EXISTS idx_articles_content_format ON articles(content_format);
-CREATE INDEX IF NOT EXISTS idx_articles_embedded_media ON articles USING GIN(embedded_media);
 CREATE INDEX IF NOT EXISTS idx_article_media_article_id ON article_media_references(article_id);
 CREATE INDEX IF NOT EXISTS idx_article_media_media_id ON article_media_references(media_id);
 
--- 7. 建立觸發器函數
+-- 6. 建立觸發器函數
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -676,7 +566,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 8. 綁定觸發器
+-- 7. 綁定觸發器
 CREATE TRIGGER IF NOT EXISTS update_media_files_updated_at
   BEFORE UPDATE ON media_files
   FOR EACH ROW
@@ -692,7 +582,7 @@ CREATE TRIGGER IF NOT EXISTS trigger_update_media_usage_count
   FOR EACH ROW
   EXECUTE FUNCTION update_media_usage_count();
 
--- 9. 啟用 RLS（已包含在上方政策部分）
+-- 8. 啟用 RLS（已包含在上方政策部分）
 ```
 
 ---

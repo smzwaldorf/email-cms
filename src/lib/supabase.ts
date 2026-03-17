@@ -157,8 +157,9 @@ export function resetSupabaseClient(): void {
  * Provides autocomplete for available tables
  */
 export interface DatabaseTables {
-  newsletter_weeks: any
+  newsletters: any
   articles: any
+  newsletter_articles: any  // Junction table for article-newsletter relationship
   classes: any
   user_roles: any
   families: any

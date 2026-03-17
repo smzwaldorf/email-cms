@@ -64,7 +64,7 @@ export function NavigationBar({
         if (onEdit) {
           onEdit()
         } else {
-          navigate(`/editor/${navigationState.currentWeekNumber}`)
+          navigate(`/editor/${navigationState.currentNewsletterId}`)
         }
       }
     }

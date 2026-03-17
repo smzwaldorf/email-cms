@@ -196,7 +196,7 @@ export class PermissionService {
       }
 
       // Only published articles are visible
-      if (!article.is_published) {
+      if (article.status !== 'published') {
         return false
       }
 
