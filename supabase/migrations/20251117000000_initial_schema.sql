@@ -8,16 +8,21 @@
 -- CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ============================================================================
--- Core: Newsletter Weeks
+-- Core: Newsletters
 -- ============================================================================
 
-CREATE TABLE public.newsletter_weeks (
-  week_number VARCHAR(10) PRIMARY KEY,  -- Format: "YYYY-Www" (e.g., "2025-W47")
+CREATE TABLE public.newsletters (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  week_number VARCHAR(10),  -- Optional: Format "YYYY-Www" (e.g., "2025-W47")
+  title TEXT,  -- Newsletter headline
+  description TEXT,  -- Newsletter summary/description
   release_date DATE NOT NULL,
-  is_published BOOLEAN DEFAULT false,
+  status VARCHAR(20) DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived')),
+  published_at TIMESTAMP WITH TIME ZONE,  -- When the newsletter was published
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  CONSTRAINT valid_week_number CHECK (week_number ~ '^\d{4}-W\d{2}$')
+  CONSTRAINT valid_week_number CHECK (week_number IS NULL OR week_number ~ '^\d{4}-W\d{2}$'),
+  CONSTRAINT unique_week_number UNIQUE (week_number)
 );
 
 -- ============================================================================
@@ -33,33 +38,9 @@ CREATE TABLE public.classes (
 );
 
 -- ============================================================================
--- Core: Articles (文章)
--- ============================================================================
-
-CREATE TABLE public.articles (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  week_number VARCHAR(10) NOT NULL REFERENCES public.newsletter_weeks(week_number) ON DELETE CASCADE,
-  title TEXT NOT NULL,
-  content TEXT NOT NULL,
-  author VARCHAR(100),
-  article_order INTEGER NOT NULL,
-  is_published BOOLEAN DEFAULT false,
-  visibility_type VARCHAR(20) DEFAULT 'public' CHECK (visibility_type IN ('public', 'class_restricted')),
-  restricted_to_classes JSONB,  -- Array of class IDs, e.g., ["A1", "B2"]
-  created_by UUID,  -- Will reference auth.users in Supabase
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  deleted_at TIMESTAMP WITH TIME ZONE,  -- Soft-delete marker
-  CONSTRAINT unique_order_per_week UNIQUE (week_number, article_order),
-  CONSTRAINT class_restricted_validation CHECK (
-    (visibility_type = 'class_restricted' AND restricted_to_classes IS NOT NULL AND jsonb_array_length(restricted_to_classes) > 0)
-    OR visibility_type = 'public'
-  )
-);
-
--- ============================================================================
 -- Access Control: Users (使用者)
 -- Note: Primary user record in Supabase auth; this extends with roles
+-- Must be defined before articles for author_id FK
 -- ============================================================================
 
 CREATE TABLE public.user_roles (
@@ -68,6 +49,28 @@ CREATE TABLE public.user_roles (
   role VARCHAR(20) NOT NULL DEFAULT 'student' CHECK (role IN ('admin', 'teacher', 'parent', 'student')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- ============================================================================
+-- Core: Articles (文章)
+-- ============================================================================
+
+CREATE TABLE public.articles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  author_id UUID REFERENCES public.user_roles(id),  -- Teacher/admin who wrote the article
+  status VARCHAR(20) DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived')),
+  visibility_type VARCHAR(20) DEFAULT 'public' CHECK (visibility_type IN ('public', 'class_restricted')),
+  restricted_to_classes JSONB,  -- Array of class IDs, e.g., ["A1", "B2"]
+  created_by UUID,  -- Will reference auth.users in Supabase
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  deleted_at TIMESTAMP WITH TIME ZONE,  -- Soft-delete marker
+  CONSTRAINT class_restricted_validation CHECK (
+    (visibility_type = 'class_restricted' AND restricted_to_classes IS NOT NULL AND jsonb_array_length(restricted_to_classes) > 0)
+    OR visibility_type = 'public'
+  )
 );
 
 -- ============================================================================
@@ -141,17 +144,17 @@ CREATE TABLE public.article_audit_log (
 -- Indexes for Performance
 -- ============================================================================
 
--- Articles: Common queries by week and publication status
-CREATE INDEX idx_articles_week_published
-  ON public.articles(week_number, is_published, deleted_at, visibility_type);
-
--- Articles: Display order within week
-CREATE INDEX idx_articles_order
-  ON public.articles(week_number, article_order);
+-- Articles: Common queries by status (for listing published articles)
+CREATE INDEX idx_articles_status
+  ON public.articles(status, deleted_at, visibility_type);
 
 -- Articles: Find by creator (for edit permissions)
 CREATE INDEX idx_articles_created_by
   ON public.articles(created_by);
+
+-- Articles: Find by author (for teacher's articles)
+CREATE INDEX idx_articles_author
+  ON public.articles(author_id);
 
 -- Classes: Grade year sorting (for family multi-class viewing)
 CREATE INDEX idx_classes_grade_year
@@ -195,8 +198,8 @@ CREATE TRIGGER trigger_articles_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION public.update_articles_updated_at();
 
--- Auto-update newsletter_weeks.updated_at
-CREATE OR REPLACE FUNCTION public.update_weeks_updated_at()
+-- Auto-update newsletters.updated_at
+CREATE OR REPLACE FUNCTION public.update_newsletters_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
   NEW.updated_at = NOW();
@@ -204,10 +207,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trigger_weeks_updated_at
-  BEFORE UPDATE ON public.newsletter_weeks
+CREATE TRIGGER trigger_newsletters_updated_at
+  BEFORE UPDATE ON public.newsletters
   FOR EACH ROW
-  EXECUTE FUNCTION public.update_weeks_updated_at();
+  EXECUTE FUNCTION public.update_newsletters_updated_at();
 
 -- Auto-log article changes
 CREATE OR REPLACE FUNCTION public.audit_article_changes()
@@ -255,7 +258,7 @@ CREATE TRIGGER trigger_audit_article_changes
 -- Row-Level Security (RLS) Policies
 -- ============================================================================
 
-ALTER TABLE public.newsletter_weeks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.newsletters ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.articles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.classes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.families ENABLE ROW LEVEL SECURITY;
@@ -277,17 +280,17 @@ CREATE POLICY user_roles_read_authenticated
   ON public.user_roles FOR SELECT
   USING (auth.role() = 'authenticated');
 
--- Allow public read of published newsletter weeks
--- Anyone can see published weeks
-CREATE POLICY newsletter_weeks_read
-  ON public.newsletter_weeks FOR SELECT
-  USING (is_published = true);
+-- Allow public read of published newsletters
+-- Anyone can see published newsletters
+CREATE POLICY newsletters_read
+  ON public.newsletters FOR SELECT
+  USING (status = 'published');
 
 -- Allow public read of published, non-deleted public articles
 CREATE POLICY articles_public_read
   ON public.articles FOR SELECT
   USING (
-    is_published = true
+    status = 'published'
     AND deleted_at IS NULL
     AND visibility_type = 'public'
   );
@@ -297,7 +300,7 @@ CREATE POLICY articles_public_read
 CREATE POLICY articles_admin_read
   ON public.articles FOR SELECT
   USING (
-    is_published = true
+    status = 'published'
     AND deleted_at IS NULL
     AND (
       -- Check if current user is an admin
@@ -321,7 +324,7 @@ CREATE POLICY articles_class_restricted_read
   ON public.articles FOR SELECT
   USING (
     visibility_type = 'class_restricted'
-    AND is_published = true
+    AND status = 'published'
     AND deleted_at IS NULL
     AND auth.uid() IN (
       SELECT fe.parent_id

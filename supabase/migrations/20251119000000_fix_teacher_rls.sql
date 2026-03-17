@@ -15,7 +15,7 @@ CREATE POLICY articles_class_restricted_read
   ON public.articles FOR SELECT
   USING (
     visibility_type = 'class_restricted'
-    AND is_published = true
+    AND status = 'published'
     AND deleted_at IS NULL
     AND (
       -- Parent check: User is a parent in a family with an active child in the restricted class

@@ -13,7 +13,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { AdminLayout } from '@/components/admin/AdminLayout'
 
 export function AdminArticleListPage() {
-  const { weekNumber } = useParams<{ weekNumber: string }>()
+  const { weekNumber, id } = useParams<{ weekNumber?: string; id?: string }>()
   const navigate = useNavigate()
 
   const [newsletter, setNewsletter] = useState<AdminNewsletter | null>(null)
@@ -23,11 +23,13 @@ export function AdminArticleListPage() {
 
   useEffect(() => {
     if (weekNumber) {
-      loadData(weekNumber)
+      loadDataByWeek(weekNumber)
+    } else if (id) {
+      loadDataById(id)
     }
-  }, [weekNumber])
+  }, [weekNumber, id])
 
-  const loadData = async (week: string) => {
+  const loadDataByWeek = async (week: string) => {
     try {
       setIsLoading(true)
       setError(null)
@@ -48,8 +50,33 @@ export function AdminArticleListPage() {
     }
   }
 
+  const loadDataById = async (newsletterId: string) => {
+    try {
+      setIsLoading(true)
+      setError(null)
+
+      const [newsletterData, articlesData] = await Promise.all([
+        adminService.fetchNewsletter(newsletterId),
+        adminService.fetchArticlesByNewsletterId(newsletterId),
+      ])
+
+      setNewsletter(newsletterData)
+      setArticles(articlesData)
+    } catch (err) {
+      const message = err instanceof AdminServiceError ? err.message : err instanceof Error ? err.message : 'Failed to load data'
+      setError(message)
+      console.error('Error loading article list data:', err)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const handleEditArticle = (articleId: string) => {
-    navigate(`/admin/articles/${weekNumber}/${articleId}`)
+    if (weekNumber) {
+      navigate(`/admin/articles/${weekNumber}/${articleId}`)
+    } else if (id) {
+      navigate(`/admin/articles/id/${id}/${articleId}`)
+    }
   }
 
   const handleBack = () => {
@@ -84,13 +111,18 @@ export function AdminArticleListPage() {
 
   return (
     <ErrorBoundary>
-      <AdminLayout 
+      <AdminLayout
         activeTab="newsletters"
         headerAction={
           <button
-            onClick={() => navigate(`/admin/articles/${weekNumber}/create`)}
+            onClick={() => {
+              if (weekNumber) {
+                navigate(`/admin/articles/${weekNumber}/create`)
+              } else if (id) {
+                navigate(`/admin/articles/id/${id}/create`)
+              }
+            }}
             className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-            disabled
           >
             + Add Article
           </button>
@@ -123,17 +155,24 @@ export function AdminArticleListPage() {
                       <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(newsletter.status)}`}>
                         {getStatusLabel(newsletter.status)}
                       </span>
-                      <a
-                        href={`/week/${newsletter.weekNumber}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 text-sm flex items-center ml-4"
-                      >
-                        View Public Newsletter
-                        <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                        </svg>
-                      </a>
+                      {(() => {
+                        // Use /week for week_number format, /newsletter for UUIDs
+                        const isWeekNumber = newsletter.weekNumber && /^\d{4}-W\d{2}$/.test(newsletter.weekNumber)
+                        const route = isWeekNumber ? `/week/${newsletter.weekNumber}` : `/newsletter/${newsletter.id}`
+                        return (
+                          <a
+                            href={route}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 text-sm flex items-center ml-4"
+                          >
+                            View Public Newsletter
+                            <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                          </a>
+                        )
+                      })()}
                     </>
                   )}
                 </div>

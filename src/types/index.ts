@@ -7,6 +7,7 @@
 
 export interface NewsletterWeek {
   // 唯一識別
+  id?: string; // Newsletter UUID
   weekNumber: string; // 格式: "2025-W42" (ISO 8601)
 
   // 基本資訊
@@ -36,12 +37,14 @@ export interface Article {
   // 內容
   title: string; // 文章標題，必填
   content: string; // HTML 格式內容（TipTap 直接輸出）
-  author?: string; // 作者名稱（可選）
+  author?: string; // 作者名稱（可選，from user_roles lookup）
+  authorId?: string; // 作者 UUID（關聯到 user_roles）
   summary?: string; // 摘要（可選）
 
-  // 分類與排序
-  weekNumber: string; // 所屬週份 (ISO 8601 格式)
-  order: number; // 該週內的排序序號（1, 2, 3...）
+  // 分類與排序 (now from newsletter_articles junction)
+  weekNumber?: string; // 所屬週份 (from junction table, for display)
+  newsletterId?: string; // 所屬 newsletter UUID (from junction table)
+  order?: number; // 該週內的排序序號（from junction table）
 
   // 連結與訪問
   slug?: string; // URL 友好名稱
@@ -61,7 +64,7 @@ export interface Article {
 
 export interface NavigationState {
   // 當前位置
-  currentWeekNumber: string; // 當前週份
+  currentNewsletterId: string; // 當前 newsletter ID (week_number or UUID)
   currentArticleId: string; // 當前文章 ID
   currentArticleOrder: number; // 當前文章在週內的序號
 

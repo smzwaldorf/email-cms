@@ -12,10 +12,30 @@ interface WeekSelectorProps {
   disabled?: boolean
 }
 
+/**
+ * Helper to get the navigation key for a newsletter
+ * Uses week_number if available, otherwise falls back to id
+ */
+function getNewsletterKey(week: { id: string; week_number?: string | null }): string {
+  return week.week_number || week.id
+}
+
+/**
+ * Helper to get the display label for a newsletter
+ * Shows formatted week number or title for special editions
+ */
+function getDisplayLabel(week: { week_number?: string | null; title?: string | null }): string {
+  if (week.week_number) {
+    return formatWeekNumber(week.week_number)
+  }
+  return week.title || 'Special Edition'
+}
+
 export const WeekSelector: React.FC<WeekSelectorProps> = ({ disabled = false }) => {
   const navigate = useNavigate()
-  const { weekNumber: paramWeekNumber } = useParams<{ weekNumber: string }>()
-  const currentWeekNumber = paramWeekNumber || '2025-W47'
+  // Capture both route params: weekNumber from /week route, newsletterId from /newsletter route
+  const { weekNumber: paramWeekNumber, newsletterId } = useParams<{ weekNumber?: string; newsletterId?: string }>()
+  const currentWeekNumber = paramWeekNumber || newsletterId || '2025-W47'
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -39,15 +59,21 @@ export const WeekSelector: React.FC<WeekSelectorProps> = ({ disabled = false }) 
     }
   }, [])
 
-  const handleWeekSelect = (weekNumber: string) => {
-    if (weekNumber !== currentWeekNumber) {
-      navigate(`/week/${weekNumber}`)
+  const handleWeekSelect = (weekKey: string) => {
+    if (weekKey !== currentWeekNumber) {
+      // Use /week for week_number format, /newsletter for UUIDs
+      const isWeekNumber = /^\d{4}-W\d{2}$/.test(weekKey)
+      const route = isWeekNumber ? `/week/${weekKey}` : `/newsletter/${weekKey}`
+      navigate(route)
     }
     setIsOpen(false)
   }
 
-  const selectedWeek = weeks.find((w) => w.week_number === currentWeekNumber)
-  const displayLabel = selectedWeek ? formatWeekNumber(selectedWeek.week_number) : currentWeekNumber
+  // Find selected week - match by week_number or id
+  const selectedWeek = weeks.find((w) => 
+    w.week_number === currentWeekNumber || w.id === currentWeekNumber
+  )
+  const displayLabel = selectedWeek ? getDisplayLabel(selectedWeek) : currentWeekNumber
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -105,39 +131,44 @@ export const WeekSelector: React.FC<WeekSelectorProps> = ({ disabled = false }) 
               </div>
             ) : (
               <div className="py-2">
-                {weeks.map((week) => (
-                  <button
-                    key={week.week_number}
-                    onClick={() => handleWeekSelect(week.week_number)}
-                    className={`
-                      w-full text-left px-4 py-2.5 text-sm transition-colors duration-150
-                      ${
-                        week.week_number === currentWeekNumber
-                          ? 'bg-waldorf-peach-100 text-waldorf-clay-900 font-semibold'
-                          : 'text-waldorf-clay-700 hover:bg-waldorf-cream-100'
-                      }
-                    `}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span>{formatWeekNumber(week.week_number)}</span>
-                      {week.week_number === currentWeekNumber && (
-                        <svg className="w-4 h-4 text-waldorf-peach-600" fill="currentColor" viewBox="0 0 20 20">
-                          <path
-                            fillRule="evenodd"
-                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      )}
-                    </div>
-                    <p className="text-xs text-waldorf-clay-500 mt-0.5">
-                      {new Date(week.release_date).toLocaleDateString('zh-TW', {
-                        month: 'short',
-                        day: 'numeric',
-                      })}
-                    </p>
-                  </button>
-                ))}
+                {weeks.map((week) => {
+                  const weekKey = getNewsletterKey(week)
+                  const isSelected = week.week_number === currentWeekNumber || week.id === currentWeekNumber
+                  
+                  return (
+                    <button
+                      key={week.id}
+                      onClick={() => handleWeekSelect(weekKey)}
+                      className={`
+                        w-full text-left px-4 py-2.5 text-sm transition-colors duration-150
+                        ${
+                          isSelected
+                            ? 'bg-waldorf-peach-100 text-waldorf-clay-900 font-semibold'
+                            : 'text-waldorf-clay-700 hover:bg-waldorf-cream-100'
+                        }
+                      `}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span>{getDisplayLabel(week)}</span>
+                        {isSelected && (
+                          <svg className="w-4 h-4 text-waldorf-peach-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path
+                              fillRule="evenodd"
+                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        )}
+                      </div>
+                      <p className="text-xs text-waldorf-clay-500 mt-0.5">
+                        {new Date(week.release_date).toLocaleDateString('zh-TW', {
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                      </p>
+                    </button>
+                  )
+                })}
               </div>
             )}
           </div>
@@ -146,3 +177,4 @@ export const WeekSelector: React.FC<WeekSelectorProps> = ({ disabled = false }) 
     </div>
   )
 }
+

@@ -11,7 +11,7 @@
 CREATE TABLE public.analytics_events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES public.user_roles(id) ON DELETE SET NULL, -- Nullable for anonymous views (if allowed later)
-  newsletter_id TEXT REFERENCES public.newsletter_weeks(week_number) ON DELETE CASCADE, -- Using week_number as id based on schema reuse analysis
+  newsletter_id UUID REFERENCES public.newsletters(id) ON DELETE CASCADE, -- References newsletters by UUID
   article_id UUID REFERENCES public.articles(id) ON DELETE SET NULL,
   session_id TEXT, -- Generated client-side for session tracking
   event_type VARCHAR(50) NOT NULL, -- e.g., 'page_view', 'scroll_50', 'link_click', 'email_open'
@@ -68,7 +68,7 @@ CREATE POLICY analytics_events_anonymous_insert
 CREATE TABLE public.analytics_snapshots (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   snapshot_date DATE NOT NULL,
-  newsletter_id TEXT REFERENCES public.newsletter_weeks(week_number) ON DELETE CASCADE,
+  newsletter_id UUID REFERENCES public.newsletters(id) ON DELETE CASCADE,
   article_id UUID REFERENCES public.articles(id) ON DELETE CASCADE,
   class_id TEXT REFERENCES public.classes(id) ON DELETE CASCADE,
   metric_name VARCHAR(50) NOT NULL, -- e.g., 'total_views', 'unique_visitors', 'avg_time_spent'

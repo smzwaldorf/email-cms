@@ -66,17 +66,26 @@ export const AuthCallbackPage: React.FC = () => {
                   // Fetch latest published week from database
                   const latestWeek = await WeekService.getLatestPublishedWeek()
                   if (latestWeek) {
-                    console.log('🔄 Redirecting to latest week:', latestWeek.week_number)
+                    // Use /week for week_number format, /newsletter for UUIDs
+                    const routeKey = latestWeek.week_number || latestWeek.id
+                    const isWeekNumber = latestWeek.week_number && /^\d{4}-W\d{2}$/.test(latestWeek.week_number)
+                    const route = isWeekNumber ? `/week/${routeKey}` : `/newsletter/${routeKey}`
+                    console.log('🔄 Redirecting to latest newsletter:', routeKey)
                     setStatus('success')
-                    navigate(`/week/${latestWeek.week_number}`)
+                    navigate(route)
                   } else {
                     // Fallback: if no published weeks, fetch all weeks and get the latest
                     console.warn('⚠️ No published weeks found, fetching all weeks')
                     const allWeeks = await WeekService.getAllWeeks({ sortBy: 'week', sortOrder: 'desc', limit: 1 })
                     if (allWeeks.length > 0) {
-                      console.log('🔄 Redirecting to latest available week:', allWeeks[0].week_number)
+                      // Use /week for week_number format, /newsletter for UUIDs
+                      const week = allWeeks[0]
+                      const routeKey = week.week_number || week.id
+                      const isWeekNumber = week.week_number && /^\d{4}-W\d{2}$/.test(week.week_number)
+                      const route = isWeekNumber ? `/week/${routeKey}` : `/newsletter/${routeKey}`
+                      console.log('🔄 Redirecting to latest available newsletter:', routeKey)
                       setStatus('success')
-                      navigate(`/week/${allWeeks[0].week_number}`)
+                      navigate(route)
                     } else {
                       // No weeks available in database
                       console.error('❌ No weeks found in database')

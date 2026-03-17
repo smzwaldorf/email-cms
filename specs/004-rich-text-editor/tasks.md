@@ -171,7 +171,7 @@ Phase 8: 測試、文檔、優化
 - [X] T027 [P] 更新 `src/pages/ArticleEditPage.tsx`
   - 整合 RichTextEditor（實作於 ArticleEditor.tsx）
   - 權限檢查（FR-020 向後相容性）✅ 驗證通過
-  - 儲存邏輯（content 和 content_format）✅ HTML 格式儲存
+  - 儲存邏輯（content）✅ Markdown 格式儲存
   - **狀態**: ✅ 完成於 2025-12-01
 
 ### 文字編輯功能完整性

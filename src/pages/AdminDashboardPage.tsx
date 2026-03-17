@@ -358,9 +358,15 @@ export function AdminDashboardPage() {
   const handleEdit = (id: string) => {
     const newsletter = newsletters.find((n) => n.id === id)
     if (newsletter) {
-      navigate(`/admin/articles/${newsletter.weekNumber}`, {
-        state: { newsletterId: id },
-      })
+      if (newsletter.weekNumber) {
+        navigate(`/admin/articles/${newsletter.weekNumber}`, {
+          state: { newsletterId: id },
+        })
+      } else {
+        navigate(`/admin/articles/id/${id}`, {
+          state: { newsletterId: id },
+        })
+      }
     }
   }
 

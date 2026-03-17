@@ -47,10 +47,12 @@ export function formatRelativeTime(dateString: string): string {
 
 /**
  * 將 ISO 8601 週份轉換為顯示文字
- * @param weekNumber - 週份 (例: "2025-W42")
+ * @param weekNumber - 週份 (例: "2025-W42") or null for special editions
  * @returns 格式化的週份文字
  */
-export function formatWeekNumber(weekNumber: string): string {
+export function formatWeekNumber(weekNumber: string | null | undefined): string {
+  if (!weekNumber) return 'Special Edition'
+  
   const match = weekNumber.match(/(\d{4})-W(\d{2})/)
   if (!match) return weekNumber
 

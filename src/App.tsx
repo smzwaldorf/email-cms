@@ -91,7 +91,15 @@ export default function App() {
                 }
               />
               <Route
-                path="/newsletter/:weekNumber"
+                path="/newsletter/:newsletterId"
+                element={
+                  <ProtectedRoute>
+                    <WeeklyReaderPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/newsletter/:newsletterId/:shortId"
                 element={
                   <ProtectedRoute>
                     <WeeklyReaderPage />
@@ -146,6 +154,30 @@ export default function App() {
               />
               <Route
                 path="/admin/articles/:weekNumber/:articleId"
+                element={
+                  <ErrorBoundary>
+                    <ProtectedRoute requiredRole="admin">
+                      <Suspense fallback={<RouteLoader />}>
+                        <LazyArticleEditorPage />
+                      </Suspense>
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/admin/articles/id/:id"
+                element={
+                  <ErrorBoundary>
+                    <ProtectedRoute requiredRole="admin">
+                      <Suspense fallback={<RouteLoader />}>
+                        <LazyAdminArticleList />
+                      </Suspense>
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/admin/articles/id/:id/:articleId"
                 element={
                   <ErrorBoundary>
                     <ProtectedRoute requiredRole="admin">
