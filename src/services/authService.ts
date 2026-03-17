@@ -8,6 +8,7 @@ import { getSupabaseClient } from '@/lib/supabase'
 import type { AuthSession } from '@supabase/supabase-js'
 import type { AuthUser } from '@/types/auth'
 import { auditLogger } from './auditLogger'
+import { tokenManager } from './tokenManager'
 
 export interface AuthServiceInterface {
   signIn(email: string, password: string): Promise<AuthUser | null>
@@ -52,13 +53,30 @@ class SupabaseAuthService implements AuthServiceInterface {
       }
 
       // Listen for auth state changes
-      supabase.auth.onAuthStateChange(async (_event, session) => {
-        if (session?.user) {
-          await this.setCurrentUser(session.user.id)
-        } else {
-          this.currentUser = null
-          this.notifyListeners(null)
+      // IMPORTANT: Use setTimeout to make async operations non-blocking.
+      // The Supabase client uses internal locking that can cause deadlocks
+      // if async Supabase operations are called directly within onAuthStateChange.
+      // See: https://github.com/nuxt-modules/supabase/issues/273
+      supabase.auth.onAuthStateChange((_event, session) => {
+        if (_event === 'TOKEN_REFRESHED' && session) {
+          console.log('🔄 Supabase auth token refreshed (synced to TokenManager).')
+          // Sync new token to TokenManager to prevent staleness
+          tokenManager.setAccessToken(session.access_token, session.expires_in || 3600)
+          
+          // Optimization: Skip re-fetching user role on simple token refresh
+          // The user identity hasn't changed.
+          return
         }
+        
+        // Defer async operations to prevent blocking the auth state callback
+        setTimeout(() => {
+          if (session?.user) {
+            this.setCurrentUser(session.user.id)
+          } else {
+            this.currentUser = null
+            this.notifyListeners(null)
+          }
+        }, 0)
       })
 
       this.initialized = true

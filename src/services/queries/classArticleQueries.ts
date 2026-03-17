@@ -7,9 +7,12 @@
  * - Filters by class enrollment
  * - Sorts by class grade year (DESC) for family multi-class viewing
  * - Performance: <100ms for family with up to 5 children
+ * 
+ * NOTE: All functions now accept newsletterId (UUID) directly instead of week_number.
+ * Articles are linked to newsletters via the newsletter_articles junction table.
  */
 
-import { table } from '@/lib/supabase'
+import { table, getSupabaseClient } from '@/lib/supabase'
 import type { ArticleRow, ClassRow } from '@/types/database'
 import { ArticleServiceError } from '../ArticleService'
 
@@ -35,18 +38,30 @@ export interface ClassArticleQueryResult {
  * - Article order (ASC) - within each class
  *
  * @param familyId Family UUID
- * @param weekNumber Week number (e.g., "2025-W47")
+ * @param newsletterId Newsletter UUID
  * @returns Articles visible to the family
  *
  * Performance Target (SC-005): <100ms for family with up to 5 children
  */
 export async function getArticlesForFamily(
   familyId: string,
-  weekNumber: string,
+  newsletterId: string,
 ): Promise<ClassArticleQueryResult> {
   const startTime = Date.now()
 
   try {
+    const supabase = getSupabaseClient()
+
+    // Check if newsletter ID is provided
+    if (!newsletterId) {
+      return {
+        articles: [],
+        classes: [],
+        totalCount: 0,
+        executionTimeMs: Date.now() - startTime,
+      }
+    }
+
     // Step 1: Get all active classes for family's children
     const { data: childEnrollments, error: enrollError } = await table('child_class_enrollment')
       .select('class_id')
@@ -82,87 +97,74 @@ export async function getArticlesForFamily(
       classes = classData || []
     }
 
-    // Step 3: Get public articles
-    const { data: publicArticles, error: publicError } = await table('articles')
-      .select('*')
-      .eq('week_number', weekNumber)
-      .eq('visibility_type', 'public')
-      .eq('is_published', true)
-      .is('deleted_at', null)
+    // Step 3: Get all articles for this newsletter via junction table
+    const { data: newsletterArticles, error: articlesError } = await supabase
+      .from('newsletter_articles')
+      .select(`
+        article_order,
+        articles!inner (*)
+      `)
+      .eq('newsletter_id', newsletterId)
       .order('article_order', { ascending: true })
 
-    if (publicError) {
+    if (articlesError) {
       throw new ArticleServiceError(
-        `Failed to fetch public articles: ${publicError.message}`,
-        'FETCH_PUBLIC_ARTICLES_ERROR',
-        publicError as Error,
+        `Failed to fetch articles: ${articlesError.message}`,
+        'FETCH_ARTICLES_ERROR',
+        articlesError as Error,
       )
     }
 
-    // Step 4: Get class-restricted articles for enrolled classes
-    let classArticles: ArticleRow[] = []
-    if (enrolledClassIds.length > 0) {
-      const { data: restricted, error: restrictError } = await table('articles')
-        .select('*')
-        .eq('week_number', weekNumber)
-        .eq('visibility_type', 'class_restricted')
-        .eq('is_published', true)
-        .is('deleted_at', null)
+    // Step 4: Filter articles based on visibility
+    const allArticles: ArticleRow[] = []
 
-      if (restrictError) {
-        throw new ArticleServiceError(
-          `Failed to fetch restricted articles: ${restrictError.message}`,
-          'FETCH_RESTRICTED_ARTICLES_ERROR',
-          restrictError as Error,
-        )
+    for (const row of newsletterArticles || []) {
+      const article = {
+        ...(row.articles as any),
+        article_order: row.article_order,
+      } as ArticleRow & { article_order: number }
+
+      // Skip deleted or unpublished articles
+      if (article.deleted_at || article.status !== 'published') continue
+
+      // Include public articles
+      if (article.visibility_type === 'public') {
+        allArticles.push(article)
+        continue
       }
 
-      // Filter to only articles restricted to family's enrolled classes
-      classArticles = (restricted || []).filter((article) => {
-        if (!article.restricted_to_classes || article.restricted_to_classes.length === 0) {
-          return false
-        }
-        return (article.restricted_to_classes as string[]).some((classId) =>
+      // Include class-restricted articles if family is enrolled
+      if (article.visibility_type === 'class_restricted' && article.restricted_to_classes) {
+        const hasAccess = (article.restricted_to_classes as string[]).some((classId) =>
           enrolledClassIds.includes(classId)
         )
-      })
+        if (hasAccess) {
+          allArticles.push(article)
+        }
+      }
+    }
 
-      // Sort by class grade year (DESC) then by article order
-      classArticles = classArticles.sort((a, b) => {
-        // Find grade year for article's first restricted class
+    // Step 5: Sort - class-restricted by grade year DESC, then by order
+    allArticles.sort((a, b) => {
+      // Public articles go last
+      if (a.visibility_type === 'public' && b.visibility_type !== 'public') return 1
+      if (a.visibility_type !== 'public' && b.visibility_type === 'public') return -1
+
+      // For class-restricted, sort by grade year
+      if (a.visibility_type === 'class_restricted' && b.visibility_type === 'class_restricted') {
         const aClassId = (a.restricted_to_classes as string[])?.[0]
         const bClassId = (b.restricted_to_classes as string[])?.[0]
-
         const aClass = classes.find((c) => c.id === aClassId)
         const bClass = classes.find((c) => c.id === bClassId)
-
         const aGrade = aClass?.class_grade_year ?? 0
         const bGrade = bClass?.class_grade_year ?? 0
 
-        // Sort by grade year DESC (older kids first)
-        if (bGrade !== aGrade) {
-          return bGrade - aGrade
-        }
+        if (bGrade !== aGrade) return bGrade - aGrade
+      }
 
-        // Then by article order
-        return a.article_order - b.article_order
-      })
-    }
-
-    // Step 5: Combine and deduplicate articles
-    const articleMap = new Map<string, ArticleRow>()
-
-    // Add public articles
-    publicArticles?.forEach((article) => {
-      articleMap.set(article.id, article)
+      // Then by article order
+      return ((a as any).article_order ?? 0) - ((b as any).article_order ?? 0)
     })
-
-    // Add class articles (won't duplicate due to Map)
-    classArticles.forEach((article) => {
-      articleMap.set(article.id, article)
-    })
-
-    const allArticles = Array.from(articleMap.values())
 
     const executionTimeMs = Date.now() - startTime
 
@@ -186,60 +188,66 @@ export async function getArticlesForFamily(
  * Get articles for a specific class
  *
  * @param classId Class ID
- * @param weekNumber Week number
+ * @param newsletterId Newsletter UUID
  * @returns Articles visible to the class
  */
 export async function getArticlesForClass(
   classId: string,
-  weekNumber: string,
+  newsletterId: string,
 ): Promise<ArticleRow[]> {
   try {
-    // Get both public and class-restricted articles
-    const { data: publicArticles, error: publicError } = await table('articles')
-      .select('*')
-      .eq('week_number', weekNumber)
-      .eq('visibility_type', 'public')
-      .eq('is_published', true)
-      .is('deleted_at', null)
+    const supabase = getSupabaseClient()
 
-    if (publicError) {
+    // Check if newsletter ID is provided
+    if (!newsletterId) {
+      return []
+    }
+
+    // Get all articles for this newsletter via junction table
+    const { data: newsletterArticles, error: articlesError } = await supabase
+      .from('newsletter_articles')
+      .select(`
+        article_order,
+        articles!inner (*)
+      `)
+      .eq('newsletter_id', newsletterId)
+      .order('article_order', { ascending: true })
+
+    if (articlesError) {
       throw new ArticleServiceError(
-        `Failed to fetch public articles: ${publicError.message}`,
-        'FETCH_PUBLIC_ARTICLES_ERROR',
-        publicError as Error,
+        `Failed to fetch articles: ${articlesError.message}`,
+        'FETCH_ARTICLES_ERROR',
+        articlesError as Error,
       )
     }
 
-    const { data: restrictedArticles, error: restrictError } = await table('articles')
-      .select('*')
-      .eq('week_number', weekNumber)
-      .eq('visibility_type', 'class_restricted')
-      .eq('is_published', true)
-      .is('deleted_at', null)
+    // Filter articles visible to this class
+    const visibleArticles: ArticleRow[] = []
 
-    if (restrictError) {
-      throw new ArticleServiceError(
-        `Failed to fetch restricted articles: ${restrictError.message}`,
-        'FETCH_RESTRICTED_ARTICLES_ERROR',
-        restrictError as Error,
-      )
-    }
+    for (const row of newsletterArticles || []) {
+      const article = {
+        ...(row.articles as any),
+        article_order: row.article_order,
+      } as ArticleRow & { article_order: number }
 
-    // Filter restricted articles to those that include this class
-    const filteredRestricted = (restrictedArticles || []).filter((article) => {
-      if (!article.restricted_to_classes || article.restricted_to_classes.length === 0) {
-        return false
+      // Skip deleted or unpublished
+      if (article.deleted_at || article.status !== 'published') continue
+
+      // Include public articles
+      if (article.visibility_type === 'public') {
+        visibleArticles.push(article)
+        continue
       }
-      return (article.restricted_to_classes as string[]).includes(classId)
-    })
 
-    // Combine public and restricted articles
-    const allArticles = [...(publicArticles || []), ...filteredRestricted]
+      // Include class-restricted articles if this class is included
+      if (article.visibility_type === 'class_restricted' && article.restricted_to_classes) {
+        if ((article.restricted_to_classes as string[]).includes(classId)) {
+          visibleArticles.push(article)
+        }
+      }
+    }
 
-    // Sort by article order
-    allArticles.sort((a, b) => a.article_order - b.article_order)
-
-    return allArticles
+    return visibleArticles
   } catch (err) {
     if (err instanceof ArticleServiceError) throw err
     throw new ArticleServiceError(
@@ -324,15 +332,15 @@ export async function getArticleWithAuditLogForClass(
 /**
  * Count articles visible to a family
  * @param familyId Family UUID
- * @param weekNumber Week number
+ * @param newsletterId Newsletter UUID
  * @returns Number of visible articles
  */
 export async function countArticlesForFamily(
   familyId: string,
-  weekNumber: string,
+  newsletterId: string,
 ): Promise<number> {
   try {
-    const result = await getArticlesForFamily(familyId, weekNumber)
+    const result = await getArticlesForFamily(familyId, newsletterId)
     return result.totalCount
   } catch (err) {
     if (err instanceof ArticleServiceError) throw err

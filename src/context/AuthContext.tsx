@@ -23,7 +23,7 @@ export interface AuthContextType {
   signOut: () => Promise<void>
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export interface AuthProviderProps {
   children: ReactNode
@@ -94,6 +94,61 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.log('🔌 Cleaning up Realtime listener')
         realtimeChannel.unsubscribe()
       }
+    }
+  }, [])
+
+  // Keep-alive: Ping Supabase every 5 minutes while tab is visible
+  // This prevents the connection from going completely stale after idle
+  useEffect(() => {
+    const KEEP_ALIVE_INTERVAL = 5 * 60 * 1000 // 5 minutes
+    let intervalId: NodeJS.Timeout | null = null
+    let isTabVisible = !document.hidden
+
+    const pingSupabase = async () => {
+      // Allow background pings to keep TCP connection alive
+      // if (!isTabVisible) return
+      
+      const startTime = performance.now()
+      try {
+        const supabase = getSupabaseClient()
+        // Use getUser() instead of getSession() because getSession() often hits local cache (0-1ms)
+        // and fails to keep the TCP connection warm. getUser() forces a network request.
+        const { error } = await supabase.auth.getUser()
+        
+        if (error) {
+           // If 401, it means token expired, which is fine (TokenManager will handle it), 
+           // but at least we touched the network.
+           console.log(`💓 Keep-alive ping network check (${(performance.now() - startTime).toFixed(0)}ms) - Status: ${error.status || 'Error'}`)
+        } else {
+           console.log(`💓 Keep-alive ping network check successful (${(performance.now() - startTime).toFixed(0)}ms)`)
+        }
+      } catch (err) {
+        console.warn('⚠️ Keep-alive ping failed:', err)
+      }
+    }
+
+    const handleVisibilityChange = () => {
+      const isVisible = !document.hidden
+      
+      if (isVisible) {
+        // Tab became visible - ping immediately for responsiveness
+        console.log('👁️ Tab visible, checking connection...')
+        pingSupabase()
+      } else {
+        console.log('🙈 Tab hidden, keep-alive continuing in background')
+      }
+    }
+
+    // Start keep-alive immediately
+    intervalId = setInterval(pingSupabase, KEEP_ALIVE_INTERVAL)
+    // Initial ping
+    pingSupabase()
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      if (intervalId) clearInterval(intervalId)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [])
 

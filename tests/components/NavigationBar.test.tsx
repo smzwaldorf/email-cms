@@ -24,7 +24,7 @@ describe('NavigationBar', () => {
   })
 
   const mockNavState: NavigationState = {
-    currentWeekNumber: '2025-W43',
+    currentNewsletterId: '11111111-1111-1111-1111-111111111111',
     currentArticleId: 'article-002',
     currentArticleOrder: 2,
     totalArticlesInWeek: 5,
@@ -429,7 +429,7 @@ describe('NavigationBar', () => {
 
       fireEvent.keyDown(window, { key: 'e' })
 
-      expect(mockNavigate).toHaveBeenCalledWith('/editor/2025-W43')
+      expect(mockNavigate).toHaveBeenCalledWith('/editor/11111111-1111-1111-1111-111111111111')
       expect(handlePrevious).not.toHaveBeenCalled()
       expect(handleNext).not.toHaveBeenCalled()
     })
@@ -472,7 +472,7 @@ describe('NavigationBar', () => {
       window.dispatchEvent(event)
 
       expect(preventDefaultSpy).toHaveBeenCalled()
-      expect(mockNavigate).toHaveBeenCalledWith('/editor/2025-W43')
+      expect(mockNavigate).toHaveBeenCalledWith('/editor/11111111-1111-1111-1111-111111111111')
     })
 
     it('should support case-insensitive keyboard shortcuts', async () => {

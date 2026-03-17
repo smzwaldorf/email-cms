@@ -2,10 +2,13 @@
  * useArticleEditor Hook
  * Enhanced state management for article creation and editing
  * Integrates with ArticleService for database operations
+ * 
+ * TODO: To be integrated
  */
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import ArticleService, { CreateArticleDTO } from '@/services/ArticleService'
+import { getSupabaseClient } from '@/lib/supabase'
 import type { ArticleRow } from '@/types/database'
 
 /**
@@ -89,13 +92,13 @@ export function useArticleEditor(
     error: null,
     formData: initialArticle
       ? {
-          weekNumber: initialArticle.week_number,
+          weekNumber: '', // Now from junction table, not article
           title: initialArticle.title,
           content: initialArticle.content,
-          author: initialArticle.author || '',
+          author: '', // Now lookup from author_id
           visibilityType: initialArticle.visibility_type as any,
           restrictedToClasses: initialArticle.restricted_to_classes || [],
-          articleOrder: initialArticle.article_order,
+          articleOrder: undefined, // Now from junction table
         }
       : defaultFormState,
     errors: {},
@@ -103,6 +106,34 @@ export function useArticleEditor(
   })
 
   const isEditing = useRef(!!initialArticle)
+
+  // Fetch weekNumber and articleOrder from newsletter_articles junction table
+  useEffect(() => {
+    if (!initialArticle?.id) return
+
+    const fetchNewsletterInfo = async () => {
+      const supabase = getSupabaseClient()
+      const { data } = await supabase
+        .from('newsletter_articles')
+        .select('article_order, newsletters!inner(week_number)')
+        .eq('article_id', initialArticle.id)
+        .limit(1)
+        .single()
+
+      if (data) {
+        setState(prev => ({
+          ...prev,
+          formData: {
+            ...prev.formData,
+            weekNumber: (data.newsletters as any)?.week_number || '',
+            articleOrder: data.article_order,
+          }
+        }))
+      }
+    }
+
+    fetchNewsletterInfo()
+  }, [initialArticle?.id])
 
   const startEditing = useCallback((articleId: string) => {
     setState(prev => ({
@@ -172,13 +203,13 @@ export function useArticleEditor(
       ...prev,
       formData: initialArticle
         ? {
-            weekNumber: initialArticle.week_number,
+            weekNumber: '', // Now from junction table
             title: initialArticle.title,
             content: initialArticle.content,
-            author: initialArticle.author || '',
+            author: '', // Now lookup from author_id
             visibilityType: initialArticle.visibility_type as any,
             restrictedToClasses: initialArticle.restricted_to_classes || [],
-            articleOrder: initialArticle.article_order,
+            articleOrder: undefined, // Now from junction table
           }
         : defaultFormState,
       errors: {},

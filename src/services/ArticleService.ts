@@ -6,7 +6,7 @@
  * Performance Target (SC-001): <500ms for 100 articles
  */
 
-import { table } from '@/lib/supabase'
+import { table, getSupabaseClient } from '@/lib/supabase'
 import type { ArticleRow } from '@/types/database'
 import PermissionService, { PermissionError } from './PermissionService'
 
@@ -67,52 +67,100 @@ export class ArticleServiceError extends Error {
  */
 export class ArticleService {
   /**
-   * Get articles by week number
+   * Helper: Get newsletter UUID by week_number
    * @param weekNumber ISO week format (e.g., "2025-W47")
+   * @returns Newsletter UUID or null if not found
+   */
+  private static async getNewsletterIdByWeek(weekNumber: string): Promise<string | null> {
+    const supabase = getSupabaseClient()
+    const { data, error } = await supabase
+      .from('newsletters')
+      .select('id')
+      .eq('week_number', weekNumber)
+      .single()
+    
+    if (error || !data) return null
+    return data.id
+  }
+  /**
+   * Helper to check if a string looks like a UUID
+   */
+  private static isUUID(str: string): boolean {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)
+  }
+
+  /**
+   * Get articles by week number or newsletter id using the newsletter_articles junction table
+   * @param newsletterId ISO week format (e.g., "2025-W47") or newsletter UUID
    * @param filters Optional filtering options
    */
   static async getArticlesByWeek(
-    weekNumber: string,
+    newsletterId: string,
     filters?: ArticleFilter,
   ): Promise<ArticleRow[]> {
     try {
-      let query = table('articles')
-        .select('*')
-        .eq('week_number', weekNumber)
+      const supabase = getSupabaseClient()
+      
+      // Determine if the input is a UUID or week_number
+      const isId = this.isUUID(newsletterId)
+      const queryField = isId ? 'id' : 'week_number'
+      
+      // Find the newsletter
+      const { data: newsletter, error: newsletterError } = await supabase
+        .from('newsletters')
+        .select('id')
+        .eq(queryField, newsletterId)
+        .single()
+      
+      if (newsletterError || !newsletter) {
+        // No newsletter found
+        return []
+      }
+      
+      // Query articles via junction table
+      const { data, error } = await supabase
+        .from('newsletter_articles')
+        .select(`
+          article_order,
+          articles!inner (*)
+        `)
+        .eq('newsletter_id', newsletter.id)
         .order('article_order', { ascending: true })
-
-      // Apply filters
-      if (filters?.isPublished !== undefined) {
-        query = query.eq('is_published', filters.isPublished)
-      }
-
-      if (filters?.visibilityType) {
-        query = query.eq('visibility_type', filters.visibilityType)
-      }
-
-      if (filters?.excludeDeleted !== false) {
-        query = query.is('deleted_at', null)
-      }
-
-      if (filters?.limit) {
-        query = query.limit(filters.limit)
-      }
-
-      if (filters?.offset) {
-        query = query.range(filters.offset, filters.offset + (filters.limit || 10) - 1)
-      }
-
-      const { data, error } = await query
 
       if (error) {
         throw new ArticleServiceError(
-          `Failed to fetch articles for week ${weekNumber}: ${error.message}`,
+          `Failed to fetch articles for newsletter ${newsletterId}: ${error.message}`,
           'FETCH_ARTICLES_ERROR',
           error as Error,
         )
       }
 
-      return data || []
+      // Flatten the result and apply filters
+      let articles = (data || []).map((row: any) => ({
+        ...row.articles,
+        // Add order from junction for convenience
+        _junction_order: row.article_order,
+      })) as ArticleRow[]
+
+      // Apply filters
+      if (filters?.isPublished !== undefined) {
+        const status = filters.isPublished ? 'published' : 'draft'
+        articles = articles.filter((a: ArticleRow) => a.status === status)
+      }
+
+      if (filters?.visibilityType) {
+        articles = articles.filter((a: ArticleRow) => a.visibility_type === filters.visibilityType)
+      }
+
+      if (filters?.excludeDeleted !== false) {
+        articles = articles.filter((a: ArticleRow) => a.deleted_at === null)
+      }
+
+      if (filters?.limit) {
+        articles = articles.slice(0, filters.limit)
+      }
+
+      return articles
     } catch (err) {
       if (err instanceof ArticleServiceError) throw err
       throw new ArticleServiceError(
@@ -160,6 +208,118 @@ export class ArticleService {
   }
 
   /**
+   * Get a single article by ID with its associated newsletter ID
+   * This is useful for analytics tracking to ensure the correct newsletter ID is used
+   * @param id Article ID
+   * @param newsletterId Optional week number or newsletter UUID to filter by (for shared articles that appear in multiple newsletters)
+   */
+  static async getArticleWithNewsletter(id: string, newsletterId?: string): Promise<ArticleRow & { newsletter_id?: string; week_number?: string }> {
+    try {
+      const supabase = getSupabaseClient()
+      
+      // First get the article
+      const { data: article, error: articleError } = await supabase
+        .from('articles')
+        .select('*')
+        .eq('id', id)
+        .single()
+
+      if (articleError || !article) {
+        throw new ArticleServiceError(
+          `Failed to fetch article ${id}: ${articleError?.message || 'Not found'}`,
+          'FETCH_ARTICLE_ERROR',
+          articleError as Error,
+        )
+      }
+
+      // Build junction query - filter by week_number or newsletter id if provided
+      // If newsletterId is a UUID, we already have the ID - just verify it exists in junction
+      if (newsletterId && this.isUUID(newsletterId)) {
+        // Simple query - just check if the article is in this newsletter
+        const { data: junctionData, error: junctionError } = await supabase
+          .from('newsletter_articles')
+          .select('newsletter_id')
+          .eq('article_id', id)
+          .eq('newsletter_id', newsletterId)
+          .limit(1)
+          .maybeSingle()
+
+        if (junctionData && !junctionError) {
+          // Get week_number from newsletters table separately
+          const { data: newsletterData } = await supabase
+            .from('newsletters')
+            .select('week_number')
+            .eq('id', newsletterId)
+            .single()
+
+          return {
+            ...article,
+            newsletter_id: junctionData.newsletter_id,
+            week_number: newsletterData?.week_number
+          }
+        }
+      } else {
+        // Need to join to filter by week_number or get any association
+        let junctionQuery = supabase
+          .from('newsletter_articles')
+          .select('newsletter_id, newsletters!inner(id, week_number)')
+          .eq('article_id', id)
+
+        if (newsletterId) {
+          // Filter by week_number
+          junctionQuery = junctionQuery.eq('newsletters.week_number', newsletterId)
+        }
+
+        const { data: junctionData, error: junctionError } = await junctionQuery.limit(1).maybeSingle()
+
+        if (junctionData && !junctionError) {
+          return {
+            ...article,
+            newsletter_id: junctionData.newsletter_id,
+            week_number: (junctionData.newsletters as any)?.week_number
+          }
+        }
+      }
+
+      // If filtered query failed but newsletterId was provided, 
+      // try fetching any newsletter association as fallback
+      if (newsletterId) {
+        console.warn(`[ArticleService] Junction query failed for ${newsletterId}, trying fallback...`)
+        const { data: fallbackData } = await supabase
+          .from('newsletter_articles')
+          .select('newsletter_id')
+          .eq('article_id', id)
+          .limit(1)
+          .maybeSingle()
+
+        if (fallbackData) {
+          // Get week_number from newsletters table
+          const { data: newsletterData } = await supabase
+            .from('newsletters')
+            .select('week_number')
+            .eq('id', fallbackData.newsletter_id)
+            .single()
+
+          return {
+            ...article,
+            newsletter_id: fallbackData.newsletter_id,
+            week_number: newsletterData?.week_number
+          }
+        }
+      }
+
+      return article
+    } catch (err) {
+      if (err instanceof ArticleServiceError) throw err
+      throw new ArticleServiceError(
+        `Unexpected error fetching article with newsletter: ${err instanceof Error ? err.message : String(err)}`,
+        'FETCH_ARTICLE_ERROR',
+        err instanceof Error ? err : undefined,
+      )
+    }
+  }
+
+  /**
    * Create a new article
    */
   static async createArticle(dto: CreateArticleDTO): Promise<ArticleRow> {
@@ -174,7 +334,7 @@ export class ArticleService {
         restricted_to_classes: dto.visibilityType === 'class_restricted'
           ? (dto.restrictedToClasses || [])
           : null,
-        is_published: false,
+        status: 'draft',
         created_at: new Date().toISOString(),
       }
 
@@ -238,7 +398,7 @@ export class ArticleService {
             ? (dto.restrictedToClasses || [])
             : null
       }
-      if (dto.isPublished !== undefined) updateData.is_published = dto.isPublished
+      if (dto.isPublished !== undefined) updateData.status = dto.isPublished ? 'published' : 'draft'
 
       if (Object.keys(updateData).length === 0) {
         // No fields to update, just return the article
@@ -297,7 +457,7 @@ export class ArticleService {
       const { data, error } = await table('articles')
         .update({
           deleted_at: new Date().toISOString(),
-          is_published: false, // Unpublish on delete
+          status: 'draft', // Reset to draft on delete
         })
         .eq('id', id)
         .select()
@@ -411,12 +571,20 @@ export class ArticleService {
   }
 
   /**
-   * Get the next available article order for a week
+   * Get the next available article order for a newsletter (from junction table)
    */
-  static async getNextArticleOrder(weekNumber: string): Promise<number> {
+  static async getNextArticleOrder(newsletterId: string): Promise<number> {
     try {
-      const articles = await this.getArticlesByWeek(weekNumber, { excludeDeleted: true })
-      return Math.max(...articles.map(a => a.article_order), 0) + 1
+      const supabase = getSupabaseClient()
+      const { data, error } = await supabase
+        .from('newsletter_articles')
+        .select('article_order')
+        .eq('newsletter_id', newsletterId)
+        .order('article_order', { ascending: false })
+        .limit(1)
+      
+      if (error) throw error
+      return (data?.[0]?.article_order ?? 0) + 1
     } catch (err) {
       if (err instanceof ArticleServiceError) throw err
       throw new ArticleServiceError(
@@ -441,7 +609,7 @@ export class ArticleService {
       let query = table('articles')
         .select('*')
         .eq('week_number', weekNumber)
-        .eq('is_published', true)
+        .eq('status', 'published')
         .is('deleted_at', null)
 
       const { data, error } = await query.order('article_order', { ascending: true })
@@ -584,17 +752,14 @@ export class ArticleService {
   }
 
   /**
-   * 更新文章內容
-   * Update article content with content format tracking
+   * Update article content
    * @param articleId Article ID to update
    * @param content New content
-   * @param contentFormat Content format (markdown or rich_text) - for future use with content_format column
    * @param userId Optional user ID for permission checking
    */
   static async updateArticleContent(
     articleId: string,
     content: string,
-    _contentFormat: 'markdown' | 'rich_text' = 'markdown',
     userId?: string,
   ): Promise<ArticleRow> {
     try {
@@ -732,6 +897,373 @@ export class ArticleService {
       throw new ArticleServiceError(
         `Unexpected error deleting article: ${err instanceof Error ? err.message : String(err)}`,
         'DELETE_ERROR',
+        err instanceof Error ? err : undefined,
+      )
+    }
+  }
+
+  // ============================================================================
+  // Newsletter-Article Relationship Methods (Many-to-Many via Junction Table)
+  // ============================================================================
+
+  /**
+   * Add an article to a newsletter
+   * Creates a record in the newsletter_articles junction table
+   * 
+   * @param articleId Article ID
+   * @param weekNumber Newsletter week number
+   * @param articleOrder Position in the newsletter (optional, auto-calculated if not provided)
+   * @param userId Optional user ID who is adding the article
+   * @returns The created newsletter-article relationship
+   */
+  static async addArticleToNewsletter(
+    articleId: string,
+    weekNumber: string,
+    articleOrder?: number,
+    userId?: string,
+  ): Promise<{ id: string; newsletter_id: string; article_id: string; article_order: number }> {
+    try {
+      // Look up newsletter UUID by week_number
+      const newsletterId = await this.getNewsletterIdByWeek(weekNumber)
+      if (!newsletterId) {
+        throw new ArticleServiceError(
+          `Newsletter not found for week ${weekNumber}`,
+          'NEWSLETTER_NOT_FOUND',
+        )
+      }
+
+      // Calculate next order if not provided
+      let order = articleOrder
+      if (order === undefined) {
+        order = await this.getNextArticleOrderInNewsletter(weekNumber)
+      }
+
+      const { data, error } = await table('newsletter_articles')
+        .insert({
+          newsletter_id: newsletterId,
+          article_id: articleId,
+          article_order: order,
+          added_by: userId || null,
+        })
+        .select()
+        .single()
+
+      if (error) {
+        // Check for duplicate constraint violation
+        if (error.code === '23505') {
+          throw new ArticleServiceError(
+            `Article is already in newsletter ${weekNumber}`,
+            'DUPLICATE_ARTICLE_IN_NEWSLETTER',
+            error as Error,
+          )
+        }
+        throw new ArticleServiceError(
+          `Failed to add article to newsletter: ${error.message}`,
+          'ADD_TO_NEWSLETTER_ERROR',
+          error as Error,
+        )
+      }
+
+      if (!data) {
+        throw new ArticleServiceError(
+          'Failed to add article to newsletter: No data returned',
+          'ADD_TO_NEWSLETTER_ERROR',
+        )
+      }
+
+      return data
+    } catch (err) {
+      if (err instanceof ArticleServiceError) throw err
+      throw new ArticleServiceError(
+        `Unexpected error adding article to newsletter: ${err instanceof Error ? err.message : String(err)}`,
+        'ADD_TO_NEWSLETTER_ERROR',
+        err instanceof Error ? err : undefined,
+      )
+    }
+  }
+
+  /**
+   * Remove an article from a newsletter
+   * Deletes the record from the newsletter_articles junction table
+   * 
+   * @param articleId Article ID
+   * @param weekNumber Newsletter week number
+   */
+  static async removeArticleFromNewsletter(articleId: string, weekNumber: string): Promise<void> {
+    try {
+      // Look up newsletter UUID by week_number
+      const newsletterId = await this.getNewsletterIdByWeek(weekNumber)
+      if (!newsletterId) {
+        throw new ArticleServiceError(
+          `Newsletter not found for week ${weekNumber}`,
+          'NEWSLETTER_NOT_FOUND',
+        )
+      }
+
+      const { error } = await table('newsletter_articles')
+        .delete()
+        .eq('newsletter_id', newsletterId)
+        .eq('article_id', articleId)
+
+      if (error) {
+        throw new ArticleServiceError(
+          `Failed to remove article from newsletter: ${error.message}`,
+          'REMOVE_FROM_NEWSLETTER_ERROR',
+          error as Error,
+        )
+      }
+    } catch (err) {
+      if (err instanceof ArticleServiceError) throw err
+      throw new ArticleServiceError(
+        `Unexpected error removing article from newsletter: ${err instanceof Error ? err.message : String(err)}`,
+        'REMOVE_FROM_NEWSLETTER_ERROR',
+        err instanceof Error ? err : undefined,
+      )
+    }
+  }
+
+  /**
+   * Get all newsletters that contain a specific article
+   * 
+   * @param articleId Article ID
+   * @returns Array of newsletter associations with week number and order
+   */
+  static async getNewslettersForArticle(
+    articleId: string,
+  ): Promise<Array<{ week_number: string; article_order: number; release_date?: string; status?: string }>> {
+    try {
+      const { data, error } = await table('newsletter_articles')
+        .select(`
+          newsletter_id,
+          article_order,
+          newsletters!inner (
+            week_number,
+            release_date,
+            status
+          )
+        `)
+        .eq('article_id', articleId)
+        .order('article_order', { ascending: true })
+
+      if (error) {
+        throw new ArticleServiceError(
+          `Failed to get newsletters for article: ${error.message}`,
+          'GET_NEWSLETTERS_ERROR',
+          error as Error,
+        )
+      }
+
+      // Transform the response to flatten the nested newsletters
+      return (data || []).map((row: any) => ({
+        week_number: row.newsletters?.week_number || '',
+        article_order: row.article_order,
+        release_date: row.newsletters?.release_date,
+        status: row.newsletters?.status,
+      }))
+    } catch (err) {
+      if (err instanceof ArticleServiceError) throw err
+      throw new ArticleServiceError(
+        `Unexpected error getting newsletters for article: ${err instanceof Error ? err.message : String(err)}`,
+        'GET_NEWSLETTERS_ERROR',
+        err instanceof Error ? err : undefined,
+      )
+    }
+  }
+
+  /**
+   * Get articles by week number using the junction table
+   * This is the new preferred method for querying articles by newsletter
+   * 
+   * @param weekNumber ISO week format (e.g., "2025-W47")
+   * @param filters Optional filtering options
+   * @returns Articles with their order in this specific newsletter
+   */
+  static async getArticlesByWeekViaJunction(
+    weekNumber: string,
+    filters?: ArticleFilter,
+  ): Promise<Array<ArticleRow & { newsletter_article_order: number }>> {
+    try {
+      // Look up newsletter UUID by week_number
+      const newsletterId = await this.getNewsletterIdByWeek(weekNumber)
+      if (!newsletterId) {
+        return []
+      }
+
+      let query = table('newsletter_articles')
+        .select(`
+          article_order,
+          articles!inner (*)
+        `)
+        .eq('newsletter_id', newsletterId)
+        .order('article_order', { ascending: true })
+
+      const { data, error } = await query
+
+      if (error) {
+        throw new ArticleServiceError(
+          `Failed to fetch articles for week ${weekNumber}: ${error.message}`,
+          'FETCH_ARTICLES_ERROR',
+          error as Error,
+        )
+      }
+
+      if (!data) {
+        return []
+      }
+
+      // Transform and apply filters
+      let articles = data.map((row: any) => ({
+        ...row.articles,
+        newsletter_article_order: row.article_order,
+      }))
+
+      // Apply filters
+      if (filters?.isPublished !== undefined) {
+        const status = filters.isPublished ? 'published' : 'draft'
+        articles = articles.filter((a: ArticleRow) => a.status === status)
+      }
+
+      if (filters?.visibilityType) {
+        articles = articles.filter((a: ArticleRow) => a.visibility_type === filters.visibilityType)
+      }
+
+      if (filters?.excludeDeleted !== false) {
+        articles = articles.filter((a: ArticleRow) => a.deleted_at === null)
+      }
+
+      if (filters?.limit) {
+        articles = articles.slice(0, filters.limit)
+      }
+
+      return articles
+    } catch (err) {
+      if (err instanceof ArticleServiceError) throw err
+      throw new ArticleServiceError(
+        `Unexpected error fetching articles: ${err instanceof Error ? err.message : String(err)}`,
+        'FETCH_ARTICLES_ERROR',
+        err instanceof Error ? err : undefined,
+      )
+    }
+  }
+
+  /**
+   * Get the next available article order for a newsletter via junction table
+   * 
+   * @param weekNumber Newsletter week number
+   * @returns Next available order number
+   */
+  static async getNextArticleOrderInNewsletter(weekNumber: string): Promise<number> {
+    try {
+      // Look up newsletter UUID by week_number
+      const newsletterId = await this.getNewsletterIdByWeek(weekNumber)
+      if (!newsletterId) {
+        return 1 // Default to 1 if newsletter not found
+      }
+
+      const { data, error } = await table('newsletter_articles')
+        .select('article_order')
+        .eq('newsletter_id', newsletterId)
+        .order('article_order', { ascending: false })
+        .limit(1)
+
+      if (error) {
+        throw new ArticleServiceError(
+          `Failed to get next article order: ${error.message}`,
+          'GET_ARTICLE_ORDER_ERROR',
+          error as Error,
+        )
+      }
+
+      if (!data || data.length === 0) {
+        return 1
+      }
+
+      return (data[0]?.article_order || 0) + 1
+    } catch (err) {
+      if (err instanceof ArticleServiceError) throw err
+      throw new ArticleServiceError(
+        `Unexpected error getting next article order: ${err instanceof Error ? err.message : String(err)}`,
+        'GET_ARTICLE_ORDER_ERROR',
+        err instanceof Error ? err : undefined,
+      )
+    }
+  }
+
+  /**
+   * Update article order within a newsletter
+   * 
+   * @param articleId Article ID
+   * @param weekNumber Newsletter week number
+   * @param newOrder New order position
+   */
+  static async updateArticleOrderInNewsletter(
+    articleId: string,
+    weekNumber: string,
+    newOrder: number,
+  ): Promise<void> {
+    try {
+      // Look up newsletter UUID by week_number
+      const newsletterId = await this.getNewsletterIdByWeek(weekNumber)
+      if (!newsletterId) {
+        throw new ArticleServiceError(
+          `Newsletter not found for week ${weekNumber}`,
+          'NEWSLETTER_NOT_FOUND',
+        )
+      }
+
+      const { error } = await table('newsletter_articles')
+        .update({ article_order: newOrder })
+        .eq('newsletter_id', newsletterId)
+        .eq('article_id', articleId)
+
+      if (error) {
+        throw new ArticleServiceError(
+          `Failed to update article order: ${error.message}`,
+          'UPDATE_ORDER_ERROR',
+          error as Error,
+        )
+      }
+    } catch (err) {
+      if (err instanceof ArticleServiceError) throw err
+      throw new ArticleServiceError(
+        `Unexpected error updating article order: ${err instanceof Error ? err.message : String(err)}`,
+        'UPDATE_ORDER_ERROR',
+        err instanceof Error ? err : undefined,
+      )
+    }
+  }
+
+  /**
+   * Check if an article is in a specific newsletter
+   */
+  static async isArticleInNewsletter(articleId: string, weekNumber: string): Promise<boolean> {
+    try {
+      // Look up newsletter UUID by week_number
+      const newsletterId = await this.getNewsletterIdByWeek(weekNumber)
+      if (!newsletterId) {
+        return false
+      }
+
+      const { data, error } = await table('newsletter_articles')
+        .select('id')
+        .eq('newsletter_id', newsletterId)
+        .eq('article_id', articleId)
+        .maybeSingle()
+
+      if (error) {
+        throw new ArticleServiceError(
+          `Failed to check article in newsletter: ${error.message}`,
+          'CHECK_ARTICLE_ERROR',
+          error as Error,
+        )
+      }
+
+      return data !== null
+    } catch (err) {
+      if (err instanceof ArticleServiceError) throw err
+      throw new ArticleServiceError(
+        `Unexpected error checking article in newsletter: ${err instanceof Error ? err.message : String(err)}`,
+        'CHECK_ARTICLE_ERROR',
         err instanceof Error ? err : undefined,
       )
     }

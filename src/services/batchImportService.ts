@@ -11,7 +11,7 @@
  * - Detailed error reporting with row numbers
  */
 
-import { getSupabaseServiceClient } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase'
 
 /**
  * CSV row structure expected from user import
@@ -232,7 +232,7 @@ class BatchImportService {
     }
 
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       // Extract all emails from valid rows
       const validEmails = validation.rowResults
@@ -245,7 +245,7 @@ class BatchImportService {
 
       // Check if any emails already exist in database
       const { data: existingUsers, error } = await supabase
-        .from('users')
+        .from('user_roles')
         .select('email')
         .in('email', validEmails)
 
@@ -321,7 +321,7 @@ class BatchImportService {
     }
 
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       // Extract valid rows for insertion
       const rowsToInsert = validation.rowResults
@@ -339,22 +339,14 @@ class BatchImportService {
         }
       }
 
-      // Prepare user records for insertion
-      const usersToInsert = rowsToInsert.map((row) => ({
-        email: row.email,
-        name: row.name,
-        role: row.role,
-        status: row.status,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }))
-
-      // Insert all users in a single batch
-      // Supabase will enforce constraints (email uniqueness, etc.)
-      const { data: insertedUsers, error } = await supabase
-        .from('users')
-        .insert(usersToInsert)
-        .select('email')
+      const { data: importData, error } = await supabase.functions.invoke(
+        'batch-import-users',
+        {
+          body: {
+            rows: rowsToInsert,
+          },
+        }
+      )
 
       if (error) {
         // All-or-nothing: if any insert failed, entire batch fails
@@ -368,7 +360,7 @@ class BatchImportService {
         }
       }
 
-      if (!insertedUsers || insertedUsers.length === 0) {
+      if (!importData || !Array.isArray(importData.importedUserEmails) || importData.importedUserEmails.length === 0) {
         return {
           success: false,
           reason: 'Import completed but no users were created',
@@ -381,11 +373,11 @@ class BatchImportService {
 
       return {
         success: true,
-        importedCount: insertedUsers.length,
+        importedCount: importData.importedCount,
         totalCount: validation.totalRows,
         details: {
           createdAt: new Date().toISOString(),
-          importedUserEmails: insertedUsers.map((u) => u.email),
+          importedUserEmails: importData.importedUserEmails,
         },
       }
     } catch (err) {

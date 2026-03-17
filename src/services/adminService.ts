@@ -10,7 +10,7 @@
  * - Relationship management for parent-student connections
  */
 
-import { getSupabaseServiceClient } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase'
 import type {
   AdminNewsletter,
   AdminArticle,
@@ -41,6 +41,21 @@ export class AdminServiceError extends Error {
  */
 class AdminService {
   /**
+   * Helper: Get newsletter UUID by week_number
+   */
+  private async getNewsletterIdByWeek(weekNumber: string): Promise<string | null> {
+    const supabase = getSupabaseClient()
+    const { data, error } = await supabase
+      .from('newsletters')
+      .select('id')
+      .eq('week_number', weekNumber)
+      .single()
+    
+    if (error || !data) return null
+    return data.id
+  }
+
+  /**
    * ============ NEWSLETTER OPERATIONS ============
    */
 
@@ -51,11 +66,12 @@ class AdminService {
     filters?: NewsletterFilterOptions
   ): Promise<AdminNewsletter[]> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
+      // Use newsletter_articles junction table for article count
       let query = supabase
-        .from('newsletter_weeks')
-        .select('*, articles(count)')
+        .from('newsletters')
+        .select('*, newsletter_articles(count)')
         .order('week_number', { ascending: false })
 
       // Apply status filter
@@ -74,7 +90,7 @@ class AdminService {
       // Apply search filter
       if (filters?.searchTerm) {
         query = query.or(
-          `week_number.ilike.%${filters.searchTerm}%`
+          `week_number.ilike.%${filters.searchTerm}%,title.ilike.%${filters.searchTerm}%`
         )
       }
 
@@ -101,15 +117,17 @@ class AdminService {
       }
 
       return (data || []).map((row: any) => ({
-        id: row.week_number,
+        id: row.id,
         weekNumber: row.week_number,
+        title: row.title,
+        description: row.description,
         releaseDate: row.release_date,
-        status: row.is_published ? 'published' : 'draft',
-        articleCount: row.articles?.[0]?.count || 0,
+        status: row.status,
+        articleCount: row.newsletter_articles?.[0]?.count || 0,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
         publishedAt: row.published_at,
-        isPublished: row.is_published,
+        isPublished: row.status === 'published',
       }))
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
@@ -126,10 +144,10 @@ class AdminService {
    */
   async fetchNewsletter(id: string): Promise<AdminNewsletter> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { data, error } = await supabase
-        .from('newsletter_weeks')
+        .from('newsletters')
         .select('*')
         .eq('id', id)
         .single()
@@ -143,15 +161,17 @@ class AdminService {
       }
 
       return {
-        id: data.week_number,
+        id: data.id,
         weekNumber: data.week_number,
+        title: data.title,
+        description: data.description,
         releaseDate: data.release_date,
-        status: data.is_published ? 'published' : 'draft',
-        articleCount: data.article_count || 0,
+        status: data.status,
+        articleCount: 0,
         createdAt: data.created_at,
         updatedAt: data.updated_at,
         publishedAt: data.published_at,
-        isPublished: data.is_published,
+        isPublished: data.status === 'published',
       }
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
@@ -168,11 +188,11 @@ class AdminService {
    */
   async fetchNewsletterByWeek(weekNumber: string): Promise<AdminNewsletter> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { data, error } = await supabase
-        .from('newsletter_weeks')
-        .select('*, articles(count)')
+        .from('newsletters')
+        .select('*, newsletter_articles(count)')
         .eq('week_number', weekNumber)
         .single()
 
@@ -185,15 +205,17 @@ class AdminService {
       }
 
       return {
-        id: data.week_number,
+        id: data.id,
         weekNumber: data.week_number,
+        title: data.title,
+        description: data.description,
         releaseDate: data.release_date,
-        status: data.is_published ? 'published' : 'draft',
-        articleCount: data.articles?.[0]?.count || 0,
+        status: data.status,
+        articleCount: data.newsletter_articles?.[0]?.count || 0,
         createdAt: data.created_at,
         updatedAt: data.updated_at,
         publishedAt: data.published_at,
-        isPublished: data.is_published,
+        isPublished: data.status === 'published',
       }
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
@@ -209,18 +231,18 @@ class AdminService {
    * Create new newsletter
    */
   async createNewsletter(
-    weekNumber: string,
+    weekNumber: string | null,
     releaseDate: string
   ): Promise<AdminNewsletter> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { data, error } = await supabase
-        .from('newsletter_weeks')
+        .from('newsletters')
         .insert({
-          week_number: weekNumber,
+          week_number: weekNumber || null,
           release_date: releaseDate,
-          is_published: false,
+          status: 'draft',
         })
         .select()
         .single()
@@ -234,15 +256,17 @@ class AdminService {
       }
 
       return {
-        id: data.week_number, // Use week_number as ID since it's the primary key
+        id: data.id,
         weekNumber: data.week_number,
+        title: data.title,
+        description: data.description,
         releaseDate: data.release_date,
-        status: data.is_published ? 'published' : 'draft',
-        articleCount: data.article_count || 0,
+        status: data.status,
+        articleCount: 0,
         createdAt: data.created_at,
         updatedAt: data.updated_at,
         publishedAt: data.published_at,
-        isPublished: data.is_published,
+        isPublished: data.status === 'published',
       }
     } catch (err: any) {
       if (err instanceof AdminServiceError) throw err
@@ -269,12 +293,12 @@ class AdminService {
    */
   async publishNewsletter(id: string): Promise<AdminNewsletter> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
-      // Check that newsletter has at least one article
+      // Check that newsletter has at least one article via junction table
       const { data: articles, error: articleError } = await supabase
-        .from('articles')
-        .select('id')
+        .from('newsletter_articles')
+        .select('article_id')
         .eq('newsletter_id', id)
         .limit(1)
 
@@ -295,9 +319,9 @@ class AdminService {
 
       // Update status to published
       const { data, error } = await supabase
-        .from('newsletter_weeks')
+        .from('newsletters')
         .update({
-          is_published: true,
+          status: 'published',
           published_at: new Date().toISOString(),
         })
         .eq('id', id)
@@ -313,15 +337,17 @@ class AdminService {
       }
 
       return {
-        id: data.week_number,
+        id: data.id,
         weekNumber: data.week_number,
+        title: data.title,
+        description: data.description,
         releaseDate: data.release_date,
-        status: data.is_published ? 'published' : 'draft',
-        articleCount: data.article_count || 0,
+        status: data.status,
+        articleCount: 0,
         createdAt: data.created_at,
         updatedAt: data.updated_at,
         publishedAt: data.published_at,
-        isPublished: data.is_published,
+        isPublished: data.status === 'published',
       }
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
@@ -338,11 +364,11 @@ class AdminService {
    */
   async archiveNewsletter(id: string): Promise<AdminNewsletter> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { data, error } = await supabase
-        .from('newsletter_weeks')
-        .update({ is_published: false })
+        .from('newsletters')
+        .update({ status: 'archived' })
         .eq('id', id)
         .select()
         .single()
@@ -356,15 +382,17 @@ class AdminService {
       }
 
       return {
-        id: data.week_number,
+        id: data.id,
         weekNumber: data.week_number,
+        title: data.title,
+        description: data.description,
         releaseDate: data.release_date,
-        status: data.is_published ? 'published' : 'draft',
-        articleCount: data.article_count || 0,
+        status: data.status,
+        articleCount: 0,
         createdAt: data.created_at,
         updatedAt: data.updated_at,
         publishedAt: data.published_at,
-        isPublished: data.is_published,
+        isPublished: data.status === 'published',
       }
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
@@ -381,10 +409,10 @@ class AdminService {
    */
   async deleteNewsletter(id: string): Promise<void> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { error } = await supabase
-        .from('newsletter_weeks')
+        .from('newsletters')
         .delete()
         .eq('id', id)
 
@@ -410,18 +438,27 @@ class AdminService {
    */
 
   /**
-   * Fetch articles by newsletter
+   * Fetch articles by newsletter (via junction table)
    */
   async fetchArticlesByNewsletter(
     weekNumber: string
   ): Promise<AdminArticle[]> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
+
+      // Look up newsletter UUID by week_number
+      const newsletterId = await this.getNewsletterIdByWeek(weekNumber)
+      if (!newsletterId) {
+        return []
+      }
 
       const { data, error } = await supabase
-        .from('articles')
-        .select('*')
-        .eq('week_number', weekNumber)
+        .from('newsletter_articles')
+        .select(`
+          article_order,
+          articles!inner (*)
+        `)
+        .eq('newsletter_id', newsletterId)
         .order('article_order', { ascending: true })
 
       if (error) {
@@ -433,20 +470,75 @@ class AdminService {
       }
 
       return (data || []).map((row: any) => ({
-        id: row.id,
-        title: row.title,
-        content: row.content,
-        author: row.author,
-        summary: row.summary,
-        weekNumber: row.week_number,
+        id: row.articles.id,
+        title: row.articles.title,
+        content: row.articles.content,
+        author: row.articles.author_id,
+        summary: row.articles.summary,
+        weekNumber: weekNumber,
         order: row.article_order,
-        classIds: row.class_ids || [],
-        familyIds: row.family_ids || [],
-        status: row.status,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
-        lastEditedBy: row.last_edited_by,
-        editedAt: row.edited_at,
+        classIds: row.articles.class_ids || [],
+        familyIds: row.articles.family_ids || [],
+        status: row.articles.status,
+        createdAt: row.articles.created_at,
+        updatedAt: row.articles.updated_at,
+        lastEditedBy: row.articles.last_edited_by,
+        editedAt: row.articles.edited_at,
+      }))
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error fetching articles: ${err instanceof Error ? err.message : String(err)}`,
+        'FETCH_ARTICLES_ERROR',
+        err as any
+      )
+    }
+  }
+
+  /**
+   * Fetch articles by newsletter ID (supports newsletters without week_number)
+   */
+  async fetchArticlesByNewsletterId(
+    newsletterId: string
+  ): Promise<AdminArticle[]> {
+    try {
+      const supabase = getSupabaseClient()
+
+      const { data, error } = await supabase
+        .from('newsletter_articles')
+        .select(`
+          article_order,
+          articles!inner (*)
+        `)
+        .eq('newsletter_id', newsletterId)
+        .order('article_order', { ascending: true })
+
+      if (error) {
+        throw new AdminServiceError(
+          `Failed to fetch articles: ${error.message}`,
+          'FETCH_ARTICLES_ERROR',
+          error as any
+        )
+      }
+
+      // Fetch newsletter to get week_number (may be null)
+      const newsletterData = await this.fetchNewsletter(newsletterId)
+
+      return (data || []).map((row: any) => ({
+        id: row.articles.id,
+        title: row.articles.title,
+        content: row.articles.content,
+        author: row.articles.author_id,
+        summary: row.articles.summary,
+        weekNumber: newsletterData.weekNumber || '',
+        order: row.article_order,
+        classIds: row.articles.class_ids || [],
+        familyIds: row.articles.family_ids || [],
+        status: row.articles.status,
+        createdAt: row.articles.created_at,
+        updatedAt: row.articles.updated_at,
+        publishedAt: row.articles.published_at,
+        editedAt: row.articles.edited_at,
       }))
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
@@ -468,7 +560,7 @@ class AdminService {
     userId: string
   ): Promise<AdminArticle> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       // Check for concurrent edits using LWW
       const { data: existing, error: fetchError } = await supabase
@@ -559,7 +651,7 @@ class AdminService {
    */
   async deleteArticle(id: string): Promise<void> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { error } = await supabase
         .from('articles')
@@ -584,6 +676,356 @@ class AdminService {
   }
 
   /**
+   * ============ NEWSLETTER-ARTICLE OPERATIONS ============
+   * Many-to-many relationship management via junction table
+   */
+
+  /**
+   * Add an existing article to a newsletter
+   * @param articleId Article UUID
+   * @param weekNumber Newsletter week number (e.g., "2025-W48")
+   * @param order Optional article order in the newsletter
+   * @param userId Optional user ID who is adding the article
+   */
+  async addArticleToNewsletter(
+    articleId: string,
+    weekNumber: string,
+    order?: number,
+    userId?: string
+  ): Promise<{ id: string; newsletter_id: string; article_id: string; article_order: number }> {
+    try {
+      const supabase = getSupabaseClient()
+
+      // Look up newsletter UUID by week_number
+      const newsletterId = await this.getNewsletterIdByWeek(weekNumber)
+      if (!newsletterId) {
+        throw new AdminServiceError(
+          `Newsletter not found for week ${weekNumber}`,
+          'NEWSLETTER_NOT_FOUND'
+        )
+      }
+
+      // Calculate next order if not provided
+      let articleOrder = order
+      if (articleOrder === undefined) {
+        const { data: existing, error: orderError } = await supabase
+          .from('newsletter_articles')
+          .select('article_order')
+          .eq('newsletter_id', newsletterId)
+          .order('article_order', { ascending: false })
+          .limit(1)
+
+        if (orderError) {
+          console.error('Error getting article order:', orderError)
+        }
+        articleOrder = (existing?.[0]?.article_order || 0) + 1
+      }
+
+      const { data, error } = await supabase
+        .from('newsletter_articles')
+        .insert({
+          newsletter_id: newsletterId,
+          article_id: articleId,
+          article_order: articleOrder,
+          added_by: userId || null,
+        })
+        .select()
+        .single()
+
+      if (error) {
+        // Check for duplicate
+        if (error.code === '23505') {
+          throw new AdminServiceError(
+            `Article is already in newsletter ${weekNumber}`,
+            'DUPLICATE_ARTICLE_ERROR',
+            error as any
+          )
+        }
+        throw new AdminServiceError(
+          `Failed to add article to newsletter: ${error.message}`,
+          'ADD_ARTICLE_TO_NEWSLETTER_ERROR',
+          error as any
+        )
+      }
+
+      return data
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error adding article to newsletter: ${err instanceof Error ? err.message : String(err)}`,
+        'ADD_ARTICLE_TO_NEWSLETTER_ERROR',
+        err as any
+      )
+    }
+  }
+
+  /**
+   * Remove an article from a newsletter
+   * @param articleId Article UUID
+   * @param weekNumber Newsletter week number
+   */
+  async removeArticleFromNewsletter(articleId: string, weekNumber: string): Promise<void> {
+    try {
+      const supabase = getSupabaseClient()
+
+      // Look up newsletter UUID by week_number
+      const newsletterId = await this.getNewsletterIdByWeek(weekNumber)
+      if (!newsletterId) {
+        throw new AdminServiceError(
+          `Newsletter not found for week ${weekNumber}`,
+          'NEWSLETTER_NOT_FOUND'
+        )
+      }
+
+      const { error } = await supabase
+        .from('newsletter_articles')
+        .delete()
+        .eq('newsletter_id', newsletterId)
+        .eq('article_id', articleId)
+
+      if (error) {
+        throw new AdminServiceError(
+          `Failed to remove article from newsletter: ${error.message}`,
+          'REMOVE_ARTICLE_FROM_NEWSLETTER_ERROR',
+          error as any
+        )
+      }
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error removing article from newsletter: ${err instanceof Error ? err.message : String(err)}`,
+        'REMOVE_ARTICLE_FROM_NEWSLETTER_ERROR',
+        err as any
+      )
+    }
+  }
+
+  /**
+   * Get all newsletters that contain a specific article
+   * @param articleId Article UUID
+   */
+  async getNewslettersForArticle(
+    articleId: string
+  ): Promise<Array<{ weekNumber: string; order: number; releaseDate?: string; status?: string }>> {
+    try {
+      const supabase = getSupabaseClient()
+
+      const { data, error } = await supabase
+        .from('newsletter_articles')
+        .select(`
+          newsletter_id,
+          article_order,
+          newsletters!inner (
+            week_number,
+            release_date,
+            status
+          )
+        `)
+        .eq('article_id', articleId)
+        .order('article_order', { ascending: true })
+
+      if (error) {
+        throw new AdminServiceError(
+          `Failed to get newsletters for article: ${error.message}`,
+          'GET_NEWSLETTERS_ERROR',
+          error as any
+        )
+      }
+
+      return (data || []).map((row: any) => ({
+        weekNumber: row.newsletters?.week_number || '',
+        order: row.article_order,
+        releaseDate: row.newsletters?.release_date,
+        status: row.newsletters?.status,
+      }))
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error getting newsletters for article: ${err instanceof Error ? err.message : String(err)}`,
+        'GET_NEWSLETTERS_ERROR',
+        err as any
+      )
+    }
+  }
+
+  /**
+   * Get available articles that can be added to a newsletter
+   * Returns articles not already in the specified newsletter
+   * @param weekNumber Newsletter week number to exclude articles from
+   * @param limit Maximum number of articles to return
+   */
+  async getAvailableArticles(
+    weekNumber?: string,
+    limit: number = 50
+  ): Promise<AdminArticle[]> {
+    try {
+      const supabase = getSupabaseClient()
+
+      // Get all articles
+      let query = supabase
+        .from('articles')
+        .select('*')
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+        .limit(limit)
+
+      const { data, error } = await query
+
+      if (error) {
+        throw new AdminServiceError(
+          `Failed to fetch available articles: ${error.message}`,
+          'FETCH_ARTICLES_ERROR',
+          error as any
+        )
+      }
+
+      // If weekNumber is provided, filter out articles already in that newsletter
+      let articles = data || []
+      if (weekNumber) {
+        const newsletterId = await this.getNewsletterIdByWeek(weekNumber)
+        if (newsletterId) {
+          const { data: existingArticles, error: existingError } = await supabase
+            .from('newsletter_articles')
+            .select('article_id')
+            .eq('newsletter_id', newsletterId)
+
+          if (existingError) {
+            console.error('Error fetching existing articles:', existingError)
+          } else {
+            const existingIds = new Set((existingArticles || []).map((a: any) => a.article_id))
+            articles = articles.filter((a: any) => !existingIds.has(a.id))
+          }
+        }
+      }
+
+      return articles.map((row: any) => ({
+        id: row.id,
+        title: row.title,
+        content: row.content,
+        author: row.author,
+        summary: row.summary,
+        weekNumber: row.week_number,
+        order: row.article_order,
+        classIds: row.class_ids || [],
+        familyIds: row.family_ids || [],
+        status: row.status,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        lastEditedBy: row.last_edited_by,
+        editedAt: row.edited_at,
+      }))
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error fetching available articles: ${err instanceof Error ? err.message : String(err)}`,
+        'FETCH_ARTICLES_ERROR',
+        err as any
+      )
+    }
+  }
+
+  /**
+   * Reorder articles within a newsletter
+   * @param weekNumber Newsletter week number
+   * @param articleIds Array of article IDs in desired order
+   */
+  async reorderArticlesInNewsletter(weekNumber: string, articleIds: string[]): Promise<void> {
+    try {
+      const supabase = getSupabaseClient()
+
+      // Look up newsletter UUID by week_number
+      const newsletterId = await this.getNewsletterIdByWeek(weekNumber)
+      if (!newsletterId) {
+        throw new AdminServiceError(
+          `Newsletter not found for week ${weekNumber}`,
+          'NEWSLETTER_NOT_FOUND'
+        )
+      }
+
+      // Update each article's order based on position in array
+      for (let i = 0; i < articleIds.length; i++) {
+        const { error } = await supabase
+          .from('newsletter_articles')
+          .update({ article_order: i + 1 })
+          .eq('newsletter_id', newsletterId)
+          .eq('article_id', articleIds[i])
+
+        if (error) {
+          throw new AdminServiceError(
+            `Failed to update article order: ${error.message}`,
+            'REORDER_ARTICLES_ERROR',
+            error as any
+          )
+        }
+      }
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error reordering articles: ${err instanceof Error ? err.message : String(err)}`,
+        'REORDER_ARTICLES_ERROR',
+        err as any
+      )
+    }
+  }
+
+  /**
+   * Fetch articles by newsletter using the junction table
+   * This is the preferred method for the new many-to-many relationship
+   */
+  async fetchArticlesByNewsletterViaJunction(weekNumber: string): Promise<AdminArticle[]> {
+    try {
+      const supabase = getSupabaseClient()
+
+      // Look up newsletter UUID by week_number
+      const newsletterId = await this.getNewsletterIdByWeek(weekNumber)
+      if (!newsletterId) {
+        return []
+      }
+
+      const { data, error } = await supabase
+        .from('newsletter_articles')
+        .select(`
+          article_order,
+          articles!inner (*)
+        `)
+        .eq('newsletter_id', newsletterId)
+        .order('article_order', { ascending: true })
+
+      if (error) {
+        throw new AdminServiceError(
+          `Failed to fetch articles: ${error.message}`,
+          'FETCH_ARTICLES_ERROR',
+          error as any
+        )
+      }
+
+      return (data || []).map((row: any) => ({
+        id: row.articles.id,
+        title: row.articles.title,
+        content: row.articles.content,
+        author: row.articles.author,
+        summary: row.articles.summary,
+        weekNumber: weekNumber,
+        order: row.article_order,
+        classIds: row.articles.class_ids || [],
+        familyIds: row.articles.family_ids || [],
+        status: row.articles.status,
+        createdAt: row.articles.created_at,
+        updatedAt: row.articles.updated_at,
+        lastEditedBy: row.articles.last_edited_by,
+        editedAt: row.articles.edited_at,
+      }))
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error fetching articles: ${err instanceof Error ? err.message : String(err)}`,
+        'FETCH_ARTICLES_ERROR',
+        err as any
+      )
+    }
+  }
+
+  /**
    * ============ CLASS OPERATIONS ============
    */
 
@@ -592,7 +1034,7 @@ class AdminService {
    */
   async fetchClasses(): Promise<Class[]> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { data, error } = await supabase
         .from('classes')
@@ -677,7 +1119,7 @@ class AdminService {
     teacherIds?: string[]
   ): Promise<Class> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       // ID strategy: Use name as ID if short enough, otherwise generate short ID
       // For now, let's use a simplified approach: use name as ID if < 10 chars
@@ -783,7 +1225,7 @@ class AdminService {
     }
   ): Promise<Class> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const updatePayload: any = {}
       if (updates.name !== undefined) updatePayload.class_name = updates.name
@@ -940,7 +1382,7 @@ class AdminService {
    */
   async deleteClass(id: string): Promise<void> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { error } = await supabase
         .from('classes')
@@ -969,7 +1411,7 @@ class AdminService {
    */
   async addStudentToClass(classId: string, studentId: string): Promise<void> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       // First, fetch the class to get existing students
       const { data: classData, error: fetchError } = await supabase
@@ -1019,7 +1461,7 @@ class AdminService {
    */
   async removeStudentFromClass(classId: string, studentId: string): Promise<void> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       // First, fetch the class to get existing students
       const { data: classData, error: fetchError } = await supabase
@@ -1072,7 +1514,7 @@ class AdminService {
    */
   async fetchFamilies(): Promise<Family[]> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { data, error } = await supabase
         .from('families')
@@ -1114,7 +1556,7 @@ class AdminService {
     _relatedTopics?: string[]
   ): Promise<Family> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       // Use name as family_code since family_code is the only text field that exists
       const { data, error } = await supabase
@@ -1163,7 +1605,7 @@ class AdminService {
     }
   ): Promise<Family> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const updatePayload: any = {}
       // Map name to family_code since family_code is the only text field that exists
@@ -1208,7 +1650,7 @@ class AdminService {
    */
   async deleteFamily(id: string): Promise<void> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { error } = await supabase
         .from('families')
@@ -1237,7 +1679,7 @@ class AdminService {
    */
   async getFamilyMembers(familyId: string): Promise<Array<{ id: string; name: string; email: string; type: 'parent' | 'student'; relationship?: 'father' | 'mother' | 'guardian'; classes?: Array<{ id: string; name: string }> }>> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       // Fetch all family enrollment records for this family
       const { data: enrollments, error: enrollError } = await supabase
@@ -1392,7 +1834,7 @@ class AdminService {
     relationship: 'father' | 'mother' | 'guardian'
   ): Promise<void> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { error } = await supabase
         .from('family_enrollment')
@@ -1424,7 +1866,7 @@ class AdminService {
    */
   async removeParentFromFamily(familyId: string, parentId: string): Promise<void> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { error } = await supabase
         .from('family_enrollment')
@@ -1458,7 +1900,7 @@ class AdminService {
     relationship: 'father' | 'mother' | 'guardian'
   ): Promise<void> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { error } = await supabase
         .from('family_enrollment')
@@ -1488,7 +1930,7 @@ class AdminService {
    */
   async addStudentToFamily(familyId: string, studentId: string): Promise<void> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { error } = await supabase
         .from('family_enrollment')
@@ -1519,7 +1961,7 @@ class AdminService {
    */
   async removeStudentFromFamily(familyId: string, studentId: string): Promise<void> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { error } = await supabase
         .from('family_enrollment')
@@ -1549,7 +1991,7 @@ class AdminService {
    */
   async getAvailableParents(familyId: string): Promise<AdminUser[]> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       // Get all parents with role 'parent' or 'teacher'
       const { data: allParents, error: fetchError } = await supabase
@@ -1614,7 +2056,7 @@ class AdminService {
    */
   async getAvailableStudents(familyId: string): Promise<AdminUser[]> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       // Get all students
       const { data: allStudents, error: fetchError } = await supabase
@@ -1674,6 +2116,46 @@ class AdminService {
   }
 
   /**
+   * Fetch all students for admin UI pickers
+   */
+  async fetchStudents(): Promise<AdminUser[]> {
+    try {
+      const supabase = getSupabaseClient()
+
+      const { data, error } = await supabase
+        .from('students')
+        .select('id, name, created_at, updated_at')
+        .order('name', { ascending: true })
+
+      if (error) {
+        throw new AdminServiceError(
+          `Failed to fetch students: ${error.message}`,
+          'FETCH_STUDENTS_ERROR',
+          error as any
+        )
+      }
+
+      return (data || []).map((row: any) => ({
+        id: row.id,
+        email: row.name || '',
+        name: row.name || 'Unknown',
+        role: 'student' as const,
+        status: 'active' as const,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        lastLoginAt: null,
+      }))
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error fetching students: ${err instanceof Error ? err.message : String(err)}`,
+        'FETCH_STUDENTS_ERROR',
+        err as any
+      )
+    }
+  }
+
+  /**
    * ============ USER OPERATIONS ============
    */
 
@@ -1682,7 +2164,7 @@ class AdminService {
    */
   async fetchUsers(role?: string): Promise<AdminUser[]> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       let query = supabase
         .from('user_roles')
@@ -1733,16 +2215,14 @@ class AdminService {
     status: string = 'pending_approval'
   ): Promise<AdminUser> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
+      const userId = crypto.randomUUID()
 
-      const { data, error } = await supabase
-        .from('user_roles')
-        .insert({
-          email,
-          role,
-        })
-        .select()
-        .single()
+      const { data, error } = await supabase.rpc('admin_create_user_role', {
+        target_user_id: userId,
+        target_email: email,
+        target_role: role,
+      })
 
       if (error) {
         throw new AdminServiceError(
@@ -1780,20 +2260,12 @@ class AdminService {
     updates: Partial<AdminUser>
   ): Promise<AdminUser> {
     try {
-      const supabase = getSupabaseServiceClient()
-
-      // Only map fields that exist in user_roles table
-      const updatePayload: any = {}
-      if (updates.role !== undefined) updatePayload.role = updates.role
-      // name and status are not in user_roles table
-      updatePayload.updated_at = new Date().toISOString()
-
-      const { data, error } = await supabase
-        .from('user_roles')
-        .update(updatePayload)
-        .eq('id', id)
-        .select()
-        .single()
+      const supabase = getSupabaseClient()
+      const nextRole = updates.role ?? 'parent'
+      const { data, error } = await supabase.rpc('admin_update_user_role', {
+        target_user_id: id,
+        target_role: nextRole,
+      })
 
       if (error) {
         throw new AdminServiceError(
@@ -1828,18 +2300,23 @@ class AdminService {
    */
   async deleteUser(id: string): Promise<void> {
     try {
-      const supabase = getSupabaseServiceClient()
-
-      const { error } = await supabase
-        .from('user_roles')
-        .delete()
-        .eq('id', id)
+      const supabase = getSupabaseClient()
+      const { data, error } = await supabase.rpc('admin_delete_user_role', {
+        target_user_id: id,
+      })
 
       if (error) {
         throw new AdminServiceError(
           `Failed to delete user: ${error.message}`,
           'DELETE_USER_ERROR',
           error as any
+        )
+      }
+
+      if (!data) {
+        throw new AdminServiceError(
+          `Failed to delete user: User role not found for id ${id}`,
+          'DELETE_USER_ERROR'
         )
       }
     } catch (err) {
@@ -1865,7 +2342,7 @@ class AdminService {
     relationship?: string
   ): Promise<ParentStudentRelationship> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { data, error } = await supabase
         .from('parent_student_relationships')
@@ -1911,7 +2388,7 @@ class AdminService {
     studentId: string
   ): Promise<void> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { error } = await supabase
         .from('parent_student_relationships')
@@ -1941,7 +2418,7 @@ class AdminService {
    */
   async getParentStudents(parentId: string): Promise<AdminUser[]> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
 
       const { data: relationships, error: relError } = await supabase
         .from('parent_student_relationships')
@@ -2000,7 +2477,7 @@ class AdminService {
    */
   async getParentStudentRelationships(): Promise<Array<{ parentId: string; studentId: string }>> {
     try {
-      const supabase = getSupabaseServiceClient()
+      const supabase = getSupabaseClient()
       const startTime = Date.now()
 
       const { data: relationships, error } = await supabase

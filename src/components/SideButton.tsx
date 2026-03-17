@@ -3,7 +3,7 @@
  * 在畫面邊緣顯示快速導航按鈕
  */
 
-import { memo, useState, useCallback } from 'react'
+import { memo, useState, useCallback, useRef, useEffect } from 'react'
 
 interface SideButtonProps {
   direction: 'left' | 'right'
@@ -20,6 +20,16 @@ export const SideButton = memo(function SideButton({
 }: SideButtonProps) {
   const isLeft = direction === 'left'
   const [isClicked, setIsClicked] = useState(false)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Cleanup timeout on unmount to prevent state updates after unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+      }
+    }
+  }, [])
 
   // Memoize onClick handler for quick response
   const handleClick = useCallback(() => {
@@ -30,7 +40,7 @@ export const SideButton = memo(function SideButton({
     onClick()
 
     // Reset pressed state after animation
-    setTimeout(() => {
+    timeoutRef.current = setTimeout(() => {
       setIsClicked(false)
     }, 150)
   }, [onClick, disabled])

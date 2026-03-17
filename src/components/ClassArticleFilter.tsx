@@ -7,6 +7,9 @@
  * - Fetches and displays articles for selected classes
  * - Shows visual hierarchy with grade year indicators
  * - Supports single and multi-class selection
+ *
+ * TODO: This component needs to be integrated into the main application.
+ * The classArticleQueries service also needs updating to use newsletterId.
  */
 
 import React, { useEffect, useState } from 'react'
@@ -17,8 +20,8 @@ import { getArticlesForFamily, getArticlesForClass } from '@/services/queries/cl
 interface ClassArticleFilterProps {
   /** Family ID for filtering (parent/visitor view) */
   familyId?: string
-  /** Week number to filter articles */
-  weekNumber: string
+  /** Newsletter UUID to filter articles */
+  newsletterId: string
   /** Callback when articles are loaded */
   onArticlesLoaded?: (articles: ArticleRow[]) => void
   /** CSS class for custom styling */
@@ -30,7 +33,7 @@ interface ClassArticleFilterProps {
  */
 export const ClassArticleFilter: React.FC<ClassArticleFilterProps> = ({
   familyId,
-  weekNumber,
+  newsletterId,
   onArticlesLoaded,
   className = '',
 }) => {
@@ -60,7 +63,7 @@ export const ClassArticleFilter: React.FC<ClassArticleFilterProps> = ({
             // Load articles for all family classes
             const { articles: familyArticles } = await getArticlesForFamily(
               familyId,
-              weekNumber
+              newsletterId
             )
             setArticles(familyArticles)
             onArticlesLoaded?.(familyArticles)
@@ -74,7 +77,7 @@ export const ClassArticleFilter: React.FC<ClassArticleFilterProps> = ({
     }
 
     loadClasses()
-  }, [familyId, weekNumber, onArticlesLoaded])
+  }, [familyId, newsletterId, onArticlesLoaded])
 
   // Load articles when selected classes change
   useEffect(() => {
@@ -94,7 +97,7 @@ export const ClassArticleFilter: React.FC<ClassArticleFilterProps> = ({
         const articleMap = new Map<string, ArticleRow>()
 
         for (const classId of selectedClasses) {
-          const classArticles = await getArticlesForClass(classId, weekNumber)
+          const classArticles = await getArticlesForClass(classId, newsletterId)
           articlesByClass[classId] = classArticles
 
           // Deduplicate by article ID
@@ -105,9 +108,9 @@ export const ClassArticleFilter: React.FC<ClassArticleFilterProps> = ({
           }
         }
 
-        // Convert to array and sort by article_order
+        // Convert to array and sort by created_at (order now in junction table)
         const deduplicatedArticles = Array.from(articleMap.values()).sort(
-          (a, b) => a.article_order - b.article_order
+          (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         )
 
         setArticles(deduplicatedArticles)
@@ -122,7 +125,7 @@ export const ClassArticleFilter: React.FC<ClassArticleFilterProps> = ({
     if (!familyId) {
       loadArticles()
     }
-  }, [selectedClasses, weekNumber, familyId, onArticlesLoaded])
+  }, [selectedClasses, newsletterId, familyId, onArticlesLoaded])
 
   const handleClassToggle = (classId: string) => {
     setSelectedClasses((prev) =>

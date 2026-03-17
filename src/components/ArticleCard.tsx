@@ -5,8 +5,10 @@
 
 import { memo, useCallback, useState, useEffect } from 'react'
 import { Article } from '@/types'
+import { ArticleRow } from '@/types/database'
 import { truncateText, formatDate } from '@/utils/formatters'
 import PermissionService from '@/services/PermissionService'
+import { CheckCircle } from 'lucide-react'
 
 interface ArticleCardProps {
   article: Article
@@ -15,6 +17,7 @@ interface ArticleCardProps {
   userId?: string  // For permission checking (optional)
   showPermissionStatus?: boolean  // Show permission badges (default: false)
   disabled?: boolean
+  isRead?: boolean
 }
 
 export const ArticleCard = memo(function ArticleCard({
@@ -23,7 +26,8 @@ export const ArticleCard = memo(function ArticleCard({
   onClick,
   userId,
   showPermissionStatus = false,
-  disabled = false
+  disabled = false,
+  isRead = false
 }: ArticleCardProps) {
   const [permissions, setPermissions] = useState({
     canView: true,
@@ -38,10 +42,15 @@ export const ArticleCard = memo(function ArticleCard({
 
     const checkPermissions = async () => {
       try {
+        // Adapt Article to ArticleRow for permission checks
+        // Note: We assume the UI Article type is a subset or mapped from ArticleRow
+        // We cast here to satisfy the type system, but in a real app ensure all required fields exist
+        const articleRow = article as unknown as ArticleRow
+
         const [canView, canEdit, canDelete] = await Promise.all([
-          PermissionService.canViewArticle(userId, article),
-          PermissionService.canEditArticle(userId, article),
-          PermissionService.canDeleteArticle(userId, article),
+          PermissionService.canViewArticle(userId, articleRow),
+          PermissionService.canEditArticle(userId, articleRow),
+          PermissionService.canDeleteArticle(userId, articleRow),
         ])
 
         setPermissions({ canView, canEdit, canDelete, isLoading: false })
@@ -82,9 +91,12 @@ export const ArticleCard = memo(function ArticleCard({
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-waldorf-clay-800 line-clamp-2 flex-1">
+            <h3 className={`font-semibold line-clamp-2 flex-1 ${isRead ? 'text-gray-500' : 'text-waldorf-clay-800'}`}>
               {article.title}
             </h3>
+            {isRead && (
+                <CheckCircle className="w-4 h-4 text-waldorf-sage-500 flex-shrink-0" />
+            )}
             {showPermissionStatus && (
               <div className="flex items-center gap-1">
                 {permissions.isLoading ? (

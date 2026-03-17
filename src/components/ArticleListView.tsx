@@ -15,6 +15,7 @@ interface ArticleListViewProps {
   onSelectArticle: (articleId: string) => void
   isLoading?: boolean
   disabled?: boolean
+  readArticleIds?: Set<string>
 }
 
 export const ArticleListView = memo(function ArticleListView({
@@ -23,6 +24,7 @@ export const ArticleListView = memo(function ArticleListView({
   onSelectArticle,
   isLoading = false,
   disabled = false,
+  readArticleIds,
 }: ArticleListViewProps) {
   // Memoize the select handler to prevent unnecessary re-renders
   const handleSelectArticle = useCallback(
@@ -72,6 +74,7 @@ export const ArticleListView = memo(function ArticleListView({
               isSelected={article.id === selectedArticleId}
               onClick={() => handleSelectArticle(article.id)}
               disabled={disabled}
+              isRead={readArticleIds?.has(article.id)}
             />
           ))}
         </div>

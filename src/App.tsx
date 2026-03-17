@@ -8,6 +8,10 @@ import { WeeklyReaderPage } from '@/pages/WeeklyReaderPage'
 import { ErrorPage } from '@/pages/ErrorPage'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { AnalyticsFooter } from '@/components/AnalyticsFooter'
+
+import { ArticleReadersPage } from './pages/ArticleReadersPage';
+import { AnalyticsProvider } from '@/context/AnalyticsContext';
 import '@/styles/globals.css'
 
 // Lazy load editor and admin pages - only loaded when route is accessed
@@ -20,6 +24,9 @@ const LazyNewsletterCreatePage = lazy(() => import('@/pages/NewsletterCreatePage
 const LazyClassManagementPage = lazy(() => import('@/pages/ClassManagementPage').then(m => ({ default: m.ClassManagementPage })))
 const LazyFamilyManagementPage = lazy(() => import('@/pages/FamilyManagementPage').then(m => ({ default: m.FamilyManagementPage })))
 const LazyParentStudentPage = lazy(() => import('@/pages/ParentStudentPage').then(m => ({ default: m.ParentStudentPage })))
+const LazyAnalyticsDashboardPage = lazy(() => import('@/pages/AnalyticsDashboardPage').then(m => ({ default: m.AnalyticsDashboardPage })))
+const LazyClassAnalyticsPage = lazy(() => import('@/pages/analytics/ClassAnalyticsPage').then(m => ({ default: m.ClassAnalyticsPage })))
+const LazyArticleAnalyticsPage = lazy(() => import('@/pages/analytics/ArticleAnalyticsPage').then(m => ({ default: m.ArticleAnalyticsPage })))
 
 // Loading component shown while lazy route is loading
 const RouteLoader = () => (
@@ -52,10 +59,12 @@ export default function App() {
     <ErrorBoundary>
       <AuthProvider>
         <NavigationProvider>
-          <Router>
-            <Routes>
+          <AnalyticsProvider>
+            <Router>
+              <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
+
               <Route path="/auth/callback" element={<AuthCallbackPage />} />
               <Route
                 path="/week/:weekNumber"
@@ -82,7 +91,15 @@ export default function App() {
                 }
               />
               <Route
-                path="/newsletter/:weekNumber"
+                path="/newsletter/:newsletterId"
+                element={
+                  <ProtectedRoute>
+                    <WeeklyReaderPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/newsletter/:newsletterId/:shortId"
                 element={
                   <ProtectedRoute>
                     <WeeklyReaderPage />
@@ -148,6 +165,30 @@ export default function App() {
                 }
               />
               <Route
+                path="/admin/articles/id/:id"
+                element={
+                  <ErrorBoundary>
+                    <ProtectedRoute requiredRole="admin">
+                      <Suspense fallback={<RouteLoader />}>
+                        <LazyAdminArticleList />
+                      </Suspense>
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/admin/articles/id/:id/:articleId"
+                element={
+                  <ErrorBoundary>
+                    <ProtectedRoute requiredRole="admin">
+                      <Suspense fallback={<RouteLoader />}>
+                        <LazyArticleEditorPage />
+                      </Suspense>
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                }
+              />
+              <Route
                 path="/admin/classes"
                 element={
                   <ErrorBoundary>
@@ -183,11 +224,71 @@ export default function App() {
                   </ErrorBoundary>
                 }
               />
+              <Route
+                path="/admin/analytics"
+                element={
+                  <ErrorBoundary>
+                    <ProtectedRoute requiredRole="admin">
+                      <Suspense fallback={<RouteLoader />}>
+                        <LazyAnalyticsDashboardPage />
+                      </Suspense>
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/admin/analytics/week/:weekNumber"
+                element={
+                  <ErrorBoundary>
+                    <ProtectedRoute requiredRole="admin">
+                      <Suspense fallback={<RouteLoader />}>
+                        <LazyAnalyticsDashboardPage />
+                      </Suspense>
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/admin/analytics/class/:className"
+                element={
+                  <ErrorBoundary>
+                    <ProtectedRoute requiredRole="admin">
+                      <Suspense fallback={<RouteLoader />}>
+                        <LazyClassAnalyticsPage />
+                      </Suspense>
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/admin/analytics/article/:articleId"
+                element={
+                  <ErrorBoundary>
+                    <ProtectedRoute requiredRole="admin">
+                      <Suspense fallback={<RouteLoader />}>
+                        <LazyArticleAnalyticsPage />
+                      </Suspense>
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/admin/analytics/article/:articleId/readers"
+                element={
+                  <ErrorBoundary>
+                    <ProtectedRoute requiredRole="admin">
+                      <ArticleReadersPage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                }
+              />
               <Route path="/error" element={<ErrorPage />} />
               {/* 404 Catch-all Route - Must be last */}
               <Route path="*" element={<ErrorPage errorCode="NOT_FOUND" errorMessage="頁面不存在" title="404 - 找不到頁面" />} />
             </Routes>
+            <AnalyticsFooter />
           </Router>
+          </AnalyticsProvider>
         </NavigationProvider>
       </AuthProvider>
     </ErrorBoundary>

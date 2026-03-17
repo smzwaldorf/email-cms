@@ -7,7 +7,7 @@ import { NavigationState, Article } from '@/types'
 
 interface NavigationContextType {
   navigationState: NavigationState
-  setCurrentWeek: (weekNumber: string) => void
+  setCurrentNewsletter: (newsletterId: string) => void
   setCurrentArticle: (articleId: string, order: number) => void
   setLoading: (isLoading: boolean) => void
   setError: (error: { code: string; message: string } | undefined) => void
@@ -21,7 +21,7 @@ const NavigationContext = createContext<NavigationContextType | undefined>(undef
 
 // 預設值
 const defaultNavigationState: NavigationState = {
-  currentWeekNumber: '2025-W43',
+  currentNewsletterId: '2025-W43',
   currentArticleId: '',
   currentArticleOrder: 1,
   totalArticlesInWeek: 0,
@@ -49,10 +49,10 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
 
   // ... (keep existing methods)
 
-  const setCurrentWeek = useCallback((weekNumber: string) => {
+  const setCurrentNewsletter = useCallback((newsletterId: string) => {
     setNavigationState((prev) => ({
       ...prev,
-      currentWeekNumber: weekNumber,
+      currentNewsletterId: newsletterId,
       currentArticleOrder: 1,
       currentArticleId: prev.articleList[0]?.id || '',
     }))
@@ -114,7 +114,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     <NavigationContext.Provider
       value={{
         navigationState,
-        setCurrentWeek,
+        setCurrentNewsletter,
         setCurrentArticle,
         setLoading,
         setError,

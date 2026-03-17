@@ -99,7 +99,9 @@ export type NewsletterStatus = 'draft' | 'published' | 'archived'
  */
 export interface AdminNewsletter {
   id: string // UUID
-  weekNumber: string // ISO 格式週次（例如：2025-W48）
+  weekNumber?: string | null // Optional: ISO 格式週次（例如：2025-W48）
+  title?: string | null // Newsletter headline
+  description?: string | null // Newsletter summary/description
   releaseDate: string // ISO 日期字符串
   status: NewsletterStatus
   articleCount: number // 該週的文章數量

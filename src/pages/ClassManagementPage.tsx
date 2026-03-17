@@ -15,7 +15,6 @@
 import { useEffect, useState } from 'react'
 import type { Class, AdminUser } from '@/types/admin'
 import { adminService, AdminServiceError } from '@/services/adminService'
-import { getSupabaseServiceClient } from '@/lib/supabase'
 import ClassList from '@/components/admin/ClassList'
 import ClassForm from '@/components/admin/ClassForm'
 import ConfirmDialog from '@/components/admin/ConfirmDialog'
@@ -76,27 +75,7 @@ export function ClassManagementPage() {
    */
   const loadStudents = async () => {
     try {
-      const supabase = getSupabaseServiceClient()
-      const { data, error } = await supabase
-        .from('students')
-        .select('id, name')
-        .order('name', { ascending: true })
-
-      if (error) {
-        throw new Error(`Failed to fetch students: ${error.message}`)
-      }
-
-      // Convert students table format to AdminUser format
-      const studentList: AdminUser[] = (data || []).map((student: any) => ({
-        id: student.id,
-        name: student.name,
-        email: '',
-        role: 'student' as const,
-        status: 'active' as const,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }))
-
+      const studentList = await adminService.fetchStudents()
       setStudents(studentList)
       console.log(`Loaded ${studentList.length} students:`, studentList)
     } catch (err) {

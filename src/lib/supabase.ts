@@ -8,9 +8,25 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js'
 /**
  * Validate that required environment variables are set
  */
+/**
+ * Helper to get environment variables across Vite and Node.js
+ */
+function getEnvVar(key: string): string | undefined {
+  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) {
+      return import.meta.env[key];
+  }
+  if (typeof process !== 'undefined' && process.env && process.env[key]) {
+      return process.env[key];
+  }
+  return undefined;
+}
+
+/**
+ * Validate that required environment variables are set
+ */
 function validateEnvironment(): void {
-  const url = import.meta.env.VITE_SUPABASE_URL
-  const key = import.meta.env.VITE_SUPABASE_ANON_KEY
+  const url = getEnvVar('VITE_SUPABASE_URL')
+  const key = getEnvVar('VITE_SUPABASE_ANON_KEY')
 
   if (!url) {
     throw new Error(
@@ -35,8 +51,8 @@ function validateEnvironment(): void {
 function createSupabaseClient(): SupabaseClient {
   validateEnvironment()
 
-  const url = import.meta.env.VITE_SUPABASE_URL
-  const key = import.meta.env.VITE_SUPABASE_ANON_KEY
+  const url = getEnvVar('VITE_SUPABASE_URL') as string
+  const key = getEnvVar('VITE_SUPABASE_ANON_KEY') as string
 
   const client = createClient(url, key, {
     auth: {
@@ -60,7 +76,7 @@ function createSupabaseClient(): SupabaseClient {
   })
 
   // Log successful initialization in development
-  if (import.meta.env.DEV) {
+  if (getEnvVar('DEV')) {
     console.log('✅ Supabase client initialized successfully')
     console.log(`   Project URL: ${url}`)
   }
@@ -98,18 +114,22 @@ export function getSupabaseClient(): SupabaseClient {
 /**
  * Get Supabase client with service role key for admin operations
  * WARNING: Only use this for admin operations that require elevated privileges
+ * NOTE: Service role key should NEVER be exposed in frontend bundles.
+ * Only available in Node.js environments (server/edge functions/scripts).
  */
 export function getSupabaseServiceClient(): SupabaseClient {
   if (!supabaseServiceClient) {
     validateEnvironment()
 
-    const url = import.meta.env.VITE_SUPABASE_URL
-    const serviceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY
+    const url = getEnvVar('VITE_SUPABASE_URL') as string
+    // Use non-VITE_ prefixed variable to prevent bundling in frontend
+    const serviceKey = getEnvVar('SUPABASE_SERVICE_ROLE_KEY')
 
     if (!serviceKey) {
       throw new Error(
-        'Missing VITE_SUPABASE_SERVICE_ROLE_KEY environment variable. ' +
-        'This is required for admin operations.'
+        'Missing SUPABASE_SERVICE_ROLE_KEY environment variable. ' +
+        'This is required for admin operations. ' +
+        'Note: This should only be set in .env (Node.js), never in .env.local (frontend).'
       )
     }
 
@@ -137,8 +157,9 @@ export function resetSupabaseClient(): void {
  * Provides autocomplete for available tables
  */
 export interface DatabaseTables {
-  newsletter_weeks: any
+  newsletters: any
   articles: any
+  newsletter_articles: any  // Junction table for article-newsletter relationship
   classes: any
   user_roles: any
   families: any

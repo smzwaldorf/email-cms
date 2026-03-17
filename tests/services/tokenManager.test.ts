@@ -288,7 +288,7 @@ describe('TokenManager', () => {
       expect(mockSupabase.auth.refreshSession).toHaveBeenCalledTimes(1)
     })
 
-    it('should clear tokens on refresh failure', async () => {
+    it('should clear tokens on fatal refresh failure', async () => {
       const mockSession = {
         access_token: 'old-token',
         expires_in: 900,
@@ -298,9 +298,10 @@ describe('TokenManager', () => {
         data: { session: mockSession },
       })
 
+      // Use a FATAL error to verify clearing behavior
       ;(mockSupabase.auth.refreshSession as any).mockResolvedValueOnce({
         data: { session: null },
-        error: new Error('Refresh failed'),
+        error: new Error('Invalid Refresh Token'), // Fatal error
       })
 
       await tokenManager.initializeFromSession()
@@ -324,6 +325,7 @@ describe('TokenManager', () => {
         data: { session: mockSession },
       })
 
+      // Generic error should NOT clear the token (Resilience Policy)
       ;(mockSupabase.auth.refreshSession as any).mockRejectedValueOnce(
         new Error('Network error')
       )
@@ -333,7 +335,9 @@ describe('TokenManager', () => {
       const result = await tokenManager.forceRefresh()
 
       expect(result).toBe(false)
-      expect(tokenManager.getTokenInfo()).toBeNull()
+      // Token should persist for retry
+      expect(tokenManager.getTokenInfo()).not.toBeNull()
+      expect(tokenManager.getTokenInfo()?.accessToken).toBe('old-token')
     })
   })
 

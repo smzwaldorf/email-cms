@@ -6,11 +6,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { adminSessionService } from '@/services/adminSessionService'
 import { auditLogger } from '@/services/auditLogger'
-import { getSupabaseServiceClient } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase'
 
 // Mock the dependencies
 vi.mock('@/lib/supabase', () => ({
-  getSupabaseServiceClient: vi.fn(),
+  getSupabaseClient: vi.fn(),
 }))
 
 vi.mock('@/services/auditLogger', () => ({
@@ -29,7 +29,7 @@ describe('AdminSessionService', () => {
       rpc: vi.fn(),
     }
 
-    ;(getSupabaseServiceClient as any).mockReturnValue(mockSupabaseAdmin)
+    ;(getSupabaseClient as any).mockReturnValue(mockSupabaseAdmin)
   })
 
   describe('forceLogoutUser', () => {

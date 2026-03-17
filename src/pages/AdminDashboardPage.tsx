@@ -16,7 +16,7 @@ import { adminService, AdminServiceError } from '@/services/adminService'
 import NewsletterTable from '@/components/admin/NewsletterTable'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
-import { getSupabaseClient, getSupabaseServiceClient } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase'
 import { useAuth } from '@/context/AuthContext'
 import { UserRole } from '@/types/auth'
 import { ROLES } from '@/lib/rbac'
@@ -64,8 +64,8 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserAdde
     setIsSubmitting(true)
 
     try {
-      // Use service role client for admin operations
-      const supabaseAdmin = getSupabaseServiceClient()
+      // Use standard client (subject to RLS) instead of service role
+      const supabaseAdmin = getSupabaseClient()
 
       // Create auth user using admin API (doesn't affect current session)
       const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -358,9 +358,15 @@ export function AdminDashboardPage() {
   const handleEdit = (id: string) => {
     const newsletter = newsletters.find((n) => n.id === id)
     if (newsletter) {
-      navigate(`/admin/articles/${newsletter.weekNumber}`, {
-        state: { newsletterId: id },
-      })
+      if (newsletter.weekNumber) {
+        navigate(`/admin/articles/${newsletter.weekNumber}`, {
+          state: { newsletterId: id },
+        })
+      } else {
+        navigate(`/admin/articles/id/${id}`, {
+          state: { newsletterId: id },
+        })
+      }
     }
   }
 
@@ -468,7 +474,7 @@ export function AdminDashboardPage() {
   const updateUserRole = async (userId: string, newRole: UserRole) => {
     try {
       setUpdatingId(userId)
-      const supabaseAdmin = getSupabaseServiceClient()
+      const supabaseAdmin = getSupabaseClient()
 
       const { error } = await supabaseAdmin
         .from('user_roles')

@@ -39,17 +39,6 @@ CREATE TABLE IF NOT EXISTS media_files (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 3. 擴展 articles 表
-ALTER TABLE articles ADD COLUMN IF NOT EXISTS content_format TEXT NOT NULL DEFAULT 'markdown';
-ALTER TABLE articles ADD COLUMN IF NOT EXISTS content_json JSONB;
-ALTER TABLE articles ADD COLUMN IF NOT EXISTS embedded_media UUID[];
-
-DO $$ BEGIN
-    ALTER TABLE articles ADD CONSTRAINT content_format_check
-    CHECK (content_format IN ('markdown', 'html', 'tiptap_json'));
-EXCEPTION
-    WHEN duplicate_object THEN null;
-END $$;
 
 -- 4. 建立 article_media_references 表
 CREATE TABLE IF NOT EXISTS article_media_references (
@@ -66,8 +55,6 @@ CREATE INDEX IF NOT EXISTS idx_media_files_uploaded_by ON media_files(uploaded_b
 CREATE INDEX IF NOT EXISTS idx_media_files_file_type ON media_files(file_type);
 CREATE INDEX IF NOT EXISTS idx_media_files_storage_path ON media_files(storage_path);
 CREATE INDEX IF NOT EXISTS idx_media_files_uploaded_at ON media_files(uploaded_at DESC);
-CREATE INDEX IF NOT EXISTS idx_articles_content_format ON articles(content_format);
-CREATE INDEX IF NOT EXISTS idx_articles_embedded_media ON articles USING GIN(embedded_media);
 CREATE INDEX IF NOT EXISTS idx_article_media_article_id ON article_media_references(article_id);
 CREATE INDEX IF NOT EXISTS idx_article_media_media_id ON article_media_references(media_id);
 
@@ -143,7 +130,7 @@ CREATE POLICY "Anyone can view published article media"
   USING (
     EXISTS (
       SELECT 1 FROM articles
-      WHERE id = article_id AND is_published = true
+      WHERE id = article_id AND status = 'published'
     )
   );
 

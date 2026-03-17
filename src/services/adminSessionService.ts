@@ -9,7 +9,7 @@
  * - Log all admin actions to audit trail
  */
 
-import { getSupabaseServiceClient } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase'
 import { auditLogger } from './auditLogger'
 
 /**
@@ -45,7 +45,7 @@ class AdminSessionService {
    */
   async getUserSessions(userId: string): Promise<UserSession[]> {
     try {
-      const supabaseAdmin = getSupabaseServiceClient()
+      const supabaseAdmin = getSupabaseClient()
 
       const { data, error } = await supabaseAdmin.rpc('get_user_sessions', {
         target_user_id: userId
@@ -77,7 +77,7 @@ class AdminSessionService {
    */
   async forceLogoutUser(userId: string, adminUserId: string): Promise<boolean> {
     try {
-      const supabaseAdmin = getSupabaseServiceClient()
+      const supabaseAdmin = getSupabaseClient()
 
       // Sign out all sessions for this user using RPC
       const { error } = await supabaseAdmin.rpc('delete_user_sessions', {
@@ -119,7 +119,7 @@ class AdminSessionService {
    */
   async detectSuspiciousActivity(): Promise<SuspiciousActivity[]> {
     try {
-      const supabaseAdmin = getSupabaseServiceClient()
+      const supabaseAdmin = getSupabaseClient()
 
       // Query for failed logins in the last 15 minutes
       const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString()
