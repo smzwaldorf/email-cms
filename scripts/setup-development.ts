@@ -11,7 +11,7 @@
  * 2. Creates auth users: parent1, parent2, admin
  * 3. Sets up family enrollments and class relationships
  *
- * Usage: npx ts-node scripts/setup-development.ts
+ * Usage: npx tsx scripts/setup-development.ts
  *
  * Test User Accounts Created:
  * ──────────────────────────────────────────────────────────────
@@ -26,13 +26,15 @@
  * ──────────────────────────────────────────────────────────────
  */
 
+import 'dotenv/config'
 import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL
-const supabaseServiceRoleKey = process.env.VITE_SUPABASE_SERVICE_ROLE_KEY
+const supabaseServiceRoleKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.VITE_SUPABASE_SERVICE_ROLE_KEY
 
 if (!supabaseUrl || !supabaseServiceRoleKey) {
-  console.error('❌ Error: VITE_SUPABASE_URL and VITE_SUPABASE_SERVICE_ROLE_KEY must be set in .env.local')
+  console.error('❌ Error: VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in .env')
   console.error('Service role key is required for auth user creation and database writes')
   process.exit(1)
 }

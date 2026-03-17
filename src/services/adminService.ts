@@ -2216,15 +2216,13 @@ class AdminService {
   ): Promise<AdminUser> {
     try {
       const supabase = getSupabaseClient()
+      const userId = crypto.randomUUID()
 
-      const { data, error } = await supabase
-        .from('user_roles')
-        .insert({
-          email,
-          role,
-        })
-        .select()
-        .single()
+      const { data, error } = await supabase.rpc('admin_create_user_role', {
+        target_user_id: userId,
+        target_email: email,
+        target_role: role,
+      })
 
       if (error) {
         throw new AdminServiceError(
@@ -2263,19 +2261,11 @@ class AdminService {
   ): Promise<AdminUser> {
     try {
       const supabase = getSupabaseClient()
-
-      // Only map fields that exist in user_roles table
-      const updatePayload: any = {}
-      if (updates.role !== undefined) updatePayload.role = updates.role
-      // name and status are not in user_roles table
-      updatePayload.updated_at = new Date().toISOString()
-
-      const { data, error } = await supabase
-        .from('user_roles')
-        .update(updatePayload)
-        .eq('id', id)
-        .select()
-        .single()
+      const nextRole = updates.role ?? 'parent'
+      const { data, error } = await supabase.rpc('admin_update_user_role', {
+        target_user_id: id,
+        target_role: nextRole,
+      })
 
       if (error) {
         throw new AdminServiceError(
@@ -2311,17 +2301,22 @@ class AdminService {
   async deleteUser(id: string): Promise<void> {
     try {
       const supabase = getSupabaseClient()
-
-      const { error } = await supabase
-        .from('user_roles')
-        .delete()
-        .eq('id', id)
+      const { data, error } = await supabase.rpc('admin_delete_user_role', {
+        target_user_id: id,
+      })
 
       if (error) {
         throw new AdminServiceError(
           `Failed to delete user: ${error.message}`,
           'DELETE_USER_ERROR',
           error as any
+        )
+      }
+
+      if (!data) {
+        throw new AdminServiceError(
+          `Failed to delete user: User role not found for id ${id}`,
+          'DELETE_USER_ERROR'
         )
       }
     } catch (err) {

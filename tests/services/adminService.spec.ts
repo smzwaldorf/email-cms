@@ -19,6 +19,7 @@ const mockBuilder = {
 
 const mockSupabase = {
   from: vi.fn(() => mockBuilder),
+  rpc: vi.fn(),
 }
 
 vi.mock('@/lib/supabase', () => ({
@@ -36,6 +37,7 @@ describe('AdminService', () => {
     })
     // Reset default response
     mockBuilder.then.mockImplementation((resolve) => resolve({ data: [], error: null }))
+    mockSupabase.rpc.mockResolvedValue({ data: null, error: null })
   })
 
   describe('fetchNewsletters', () => {
@@ -174,6 +176,79 @@ describe('AdminService', () => {
       expect(mockBuilder.update).toHaveBeenCalledWith(expect.objectContaining({
         status: 'published',
       }))
+    })
+  })
+
+  describe('admin user role RPCs', () => {
+    it('createUser uses the admin_create_user_role RPC', async () => {
+      const createdAt = '2025-01-01T00:00:00.000Z'
+      mockSupabase.rpc.mockResolvedValue({
+        data: {
+          id: 'u1111111-1111-1111-1111-111111111111',
+          email: 'teacher@example.com',
+          role: 'teacher',
+          created_at: createdAt,
+          updated_at: createdAt,
+          last_login_at: null,
+        },
+        error: null,
+      })
+
+      const result = await adminService.createUser(
+        'teacher@example.com',
+        'Teacher',
+        'teacher',
+        'active'
+      )
+
+      expect(mockSupabase.rpc).toHaveBeenCalledWith(
+        'admin_create_user_role',
+        expect.objectContaining({
+          target_email: 'teacher@example.com',
+          target_role: 'teacher',
+          target_user_id: expect.any(String),
+        })
+      )
+      expect(result.email).toBe('teacher@example.com')
+      expect(result.role).toBe('teacher')
+      expect(result.status).toBe('active')
+    })
+
+    it('updateUser uses the admin_update_user_role RPC', async () => {
+      const updatedAt = '2025-01-02T00:00:00.000Z'
+      mockSupabase.rpc.mockResolvedValue({
+        data: {
+          id: 'u2222222-2222-2222-2222-222222222222',
+          email: 'parent@example.com',
+          role: 'admin',
+          created_at: '2025-01-01T00:00:00.000Z',
+          updated_at: updatedAt,
+          last_login_at: null,
+        },
+        error: null,
+      })
+
+      const result = await adminService.updateUser(
+        'u2222222-2222-2222-2222-222222222222',
+        { role: 'admin', status: 'active', name: 'Parent Admin' }
+      )
+
+      expect(mockSupabase.rpc).toHaveBeenCalledWith('admin_update_user_role', {
+        target_user_id: 'u2222222-2222-2222-2222-222222222222',
+        target_role: 'admin',
+      })
+      expect(result.role).toBe('admin')
+      expect(result.status).toBe('active')
+    })
+
+    it('deleteUser uses the admin_delete_user_role RPC', async () => {
+      mockSupabase.rpc.mockResolvedValue({ data: true, error: null })
+
+      await adminService.deleteUser('u3333333-3333-3333-3333-333333333333')
+
+      expect(mockSupabase.rpc).toHaveBeenCalledWith('admin_delete_user_role', {
+        target_user_id: 'u3333333-3333-3333-3333-333333333333',
+      })
     })
   })
 

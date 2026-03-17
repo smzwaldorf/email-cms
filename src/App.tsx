@@ -277,18 +277,6 @@ export default function App() {
                 element={
                   <ErrorBoundary>
                     <ProtectedRoute requiredRole="admin">
-                      <Suspense fallback={<RouteLoader />}>
-                        <LazyArticleAnalyticsPage />
-                      </Suspense>
-                    </ProtectedRoute>
-                  </ErrorBoundary>
-                }
-              />
-              <Route
-                path="/admin/analytics/article/:articleId/readers"
-                element={
-                  <ErrorBoundary>
-                    <ProtectedRoute requiredRole="admin">
                       <ArticleReadersPage />
                     </ProtectedRoute>
                   </ErrorBoundary>

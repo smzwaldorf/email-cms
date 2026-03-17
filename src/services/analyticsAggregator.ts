@@ -259,17 +259,40 @@ export const analyticsAggregator = {
       
       const totalViews = viewResult.data?.length || 0;
 
-      // 4. Calculate Avg Time Spent
-      // Sum 'duration' from metadata where event_type = 'page_view'
-      // Note: metadata is JSONB. We need to extract duration.
+      // 4. Calculate Avg Time Spent from session_end payloads
+      let sessionEventsQuery = supabase
+        .from('analytics_events')
+        .select('metadata')
+        .eq('newsletter_id', newsletterId)
+        .eq('event_type', 'session_end');
+
+      if (className) {
+           const classUsers = await this.getUsersInClass(className);
+           if (classUsers.length > 0) {
+               sessionEventsQuery = sessionEventsQuery.in('user_id', classUsers);
+           }
+      }
+
+      const sessionResult = await Promise.race([
+        sessionEventsQuery,
+        createTimeout(QUERY_TIMEOUT_MS)
+      ]) as { data: { metadata: any }[] | null; error: Error | null };
+
+      if (sessionResult.error) {
+        console.error('[Analytics] Error fetching session durations:', sessionResult.error);
+        throw sessionResult.error;
+      }
+
       let totalTimeSeconds = 0;
-      viewResult.data?.forEach(row => {
-          if (row.metadata?.duration) {
-              totalTimeSeconds += Number(row.metadata.duration);
+      let timedSessionCount = 0;
+      sessionResult.data?.forEach(row => {
+          if (row.metadata?.time_spent_seconds) {
+              totalTimeSeconds += Number(row.metadata.time_spent_seconds);
+              timedSessionCount++;
           }
       });
       
-      const avgTimeSpent = totalViews > 0 ? Math.round(totalTimeSeconds / totalViews) : 0;
+      const avgTimeSpent = timedSessionCount > 0 ? Math.round(totalTimeSeconds / timedSessionCount) : 0;
 
       // Mock Total Sent (since we don't have email log table yet, usually distinct students count)
       // If className provided, get total families in that class.

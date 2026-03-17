@@ -11,7 +11,8 @@
     "test:ui": "vitest --ui",
     "coverage": "vitest --coverage",
     "lint": "eslint src tests --ext .ts,.tsx",
-    "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"tests/**/*.{ts,tsx}\""
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"tests/**/*.{ts,tsx}\"",
+    "seed": "supabase db reset && npx tsx scripts/setup-development.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.83.0",
