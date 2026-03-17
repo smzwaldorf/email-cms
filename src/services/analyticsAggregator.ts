@@ -56,8 +56,6 @@ export const analyticsAggregator = {
         .from('analytics_events')
         .select('*')
         .gte('created_at', startOfDay)
-        .select('*')
-        .gte('created_at', startOfDay)
         .lte('created_at', endOfDay);
 
       console.log(`[Analytics] Fetched ${events?.length || 0} events.`);

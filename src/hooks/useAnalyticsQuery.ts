@@ -43,10 +43,9 @@ export function useGenerateSnapshots() {
       queryClient.invalidateQueries({ queryKey: ['articleStats'] });
       queryClient.invalidateQueries({ queryKey: ['trendStats'] });
       
-      alert('Snapshots generated successfully!');
+      console.log('[Analytics] Snapshots generated successfully!');
     } catch (err) {
-      alert('Failed to generate snapshots');
-      console.error(err);
+      console.error('[Analytics] Failed to generate snapshots:', err);
     } finally {
       setGenerating(false);
     }
