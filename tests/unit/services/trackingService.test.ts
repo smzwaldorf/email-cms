@@ -2,6 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { trackingService } from '@/services/trackingService'
 import { getSupabaseClient } from '@/lib/supabase'
 
+// Enable tracking for all tests in this file
+vi.stubEnv('VITE_TRACKING_ENABLED', 'true')
+
 // Mock Supabase client
 const mockInsert = vi.fn()
 const mockSelect = vi.fn()

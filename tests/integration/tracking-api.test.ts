@@ -2,6 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { trackingTokenService } from '@/services/trackingTokenService';
 import { getSupabaseClient } from '@/lib/supabase';
 
+// Provide a test JWT secret so the Web Crypto key import succeeds
+vi.stubEnv('VITE_JWT_SECRET', 'test-jwt-secret-key-for-integration-tests-32+chars');
+
 // Mock Supabase
 vi.mock('@/lib/supabase', () => ({
   getSupabaseClient: vi.fn(() => ({
