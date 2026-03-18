@@ -5,7 +5,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useNavigation } from '@/context/NavigationContext'
 import { useAuth } from '@/context/AuthContext'
 import { useFetchWeekly } from '@/hooks/useFetchWeekly'
@@ -22,8 +22,14 @@ import { UserMenu } from '@/components/UserMenu'
 import { Article } from '@/types'
 import PermissionService from '@/services/PermissionService'
 import ArticleService from '@/services/ArticleService'
+import { getAdminNewsletterPath } from '@/utils/adminNewsletterRoutes'
 
 import WeekService from '@/services/WeekService'
+
+type WeeklyReaderLocationState = {
+  focusArticleId?: string
+  startInEditMode?: boolean
+}
 
 export function WeeklyReaderPage() {
   // Parameters can come from different routes:
@@ -35,6 +41,9 @@ export function WeeklyReaderPage() {
     shortId?: string 
   }>()
   const navigate = useNavigate()
+  const location = useLocation()
+  const locationState = location.state as WeeklyReaderLocationState | null
+  const isAdminInlineFromQuery = new URLSearchParams(location.search).get('admin') === '1'
 
   const { user } = useAuth()
   const navigation = useNavigation()
@@ -68,6 +77,7 @@ export function WeeklyReaderPage() {
   const currentNewsletterId = resolvedNewsletterId || weekNumber || newsletterId || ''
 
   const {
+    newsletter,
     articles,
     isLoading: isLoadingWeekly,
     error: weeklyError,
@@ -90,24 +100,6 @@ export function WeeklyReaderPage() {
     currentNewsletterId // Pass context for correct newsletter resolution on shared articles
   )
 
-  // Tracking Hooks - use article's own newsletter ID for accurate analytics tracking
-  // This ensures the correct newsletter ID is logged even when viewing articles from different weeks
-  // Note: isNavigationSynced check above prevents fetching stale articles during newsletter transitions
-  useAnalyticsTracking({
-    articleId: article?.id,
-    newsletterId: article?.newsletterId, // Use article's newsletter ID, not the URL week's newsletter
-    enabled: !!article?.id && !!article?.newsletterId && isNavigationSynced, // Only track when navigation is synced
-  });
-
-  const { readArticleIds, markAsRead } = useReadStatus(currentNewsletterId);
-
-  // Mark current article as read when loaded
-  useEffect(() => {
-    if (article?.id) {
-      markAsRead(article.id);
-    }
-  }, [article?.id, markAsRead]);
-
   const touchStartX = useRef<number | null>(null)
   const [dragOffset, setDragOffset] = useState(0)
   const [isAnimating, setIsAnimating] = useState(false)
@@ -115,6 +107,42 @@ export function WeeklyReaderPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [canEditArticle, setCanEditArticle] = useState(false)
   const [isCheckingPermission, setIsCheckingPermission] = useState(false)
+  const [permissionCheckedArticleId, setPermissionCheckedArticleId] = useState<string | null>(null)
+  const [pendingInlineEditArticleId, setPendingInlineEditArticleId] = useState<string | null>(null)
+  const [isAdminInlineEntry, setIsAdminInlineEntry] = useState(false)
+  const [showBackToAdminAction, setShowBackToAdminAction] = useState(false)
+  const shouldShowAdminBackEntry = isAdminInlineEntry || isAdminInlineFromQuery
+  const shouldShowReadStatus = newsletter?.isPublished === true
+
+  const shouldSuppressDraftEditAnalytics =
+    article?.isPublished === false &&
+    (
+      isEditMode ||
+      (locationState?.startInEditMode === true && locationState?.focusArticleId === article?.id)
+    )
+
+  // Tracking Hooks - use article's own newsletter ID for accurate analytics tracking
+  // This ensures the correct newsletter ID is logged even when viewing articles from different weeks
+  // Skip analytics for draft inline-edit sessions initiated from admin compose flow.
+  useAnalyticsTracking({
+    articleId: article?.id,
+    newsletterId: article?.newsletterId, // Use article's newsletter ID, not the URL week's newsletter
+    enabled:
+      !!article?.id &&
+      !!article?.newsletterId &&
+      isNavigationSynced &&
+      newsletter?.isPublished === true &&
+      !shouldSuppressDraftEditAnalytics,
+  });
+
+  const { readArticleIds, markAsRead } = useReadStatus(currentNewsletterId);
+
+  // Mark current article as read when loaded
+  useEffect(() => {
+    if (shouldShowReadStatus && article?.id) {
+      markAsRead(article.id);
+    }
+  }, [article?.id, markAsRead, shouldShowReadStatus]);
 
   // Detect loading timeouts (show error if loading > 3 seconds)
   const { isTimedOut: isLoadingTimedOut } = useLoadingTimeout(
@@ -204,15 +232,52 @@ export function WeeklyReaderPage() {
     }
   }, [articles, currentNewsletterId, navigation, shortId, navigate])
 
+  useEffect(() => {
+    if (locationState?.focusArticleId) {
+      setPendingInlineEditArticleId(locationState.focusArticleId)
+    }
+  }, [locationState?.focusArticleId])
+
+  useEffect(() => {
+    if (
+      isAdminInlineFromQuery ||
+      (locationState?.startInEditMode && locationState?.focusArticleId)
+    ) {
+      setIsAdminInlineEntry(true)
+    }
+  }, [isAdminInlineFromQuery, locationState?.focusArticleId, locationState?.startInEditMode])
+
+  useEffect(() => {
+    if (!pendingInlineEditArticleId || articles.length === 0) return
+
+    const targetArticle = articles.find((item) => item.id === pendingInlineEditArticleId)
+    if (!targetArticle) {
+      setPendingInlineEditArticleId(null)
+      return
+    }
+
+    const targetOrder = targetArticle.order ?? 1
+    if (navigation.navigationState.currentArticleId !== targetArticle.id) {
+      navigation.setCurrentArticle(targetArticle.id, targetOrder)
+      if (targetOrder < articles.length) {
+        navigation.setNextArticleId(articles[targetOrder]?.id)
+      } else {
+        navigation.setNextArticleId(undefined)
+      }
+    }
+  }, [articles, pendingInlineEditArticleId, navigation])
+
   // 檢查編輯權限 - 當文章或使用者改變時
   useEffect(() => {
     const checkEditPermission = async () => {
       if (!user?.id || !article) {
         setCanEditArticle(false)
+        setPermissionCheckedArticleId(null)
         return
       }
 
       setIsCheckingPermission(true)
+      setPermissionCheckedArticleId(null)
       try {
         const articleRow = await ArticleService.getArticleById(article.id)
         const hasPermission = await PermissionService.canEditArticle(user.id, articleRow)
@@ -222,11 +287,33 @@ export function WeeklyReaderPage() {
         setCanEditArticle(false)
       } finally {
         setIsCheckingPermission(false)
+        setPermissionCheckedArticleId(article.id)
       }
     }
 
     checkEditPermission()
   }, [article?.id, user?.id])
+
+  useEffect(() => {
+    if (!pendingInlineEditArticleId) return
+    if (article?.id !== pendingInlineEditArticleId) return
+    if (permissionCheckedArticleId !== article.id) return
+
+    if (locationState?.startInEditMode && canEditArticle) {
+      setIsEditMode(true)
+    }
+    setPendingInlineEditArticleId(null)
+    navigate(`${location.pathname}${location.search}`, { replace: true, state: null })
+  }, [
+    article?.id,
+    canEditArticle,
+    location.pathname,
+    location.search,
+    locationState?.startInEditMode,
+    navigate,
+    pendingInlineEditArticleId,
+    permissionCheckedArticleId,
+  ])
 
   // 處理上一篇導航
   const handlePrevious = () => {
@@ -305,6 +392,7 @@ export function WeeklyReaderPage() {
       // Convert Article type to UpdateArticleDTO for ArticleService
       const updateDTO: Parameters<typeof ArticleService.updateArticle>[1] = {
         title: updates.title,
+        summary: updates.summary,
         content: updates.content,
         author: updates.author,
         isPublished: updates.isPublished,
@@ -315,6 +403,9 @@ export function WeeklyReaderPage() {
 
       // 更新成功，退出編輯模式並刷新文章
       setIsEditMode(false)
+      if (shouldShowAdminBackEntry) {
+        setShowBackToAdminAction(true)
+      }
       // 觸發重新獲取文章資料
       await Promise.all([
         refetchWeekly(),
@@ -332,6 +423,21 @@ export function WeeklyReaderPage() {
   // 處理取消編輯
   const handleCancelEdit = () => {
     setIsEditMode(false)
+  }
+
+  const handleBackToAdminPanel = () => {
+    const adminTargetId = newsletter?.id || newsletterId || currentNewsletterId
+    if (!adminTargetId) return
+
+    navigate(
+      getAdminNewsletterPath({
+        id: adminTargetId,
+        weekNumber: weekNumber ?? null,
+      }),
+      {
+        state: { successMessage: '文章已保存' },
+      }
+    )
   }
 
   // 處理觸摸開始 - 記錄起始位置並開始拖曳
@@ -440,7 +546,17 @@ export function WeeklyReaderPage() {
             onSelectArticle={handleSelectArticle}
             isLoading={isLoadingWeekly}
             disabled={isEditMode}
-            readArticleIds={readArticleIds}
+            readArticleIds={shouldShowReadStatus ? readArticleIds : undefined}
+            headerAction={
+              shouldShowAdminBackEntry ? (
+                <button
+                  onClick={handleBackToAdminPanel}
+                  className="rounded-md border border-waldorf-cream-300 bg-white px-2.5 py-1.5 text-xs font-medium text-waldorf-clay-700 transition-colors hover:bg-waldorf-cream-50 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-500"
+                >
+                  返回後台
+                </button>
+              ) : undefined
+            }
           />
         </div>
 
@@ -450,12 +566,22 @@ export function WeeklyReaderPage() {
           {!isEditMode && article && (
             <div className="px-6 py-2 bg-waldorf-cream-50 border-b border-waldorf-cream-200 flex justify-between items-center">
               {canEditArticle && !isCheckingPermission && (
-                <button
-                  onClick={() => setIsEditMode(true)}
-                  className="px-4 py-2 text-sm bg-waldorf-sage-600 text-white rounded-md hover:bg-waldorf-sage-700 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-500 transition-colors"
-                >
-                  編輯文章
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setIsEditMode(true)}
+                    className="px-4 py-2 text-sm bg-waldorf-sage-600 text-white rounded-md hover:bg-waldorf-sage-700 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-500 transition-colors"
+                  >
+                    編輯文章
+                  </button>
+                  {showBackToAdminAction && (
+                    <button
+                      onClick={handleBackToAdminPanel}
+                      className="px-4 py-2 text-sm bg-white text-waldorf-clay-700 border border-waldorf-cream-300 rounded-md hover:bg-waldorf-cream-50 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-500 transition-colors"
+                    >
+                      返回管理後台
+                    </button>
+                  )}
+                </div>
               )}
               {isCheckingPermission && (
                 <div className="text-sm text-waldorf-clay-600">
@@ -519,12 +645,22 @@ export function WeeklyReaderPage() {
         {!isEditMode && article && (
           <div className="px-4 py-2 bg-waldorf-cream-50 border-b border-waldorf-cream-200 flex justify-between items-center">
             {canEditArticle && !isCheckingPermission && (
-              <button
-                onClick={() => setIsEditMode(true)}
-                className="px-4 py-2 text-sm bg-waldorf-sage-600 text-white rounded-md hover:bg-waldorf-sage-700 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-500 transition-colors"
-              >
-                編輯
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsEditMode(true)}
+                  className="px-4 py-2 text-sm bg-waldorf-sage-600 text-white rounded-md hover:bg-waldorf-sage-700 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-500 transition-colors"
+                >
+                  編輯
+                </button>
+                {showBackToAdminAction && (
+                  <button
+                    onClick={handleBackToAdminPanel}
+                    className="px-4 py-2 text-sm bg-white text-waldorf-clay-700 border border-waldorf-cream-300 rounded-md hover:bg-waldorf-cream-50 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-500 transition-colors"
+                  >
+                    返回管理後台
+                  </button>
+                )}
+              </div>
             )}
             {isCheckingPermission && (
               <div className="text-sm text-waldorf-clay-600">

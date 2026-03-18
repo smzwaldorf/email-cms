@@ -8,6 +8,11 @@ import { BrowserRouter } from 'react-router-dom'
 vi.mock('@/services/adminService', () => ({
   adminService: {
     createNewsletter: vi.fn(),
+    createNewsletterFromTemplate: vi.fn(),
+    createTemplateFromNewsletter: vi.fn(),
+    updateNewsletter: vi.fn(),
+    fetchNewsletterTemplates: vi.fn(),
+    fetchNewsletters: vi.fn(),
   },
   AdminServiceError: class extends Error {},
 }))
@@ -25,6 +30,8 @@ vi.mock('react-router-dom', async () => {
 describe('NewsletterForm', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(adminService.fetchNewsletterTemplates).mockResolvedValue([])
+    vi.mocked(adminService.fetchNewsletters).mockResolvedValue([])
   })
 
   it('renders form fields correctly', () => {
@@ -61,6 +68,21 @@ describe('NewsletterForm', () => {
   })
 
   it('submits form with valid data', async () => {
+    vi.mocked(adminService.createNewsletter).mockResolvedValueOnce({
+      id: 'newsletter-1',
+      weekNumber: '2025-W48',
+      title: null,
+      description: null,
+      releaseDate: '2025-11-30',
+      status: 'draft',
+      articleCount: 0,
+      createdAt: '2025-11-01',
+      updatedAt: '2025-11-01',
+      publishedAt: null,
+      isPublished: false,
+      isTemplate: false,
+    })
+
     render(
       <BrowserRouter>
         <NewsletterForm />
@@ -78,9 +100,238 @@ describe('NewsletterForm', () => {
     await waitFor(() => {
       expect(adminService.createNewsletter).toHaveBeenCalledWith(
         '2025-W48',
-        '2025-11-30'
+        '2025-11-30',
+        {
+          title: '',
+          description: '',
+        }
       )
-      expect(mockNavigate).toHaveBeenCalledWith('/admin')
+      expect(mockNavigate).toHaveBeenCalledWith('/admin/newsletters/2025-W48')
+    })
+  })
+
+  it('submits form with template selection', async () => {
+    vi.mocked(adminService.fetchNewsletterTemplates).mockResolvedValueOnce([
+      {
+        id: 'template-1',
+        weekNumber: '2025-W47',
+        title: 'Week 47',
+        description: null,
+        releaseDate: '2025-11-23',
+        status: 'published',
+        articleCount: 3,
+        createdAt: '2025-11-20',
+        updatedAt: '2025-11-20',
+        publishedAt: '2025-11-23',
+        isPublished: true,
+        isTemplate: true,
+      },
+    ])
+    vi.mocked(adminService.createNewsletterFromTemplate).mockResolvedValueOnce({
+      id: 'newsletter-2',
+      weekNumber: '2025-W48',
+      title: 'Week 48',
+      description: 'Copied',
+      releaseDate: '2025-11-30',
+      status: 'draft',
+      articleCount: 3,
+      createdAt: '2025-11-25',
+      updatedAt: '2025-11-25',
+      publishedAt: null,
+      isPublished: false,
+      isTemplate: false,
+    })
+
+    render(
+      <BrowserRouter>
+        <NewsletterForm />
+      </BrowserRouter>
+    )
+
+    await waitFor(() => {
+      expect(adminService.fetchNewsletterTemplates).toHaveBeenCalled()
+    })
+
+    fireEvent.change(screen.getByTestId('template-select'), { target: { value: 'template-1' } })
+    fireEvent.change(screen.getByLabelText(/週次/), { target: { value: '2025-W48' } })
+    fireEvent.change(screen.getByLabelText(/預計發布日期/), { target: { value: '2025-11-30' } })
+    fireEvent.click(screen.getByText('建立電子報'))
+
+    await waitFor(() => {
+      expect(adminService.createNewsletterFromTemplate).toHaveBeenCalledWith('template-1', {
+        weekNumber: '2025-W48',
+        title: '',
+        description: '',
+        releaseDate: '2025-11-30',
+      })
+    })
+  })
+
+  it('submits draft metadata updates in edit mode', async () => {
+    const onSuccess = vi.fn()
+    vi.mocked(adminService.updateNewsletter).mockResolvedValueOnce({
+      id: 'newsletter-1',
+      weekNumber: '2025-W48',
+      title: 'Updated title',
+      description: 'Updated description',
+      releaseDate: '2025-11-30',
+      status: 'draft',
+      articleCount: 1,
+      createdAt: '2025-11-01',
+      updatedAt: '2025-11-02',
+      publishedAt: null,
+      isPublished: false,
+      isTemplate: false,
+    })
+
+    render(
+      <BrowserRouter>
+        <NewsletterForm
+          mode="edit"
+          newsletter={{
+            id: 'newsletter-1',
+            weekNumber: '2025-W48',
+            title: 'Original title',
+            description: 'Original description',
+            releaseDate: '2025-11-29',
+            status: 'draft',
+            articleCount: 1,
+            createdAt: '2025-11-01',
+            updatedAt: '2025-11-01',
+            publishedAt: null,
+            isPublished: false,
+            isTemplate: false,
+          }}
+          onSuccess={onSuccess}
+        />
+      </BrowserRouter>
+    )
+
+    fireEvent.change(screen.getByLabelText(/標題/), { target: { value: 'Updated title' } })
+    fireEvent.change(screen.getByLabelText(/摘要/), { target: { value: 'Updated description' } })
+    fireEvent.change(screen.getByLabelText(/預計發布日期/), { target: { value: '2025-11-30' } })
+    fireEvent.click(screen.getByText('儲存電子報'))
+
+    await waitFor(() => {
+      expect(adminService.updateNewsletter).toHaveBeenCalledWith('newsletter-1', {
+        weekNumber: '2025-W48',
+        title: 'Updated title',
+        description: 'Updated description',
+        releaseDate: '2025-11-30',
+      })
+      expect(onSuccess).toHaveBeenCalled()
+    })
+  })
+
+  it('hides release date and does not send it when editing a template', async () => {
+    const onSuccess = vi.fn()
+    vi.mocked(adminService.updateNewsletter).mockResolvedValueOnce({
+      id: 'template-1',
+      weekNumber: null,
+      title: 'Updated template title',
+      description: 'Updated template description',
+      releaseDate: '2025-11-30',
+      status: 'draft',
+      articleCount: 2,
+      createdAt: '2025-11-01',
+      updatedAt: '2025-11-02',
+      publishedAt: null,
+      isPublished: false,
+      isTemplate: true,
+    })
+
+    render(
+      <BrowserRouter>
+        <NewsletterForm
+          mode="edit"
+          newsletter={{
+            id: 'template-1',
+            weekNumber: null,
+            title: 'Original template title',
+            description: 'Original template description',
+            releaseDate: '2025-11-29',
+            status: 'draft',
+            articleCount: 2,
+            createdAt: '2025-11-01',
+            updatedAt: '2025-11-01',
+            publishedAt: null,
+            isPublished: false,
+            isTemplate: true,
+          }}
+          onSuccess={onSuccess}
+        />
+      </BrowserRouter>
+    )
+
+    expect(screen.queryByLabelText(/預計發布日期/)).not.toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText(/標題/), { target: { value: 'Updated template title' } })
+    fireEvent.change(screen.getByLabelText(/摘要/), { target: { value: 'Updated template description' } })
+    fireEvent.click(screen.getByText('儲存電子報'))
+
+    await waitFor(() => {
+      expect(adminService.updateNewsletter).toHaveBeenCalledWith('template-1', {
+        weekNumber: null,
+        title: 'Updated template title',
+        description: 'Updated template description',
+      })
+      expect(onSuccess).toHaveBeenCalled()
+    })
+  })
+
+  it('creates a template from an existing newsletter source', async () => {
+    vi.mocked(adminService.fetchNewsletters).mockResolvedValueOnce([
+      {
+        id: 'newsletter-source-1',
+        weekNumber: '2025-W47',
+        title: 'Week 47',
+        description: 'Source',
+        releaseDate: '2025-11-23',
+        status: 'published',
+        articleCount: 3,
+        createdAt: '2025-11-20',
+        updatedAt: '2025-11-20',
+        publishedAt: '2025-11-23',
+        isPublished: true,
+        isTemplate: false,
+      },
+    ])
+    vi.mocked(adminService.createTemplateFromNewsletter).mockResolvedValueOnce({
+      id: 'template-1',
+      weekNumber: null,
+      title: 'Week 47 Template',
+      description: 'Template',
+      releaseDate: '2025-11-23',
+      status: 'draft',
+      articleCount: 3,
+      createdAt: '2025-11-25',
+      updatedAt: '2025-11-25',
+      publishedAt: null,
+      isPublished: false,
+      isTemplate: true,
+    })
+
+    render(
+      <BrowserRouter>
+        <NewsletterForm mode="create-template" />
+      </BrowserRouter>
+    )
+
+    await waitFor(() => {
+      expect(adminService.fetchNewsletters).toHaveBeenCalled()
+    })
+
+    fireEvent.change(screen.getByTestId('source-newsletter-select'), { target: { value: 'newsletter-source-1' } })
+    fireEvent.change(screen.getByLabelText(/標題/), { target: { value: 'Week 47 Template' } })
+    expect(screen.queryByLabelText(/預計發布日期/)).not.toBeInTheDocument()
+    fireEvent.click(screen.getByText('建立模板'))
+
+    await waitFor(() => {
+      expect(adminService.createTemplateFromNewsletter).toHaveBeenCalledWith('newsletter-source-1', {
+        title: 'Week 47 Template',
+        description: '',
+        releaseDate: undefined,
+      })
     })
   })
 

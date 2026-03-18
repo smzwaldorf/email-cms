@@ -18,6 +18,7 @@ import { useAuth } from '@/context/AuthContext'
 import ArticleForm from '@/components/admin/ArticleForm'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
+import { getAdminNewsletterPath } from '@/utils/adminNewsletterRoutes'
 
 interface LocationState {
   newsletterId?: string
@@ -27,7 +28,7 @@ interface LocationState {
  * Article Editor Page Component
  */
 export function ArticleEditorPage() {
-  const { weekNumber, articleId } = useParams<{ weekNumber: string; articleId: string }>()
+  const { weekNumber, id, articleId } = useParams<{ weekNumber?: string; id?: string; articleId?: string }>()
   const navigate = useNavigate()
   const location = useLocation()
   const state = location.state as LocationState | null
@@ -47,8 +48,8 @@ export function ArticleEditorPage() {
   }, [weekNumber, articleId])
 
   const loadArticleData = async () => {
-    if (!weekNumber || !articleId) {
-      setError('缺少必要的參數：weekNumber 或 articleId')
+    if ((!weekNumber && !id) || !articleId) {
+      setError('缺少必要的參數：newsletter 或 articleId')
       setIsLoading(false)
       return
     }
@@ -58,7 +59,9 @@ export function ArticleEditorPage() {
       setError(null)
 
       // Load articles for the week and find the one we need
-      const articles = await adminService.fetchArticlesByNewsletter(weekNumber)
+      const articles = weekNumber
+        ? await adminService.fetchArticlesByNewsletter(weekNumber)
+        : await adminService.fetchArticlesByNewsletterId(id as string)
       const fetchedArticle = articles.find((a) => a.id === articleId)
 
       if (!fetchedArticle) {
@@ -103,9 +106,25 @@ export function ArticleEditorPage() {
         article.editedAt || article.updatedAt || new Date().toISOString(),
         user.id
       )
+      let effectiveNewsletterId = state?.newsletterId || id
+      if (!effectiveNewsletterId && weekNumber) {
+        const newsletter = await adminService.fetchNewsletterByWeek(weekNumber)
+        effectiveNewsletterId = newsletter.id
+      }
+      if (effectiveNewsletterId) {
+        await adminService.updateArticleTargetingInNewsletterById(
+          effectiveNewsletterId,
+          articleId,
+          updatedArticle.newsletterTargetingMode ?? 'shared',
+          updatedArticle.newsletterTargetClassIds ?? []
+        )
+      }
 
       // Navigate back to newsletter view
-      navigate(`/admin`, {
+      navigate(getAdminNewsletterPath({
+        id: state?.newsletterId || id || '',
+        weekNumber,
+      }), {
         state: { successMessage: '文章已保存' },
       })
     } catch (err: any) {
@@ -120,9 +139,10 @@ export function ArticleEditorPage() {
    */
   const handleCancel = () => {
     // Navigate back to newsletter view
-    navigate(`/admin`, {
-      state: { newsletterId: state?.newsletterId },
-    })
+    navigate(getAdminNewsletterPath({
+      id: state?.newsletterId || id || '',
+      weekNumber,
+    }))
   }
 
   /**
@@ -173,6 +193,7 @@ export function ArticleEditorPage() {
             <h1 className="text-3xl font-bold text-gray-900">編輯文章</h1>
             <p className="mt-1 text-gray-600">
               週次: {weekNumber} | 文章 ID: {articleId}
+              {!weekNumber && id ? ` | 電子報 ID: ${id}` : ''}
             </p>
           </div>
 
@@ -192,6 +213,7 @@ export function ArticleEditorPage() {
             onError={handleError}
             availableClasses={availableClasses}
             availableFamilies={availableFamilies}
+            showNewsletterTargeting
           />
         </div>
       </div>

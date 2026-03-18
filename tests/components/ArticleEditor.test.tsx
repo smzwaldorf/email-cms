@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, act } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ArticleEditor } from '@/components/ArticleEditor'
 import type { Article } from '@/types'
@@ -265,7 +265,7 @@ describe('ArticleEditor Component', () => {
   })
 
   describe('Publication Status', () => {
-    it('should display publication status toggle', () => {
+    it('should hide publication status toggle while editing', () => {
       render(
         <ArticleEditor
           article={mockArticle}
@@ -274,31 +274,8 @@ describe('ArticleEditor Component', () => {
         />,
       )
 
-      // Check for publication status indicator
-      expect(screen.getByText('已發布')).toBeInTheDocument()
-    })
-
-    it('should allow toggling publication status', async () => {
-      const user = userEvent.setup()
-
-      render(
-        <ArticleEditor
-          article={mockArticle}
-          onSave={mockOnSave}
-          onCancel={mockOnCancel}
-        />,
-      )
-
-      // Find and interact with publication toggle
-      const publishToggle = screen.getByRole('checkbox', { name: '已發布' })
-      expect(publishToggle).not.toBeChecked()
-
-      // Click and wait for state update
-      await act(async () => {
-        await user.click(publishToggle)
-      })
-
-      expect(publishToggle).toBeChecked()
+      expect(screen.queryByText('已發布')).not.toBeInTheDocument()
+      expect(screen.queryByRole('checkbox', { name: '已發布' })).not.toBeInTheDocument()
     })
   })
 

@@ -16,6 +16,7 @@ interface ArticleListViewProps {
   isLoading?: boolean
   disabled?: boolean
   readArticleIds?: Set<string>
+  headerAction?: React.ReactNode
 }
 
 export const ArticleListView = memo(function ArticleListView({
@@ -25,6 +26,7 @@ export const ArticleListView = memo(function ArticleListView({
   isLoading = false,
   disabled = false,
   readArticleIds,
+  headerAction,
 }: ArticleListViewProps) {
   // Memoize the select handler to prevent unnecessary re-renders
   const handleSelectArticle = useCallback(
@@ -60,6 +62,7 @@ export const ArticleListView = memo(function ArticleListView({
       <div className="px-4 py-3 border-b border-waldorf-cream-200 bg-waldorf-cream-100 space-y-3">
         <div className="flex items-center justify-between">
           <WeekSelector disabled={disabled} />
+          {headerAction}
         </div>
         <p className="text-sm text-waldorf-clay-600">共 {articles.length} 篇文章</p>
       </div>

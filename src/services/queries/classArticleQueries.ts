@@ -102,6 +102,8 @@ export async function getArticlesForFamily(
       .from('newsletter_articles')
       .select(`
         article_order,
+        targeting_mode,
+        target_class_ids,
         articles!inner (*)
       `)
       .eq('newsletter_id', newsletterId)
@@ -127,44 +129,21 @@ export async function getArticlesForFamily(
       // Skip deleted or unpublished articles
       if (article.deleted_at || article.status !== 'published') continue
 
-      // Include public articles
-      if (article.visibility_type === 'public') {
+      const targetingMode = (row as any).targeting_mode ?? 'shared'
+      const targetClassIds = ((row as any).target_class_ids ?? []) as string[]
+
+      // Include shared articles for every eligible guardian.
+      if (targetingMode === 'shared') {
         allArticles.push(article)
         continue
       }
 
-      // Include class-restricted articles if family is enrolled
-      if (article.visibility_type === 'class_restricted' && article.restricted_to_classes) {
-        const hasAccess = (article.restricted_to_classes as string[]).some((classId) =>
-          enrolledClassIds.includes(classId)
-        )
-        if (hasAccess) {
-          allArticles.push(article)
-        }
+      // Targeted articles require class match against guardian enrollment.
+      const hasClassMatch = targetClassIds.some((classId) => enrolledClassIds.includes(classId))
+      if (hasClassMatch) {
+        allArticles.push(article)
       }
     }
-
-    // Step 5: Sort - class-restricted by grade year DESC, then by order
-    allArticles.sort((a, b) => {
-      // Public articles go last
-      if (a.visibility_type === 'public' && b.visibility_type !== 'public') return 1
-      if (a.visibility_type !== 'public' && b.visibility_type === 'public') return -1
-
-      // For class-restricted, sort by grade year
-      if (a.visibility_type === 'class_restricted' && b.visibility_type === 'class_restricted') {
-        const aClassId = (a.restricted_to_classes as string[])?.[0]
-        const bClassId = (b.restricted_to_classes as string[])?.[0]
-        const aClass = classes.find((c) => c.id === aClassId)
-        const bClass = classes.find((c) => c.id === bClassId)
-        const aGrade = aClass?.class_grade_year ?? 0
-        const bGrade = bClass?.class_grade_year ?? 0
-
-        if (bGrade !== aGrade) return bGrade - aGrade
-      }
-
-      // Then by article order
-      return ((a as any).article_order ?? 0) - ((b as any).article_order ?? 0)
-    })
 
     const executionTimeMs = Date.now() - startTime
 
@@ -208,6 +187,8 @@ export async function getArticlesForClass(
       .from('newsletter_articles')
       .select(`
         article_order,
+        targeting_mode,
+        target_class_ids,
         articles!inner (*)
       `)
       .eq('newsletter_id', newsletterId)
@@ -233,17 +214,15 @@ export async function getArticlesForClass(
       // Skip deleted or unpublished
       if (article.deleted_at || article.status !== 'published') continue
 
-      // Include public articles
-      if (article.visibility_type === 'public') {
+      const targetingMode = (row as any).targeting_mode ?? 'shared'
+      const targetClassIds = ((row as any).target_class_ids ?? []) as string[]
+      if (targetingMode === 'shared') {
         visibleArticles.push(article)
         continue
       }
 
-      // Include class-restricted articles if this class is included
-      if (article.visibility_type === 'class_restricted' && article.restricted_to_classes) {
-        if ((article.restricted_to_classes as string[]).includes(classId)) {
-          visibleArticles.push(article)
-        }
+      if (targetClassIds.includes(classId)) {
+        visibleArticles.push(article)
       }
     }
 

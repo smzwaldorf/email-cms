@@ -104,11 +104,17 @@ export interface AdminNewsletter {
   description?: string | null // Newsletter summary/description
   releaseDate: string // ISO 日期字符串
   status: NewsletterStatus
+  isTemplate: boolean
   articleCount: number // 該週的文章數量
   createdAt: string
   updatedAt: string
   publishedAt?: string | null
   isPublished: boolean
+}
+
+export interface NewsletterPublishReadiness {
+  canPublish: boolean
+  issues: string[]
 }
 
 /**
@@ -122,6 +128,8 @@ export interface AdminArticle {
   summary?: string
   weekNumber: string
   order: number
+  newsletterTargetingMode?: 'shared' | 'targeted'
+  newsletterTargetClassIds?: string[]
   classIds?: string[] // 分類 ID 列表
   familyIds?: string[] // 家族 ID 列表
   status: 'draft' | 'published'

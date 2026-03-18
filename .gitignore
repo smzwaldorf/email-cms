@@ -73,3 +73,7 @@ lerna-debug.log*
 
 # Vite
 .vite/
+
+# Spectra
+.spectra/
+openspec/.vector-search.db*

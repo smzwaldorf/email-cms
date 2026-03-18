@@ -22,6 +22,7 @@ export interface ArticleFormProps {
   onCancel?: () => void
   availableClasses?: Array<{ id: string; name: string }>
   availableFamilies?: Array<{ id: string; name: string }>
+  showNewsletterTargeting?: boolean
 }
 
 /**
@@ -42,12 +43,14 @@ export function ArticleForm({
   onCancel,
   availableClasses = [],
   availableFamilies = [],
+  showNewsletterTargeting = false,
 }: ArticleFormProps) {
   const [formData, setFormData] = useState<AdminArticle>(article)
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [hasConflict, setHasConflict] = useState(false)
   const [conflictDetails, setConflictDetails] = useState<ConflictDetails | null>(null)
+  const [targetClassSearch, setTargetClassSearch] = useState('')
 
   /**
    * Handle title change
@@ -95,6 +98,25 @@ export function ArticleForm({
     setFormData({ ...formData, familyIds: newFamilyIds })
   }
 
+  const handleTargetingModeChange = (mode: 'shared' | 'targeted') => {
+    setFormData({
+      ...formData,
+      newsletterTargetingMode: mode,
+      newsletterTargetClassIds: mode === 'shared' ? [] : formData.newsletterTargetClassIds || [],
+    })
+  }
+
+  const handleTargetClassToggle = (classId: string) => {
+    const current = formData.newsletterTargetClassIds || []
+    const next = current.includes(classId)
+      ? current.filter((id) => id !== classId)
+      : [...current, classId]
+    setFormData({
+      ...formData,
+      newsletterTargetClassIds: next,
+    })
+  }
+
   /**
    * Handle save with LWW conflict detection
    */
@@ -113,6 +135,14 @@ export function ArticleForm({
       // Then compare: if remoteArticle.editedAt > formData.editedAt => conflict
 
       // For now, we just update locally
+      if (
+        showNewsletterTargeting &&
+        (formData.newsletterTargetingMode ?? 'shared') === 'targeted' &&
+        (formData.newsletterTargetClassIds || []).length === 0
+      ) {
+        throw new Error('目標投遞模式至少需選擇一個班級，或改為共享文章。')
+      }
+
       const now = new Date().toISOString()
       const updated: AdminArticle = {
         ...formData,
@@ -289,6 +319,60 @@ export function ArticleForm({
                   <span className="ml-2 text-sm text-gray-700">{family.name}</span>
                 </label>
               ))}
+            </div>
+          </div>
+        )}
+
+        {showNewsletterTargeting && availableClasses.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">電子報班級投遞</label>
+            <div className="space-y-2 rounded-md border border-gray-200 p-3">
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="radio"
+                  name="newsletter-targeting-mode"
+                  checked={(formData.newsletterTargetingMode ?? 'shared') === 'shared'}
+                  onChange={() => handleTargetingModeChange('shared')}
+                />
+                共享（所有班級）
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="radio"
+                  name="newsletter-targeting-mode"
+                  checked={(formData.newsletterTargetingMode ?? 'shared') === 'targeted'}
+                  onChange={() => handleTargetingModeChange('targeted')}
+                />
+                目標班級
+              </label>
+              {(formData.newsletterTargetingMode ?? 'shared') === 'targeted' && (
+                <div className="space-y-2 rounded border border-gray-200 p-2">
+                  <input
+                    type="text"
+                    value={targetClassSearch}
+                    onChange={(event) => setTargetClassSearch(event.target.value)}
+                    placeholder="搜尋班級"
+                    className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm text-gray-700"
+                  />
+                  <div className="max-h-36 space-y-1 overflow-y-auto">
+                    {availableClasses
+                      .filter((classItem) =>
+                        classItem.name.toLowerCase().includes(targetClassSearch.trim().toLowerCase())
+                      )
+                      .map((classItem) => (
+                        <label key={classItem.id} className="flex items-center gap-2 text-sm text-gray-700">
+                          <input
+                            type="checkbox"
+                            checked={(formData.newsletterTargetClassIds || []).includes(classItem.id)}
+                            onChange={() => handleTargetClassToggle(classItem.id)}
+                            disabled={isSaving}
+                          />
+                          {classItem.name}
+                        </label>
+                      ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

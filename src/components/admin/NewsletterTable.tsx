@@ -14,6 +14,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { AdminNewsletter, NewsletterFilterOptions } from '@/types/admin'
+import { getAdminNewsletterPath } from '@/utils/adminNewsletterRoutes'
 
 export interface NewsletterTableProps {
   newsletters: AdminNewsletter[]
@@ -23,7 +24,10 @@ export interface NewsletterTableProps {
   onPublish?: (id: string) => void
   onArchive?: (id: string) => void
   onDelete?: (id: string) => void
+  onCreateTemplate?: (id: string) => void
   onFilterChange?: (filters: NewsletterFilterOptions) => void
+  onTemplateListToggle?: () => void
+  templateToggleLabel?: string
 }
 
 type SortField = 'weekNumber' | 'releaseDate' | 'status' | 'articleCount'
@@ -67,7 +71,10 @@ export function NewsletterTable({
   onPublish,
   onArchive,
   onDelete,
+  onCreateTemplate,
   onFilterChange,
+  onTemplateListToggle,
+  templateToggleLabel = '模板列表',
 }: NewsletterTableProps) {
   const [sortField, setSortField] = useState<SortField>('weekNumber')
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
@@ -227,6 +234,22 @@ export function NewsletterTable({
             <option value="archived">已封存</option>
           </select>
         </div>
+        {onTemplateListToggle ? (
+          <button
+            type="button"
+            onClick={onTemplateListToggle}
+            className="px-3 py-2 border border-waldorf-peach-200 text-waldorf-peach-700 text-sm font-medium rounded-lg hover:bg-waldorf-peach-50 transition-all duration-200"
+          >
+            {templateToggleLabel}
+          </button>
+        ) : (
+          <Link
+            to="/admin/templates"
+            className="px-3 py-2 border border-waldorf-peach-200 text-waldorf-peach-700 text-sm font-medium rounded-lg hover:bg-waldorf-peach-50 transition-all duration-200"
+          >
+            模板列表
+          </Link>
+        )}
         <div className="ml-auto flex items-center gap-2">
           <span className="text-sm text-waldorf-clay-500">
             顯示 <span className="font-semibold text-waldorf-clay-700">{sortedAndFiltered.length}</span> / {newsletters.length} 個電子報
@@ -292,9 +315,16 @@ export function NewsletterTable({
                 data-testid={`newsletter-row-${newsletter.id}`}
               >
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="font-display text-lg font-semibold text-waldorf-clay-800">
-                    {newsletter.weekNumber}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-display text-lg font-semibold text-waldorf-clay-800">
+                      {newsletter.weekNumber || newsletter.title || '未命名'}
+                    </span>
+                    {newsletter.isTemplate && (
+                      <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold border bg-waldorf-peach-50 text-waldorf-peach-700 border-waldorf-peach-200">
+                        模板
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-waldorf-clay-600">
                   {new Date(newsletter.releaseDate).toLocaleDateString('zh-TW', {
@@ -305,7 +335,7 @@ export function NewsletterTable({
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <Link
-                    to={`/admin/articles/${newsletter.weekNumber}`}
+                    to={getAdminNewsletterPath(newsletter)}
                     className="inline-flex items-center gap-1.5 text-waldorf-clay-600 hover:text-waldorf-peach-600 transition-colors duration-200 group"
                     title="View Articles"
                   >
@@ -343,7 +373,7 @@ export function NewsletterTable({
                     })()}
                     {newsletter.status === 'published' && (() => {
                       // Use /week for week_number format, /newsletter for UUIDs
-                      const isWeekNumber = /^\d{4}-W\d{2}$/.test(newsletter.weekNumber)
+                      const isWeekNumber = /^\d{4}-W\d{2}$/.test(newsletter.weekNumber || '')
                       const route = isWeekNumber ? `/week/${newsletter.weekNumber}` : `/newsletter/${newsletter.id}`
                       return (
                         <a
@@ -363,7 +393,16 @@ export function NewsletterTable({
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center gap-2">
-                    {newsletter.status === 'draft' && (
+                    {newsletter.isTemplate ? (
+                      <button
+                        onClick={() => onEdit?.(newsletter.id)}
+                        className="px-3 py-1.5 bg-waldorf-clay-100 text-waldorf-clay-700 text-xs font-medium rounded-lg hover:bg-waldorf-clay-200 transition-all duration-200 disabled:opacity-50"
+                        data-testid={`edit-btn-${newsletter.id}`}
+                        disabled={!onEdit}
+                      >
+                        編輯模板
+                      </button>
+                    ) : newsletter.status === 'draft' && (
                       <>
                         <button
                           onClick={() => onEdit?.(newsletter.id)}
@@ -381,9 +420,27 @@ export function NewsletterTable({
                         >
                           發布
                         </button>
+                        <button
+                          onClick={() => onCreateTemplate?.(newsletter.id)}
+                          className="px-3 py-1.5 bg-white border border-waldorf-peach-200 text-waldorf-peach-700 text-xs font-medium rounded-lg hover:bg-waldorf-peach-50 transition-all duration-200 disabled:opacity-50"
+                          data-testid={`template-btn-${newsletter.id}`}
+                          disabled={!onCreateTemplate}
+                        >
+                          建立模板
+                        </button>
                       </>
                     )}
-                    {newsletter.status === 'published' && (
+                    {!newsletter.isTemplate && newsletter.status !== 'draft' && (
+                      <button
+                        onClick={() => onCreateTemplate?.(newsletter.id)}
+                        className="px-3 py-1.5 bg-white border border-waldorf-peach-200 text-waldorf-peach-700 text-xs font-medium rounded-lg hover:bg-waldorf-peach-50 transition-all duration-200 disabled:opacity-50"
+                        data-testid={`template-btn-${newsletter.id}`}
+                        disabled={!onCreateTemplate}
+                      >
+                        建立模板
+                      </button>
+                    )}
+                    {!newsletter.isTemplate && newsletter.status === 'published' && (
                       <button
                         onClick={() => onArchive?.(newsletter.id)}
                         className="px-3 py-1.5 bg-waldorf-cream-200 text-waldorf-clay-600 text-xs font-medium rounded-lg hover:bg-waldorf-cream-300 transition-all duration-200 disabled:opacity-50"

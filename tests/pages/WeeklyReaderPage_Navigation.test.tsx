@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { WeeklyReaderPage } from '@/pages/WeeklyReaderPage'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
@@ -9,10 +9,22 @@ import ArticleService from '@/services/ArticleService'
 
 // Mock child components to verify props
 vi.mock('@/components/ArticleListView', () => ({ 
-  ArticleListView: (props: any) => <div data-testid="article-list" data-disabled={props.disabled ? 'true' : 'false'}>Article List</div> 
+  ArticleListView: (props: any) => (
+    <div data-testid="article-list" data-disabled={props.disabled ? 'true' : 'false'}>
+      Article List
+      {props.headerAction}
+    </div>
+  ) 
 }))
 vi.mock('@/components/ArticleContent', () => ({ ArticleContent: () => <div data-testid="article-content">Article Content</div> }))
-vi.mock('@/components/ArticleEditor', () => ({ ArticleEditor: () => <div data-testid="article-editor">Article Editor</div> }))
+vi.mock('@/components/ArticleEditor', () => ({
+  ArticleEditor: (props: any) => (
+    <div data-testid="article-editor">
+      Article Editor
+      <button onClick={() => props.onSave?.({ title: 'Saved Title' })}>Mock Save</button>
+    </div>
+  )
+}))
 vi.mock('@/components/NavigationBar', () => ({ 
   NavigationBar: (props: any) => <div data-testid="nav-bar" data-disabled={props.disabled ? 'true' : 'false'}>Nav Bar</div> 
 }))
@@ -116,7 +128,7 @@ describe('WeeklyReaderPage Navigation', () => {
       isLoading: false,
       signIn: vi.fn(),
       signOut: vi.fn(),
-    })
+    } as any)
 
     // Mock useNavigation
     vi.mocked(useNavigation).mockReturnValue({
@@ -146,9 +158,9 @@ describe('WeeklyReaderPage Navigation', () => {
     vi.mocked(ArticleService.getArticleById).mockResolvedValue(mockArticles[0] as any)
   })
 
-  const renderPage = () => {
+  const renderPage = (initialEntry: string | { pathname: string; state?: unknown } = '/newsletter/11111111-1111-1111-1111-111111111111') => {
     return render(
-      <MemoryRouter initialEntries={['/newsletter/11111111-1111-1111-1111-111111111111']}>
+      <MemoryRouter initialEntries={[initialEntry as any]}>
         <Routes>
           <Route path="/newsletter/:newsletterId" element={<WeeklyReaderPage />} />
         </Routes>
@@ -194,6 +206,46 @@ describe('WeeklyReaderPage Navigation', () => {
     const navBars = screen.getAllByTestId('nav-bar')
     navBars.forEach(navBar => {
       expect(navBar).toHaveAttribute('data-disabled', 'false')
+    })
+  })
+
+  it('should show back-to-admin action after save when entered from admin edit flow', async () => {
+    renderPage({
+      pathname: '/newsletter/11111111-1111-1111-1111-111111111111',
+      state: { focusArticleId: 'article-1', startInEditMode: true },
+    })
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Mock Save').length).toBeGreaterThan(0)
+    })
+
+    fireEvent.click(screen.getAllByText('Mock Save')[0])
+
+    await waitFor(() => {
+      expect(screen.getAllByText('返回管理後台').length).toBeGreaterThan(0)
+    })
+
+    fireEvent.click(screen.getAllByText('返回管理後台')[0])
+
+    expect(mockNavigate).toHaveBeenCalledWith('/admin/newsletters/id/11111111-1111-1111-1111-111111111111', {
+      state: { successMessage: '文章已保存' },
+    })
+  })
+
+  it('should show sidebar back-to-admin link for admin-initiated entry', async () => {
+    renderPage({
+      pathname: '/newsletter/11111111-1111-1111-1111-111111111111',
+      state: { focusArticleId: 'article-1', startInEditMode: true },
+    })
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '返回後台' })).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '返回後台' }))
+
+    expect(mockNavigate).toHaveBeenCalledWith('/admin/newsletters/id/11111111-1111-1111-1111-111111111111', {
+      state: { successMessage: '文章已保存' },
     })
   })
 })

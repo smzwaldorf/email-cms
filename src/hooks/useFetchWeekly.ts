@@ -23,6 +23,7 @@ interface UseFetchWeeklyResult {
  * Note: weekNumber is now from junction table, passed as parameter
  */
 function convertArticleRow(row: ArticleRow, order: number, weekNumber?: string, newsletterId?: string): Article {
+  const articleWithSummary = row as ArticleRow & { summary?: string | null }
   return {
     id: row.id,
     shortId: row.short_id,
@@ -30,7 +31,7 @@ function convertArticleRow(row: ArticleRow, order: number, weekNumber?: string, 
     content: row.content,
     author: undefined, // Author name fetched from user_roles via author_id
     authorId: row.author_id || undefined,
-    summary: row.title, // Use title as summary since DB doesn't have summary
+    summary: articleWithSummary.summary ?? undefined,
     weekNumber: weekNumber,
     newsletterId: newsletterId,
     order,

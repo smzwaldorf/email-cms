@@ -17,6 +17,7 @@ describe('Newsletter Publish Workflow', () => {
       updatedAt: '2025-12-04',
       publishedAt: null,
       isPublished: false,
+      isTemplate: false,
     },
     {
       id: '2025-W47',
@@ -28,6 +29,7 @@ describe('Newsletter Publish Workflow', () => {
       updatedAt: '2025-11-24',
       publishedAt: '2025-11-24',
       isPublished: true,
+      isTemplate: false,
     },
     {
       id: '2025-W46',
@@ -39,6 +41,7 @@ describe('Newsletter Publish Workflow', () => {
       updatedAt: '2025-11-24',
       publishedAt: '2025-11-17',
       isPublished: false,
+      isTemplate: false,
     },
   ]
 

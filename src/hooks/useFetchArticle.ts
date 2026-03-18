@@ -24,6 +24,7 @@ function convertArticleRow(
   row: ArticleRow & { newsletter_id?: string; week_number?: string },
   order?: number
 ): Article & { newsletterId?: string } {
+  const articleWithSummary = row as ArticleRow & { summary?: string | null }
   return {
     id: row.id,
     shortId: row.short_id,
@@ -31,7 +32,7 @@ function convertArticleRow(
     content: row.content,
     author: undefined, // Author name needs to be fetched from user_roles via author_id
     authorId: row.author_id || undefined,
-    summary: row.title, // Use title as summary since DB doesn't have summary
+    summary: articleWithSummary.summary ?? undefined,
     weekNumber: row.week_number || '',
     order: order || 0,
     slug: row.id, // Use ID as slug

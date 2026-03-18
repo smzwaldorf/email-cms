@@ -17,6 +17,7 @@ import NewsletterTable from '@/components/admin/NewsletterTable'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { getSupabaseClient } from '@/lib/supabase'
+import { getAdminNewsletterPath } from '@/utils/adminNewsletterRoutes'
 import { useAuth } from '@/context/AuthContext'
 import { UserRole } from '@/types/auth'
 import { ROLES } from '@/lib/rbac'
@@ -278,6 +279,8 @@ export function AdminDashboardPage() {
 
   // Newsletter state
   const [newsletters, setNewsletters] = useState<AdminNewsletter[]>([])
+  const [templateNewsletters, setTemplateNewsletters] = useState<AdminNewsletter[]>([])
+  const [showTemplateList, setShowTemplateList] = useState(false)
   const [isNewsletterLoading, setIsNewsletterLoading] = useState(true)
   const [newsletterError, setNewsletterError] = useState<string | null>(null)
 
@@ -340,8 +343,12 @@ export function AdminDashboardPage() {
     try {
       setIsNewsletterLoading(true)
       setNewsletterError(null)
-      const data = await adminService.fetchNewsletters()
-      setNewsletters(data)
+      const [allNewsletters, templates] = await Promise.all([
+        adminService.fetchNewsletters(),
+        adminService.fetchNewsletterTemplates(),
+      ])
+      setNewsletters(allNewsletters.filter((newsletter) => !newsletter.isTemplate))
+      setTemplateNewsletters(templates)
     } catch (err) {
       const message = err instanceof AdminServiceError ? err.message : err instanceof Error ? err.message : '無法載入電子報'
       setNewsletterError(message)
@@ -356,18 +363,16 @@ export function AdminDashboardPage() {
   }
 
   const handleEdit = (id: string) => {
-    const newsletter = newsletters.find((n) => n.id === id)
+    const newsletter = [...newsletters, ...templateNewsletters].find((n) => n.id === id)
     if (newsletter) {
-      if (newsletter.weekNumber) {
-        navigate(`/admin/articles/${newsletter.weekNumber}`, {
-          state: { newsletterId: id },
-        })
-      } else {
-        navigate(`/admin/articles/id/${id}`, {
-          state: { newsletterId: id },
-        })
-      }
+      navigate(getAdminNewsletterPath(newsletter), {
+        state: { newsletterId: id },
+      })
     }
+  }
+
+  const handleCreateTemplate = (id: string) => {
+    navigate(`/admin/newsletter/create?sourceNewsletter=${id}`)
   }
 
   const handlePublish = async (id: string) => {
@@ -401,6 +406,7 @@ export function AdminDashboardPage() {
       setNewsletterError(null)
       await adminService.deleteNewsletter(id)
       setNewsletters(newsletters.filter((n) => n.id !== id))
+      setTemplateNewsletters(templateNewsletters.filter((n) => n.id !== id))
       setSuccessMessage('電子報已刪除')
     } catch (err) {
       const message = err instanceof AdminServiceError ? err.message : err instanceof Error ? err.message : '刪除失敗'
@@ -411,6 +417,8 @@ export function AdminDashboardPage() {
   const handleFilterChange = (filters: NewsletterFilterOptions) => {
     console.log('Filter change:', filters)
   }
+
+  const displayedNewsletters = showTemplateList ? templateNewsletters : newsletters
 
   // --- User Functions ---
 
@@ -603,14 +611,17 @@ export function AdminDashboardPage() {
                   </div>
                 )}
                 <NewsletterTable
-                  newsletters={newsletters}
+                  newsletters={displayedNewsletters}
                   isLoading={isNewsletterLoading}
                   error={newsletterError}
                   onEdit={handleEdit}
                   onPublish={handlePublish}
                   onArchive={handleArchive}
                   onDelete={handleDelete}
+                  onCreateTemplate={handleCreateTemplate}
                   onFilterChange={handleFilterChange}
+                  onTemplateListToggle={() => setShowTemplateList((prev) => !prev)}
+                  templateToggleLabel={showTemplateList ? '返回電子報列表' : '模板列表'}
                 />
               </>
             )}

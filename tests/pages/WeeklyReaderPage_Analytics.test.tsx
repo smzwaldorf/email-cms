@@ -6,10 +6,16 @@ import * as useFetchWeeklyHook from '@/hooks/useFetchWeekly'
 import * as useFetchArticleHook from '@/hooks/useFetchArticle'
 import * as useAnalyticsTrackingHook from '@/hooks/useAnalyticsTracking'
 import PermissionService from '@/services/PermissionService'
-import ArticleService from '@/services/ArticleService'
+
+let lastArticleListViewProps: any = null
 
 // Mock child components
-vi.mock('@/components/ArticleListView', () => ({ ArticleListView: () => <div>Article List</div> }))
+vi.mock('@/components/ArticleListView', () => ({
+  ArticleListView: (props: any) => {
+    lastArticleListViewProps = props
+    return <div>Article List</div>
+  }
+}))
 vi.mock('@/components/ArticleContent', () => ({ ArticleContent: () => <div>Article Content</div> }))
 vi.mock('@/components/ArticleEditor', () => ({ ArticleEditor: () => <div>Article Editor</div> }))
 vi.mock('@/components/NavigationBar', () => ({ NavigationBar: () => <div>Nav Bar</div> }))
@@ -63,6 +69,7 @@ describe('WeeklyReaderPage Analytics', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
+        lastArticleListViewProps = null
         
         // Default mocks
         vi.mocked(PermissionService.canEditArticle).mockResolvedValue(false)
@@ -140,7 +147,16 @@ describe('WeeklyReaderPage Analytics', () => {
         // Setup: Consistent data scenario with article having newsletterId
         vi.spyOn(useFetchWeeklyHook, 'useFetchWeekly').mockReturnValue({
             articles: [mockArticleW47] as any,
-            newsletter: null, // Newsletter from URL not needed anymore
+            newsletter: {
+                id: mockNewsletterIdW47,
+                weekNumber: '2025-W47',
+                releaseDate: '2025-11-30',
+                articleIds: ['article-w47'],
+                totalArticles: 1,
+                isPublished: true,
+                createdAt: '',
+                updatedAt: '',
+            } as any,
             isLoading: false,
             error: null,
             refetch: vi.fn(),
@@ -172,5 +188,101 @@ describe('WeeklyReaderPage Analytics', () => {
                 articleId: 'article-w47'
             }))
         })
+    })
+
+    it('should DISABLE analytics tracking for admin-initiated draft inline edit flow', async () => {
+        const draftArticle = { ...mockArticleW47, isPublished: false }
+        vi.mocked(PermissionService.canEditArticle).mockResolvedValue(true)
+
+        vi.spyOn(useFetchWeeklyHook, 'useFetchWeekly').mockReturnValue({
+            articles: [draftArticle] as any,
+            newsletter: null,
+            isLoading: false,
+            error: null,
+            refetch: vi.fn(),
+        })
+
+        vi.spyOn(useFetchArticleHook, 'useFetchArticle').mockReturnValue({
+            article: draftArticle as any,
+            isLoading: false,
+            error: null,
+            refetch: vi.fn(),
+        })
+
+        render(
+            <MemoryRouter
+                initialEntries={[
+                    {
+                        pathname: '/newsletter/11111111-1111-1111-1111-111111111111',
+                        state: { focusArticleId: 'article-w47', startInEditMode: true },
+                    } as any,
+                ]}
+            >
+                <Routes>
+                    <Route path="/newsletter/:newsletterId" element={<WeeklyReaderPage />} />
+                </Routes>
+            </MemoryRouter>
+        )
+
+        await waitFor(() => {
+            const calls = vi.mocked(useAnalyticsTrackingHook.useAnalyticsTracking).mock.calls
+            const lastCall = calls[calls.length - 1]
+            const props = lastCall[0]
+
+            expect(props).toEqual(expect.objectContaining({
+                enabled: false,
+                newsletterId: mockNewsletterIdW47,
+                articleId: 'article-w47'
+            }))
+        })
+
+    })
+
+    it('should DISABLE analytics tracking when newsletter is draft', async () => {
+        vi.spyOn(useFetchWeeklyHook, 'useFetchWeekly').mockReturnValue({
+            articles: [mockArticleW47] as any,
+            newsletter: {
+                id: mockNewsletterIdW47,
+                weekNumber: '2025-W47',
+                releaseDate: '2025-11-30',
+                articleIds: ['article-w47'],
+                totalArticles: 1,
+                isPublished: false,
+                createdAt: '',
+                updatedAt: '',
+            } as any,
+            isLoading: false,
+            error: null,
+            refetch: vi.fn(),
+        })
+
+        vi.spyOn(useFetchArticleHook, 'useFetchArticle').mockReturnValue({
+            article: mockArticleW47 as any,
+            isLoading: false,
+            error: null,
+            refetch: vi.fn(),
+        })
+
+        render(
+            <MemoryRouter initialEntries={['/newsletter/11111111-1111-1111-1111-111111111111']}>
+                <Routes>
+                    <Route path="/newsletter/:newsletterId" element={<WeeklyReaderPage />} />
+                </Routes>
+            </MemoryRouter>
+        )
+
+        await waitFor(() => {
+            const calls = vi.mocked(useAnalyticsTrackingHook.useAnalyticsTracking).mock.calls
+            const lastCall = calls[calls.length - 1]
+            const props = lastCall[0]
+
+            expect(props).toEqual(expect.objectContaining({
+                enabled: false,
+                newsletterId: mockNewsletterIdW47,
+                articleId: 'article-w47'
+            }))
+        })
+
+        expect(lastArticleListViewProps?.readArticleIds).toBeUndefined()
     })
 })

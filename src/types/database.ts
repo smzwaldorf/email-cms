@@ -21,6 +21,8 @@ export interface NewsletterRow {
   release_date: string; // DATE
   /** Newsletter status: draft, published, or archived */
   status: 'draft' | 'published' | 'archived';
+  /** Whether this newsletter record is a reusable template */
+  is_template?: boolean;
   /** Timestamp when the newsletter was published */
   published_at?: string | null; // TIMESTAMP WITH TIME ZONE
   /** Auto-managed creation timestamp */
@@ -77,6 +79,10 @@ export interface NewsletterArticleRow {
   article_id: string;
   /** Position within this specific newsletter (1-based) */
   article_order: number;
+  /** Audience targeting mode for this article within newsletter */
+  targeting_mode?: 'shared' | 'targeted';
+  /** Class IDs allowed when targeting_mode = targeted */
+  target_class_ids?: string[] | null;
   /** Timestamp when article was added to this newsletter */
   added_at: string; // TIMESTAMP WITH TIME ZONE
   /** UUID of user who added the article to this newsletter */
