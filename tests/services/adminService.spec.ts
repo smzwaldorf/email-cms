@@ -647,5 +647,86 @@ describe('AdminService', () => {
       expect(result.isTemplate).toBe(true)
       expect(result.articleCount).toBe(1)
     })
+
+    it('does not mutate source newsletter records while creating template', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({
+          data: {
+            id: 'source-newsletter',
+            week_number: '2025-W47',
+            title: 'Source',
+            description: 'Source desc',
+            release_date: '2025-11-23',
+            status: 'published',
+            is_template: false,
+            created_at: '2025-11-20',
+            updated_at: '2025-11-20',
+          },
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({
+          data: {
+            id: 'template-newsletter',
+            week_number: null,
+            title: 'Template',
+            description: 'Template desc',
+            release_date: '2025-11-24',
+            status: 'draft',
+            is_template: true,
+            created_at: '2025-11-24',
+            updated_at: '2025-11-24',
+          },
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({ data: [], error: null }))
+
+      await adminService.createTemplateFromNewsletter('source-newsletter')
+
+      expect(mockBuilder.update).not.toHaveBeenCalled()
+      expect(mockBuilder.delete).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('template instantiation safety', () => {
+    it('does not mutate template newsletter records while creating newsletter from template', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({
+          data: {
+            id: 'source-template',
+            week_number: null,
+            title: 'Template',
+            description: 'Template desc',
+            release_date: '2025-11-23',
+            status: 'draft',
+            is_template: true,
+            created_at: '2025-11-20',
+            updated_at: '2025-11-20',
+          },
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({
+          data: {
+            id: 'new-newsletter',
+            week_number: '2025-W48',
+            title: 'From template',
+            description: 'Copied',
+            release_date: '2025-11-30',
+            status: 'draft',
+            is_template: false,
+            created_at: '2025-11-24',
+            updated_at: '2025-11-24',
+          },
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({ data: [], error: null }))
+
+      await adminService.createNewsletterFromTemplate('source-template', {
+        weekNumber: '2025-W48',
+        releaseDate: '2025-11-30',
+      })
+
+      expect(mockBuilder.update).not.toHaveBeenCalled()
+      expect(mockBuilder.delete).not.toHaveBeenCalled()
+    })
   })
 })

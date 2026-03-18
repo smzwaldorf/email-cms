@@ -33,6 +33,7 @@ vi.mock('@/pages/ErrorPage', () => ({ ErrorPage: () => <div>Error Page</div> }))
 vi.mock('@/pages/ArticleReadersPage', () => ({ ArticleReadersPage: () => <div>Article Readers Page</div> }))
 vi.mock('@/pages/EditorPage', () => ({ EditorPage: () => <div>Editor Page</div> }))
 vi.mock('@/pages/AdminDashboardPage', () => ({ AdminDashboardPage: () => <div>Admin Dashboard</div> }))
+vi.mock('@/pages/AdminTemplatesPage', () => ({ AdminTemplatesPage: () => <div>Admin Templates</div> }))
 vi.mock('@/pages/AdminArticleListPage', () => ({ AdminArticleListPage: () => <div>Admin Newsletter Workflow</div> }))
 vi.mock('@/pages/ArticleEditorPage', () => ({ ArticleEditorPage: () => <div>Article Editor</div> }))
 vi.mock('@/pages/NewsletterCreatePage', () => ({ NewsletterCreatePage: () => <div>Newsletter Create</div> }))
@@ -52,5 +53,12 @@ describe('App admin newsletter routes', () => {
     render(<App />)
 
     expect(await screen.findByText('Admin Newsletter Workflow')).toBeInTheDocument()
+  })
+
+  it('renders the admin templates page route', async () => {
+    window.history.pushState({}, '', '/admin/templates')
+    render(<App />)
+
+    expect(await screen.findByText('Admin Templates')).toBeInTheDocument()
   })
 })

@@ -68,7 +68,19 @@ Rationale:
 Alternatives considered:
 - Keep hard linkage to template with restricted edits. Rejected because hybrid editing is explicitly required.
 
-### 5. Copy safety boundaries are strict
+### 5. Template discovery uses a dedicated templates page plus creation-flow selection
+
+Template operations are discoverable from a dedicated admin templates page, while newsletter creation still supports selecting a template inside the creation flow.
+
+Rationale:
+- Keeps normal newsletter listing focused on operational issues.
+- Improves discoverability of template management actions.
+- Preserves in-flow template selection during newsletter creation.
+
+Alternatives considered:
+- Keep all template discovery only inside the newsletter creation form. Rejected because template management visibility is weaker.
+
+### 6. Copy safety boundaries are strict
 
 Creating a template must not mutate source newsletters, and editing instantiated newsletters must not mutate templates.
 
