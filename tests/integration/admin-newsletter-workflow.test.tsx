@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { AdminArticleListPage } from '@/pages/AdminArticleListPage'
 import type { AdminNewsletter } from '@/types/admin'
 
@@ -43,6 +43,21 @@ vi.mock('@/components/admin/NewsletterForm', () => ({
 }))
 
 import { adminService } from '@/services/adminService'
+
+const MockArticleEditorRoute = () => {
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  return (
+    <div>
+      <p>Article Editor Route</p>
+      <p data-testid="editor-path">{location.pathname}</p>
+      <button onClick={() => navigate(`/admin/newsletters/2025-W48`, { state: { successMessage: '文章已保存' } })}>
+        Return to Newsletter
+      </button>
+    </div>
+  )
+}
 
 const draftNewsletter = {
   id: 'newsletter-1',
@@ -162,6 +177,8 @@ describe('Admin newsletter workflow page', () => {
         <Routes>
           <Route path="/admin/newsletters/:weekNumber" element={<AdminArticleListPage />} />
           <Route path="/admin/newsletters/id/:id" element={<AdminArticleListPage />} />
+          <Route path="/admin/articles/:weekNumber/:articleId" element={<MockArticleEditorRoute />} />
+          <Route path="/admin/articles/id/:id/:articleId" element={<MockArticleEditorRoute />} />
         </Routes>
       </MemoryRouter>
     )
@@ -242,5 +259,19 @@ describe('Admin newsletter workflow page', () => {
       expect(adminService.archiveNewsletter).toHaveBeenCalledWith('special-newsletter-1')
       expect(screen.getByText('已封存')).toBeInTheDocument()
     })
+  })
+
+  it('keeps newsletter context across composition and editor transitions', async () => {
+    renderPage()
+
+    fireEvent.click((await screen.findAllByRole('button', { name: '編輯' }))[0])
+
+    expect(await screen.findByText('Article Editor Route')).toBeInTheDocument()
+    expect(screen.getByTestId('editor-path')).toHaveTextContent('/admin/articles/2025-W48/article-1')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Return to Newsletter' }))
+
+    expect(await screen.findByText('2025-W48')).toBeInTheDocument()
+    expect(screen.getByText('文章已保存')).toBeInTheDocument()
   })
 })

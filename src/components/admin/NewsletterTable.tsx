@@ -26,6 +26,8 @@ export interface NewsletterTableProps {
   onDelete?: (id: string) => void
   onCreateTemplate?: (id: string) => void
   onFilterChange?: (filters: NewsletterFilterOptions) => void
+  onTemplateListToggle?: () => void
+  templateToggleLabel?: string
 }
 
 type SortField = 'weekNumber' | 'releaseDate' | 'status' | 'articleCount'
@@ -71,6 +73,8 @@ export function NewsletterTable({
   onDelete,
   onCreateTemplate,
   onFilterChange,
+  onTemplateListToggle,
+  templateToggleLabel = '模板列表',
 }: NewsletterTableProps) {
   const [sortField, setSortField] = useState<SortField>('weekNumber')
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
@@ -230,12 +234,22 @@ export function NewsletterTable({
             <option value="archived">已封存</option>
           </select>
         </div>
-        <Link
-          to="/admin/templates"
-          className="px-3 py-2 border border-waldorf-peach-200 text-waldorf-peach-700 text-sm font-medium rounded-lg hover:bg-waldorf-peach-50 transition-all duration-200"
-        >
-          模板列表
-        </Link>
+        {onTemplateListToggle ? (
+          <button
+            type="button"
+            onClick={onTemplateListToggle}
+            className="px-3 py-2 border border-waldorf-peach-200 text-waldorf-peach-700 text-sm font-medium rounded-lg hover:bg-waldorf-peach-50 transition-all duration-200"
+          >
+            {templateToggleLabel}
+          </button>
+        ) : (
+          <Link
+            to="/admin/templates"
+            className="px-3 py-2 border border-waldorf-peach-200 text-waldorf-peach-700 text-sm font-medium rounded-lg hover:bg-waldorf-peach-50 transition-all duration-200"
+          >
+            模板列表
+          </Link>
+        )}
         <div className="ml-auto flex items-center gap-2">
           <span className="text-sm text-waldorf-clay-500">
             顯示 <span className="font-semibold text-waldorf-clay-700">{sortedAndFiltered.length}</span> / {newsletters.length} 個電子報

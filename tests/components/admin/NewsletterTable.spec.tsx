@@ -81,4 +81,21 @@ describe('NewsletterTable', () => {
     expect(screen.getByText('2023-W02')).toBeInTheDocument()
     expect(screen.getByText('2023-W03')).toBeInTheDocument()
   })
+
+  it('uses template toggle callback when provided', () => {
+    const onTemplateListToggle = vi.fn()
+
+    render(
+      <BrowserRouter>
+        <NewsletterTable
+          newsletters={mockNewsletters}
+          onTemplateListToggle={onTemplateListToggle}
+          templateToggleLabel="返回電子報列表"
+        />
+      </BrowserRouter>
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '返回電子報列表' }))
+    expect(onTemplateListToggle).toHaveBeenCalledOnce()
+  })
 })

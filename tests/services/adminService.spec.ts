@@ -15,6 +15,7 @@ const mockBuilder = {
   lte: vi.fn().mockReturnThis(),
   or: vi.fn().mockReturnThis(),
   is: vi.fn().mockReturnThis(),
+  in: vi.fn().mockReturnThis(),
   then: vi.fn((resolve) => resolve({ data: [], error: null })),
 }
 
@@ -412,6 +413,76 @@ describe('AdminService', () => {
     })
   })
 
+  describe('fetchAllArticles', () => {
+    it('fetches all non-deleted articles ordered by updated_at', async () => {
+      mockBuilder.then.mockImplementationOnce((resolve) => resolve({
+        data: [
+          {
+            id: 'article-1',
+            title: 'All Article',
+            content: '<p>Content</p>',
+            summary: null,
+            status: 'draft',
+            week_number: '2025-W01',
+            article_order: 1,
+            class_ids: [],
+            family_ids: [],
+            created_at: '2025-01-01',
+            updated_at: '2025-01-02',
+            published_at: null,
+            edited_at: null,
+          },
+        ],
+        error: null,
+      }))
+
+      const result = await adminService.fetchAllArticles()
+
+      expect(mockSupabase.from).toHaveBeenCalledWith('articles')
+      expect(mockBuilder.is).toHaveBeenCalledWith('deleted_at', null)
+      expect(result).toHaveLength(1)
+      expect(result[0].id).toBe('article-1')
+      expect(result[0].weekNumber).toBe('2025-W01')
+    })
+  })
+
+  describe('fetchArticleNewsletterMemberships', () => {
+    it('returns newsletter tags grouped by article id', async () => {
+      mockBuilder.then.mockImplementationOnce((resolve) => resolve({
+        data: [
+          {
+            article_id: 'article-1',
+            newsletters: {
+              id: 'newsletter-1',
+              week_number: '2025-W48',
+              title: 'Week 48',
+              is_template: false,
+            },
+          },
+          {
+            article_id: 'article-1',
+            newsletters: {
+              id: 'newsletter-2',
+              week_number: null,
+              title: 'Special Edition',
+              is_template: true,
+            },
+          },
+        ],
+        error: null,
+      }))
+
+      const result = await adminService.fetchArticleNewsletterMemberships(['article-1'])
+
+      expect(mockSupabase.from).toHaveBeenCalledWith('newsletter_articles')
+      expect(mockBuilder.in).toHaveBeenCalledWith('article_id', ['article-1'])
+      expect(result['article-1']).toEqual([
+        { newsletterId: 'newsletter-1', label: '2025-W48', isTemplate: false },
+        { newsletterId: 'newsletter-2', label: 'Special Edition', isTemplate: true },
+      ])
+    })
+  })
+
   describe('addArticleToNewsletter', () => {
     it('adds article to junction table with order', async () => {
       // Mock getNewsletterIdByWeek (internal call)
@@ -727,6 +798,111 @@ describe('AdminService', () => {
 
       expect(mockBuilder.update).not.toHaveBeenCalled()
       expect(mockBuilder.delete).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('newsletter composition workflows', () => {
+    it('creates and attaches a draft article for a newsletter', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({
+          data: {
+            id: 'newsletter-1',
+            week_number: '2025-W48',
+            title: 'Week 48',
+            description: null,
+            release_date: '2025-11-30',
+            status: 'draft',
+            is_template: false,
+            created_at: '2025-11-01',
+            updated_at: '2025-11-01',
+          },
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({
+          data: [{ article_order: 2 }],
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({
+          data: {
+            id: 'article-3',
+            title: '未命名文章',
+            content: '',
+            author: null,
+            summary: null,
+            status: 'draft',
+            class_ids: [],
+            family_ids: [],
+            created_at: '2025-11-02',
+            updated_at: '2025-11-02',
+            last_edited_by: null,
+            edited_at: '2025-11-02T00:00:00Z',
+          },
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({
+          data: {
+            id: 'link-1',
+            newsletter_id: 'newsletter-1',
+            article_id: 'article-3',
+            article_order: 3,
+          },
+          error: null,
+        }))
+
+      const created = await adminService.createArticleForNewsletter('newsletter-1')
+
+      const insertPayloads = mockBuilder.insert.mock.calls.map((call) => call[0])
+      expect(insertPayloads).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          title: '未命名文章',
+          status: 'draft',
+          week_number: '2025-W48',
+          article_order: 3,
+        }),
+        expect.objectContaining({
+          newsletter_id: 'newsletter-1',
+          article_id: 'article-3',
+          article_order: 3,
+        }),
+      ]))
+      expect(created.id).toBe('article-3')
+      expect(created.order).toBe(3)
+    })
+
+    it('unlinks an article from newsletter composition by id', async () => {
+      mockBuilder.then.mockImplementationOnce((resolve) => resolve({ error: null }))
+
+      await adminService.removeArticleFromNewsletterById('article-1', 'newsletter-1')
+
+      expect(mockSupabase.from).toHaveBeenCalledWith('newsletter_articles')
+      expect(mockBuilder.delete).toHaveBeenCalled()
+      expect(mockBuilder.eq).toHaveBeenCalledWith('newsletter_id', 'newsletter-1')
+      expect(mockBuilder.eq).toHaveBeenCalledWith('article_id', 'article-1')
+    })
+
+    it('persists reordered article order for every linked article', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({ data: [{ article_order: 3 }], error: null }))
+        .mockImplementationOnce((resolve) => resolve({ error: null }))
+        .mockImplementationOnce((resolve) => resolve({ error: null }))
+        .mockImplementationOnce((resolve) => resolve({ error: null }))
+        .mockImplementationOnce((resolve) => resolve({ error: null }))
+        .mockImplementationOnce((resolve) => resolve({ error: null }))
+        .mockImplementationOnce((resolve) => resolve({ error: null }))
+
+      await adminService.reorderArticlesInNewsletterById('newsletter-1', [
+        'article-3',
+        'article-1',
+        'article-2',
+      ])
+
+      expect(mockBuilder.update).toHaveBeenNthCalledWith(1, { article_order: 107 })
+      expect(mockBuilder.update).toHaveBeenNthCalledWith(2, { article_order: 108 })
+      expect(mockBuilder.update).toHaveBeenNthCalledWith(3, { article_order: 109 })
+      expect(mockBuilder.update).toHaveBeenNthCalledWith(4, { article_order: 1 })
+      expect(mockBuilder.update).toHaveBeenNthCalledWith(5, { article_order: 2 })
+      expect(mockBuilder.update).toHaveBeenNthCalledWith(6, { article_order: 3 })
+      expect(mockBuilder.eq).toHaveBeenCalledWith('newsletter_id', 'newsletter-1')
     })
   })
 })

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { adminService, AdminServiceError } from '@/services/adminService'
 import type { AdminNewsletter, AdminArticle, NewsletterPublishReadiness } from '@/types/admin'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
@@ -12,6 +12,7 @@ import { generateWeeklyUrl } from '@/utils/urlUtils'
 export function AdminArticleListPage() {
   const { weekNumber, id } = useParams<{ weekNumber?: string; id?: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const [newsletter, setNewsletter] = useState<AdminNewsletter | null>(null)
   const [articles, setArticles] = useState<AdminArticle[]>([])
@@ -29,6 +30,13 @@ export function AdminArticleListPage() {
   useEffect(() => {
     void loadData()
   }, [weekNumber, id])
+
+  useEffect(() => {
+    const state = location.state as { successMessage?: string } | null
+    if (state?.successMessage) {
+      setSuccessMessage(state.successMessage)
+    }
+  }, [location.state])
 
   const loadData = async () => {
     try {
@@ -91,26 +99,33 @@ export function AdminArticleListPage() {
     navigate('/admin')
   }
 
-  const handleMoveArticle = async (articleId: string, direction: -1 | 1) => {
+  const handleMoveArticle = async (
+    articleId: string,
+    direction: -1 | 1,
+    event?: React.MouseEvent<HTMLButtonElement>
+  ) => {
+    event?.preventDefault()
     if (!newsletter) return
 
     const currentIndex = articles.findIndex((article) => article.id === articleId)
     const nextIndex = currentIndex + direction
     if (currentIndex === -1 || nextIndex < 0 || nextIndex >= articles.length) return
 
+    const previousArticles = [...articles]
     const reordered = [...articles]
     ;[reordered[currentIndex], reordered[nextIndex]] = [reordered[nextIndex], reordered[currentIndex]]
+    const reorderedWithOrder = reordered.map((article, index) => ({ ...article, order: index + 1 }))
 
     try {
       setIsMutating(true)
-      setArticles(reordered.map((article, index) => ({ ...article, order: index + 1 })))
+      setError(null)
+      setArticles(reorderedWithOrder)
       await adminService.reorderArticlesInNewsletterById(newsletter.id, reordered.map((article) => article.id))
       setSuccessMessage('文章順序已更新')
-      await loadData()
     } catch (err) {
       const message = err instanceof AdminServiceError ? err.message : '更新順序失敗'
       setError(message)
-      await loadData()
+      setArticles(previousArticles)
     } finally {
       setIsMutating(false)
     }
@@ -136,7 +151,7 @@ export function AdminArticleListPage() {
 
   const handleRemoveArticle = async (articleId: string) => {
     if (!newsletter) return
-    if (!window.confirm('確定要將這篇文章從電子報中移除嗎？')) return
+    if (!window.confirm('確定要將這篇文章從本期電子報中移除嗎？（不會刪除文章本身）')) return
 
     try {
       setIsMutating(true)
@@ -259,6 +274,7 @@ export function AdminArticleListPage() {
         headerAction={
           <div className="flex items-center gap-3">
             <button
+              type="button"
               onClick={handleCreateDraftArticle}
               className="rounded-lg bg-waldorf-sage-500 px-4 py-2 text-white transition-colors hover:bg-waldorf-sage-600 disabled:opacity-50"
               disabled={isMutating}
@@ -266,6 +282,7 @@ export function AdminArticleListPage() {
               + 建立草稿文章
             </button>
             <button
+              type="button"
               onClick={() =>
                 navigate(
                   newsletter.isTemplate
@@ -283,6 +300,7 @@ export function AdminArticleListPage() {
         <div className="space-y-6">
           <div className="rounded-xl border border-waldorf-cream-200 bg-white p-6 shadow-sm">
             <button
+              type="button"
               onClick={handleBack}
               className="mb-4 flex items-center text-sm font-medium text-waldorf-peach-600 hover:text-waldorf-peach-700"
             >
@@ -318,6 +336,7 @@ export function AdminArticleListPage() {
               <div className="flex items-center gap-3">
                 {newsletter.status === 'draft' && !newsletter.isTemplate && (
                   <button
+                    type="button"
                     onClick={handlePublish}
                     disabled={isMutating || !publishReadiness.canPublish}
                     className="rounded-lg bg-waldorf-sage-500 px-4 py-2 text-white transition-colors hover:bg-waldorf-sage-600 disabled:cursor-not-allowed disabled:opacity-50"
@@ -327,6 +346,7 @@ export function AdminArticleListPage() {
                 )}
                 {newsletter.status === 'published' && !newsletter.isTemplate && (
                   <button
+                    type="button"
                     onClick={handleArchive}
                     disabled={isMutating}
                     className="rounded-lg bg-waldorf-cream-200 px-4 py-2 text-waldorf-clay-700 transition-colors hover:bg-waldorf-cream-300 disabled:opacity-50"
@@ -395,6 +415,7 @@ export function AdminArticleListPage() {
                 </select>
               </div>
               <button
+                type="button"
                 onClick={handleAddExistingArticle}
                 disabled={!selectedArticleId || isMutating}
                 className="rounded-lg border border-waldorf-clay-300 bg-white px-4 py-2.5 text-waldorf-clay-700 transition-colors hover:bg-waldorf-cream-50 disabled:opacity-50"
@@ -431,14 +452,16 @@ export function AdminArticleListPage() {
                           <span>{index + 1}</span>
                           <div className="flex flex-col">
                             <button
-                              onClick={() => handleMoveArticle(article.id, -1)}
+                              type="button"
+                              onClick={(event) => handleMoveArticle(article.id, -1, event)}
                               disabled={index === 0 || isMutating}
                               className="text-xs text-waldorf-peach-600 disabled:opacity-30"
                             >
                               ↑
                             </button>
                             <button
-                              onClick={() => handleMoveArticle(article.id, 1)}
+                              type="button"
+                              onClick={(event) => handleMoveArticle(article.id, 1, event)}
                               disabled={index === articles.length - 1 || isMutating}
                               className="text-xs text-waldorf-peach-600 disabled:opacity-30"
                             >
@@ -455,12 +478,14 @@ export function AdminArticleListPage() {
                       <td className="px-6 py-4 text-right text-sm">
                         <div className="flex justify-end gap-3">
                           <button
+                            type="button"
                             onClick={() => handleEditArticle(article.id)}
                             className="text-waldorf-peach-600 hover:text-waldorf-peach-700"
                           >
                             編輯
                           </button>
                           <button
+                            type="button"
                             onClick={() => handleRemoveArticle(article.id)}
                             className="text-waldorf-rose-600 hover:text-waldorf-rose-700"
                           >

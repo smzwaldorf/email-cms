@@ -881,6 +881,51 @@ class AdminService {
     }
   }
 
+  async fetchAllArticles(limit: number = 200): Promise<AdminArticle[]> {
+    try {
+      const supabase = getSupabaseClient()
+
+      const { data, error } = await supabase
+        .from('articles')
+        .select('*')
+        .is('deleted_at', null)
+        .order('updated_at', { ascending: false })
+        .limit(limit)
+
+      if (error) {
+        throw new AdminServiceError(
+          `Failed to fetch all articles: ${error.message}`,
+          'FETCH_ARTICLES_ERROR',
+          error as any
+        )
+      }
+
+      return (data || []).map((row: any) => ({
+        id: row.id,
+        title: row.title,
+        content: row.content,
+        author: row.author_id,
+        summary: row.summary,
+        weekNumber: row.week_number || '',
+        order: row.article_order || 0,
+        classIds: row.class_ids || [],
+        familyIds: row.family_ids || [],
+        status: row.status,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        publishedAt: row.published_at,
+        editedAt: row.edited_at,
+      }))
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error fetching all articles: ${err instanceof Error ? err.message : String(err)}`,
+        'FETCH_ARTICLES_ERROR',
+        err as any
+      )
+    }
+  }
+
   /**
    * Update article with Last-Write-Wins conflict resolution
    */
@@ -1269,6 +1314,61 @@ class AdminService {
     }
   }
 
+  async fetchArticleNewsletterMemberships(
+    articleIds: string[]
+  ): Promise<Record<string, Array<{ newsletterId: string; label: string; isTemplate: boolean }>>> {
+    if (!articleIds.length) return {}
+
+    try {
+      const supabase = getSupabaseClient()
+      const { data, error } = await supabase
+        .from('newsletter_articles')
+        .select(`
+          article_id,
+          newsletters!inner (
+            id,
+            week_number,
+            title,
+            is_template
+          )
+        `)
+        .in('article_id', articleIds)
+
+      if (error) {
+        throw new AdminServiceError(
+          `Failed to fetch article newsletter memberships: ${error.message}`,
+          'GET_NEWSLETTERS_ERROR',
+          error as any
+        )
+      }
+
+      return (data || []).reduce((acc: Record<string, Array<{ newsletterId: string; label: string; isTemplate: boolean }>>, row: any) => {
+        const articleId = row.article_id as string
+        const newsletterId = row.newsletters?.id as string | undefined
+        if (!newsletterId) return acc
+
+        if (!acc[articleId]) {
+          acc[articleId] = []
+        }
+
+        acc[articleId].push({
+          newsletterId,
+          label: row.newsletters?.week_number || row.newsletters?.title || newsletterId,
+          isTemplate: row.newsletters?.is_template ?? false,
+        })
+
+        return acc
+      }, {})
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error fetching article newsletter memberships: ${err instanceof Error ? err.message : String(err)}`,
+        'GET_NEWSLETTERS_ERROR',
+        err as any
+      )
+    }
+  }
+
   /**
    * Get available articles that can be added to a newsletter
    * Returns articles not already in the specified newsletter
@@ -1416,8 +1516,6 @@ class AdminService {
    */
   async reorderArticlesInNewsletter(weekNumber: string, articleIds: string[]): Promise<void> {
     try {
-      const supabase = getSupabaseClient()
-
       // Look up newsletter UUID by week_number
       const newsletterId = await this.getNewsletterIdByWeek(weekNumber)
       if (!newsletterId) {
@@ -1427,22 +1525,7 @@ class AdminService {
         )
       }
 
-      // Update each article's order based on position in array
-      for (let i = 0; i < articleIds.length; i++) {
-        const { error } = await supabase
-          .from('newsletter_articles')
-          .update({ article_order: i + 1 })
-          .eq('newsletter_id', newsletterId)
-          .eq('article_id', articleIds[i])
-
-        if (error) {
-          throw new AdminServiceError(
-            `Failed to update article order: ${error.message}`,
-            'REORDER_ARTICLES_ERROR',
-            error as any
-          )
-        }
-      }
+      await this.reorderArticlesInNewsletterById(newsletterId, articleIds)
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
       throw new AdminServiceError(
@@ -1457,6 +1540,45 @@ class AdminService {
     try {
       const supabase = getSupabaseClient()
 
+      if (articleIds.length === 0) return
+
+      const { data: existingOrders, error: fetchOrderError } = await supabase
+        .from('newsletter_articles')
+        .select('article_order')
+        .eq('newsletter_id', newsletterId)
+        .order('article_order', { ascending: false })
+        .limit(1)
+
+      if (fetchOrderError) {
+        throw new AdminServiceError(
+          `Failed to fetch current article order baseline: ${fetchOrderError.message}`,
+          'REORDER_ARTICLES_ERROR',
+          fetchOrderError as any
+        )
+      }
+
+      const maxExistingOrder = existingOrders?.[0]?.article_order || 0
+      const tempBaseOrder = maxExistingOrder + articleIds.length + 100
+
+      // Phase 1: move to guaranteed-unique temporary positions to avoid
+      // unique(newsletter_id, article_order) collisions during swaps.
+      for (let i = 0; i < articleIds.length; i++) {
+        const { error } = await supabase
+          .from('newsletter_articles')
+          .update({ article_order: tempBaseOrder + i + 1 })
+          .eq('newsletter_id', newsletterId)
+          .eq('article_id', articleIds[i])
+
+        if (error) {
+          throw new AdminServiceError(
+            `Failed to stage article order update: ${error.message}`,
+            'REORDER_ARTICLES_ERROR',
+            error as any
+          )
+        }
+      }
+
+      // Phase 2: write final intended order.
       for (let i = 0; i < articleIds.length; i++) {
         const { error } = await supabase
           .from('newsletter_articles')
