@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { AdminArticleListPage } from '@/pages/AdminArticleListPage'
 import type { AdminNewsletter } from '@/types/admin'
 
@@ -11,7 +11,9 @@ vi.mock('@/services/adminService', () => ({
     fetchArticlesByNewsletterId: vi.fn(),
     getAvailableArticlesByNewsletterId: vi.fn(),
     getNewsletterPublishReadiness: vi.fn(),
+    fetchClasses: vi.fn(),
     reorderArticlesInNewsletterById: vi.fn(),
+    updateArticleTargetingInNewsletterById: vi.fn(),
     addArticleToNewsletterById: vi.fn(),
     removeArticleFromNewsletterById: vi.fn(),
     createArticleForNewsletter: vi.fn(),
@@ -44,17 +46,17 @@ vi.mock('@/components/admin/NewsletterForm', () => ({
 
 import { adminService } from '@/services/adminService'
 
-const MockArticleEditorRoute = () => {
+const MockInlineEditorRoute = () => {
   const location = useLocation()
-  const navigate = useNavigate()
 
   return (
     <div>
-      <p>Article Editor Route</p>
+      <p>Inline Editor Route</p>
       <p data-testid="editor-path">{location.pathname}</p>
-      <button onClick={() => navigate(`/admin/newsletters/2025-W48`, { state: { successMessage: '文章已保存' } })}>
-        Return to Newsletter
-      </button>
+      <p data-testid="editor-search">{location.search}</p>
+      <p data-testid="editor-state">
+        {JSON.stringify(location.state)}
+      </p>
     </div>
   )
 }
@@ -113,6 +115,8 @@ const mockArticles = [
     createdAt: '2025-11-01',
     updatedAt: '2025-11-01',
     editedAt: '2025-11-01T10:00:00Z',
+    newsletterTargetingMode: 'shared',
+    newsletterTargetClassIds: [],
   },
   {
     id: 'article-2',
@@ -125,6 +129,8 @@ const mockArticles = [
     createdAt: '2025-11-01',
     updatedAt: '2025-11-01',
     editedAt: '2025-11-01T11:00:00Z',
+    newsletterTargetingMode: 'shared',
+    newsletterTargetClassIds: [],
   },
 ]
 
@@ -154,7 +160,11 @@ describe('Admin newsletter workflow page', () => {
       canPublish: true,
       issues: [],
     })
+    vi.mocked(adminService.fetchClasses).mockResolvedValue([
+      { id: 'A1', name: 'A1', description: '', studentIds: [], teacherIds: [], createdAt: '', updatedAt: '' },
+    ] as any)
     vi.mocked(adminService.reorderArticlesInNewsletterById).mockResolvedValue()
+    vi.mocked(adminService.updateArticleTargetingInNewsletterById).mockResolvedValue()
     vi.mocked(adminService.addArticleToNewsletterById).mockResolvedValue({
       id: 'link-1',
       newsletter_id: 'newsletter-1',
@@ -177,8 +187,8 @@ describe('Admin newsletter workflow page', () => {
         <Routes>
           <Route path="/admin/newsletters/:weekNumber" element={<AdminArticleListPage />} />
           <Route path="/admin/newsletters/id/:id" element={<AdminArticleListPage />} />
-          <Route path="/admin/articles/:weekNumber/:articleId" element={<MockArticleEditorRoute />} />
-          <Route path="/admin/articles/id/:id/:articleId" element={<MockArticleEditorRoute />} />
+          <Route path="/week/:weekNumber" element={<MockInlineEditorRoute />} />
+          <Route path="/newsletter/:newsletterId" element={<MockInlineEditorRoute />} />
         </Routes>
       </MemoryRouter>
     )
@@ -212,6 +222,25 @@ describe('Admin newsletter workflow page', () => {
 
     await waitFor(() => {
       expect(adminService.addArticleToNewsletterById).toHaveBeenCalledWith('article-3', 'newsletter-1')
+    })
+  })
+
+  it('updates article class targeting and keeps newsletter context', async () => {
+    renderPage()
+
+    await screen.findByText('Article One')
+    const targetedRadios = screen.getAllByRole('radio', { name: '目標班級' })
+    fireEvent.click(targetedRadios[0])
+    fireEvent.click(screen.getByLabelText('A1'))
+    fireEvent.click(screen.getAllByRole('button', { name: '儲存班級設定' })[0])
+
+    await waitFor(() => {
+      expect(adminService.updateArticleTargetingInNewsletterById).toHaveBeenCalledWith(
+        'newsletter-1',
+        'article-1',
+        'targeted',
+        ['A1']
+      )
     })
   })
 
@@ -266,12 +295,10 @@ describe('Admin newsletter workflow page', () => {
 
     fireEvent.click((await screen.findAllByRole('button', { name: '編輯' }))[0])
 
-    expect(await screen.findByText('Article Editor Route')).toBeInTheDocument()
-    expect(screen.getByTestId('editor-path')).toHaveTextContent('/admin/articles/2025-W48/article-1')
-
-    fireEvent.click(screen.getByRole('button', { name: 'Return to Newsletter' }))
-
-    expect(await screen.findByText('2025-W48')).toBeInTheDocument()
-    expect(screen.getByText('文章已保存')).toBeInTheDocument()
+    expect(await screen.findByText('Inline Editor Route')).toBeInTheDocument()
+    expect(screen.getByTestId('editor-path')).toHaveTextContent('/week/2025-W48')
+    expect(screen.getByTestId('editor-search')).toHaveTextContent('?admin=1')
+    expect(screen.getByTestId('editor-state')).toHaveTextContent('"focusArticleId":"article-1"')
+    expect(screen.getByTestId('editor-state')).toHaveTextContent('"startInEditMode":true')
   })
 })

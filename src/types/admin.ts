@@ -128,6 +128,8 @@ export interface AdminArticle {
   summary?: string
   weekNumber: string
   order: number
+  newsletterTargetingMode?: 'shared' | 'targeted'
+  newsletterTargetClassIds?: string[]
   classIds?: string[] // 分類 ID 列表
   familyIds?: string[] // 家族 ID 列表
   status: 'draft' | 'published'

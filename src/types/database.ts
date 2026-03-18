@@ -79,6 +79,10 @@ export interface NewsletterArticleRow {
   article_id: string;
   /** Position within this specific newsletter (1-based) */
   article_order: number;
+  /** Audience targeting mode for this article within newsletter */
+  targeting_mode?: 'shared' | 'targeted';
+  /** Class IDs allowed when targeting_mode = targeted */
+  target_class_ids?: string[] | null;
   /** Timestamp when article was added to this newsletter */
   added_at: string; // TIMESTAMP WITH TIME ZONE
   /** UUID of user who added the article to this newsletter */

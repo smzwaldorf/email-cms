@@ -32,8 +32,8 @@ This is a cross-cutting change touching admin authoring, composition services, a
    - Rationale: reduces context switching and keeps article targeting decisions aligned with issue assembly.
    - Alternative: separate class-targeting admin screen. Rejected due to fragmented workflow.
 
-4. Validate targeted bindings against active class catalog at save time.
-   - Rationale: prevents stale references and invalid targeting.
+4. Validate targeted bindings against current class catalog at save time.
+   - Rationale: prevents stale references and invalid targeting while allowing future class status policies to evolve independently.
    - Alternative: defer all validation to render phase. Rejected because editors need immediate feedback.
 
 ## Risks / Trade-offs

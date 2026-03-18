@@ -264,24 +264,6 @@ export function ArticleEditor({
             />
           </div>
 
-          {/* 發布狀態 */}
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="isPublished"
-              name="isPublished"
-              checked={formData.isPublished}
-              onChange={handleChange}
-              className="w-4 h-4 text-waldorf-sage-600 border-waldorf-cream-300 rounded focus:ring-2 focus:ring-waldorf-sage-500"
-            />
-            <label
-              htmlFor="isPublished"
-              className="text-sm font-medium text-waldorf-clay-700"
-            >
-              已發布
-            </label>
-          </div>
-
           {/* 內容 - 富文本編輯器 */}
           <div>
             <label

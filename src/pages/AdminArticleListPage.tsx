@@ -6,7 +6,6 @@ import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { AdminLayout } from '@/components/admin/AdminLayout'
 import { NewsletterForm } from '@/components/admin/NewsletterForm'
-import { getAdminArticleEditorPath } from '@/utils/adminNewsletterRoutes'
 import { generateWeeklyUrl } from '@/utils/urlUtils'
 
 export function AdminArticleListPage() {
@@ -17,7 +16,12 @@ export function AdminArticleListPage() {
   const [newsletter, setNewsletter] = useState<AdminNewsletter | null>(null)
   const [articles, setArticles] = useState<AdminArticle[]>([])
   const [availableArticles, setAvailableArticles] = useState<AdminArticle[]>([])
+  const [availableClasses, setAvailableClasses] = useState<Array<{ id: string; name: string }>>([])
   const [selectedArticleId, setSelectedArticleId] = useState('')
+  const [targetingDrafts, setTargetingDrafts] = useState<
+    Record<string, { mode: 'shared' | 'targeted'; classIds: string[] }>
+  >({})
+  const [classSearchByArticleId, setClassSearchByArticleId] = useState<Record<string, string>>({})
   const [publishReadiness, setPublishReadiness] = useState<NewsletterPublishReadiness>({
     canPublish: false,
     issues: [],
@@ -52,16 +56,30 @@ export function AdminArticleListPage() {
         throw new Error('缺少電子報參數')
       }
 
-      const [articlesData, availableArticlesData, readiness] = await Promise.all([
+      const [articlesData, availableArticlesData, readiness, classes] = await Promise.all([
         adminService.fetchArticlesByNewsletterId(newsletterData.id),
         adminService.getAvailableArticlesByNewsletterId(newsletterData.id),
         adminService.getNewsletterPublishReadiness(newsletterData.id),
+        adminService.fetchClasses(),
       ])
 
       setNewsletter(newsletterData)
       setArticles(articlesData)
       setAvailableArticles(availableArticlesData)
       setPublishReadiness(readiness)
+      setAvailableClasses(classes.map((classItem) => ({ id: classItem.id, name: classItem.name })))
+      setTargetingDrafts(
+        articlesData.reduce(
+          (acc, article) => {
+            acc[article.id] = {
+              mode: article.newsletterTargetingMode ?? 'shared',
+              classIds: article.newsletterTargetClassIds ?? [],
+            }
+            return acc
+          },
+          {} as Record<string, { mode: 'shared' | 'targeted'; classIds: string[] }>
+        )
+      )
     } catch (err) {
       const message = err instanceof AdminServiceError ? err.message : err instanceof Error ? err.message : 'Failed to load data'
       setError(message)
@@ -83,11 +101,11 @@ export function AdminArticleListPage() {
   const handleEditArticle = (articleId: string) => {
     if (!articlePathTarget) return
 
-    navigate(getAdminArticleEditorPath({
-      ...articlePathTarget,
-      articleId,
-    }), {
-      state: { newsletterId: articlePathTarget.id },
+    navigate(`${generateWeeklyUrl(articlePathTarget.weekNumber || articlePathTarget.id)}?admin=1`, {
+      state: {
+        focusArticleId: articleId,
+        startInEditMode: true,
+      },
     })
   }
 
@@ -173,14 +191,93 @@ export function AdminArticleListPage() {
     try {
       setIsMutating(true)
       const article = await adminService.createArticleForNewsletter(newsletter.id)
-      navigate(getAdminArticleEditorPath({
-        ...articlePathTarget,
-        articleId: article.id,
-      }), {
-        state: { newsletterId: newsletter.id },
+      navigate(`${generateWeeklyUrl(articlePathTarget.weekNumber || articlePathTarget.id)}?admin=1`, {
+        state: {
+          focusArticleId: article.id,
+          startInEditMode: true,
+        },
       })
     } catch (err) {
       const message = err instanceof AdminServiceError ? err.message : '建立文章失敗'
+      setError(message)
+    } finally {
+      setIsMutating(false)
+    }
+  }
+
+  const getDraftTargeting = (article: AdminArticle) => {
+    return targetingDrafts[article.id] || {
+      mode: article.newsletterTargetingMode ?? 'shared',
+      classIds: article.newsletterTargetClassIds ?? [],
+    }
+  }
+
+  const handleChangeTargetingMode = (articleId: string, mode: 'shared' | 'targeted') => {
+    setTargetingDrafts((prev) => ({
+      ...prev,
+      [articleId]: {
+        mode,
+        classIds: mode === 'shared' ? [] : prev[articleId]?.classIds || [],
+      },
+    }))
+  }
+
+  const handleToggleTargetClass = (articleId: string, classId: string) => {
+    setTargetingDrafts((prev) => {
+      const current = prev[articleId] || { mode: 'shared' as const, classIds: [] }
+      const hasClass = current.classIds.includes(classId)
+      const nextClassIds = hasClass
+        ? current.classIds.filter((id) => id !== classId)
+        : [...current.classIds, classId]
+      return {
+        ...prev,
+        [articleId]: {
+          ...current,
+          classIds: nextClassIds,
+        },
+      }
+    })
+  }
+
+  const handleClassSearchChange = (articleId: string, query: string) => {
+    setClassSearchByArticleId((prev) => ({
+      ...prev,
+      [articleId]: query,
+    }))
+  }
+
+  const handleSaveTargeting = async (article: AdminArticle) => {
+    if (!newsletter) return
+    const draft = getDraftTargeting(article)
+
+    if (draft.mode === 'targeted' && draft.classIds.length === 0) {
+      setError('目標投遞模式至少需選擇一個班級，或改為共享文章。')
+      return
+    }
+
+    try {
+      setIsMutating(true)
+      setError(null)
+      await adminService.updateArticleTargetingInNewsletterById(
+        newsletter.id,
+        article.id,
+        draft.mode,
+        draft.classIds
+      )
+      setArticles((prev) =>
+        prev.map((item) =>
+          item.id === article.id
+            ? {
+                ...item,
+                newsletterTargetingMode: draft.mode,
+                newsletterTargetClassIds: draft.classIds,
+              }
+            : item
+        )
+      )
+      setSuccessMessage('文章班級投遞設定已更新')
+    } catch (err) {
+      const message = err instanceof AdminServiceError ? err.message : '更新班級投遞失敗'
       setError(message)
     } finally {
       setIsMutating(false)
@@ -440,6 +537,7 @@ export function AdminArticleListPage() {
                     <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-waldorf-clay-500">順序</th>
                     <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-waldorf-clay-500">標題</th>
                     <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-waldorf-clay-500">狀態</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-waldorf-clay-500">班級投遞</th>
                     <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-waldorf-clay-500">最後更新</th>
                     <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-waldorf-clay-500">操作</th>
                   </tr>
@@ -472,6 +570,73 @@ export function AdminArticleListPage() {
                       </td>
                       <td className="px-6 py-4 text-sm font-medium text-waldorf-clay-800">{article.title}</td>
                       <td className="px-6 py-4 text-sm text-waldorf-clay-600">{article.status}</td>
+                      <td className="px-6 py-4 text-sm text-waldorf-clay-600">
+                        {(() => {
+                          const draft = getDraftTargeting(article)
+                          return (
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-3">
+                                <label className="flex items-center gap-1 text-xs">
+                                  <input
+                                    type="radio"
+                                    name={`targeting-${article.id}`}
+                                    checked={draft.mode === 'shared'}
+                                    onChange={() => handleChangeTargetingMode(article.id, 'shared')}
+                                  />
+                                  共享
+                                </label>
+                                <label className="flex items-center gap-1 text-xs">
+                                  <input
+                                    type="radio"
+                                    name={`targeting-${article.id}`}
+                                    checked={draft.mode === 'targeted'}
+                                    onChange={() => handleChangeTargetingMode(article.id, 'targeted')}
+                                  />
+                                  目標班級
+                                </label>
+                              </div>
+                              {draft.mode === 'targeted' && (
+                                <div className="space-y-2 rounded border border-waldorf-cream-200 p-2">
+                                  <input
+                                    type="text"
+                                    value={classSearchByArticleId[article.id] || ''}
+                                    onChange={(event) => handleClassSearchChange(article.id, event.target.value)}
+                                    placeholder="搜尋班級"
+                                    className="w-full rounded border border-waldorf-cream-300 px-2 py-1 text-xs text-waldorf-clay-700"
+                                  />
+                                  <div className="max-h-28 space-y-1 overflow-y-auto">
+                                    {availableClasses
+                                      .filter((classItem) =>
+                                        classItem.name
+                                          .toLowerCase()
+                                          .includes((classSearchByArticleId[article.id] || '').trim().toLowerCase())
+                                      )
+                                      .map((classItem) => (
+                                        <label key={classItem.id} className="flex items-center gap-1 text-xs">
+                                          <input
+                                            type="checkbox"
+                                            checked={draft.classIds.includes(classItem.id)}
+                                            onChange={() => handleToggleTargetClass(article.id, classItem.id)}
+                                            disabled={isMutating}
+                                          />
+                                          {classItem.name}
+                                        </label>
+                                      ))}
+                                  </div>
+                                </div>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleSaveTargeting(article)}
+                                disabled={isMutating}
+                                className="rounded border border-waldorf-cream-300 px-2 py-1 text-xs text-waldorf-clay-700 hover:bg-waldorf-cream-50 disabled:opacity-50"
+                              >
+                                儲存班級設定
+                              </button>
+                            </div>
+                          )
+                        })()}
+                      </td>
                       <td className="px-6 py-4 text-sm text-waldorf-clay-500">
                         {article.editedAt ? new Date(article.editedAt).toLocaleString('zh-TW') : '-'}
                       </td>

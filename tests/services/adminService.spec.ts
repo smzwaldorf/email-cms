@@ -560,7 +560,53 @@ describe('AdminService', () => {
         newsletter_id: 'newsletter-1',
         article_id: 'article-2',
         article_order: 2,
+        targeting_mode: 'shared',
+        target_class_ids: [],
       }))
+    })
+
+    it('persists targeted class metadata for newsletter-article association', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({ data: [{ article_order: 0 }], error: null }))
+        .mockImplementationOnce((resolve) => resolve({ data: [{ id: 'A1' }, { id: 'B1' }], error: null }))
+        .mockImplementationOnce((resolve) => resolve({
+          data: { newsletter_id: 'newsletter-1', article_id: 'article-2', article_order: 1 },
+          error: null,
+        }))
+
+      await adminService.addArticleToNewsletterById('article-2', 'newsletter-1', undefined, undefined, {
+        mode: 'targeted',
+        classIds: ['A1', 'B1'],
+      })
+
+      expect(mockBuilder.insert).toHaveBeenCalledWith(expect.objectContaining({
+        targeting_mode: 'targeted',
+        target_class_ids: ['A1', 'B1'],
+      }))
+    })
+  })
+
+  describe('updateArticleTargetingInNewsletterById', () => {
+    it('rejects targeted mode without class selections', async () => {
+      await expect(
+        adminService.updateArticleTargetingInNewsletterById('newsletter-1', 'article-1', 'targeted', [])
+      ).rejects.toThrow('請至少選擇一個班級')
+    })
+
+    it('rejects unknown class IDs', async () => {
+      mockBuilder.then.mockImplementationOnce((resolve) => resolve({
+        data: [{ id: 'A1' }],
+        error: null,
+      }))
+
+      await expect(
+        adminService.updateArticleTargetingInNewsletterById(
+          'newsletter-1',
+          'article-1',
+          'targeted',
+          ['A1', 'UNKNOWN']
+        )
+      ).rejects.toThrow('Unknown class IDs: UNKNOWN')
     })
   })
 

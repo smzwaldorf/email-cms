@@ -41,6 +41,44 @@ export class AdminServiceError extends Error {
  * Provides methods for admin dashboard operations
  */
 class AdminService {
+  private normalizeTargeting(
+    targetingMode: 'shared' | 'targeted' = 'shared',
+    targetClassIds: string[] = []
+  ): { targetingMode: 'shared' | 'targeted'; targetClassIds: string[] } {
+    const uniqueClassIds = Array.from(new Set(targetClassIds.filter(Boolean)))
+    if (targetingMode === 'shared') {
+      return { targetingMode: 'shared', targetClassIds: [] }
+    }
+    return { targetingMode: 'targeted', targetClassIds: uniqueClassIds }
+  }
+
+  private async validateTargetClassIds(targetClassIds: string[]): Promise<void> {
+    if (targetClassIds.length === 0) return
+
+    const supabase = getSupabaseClient()
+    const { data, error } = await supabase
+      .from('classes')
+      .select('id')
+      .in('id', targetClassIds)
+
+    if (error) {
+      throw new AdminServiceError(
+        `Failed to validate target classes: ${error.message}`,
+        'VALIDATION_ERROR',
+        error as any
+      )
+    }
+
+    const validIds = new Set((data || []).map((row: any) => row.id))
+    const unknownIds = targetClassIds.filter((id) => !validIds.has(id))
+    if (unknownIds.length > 0) {
+      throw new AdminServiceError(
+        `Unknown class IDs: ${unknownIds.join(', ')}`,
+        'VALIDATION_ERROR'
+      )
+    }
+  }
+
   private mapNewsletterRow(row: any, articleCount: number = 0): AdminNewsletter {
     return {
       id: row.id,
@@ -82,6 +120,8 @@ class AdminService {
       .from('newsletter_articles')
       .select(`
         article_order,
+        targeting_mode,
+        target_class_ids,
         articles!inner (
           title,
           content,
@@ -144,6 +184,8 @@ class AdminService {
       newsletter_id: targetNewsletter.id,
       article_id: article.id,
       article_order: sourceArticles[index].article_order,
+      targeting_mode: sourceArticles[index].targeting_mode ?? 'shared',
+      target_class_ids: sourceArticles[index].target_class_ids ?? [],
     }))
 
     const { error: linkError } = await supabase
@@ -787,6 +829,8 @@ class AdminService {
         .from('newsletter_articles')
         .select(`
           article_order,
+          targeting_mode,
+          target_class_ids,
           articles!inner (*)
         `)
         .eq('newsletter_id', newsletterId)
@@ -808,6 +852,8 @@ class AdminService {
         summary: row.articles.summary,
         weekNumber: weekNumber,
         order: row.article_order,
+        newsletterTargetingMode: row.targeting_mode ?? 'shared',
+        newsletterTargetClassIds: row.target_class_ids ?? [],
         classIds: row.articles.class_ids || [],
         familyIds: row.articles.family_ids || [],
         status: row.articles.status,
@@ -839,6 +885,8 @@ class AdminService {
         .from('newsletter_articles')
         .select(`
           article_order,
+          targeting_mode,
+          target_class_ids,
           articles!inner (*)
         `)
         .eq('newsletter_id', newsletterId)
@@ -863,6 +911,8 @@ class AdminService {
         summary: row.articles.summary,
         weekNumber: newsletterData.weekNumber || '',
         order: row.article_order,
+        newsletterTargetingMode: row.targeting_mode ?? 'shared',
+        newsletterTargetClassIds: row.target_class_ids ?? [],
         classIds: row.articles.class_ids || [],
         familyIds: row.articles.family_ids || [],
         status: row.articles.status,
@@ -967,13 +1017,27 @@ class AdminService {
 
       const now = new Date().toISOString()
       const updatePayload: any = {
-        ...updates,
         last_edited_by: userId,
         edited_at: now,
         updated_at: now,
       }
 
       // Map AdminArticle fields to database fields
+      if (updates.title !== undefined) {
+        updatePayload.title = updates.title
+      }
+      if (updates.content !== undefined) {
+        updatePayload.content = updates.content
+      }
+      if (updates.author !== undefined) {
+        updatePayload.author = updates.author
+      }
+      if (updates.summary !== undefined) {
+        updatePayload.summary = updates.summary
+      }
+      if (updates.status !== undefined) {
+        updatePayload.status = updates.status
+      }
       if (updates.classIds !== undefined) {
         updatePayload.class_ids = updates.classIds
       }
@@ -1067,7 +1131,11 @@ class AdminService {
     articleId: string,
     weekNumber: string,
     order?: number,
-    userId?: string
+    userId?: string,
+    targeting?: {
+      mode?: 'shared' | 'targeted'
+      classIds?: string[]
+    }
   ): Promise<{ id: string; newsletter_id: string; article_id: string; article_order: number }> {
     try {
       const supabase = getSupabaseClient()
@@ -1096,6 +1164,17 @@ class AdminService {
         }
         articleOrder = (existing?.[0]?.article_order || 0) + 1
       }
+      const normalized = this.normalizeTargeting(
+        targeting?.mode ?? 'shared',
+        targeting?.classIds ?? []
+      )
+      if (normalized.targetingMode === 'targeted' && normalized.targetClassIds.length === 0) {
+        throw new AdminServiceError(
+          '請至少選擇一個班級，或切換為共享文章',
+          'VALIDATION_ERROR'
+        )
+      }
+      await this.validateTargetClassIds(normalized.targetClassIds)
 
       const { data, error } = await supabase
         .from('newsletter_articles')
@@ -1104,6 +1183,8 @@ class AdminService {
           article_id: articleId,
           article_order: articleOrder,
           added_by: userId || null,
+          targeting_mode: normalized.targetingMode,
+          target_class_ids: normalized.targetClassIds,
         })
         .select()
         .single()
@@ -1139,7 +1220,11 @@ class AdminService {
     articleId: string,
     newsletterId: string,
     order?: number,
-    userId?: string
+    userId?: string,
+    targeting?: {
+      mode?: 'shared' | 'targeted'
+      classIds?: string[]
+    }
   ): Promise<{ id: string; newsletter_id: string; article_id: string; article_order: number }> {
     try {
       const supabase = getSupabaseClient()
@@ -1159,6 +1244,17 @@ class AdminService {
 
         articleOrder = (existing?.[0]?.article_order || 0) + 1
       }
+      const normalized = this.normalizeTargeting(
+        targeting?.mode ?? 'shared',
+        targeting?.classIds ?? []
+      )
+      if (normalized.targetingMode === 'targeted' && normalized.targetClassIds.length === 0) {
+        throw new AdminServiceError(
+          '請至少選擇一個班級，或切換為共享文章',
+          'VALIDATION_ERROR'
+        )
+      }
+      await this.validateTargetClassIds(normalized.targetClassIds)
 
       const { data, error } = await supabase
         .from('newsletter_articles')
@@ -1167,6 +1263,8 @@ class AdminService {
           article_id: articleId,
           article_order: articleOrder,
           added_by: userId || null,
+          targeting_mode: normalized.targetingMode,
+          target_class_ids: normalized.targetClassIds,
         })
         .select()
         .single()
@@ -1261,6 +1359,49 @@ class AdminService {
       throw new AdminServiceError(
         `Error removing article from newsletter: ${err instanceof Error ? err.message : String(err)}`,
         'REMOVE_ARTICLE_FROM_NEWSLETTER_ERROR',
+        err as any
+      )
+    }
+  }
+
+  async updateArticleTargetingInNewsletterById(
+    newsletterId: string,
+    articleId: string,
+    targetingMode: 'shared' | 'targeted',
+    targetClassIds: string[] = []
+  ): Promise<void> {
+    try {
+      const supabase = getSupabaseClient()
+      const normalized = this.normalizeTargeting(targetingMode, targetClassIds)
+      if (normalized.targetingMode === 'targeted' && normalized.targetClassIds.length === 0) {
+        throw new AdminServiceError(
+          '請至少選擇一個班級，或切換為共享文章',
+          'VALIDATION_ERROR'
+        )
+      }
+      await this.validateTargetClassIds(normalized.targetClassIds)
+
+      const { error } = await supabase
+        .from('newsletter_articles')
+        .update({
+          targeting_mode: normalized.targetingMode,
+          target_class_ids: normalized.targetClassIds,
+        })
+        .eq('newsletter_id', newsletterId)
+        .eq('article_id', articleId)
+
+      if (error) {
+        throw new AdminServiceError(
+          `Failed to update article targeting: ${error.message}`,
+          'UPDATE_ARTICLE_TARGETING_ERROR',
+          error as any
+        )
+      }
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error updating article targeting: ${err instanceof Error ? err.message : String(err)}`,
+        'UPDATE_ARTICLE_TARGETING_ERROR',
         err as any
       )
     }
@@ -1650,7 +1791,10 @@ class AdminService {
         )
       }
 
-      await this.addArticleToNewsletterById(article.id, newsletterId, nextOrder)
+      await this.addArticleToNewsletterById(article.id, newsletterId, nextOrder, undefined, {
+        mode: 'shared',
+        classIds: [],
+      })
 
       return {
         id: article.id,
@@ -1660,6 +1804,8 @@ class AdminService {
         summary: article.summary,
         weekNumber: newsletter.weekNumber || '',
         order: nextOrder,
+        newsletterTargetingMode: 'shared',
+        newsletterTargetClassIds: [],
         classIds: article.class_ids || [],
         familyIds: article.family_ids || [],
         status: article.status,
@@ -1696,6 +1842,8 @@ class AdminService {
         .from('newsletter_articles')
         .select(`
           article_order,
+          targeting_mode,
+          target_class_ids,
           articles!inner (*)
         `)
         .eq('newsletter_id', newsletterId)
@@ -1717,6 +1865,8 @@ class AdminService {
         summary: row.articles.summary,
         weekNumber: weekNumber,
         order: row.article_order,
+        newsletterTargetingMode: row.targeting_mode ?? 'shared',
+        newsletterTargetClassIds: row.target_class_ids ?? [],
         classIds: row.articles.class_ids || [],
         familyIds: row.articles.family_ids || [],
         status: row.articles.status,

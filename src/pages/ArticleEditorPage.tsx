@@ -106,6 +106,15 @@ export function ArticleEditorPage() {
         article.editedAt || article.updatedAt || new Date().toISOString(),
         user.id
       )
+      const effectiveNewsletterId = state?.newsletterId || id
+      if (effectiveNewsletterId) {
+        await adminService.updateArticleTargetingInNewsletterById(
+          effectiveNewsletterId,
+          articleId,
+          updatedArticle.newsletterTargetingMode ?? 'shared',
+          updatedArticle.newsletterTargetClassIds ?? []
+        )
+      }
 
       // Navigate back to newsletter view
       navigate(getAdminNewsletterPath({
@@ -200,6 +209,7 @@ export function ArticleEditorPage() {
             onError={handleError}
             availableClasses={availableClasses}
             availableFamilies={availableFamilies}
+            showNewsletterTargeting
           />
         </div>
       </div>

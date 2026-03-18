@@ -46,7 +46,7 @@ tests:
 
 ---
 ### Requirement: Admin can compose the article list for a newsletter
-The system SHALL allow an admin to manage the set and order of articles within a newsletter from the newsletter management workflow, including adding, creating, editing, removing, and reordering newsletter articles while preserving newsletter context.
+The system SHALL allow an admin to manage the set, class targeting, and order of articles within a newsletter from the newsletter management workflow, including adding, creating, editing, removing, and reordering newsletter articles while preserving newsletter context.
 
 #### Scenario: View articles in newsletter order
 - **WHEN** an admin opens a newsletter composition view
@@ -75,6 +75,10 @@ The system SHALL allow an admin to manage the set and order of articles within a
 #### Scenario: Manage issue composition from newsletter context
 - **WHEN** an admin needs to continue composing an issue
 - **THEN** the system SHALL provide newsletter-context actions to add, remove, or edit articles without forcing the admin back through unrelated dashboard flows
+
+#### Scenario: Configure class targeting in newsletter composition
+- **WHEN** an admin updates an article in newsletter composition to shared targeting or targeted class bindings
+- **THEN** the system SHALL persist the targeting configuration and keep the admin in the same newsletter management context
 
 
 <!-- @trace
