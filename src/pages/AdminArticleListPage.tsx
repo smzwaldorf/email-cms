@@ -84,6 +84,10 @@ export function AdminArticleListPage() {
   }
 
   const handleBack = () => {
+    if (newsletter?.isTemplate) {
+      navigate('/admin/templates')
+      return
+    }
     navigate('/admin')
   }
 
@@ -251,7 +255,7 @@ export function AdminArticleListPage() {
   return (
     <ErrorBoundary>
       <AdminLayout
-        activeTab="newsletters"
+        activeTab={newsletter.isTemplate ? 'templates' : 'newsletters'}
         headerAction={
           <div className="flex items-center gap-3">
             <button
@@ -262,10 +266,16 @@ export function AdminArticleListPage() {
               + 建立草稿文章
             </button>
             <button
-              onClick={() => navigate(`/admin/newsletter/create?template=${newsletter.id}`)}
+              onClick={() =>
+                navigate(
+                  newsletter.isTemplate
+                    ? `/admin/newsletter/create?template=${newsletter.id}`
+                    : `/admin/newsletter/create?sourceNewsletter=${newsletter.id}`
+                )
+              }
               className="rounded-lg border border-waldorf-peach-300 bg-white px-4 py-2 text-waldorf-peach-700 transition-colors hover:bg-waldorf-peach-50"
             >
-              用此期作為模板
+              {newsletter.isTemplate ? '由模板建立電子報' : '由此期建立模板'}
             </button>
           </div>
         }
@@ -279,7 +289,7 @@ export function AdminArticleListPage() {
               <svg className="mr-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
-              返回電子報列表
+              {newsletter.isTemplate ? '返回模板列表' : '返回電子報列表'}
             </button>
 
             <div className="flex flex-wrap items-center justify-between gap-4">
@@ -292,19 +302,21 @@ export function AdminArticleListPage() {
                   <span className={`rounded-full px-3 py-1 font-medium ${getStatusColor(newsletter.status)}`}>
                     {getStatusLabel(newsletter.status)}
                   </span>
-                  <a
-                    href={generateWeeklyUrl(newsletter.weekNumber || newsletter.id)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-waldorf-peach-600 hover:text-waldorf-peach-700"
-                  >
-                    查看公開頁面
-                  </a>
+                  {!newsletter.isTemplate && (
+                    <a
+                      href={generateWeeklyUrl(newsletter.weekNumber || newsletter.id)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-waldorf-peach-600 hover:text-waldorf-peach-700"
+                    >
+                      查看公開頁面
+                    </a>
+                  )}
                 </div>
               </div>
 
               <div className="flex items-center gap-3">
-                {newsletter.status === 'draft' && (
+                {newsletter.status === 'draft' && !newsletter.isTemplate && (
                   <button
                     onClick={handlePublish}
                     disabled={isMutating || !publishReadiness.canPublish}
@@ -313,7 +325,7 @@ export function AdminArticleListPage() {
                     發布電子報
                   </button>
                 )}
-                {newsletter.status === 'published' && (
+                {newsletter.status === 'published' && !newsletter.isTemplate && (
                   <button
                     onClick={handleArchive}
                     disabled={isMutating}

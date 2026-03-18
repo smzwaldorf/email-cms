@@ -49,6 +49,7 @@ class AdminService {
       description: row.description,
       releaseDate: row.release_date,
       status: row.status,
+      isTemplate: row.is_template ?? false,
       articleCount,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
@@ -70,6 +71,94 @@ class AdminService {
     
     if (error || !data) return null
     return data.id
+  }
+
+  private async copyCompositionToNewsletter(
+    sourceNewsletterId: string,
+    targetNewsletter: AdminNewsletter
+  ): Promise<number> {
+    const supabase = getSupabaseClient()
+    const { data: sourceArticles, error: sourceArticlesError } = await supabase
+      .from('newsletter_articles')
+      .select(`
+        article_order,
+        articles!inner (
+          title,
+          content,
+          author_id,
+          author,
+          summary,
+          visibility_type,
+          restricted_to_classes,
+          class_ids,
+          family_ids
+        )
+      `)
+      .eq('newsletter_id', sourceNewsletterId)
+      .order('article_order', { ascending: true })
+
+    if (sourceArticlesError) {
+      throw new AdminServiceError(
+        `Failed to fetch source articles: ${sourceArticlesError.message}`,
+        'FETCH_ARTICLES_ERROR',
+        sourceArticlesError as any
+      )
+    }
+
+    if (!sourceArticles?.length) {
+      return 0
+    }
+
+    const copiedArticlePayload = sourceArticles.map((row: any) => ({
+      title: row.articles.title,
+      content: row.articles.content,
+      author_id: row.articles.author_id ?? null,
+      author: row.articles.author ?? null,
+      summary: row.articles.summary ?? null,
+      status: 'draft',
+      visibility_type: row.articles.visibility_type ?? 'public',
+      restricted_to_classes: row.articles.restricted_to_classes ?? null,
+      class_ids: row.articles.class_ids ?? [],
+      family_ids: row.articles.family_ids ?? [],
+      week_number: targetNewsletter.weekNumber ?? null,
+      article_order: row.article_order,
+      published_at: null,
+      edited_at: null,
+      last_edited_by: null,
+    }))
+
+    const { data: copiedArticles, error: copiedArticlesError } = await supabase
+      .from('articles')
+      .insert(copiedArticlePayload)
+      .select('id')
+
+    if (copiedArticlesError) {
+      throw new AdminServiceError(
+        `Failed to copy source articles: ${copiedArticlesError.message}`,
+        'CREATE_ARTICLE_ERROR',
+        copiedArticlesError as any
+      )
+    }
+
+    const copiedLinks = (copiedArticles || []).map((article: any, index: number) => ({
+      newsletter_id: targetNewsletter.id,
+      article_id: article.id,
+      article_order: sourceArticles[index].article_order,
+    }))
+
+    const { error: linkError } = await supabase
+      .from('newsletter_articles')
+      .insert(copiedLinks)
+
+    if (linkError) {
+      throw new AdminServiceError(
+        `Failed to attach copied articles: ${linkError.message}`,
+        'ADD_ARTICLE_TO_NEWSLETTER_ERROR',
+        linkError as any
+      )
+    }
+
+    return copiedLinks.length
   }
 
   /**
@@ -133,23 +222,45 @@ class AdminService {
         )
       }
 
-      return (data || []).map((row: any) => ({
-        id: row.id,
-        weekNumber: row.week_number,
-        title: row.title,
-        description: row.description,
-        releaseDate: row.release_date,
-        status: row.status,
-        articleCount: row.newsletter_articles?.[0]?.count || 0,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
-        publishedAt: row.published_at,
-        isPublished: row.status === 'published',
-      }))
+      return (data || []).map((row: any) => this.mapNewsletterRow(
+        row,
+        row.newsletter_articles?.[0]?.count || 0
+      ))
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
       throw new AdminServiceError(
         `Error fetching newsletters: ${err instanceof Error ? err.message : String(err)}`,
+        'FETCH_NEWSLETTERS_ERROR',
+        err as any
+      )
+    }
+  }
+
+  async fetchNewsletterTemplates(): Promise<AdminNewsletter[]> {
+    try {
+      const supabase = getSupabaseClient()
+      const { data, error } = await supabase
+        .from('newsletters')
+        .select('*, newsletter_articles(count)')
+        .eq('is_template', true)
+        .order('updated_at', { ascending: false })
+
+      if (error) {
+        throw new AdminServiceError(
+          `Failed to fetch newsletter templates: ${error.message}`,
+          'FETCH_NEWSLETTERS_ERROR',
+          error as any
+        )
+      }
+
+      return (data || []).map((row: any) => this.mapNewsletterRow(
+        row,
+        row.newsletter_articles?.[0]?.count || 0
+      ))
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error fetching newsletter templates: ${err instanceof Error ? err.message : String(err)}`,
         'FETCH_NEWSLETTERS_ERROR',
         err as any
       )
@@ -184,6 +295,7 @@ class AdminService {
         description: data.description,
         releaseDate: data.release_date,
         status: data.status,
+        isTemplate: data.is_template ?? false,
         articleCount: 0,
         createdAt: data.created_at,
         updatedAt: data.updated_at,
@@ -228,6 +340,7 @@ class AdminService {
         description: data.description,
         releaseDate: data.release_date,
         status: data.status,
+        isTemplate: data.is_template ?? false,
         articleCount: data.newsletter_articles?.[0]?.count || 0,
         createdAt: data.created_at,
         updatedAt: data.updated_at,
@@ -266,6 +379,7 @@ class AdminService {
           description: metadata?.description?.trim() || null,
           release_date: releaseDate,
           status: 'draft',
+          is_template: false,
         })
         .select()
         .single()
@@ -383,6 +497,69 @@ class AdminService {
     }
   }
 
+  async createTemplateFromNewsletter(
+    sourceNewsletterId: string,
+    metadata?: {
+      title?: string | null
+      description?: string | null
+      releaseDate?: string
+    }
+  ): Promise<AdminNewsletter> {
+    try {
+      const supabase = getSupabaseClient()
+      const { data: sourceNewsletter, error: sourceNewsletterError } = await supabase
+        .from('newsletters')
+        .select('*')
+        .eq('id', sourceNewsletterId)
+        .single()
+
+      if (sourceNewsletterError || !sourceNewsletter) {
+        throw new AdminServiceError(
+          `Source newsletter not found: ${sourceNewsletterId}`,
+          'NEWSLETTER_NOT_FOUND',
+          sourceNewsletterError as any
+        )
+      }
+
+      const { data: createdTemplate, error: createTemplateError } = await supabase
+        .from('newsletters')
+        .insert({
+          week_number: null,
+          title: metadata?.title?.trim() || sourceNewsletter.title || null,
+          description: metadata?.description?.trim() || sourceNewsletter.description || null,
+          release_date: metadata?.releaseDate || sourceNewsletter.release_date,
+          status: 'draft',
+          is_template: true,
+          published_at: null,
+        })
+        .select()
+        .single()
+
+      if (createTemplateError || !createdTemplate) {
+        throw new AdminServiceError(
+          `Failed to create newsletter template: ${createTemplateError?.message || 'Unknown error'}`,
+          'CREATE_NEWSLETTER_ERROR',
+          createTemplateError as any
+        )
+      }
+
+      const template = this.mapNewsletterRow(createdTemplate, 0)
+      const copiedCount = await this.copyCompositionToNewsletter(sourceNewsletterId, template)
+
+      return {
+        ...template,
+        articleCount: copiedCount,
+      }
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error creating template from newsletter: ${err instanceof Error ? err.message : String(err)}`,
+        'CREATE_NEWSLETTER_ERROR',
+        err as any
+      )
+    }
+  }
+
   async createNewsletterFromTemplate(
     sourceNewsletterId: string,
     overrides: {
@@ -409,6 +586,13 @@ class AdminService {
         )
       }
 
+      if (!sourceNewsletter.is_template) {
+        throw new AdminServiceError(
+          `Source newsletter is not a template: ${sourceNewsletterId}`,
+          'NEWSLETTER_NOT_TEMPLATE'
+        )
+      }
+
       const newNewsletter = await this.createNewsletter(
         overrides.weekNumber ?? null,
         overrides.releaseDate,
@@ -417,90 +601,11 @@ class AdminService {
           description: overrides.description ?? sourceNewsletter.description,
         }
       )
-
-      const { data: sourceArticles, error: sourceArticlesError } = await supabase
-        .from('newsletter_articles')
-        .select(`
-          article_order,
-          articles!inner (
-            title,
-            content,
-            author_id,
-            author,
-            summary,
-            visibility_type,
-            restricted_to_classes,
-            class_ids,
-            family_ids
-          )
-        `)
-        .eq('newsletter_id', sourceNewsletterId)
-        .order('article_order', { ascending: true })
-
-      if (sourceArticlesError) {
-        throw new AdminServiceError(
-          `Failed to fetch template articles: ${sourceArticlesError.message}`,
-          'FETCH_ARTICLES_ERROR',
-          sourceArticlesError as any
-        )
-      }
-
-      if (!sourceArticles?.length) {
-        return newNewsletter
-      }
-
-      const copiedArticlePayload = sourceArticles.map((row: any) => ({
-        title: row.articles.title,
-        content: row.articles.content,
-        author_id: row.articles.author_id ?? null,
-        author: row.articles.author ?? null,
-        summary: row.articles.summary ?? null,
-        status: 'draft',
-        visibility_type: row.articles.visibility_type ?? 'public',
-        restricted_to_classes: row.articles.restricted_to_classes ?? null,
-        class_ids: row.articles.class_ids ?? [],
-        family_ids: row.articles.family_ids ?? [],
-        week_number: newNewsletter.weekNumber ?? null,
-        article_order: row.article_order,
-        published_at: null,
-        edited_at: null,
-        last_edited_by: null,
-      }))
-
-      const { data: copiedArticles, error: copiedArticlesError } = await supabase
-        .from('articles')
-        .insert(copiedArticlePayload)
-        .select('id')
-
-      if (copiedArticlesError) {
-        throw new AdminServiceError(
-          `Failed to copy template articles: ${copiedArticlesError.message}`,
-          'CREATE_ARTICLE_ERROR',
-          copiedArticlesError as any
-        )
-      }
-
-      const copiedLinks = (copiedArticles || []).map((article: any, index: number) => ({
-        newsletter_id: newNewsletter.id,
-        article_id: article.id,
-        article_order: sourceArticles[index].article_order,
-      }))
-
-      const { error: linkError } = await supabase
-        .from('newsletter_articles')
-        .insert(copiedLinks)
-
-      if (linkError) {
-        throw new AdminServiceError(
-          `Failed to attach copied articles: ${linkError.message}`,
-          'ADD_ARTICLE_TO_NEWSLETTER_ERROR',
-          linkError as any
-        )
-      }
+      const copiedCount = await this.copyCompositionToNewsletter(sourceNewsletterId, newNewsletter)
 
       return {
         ...newNewsletter,
-        articleCount: copiedLinks.length,
+        articleCount: copiedCount,
       }
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
@@ -567,6 +672,7 @@ class AdminService {
         description: data.description,
         releaseDate: data.release_date,
         status: data.status,
+        isTemplate: data.is_template ?? false,
         articleCount: 0,
         createdAt: data.created_at,
         updatedAt: data.updated_at,
@@ -612,6 +718,7 @@ class AdminService {
         description: data.description,
         releaseDate: data.release_date,
         status: data.status,
+        isTemplate: data.is_template ?? false,
         articleCount: 0,
         createdAt: data.created_at,
         updatedAt: data.updated_at,

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { AdminArticleListPage } from '@/pages/AdminArticleListPage'
+import type { AdminNewsletter } from '@/types/admin'
 
 vi.mock('@/services/adminService', () => ({
   adminService: {
@@ -55,6 +56,7 @@ const draftNewsletter = {
   updatedAt: '2025-11-01',
   publishedAt: null,
   isPublished: false,
+  isTemplate: false,
 }
 
 const publishedNewsletter = {
@@ -81,6 +83,7 @@ const specialEditionPublishedNewsletter = {
   updatedAt: '2025-12-01',
   publishedAt: '2025-12-10T08:00:00Z',
   isPublished: true,
+  isTemplate: false,
 }
 
 const mockArticles = [
@@ -111,7 +114,7 @@ const mockArticles = [
 ]
 
 describe('Admin newsletter workflow page', () => {
-  let currentWeekNewsletter = { ...draftNewsletter }
+  let currentWeekNewsletter: AdminNewsletter = { ...draftNewsletter }
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -217,7 +220,7 @@ describe('Admin newsletter workflow page', () => {
   })
 
   it('loads and manages special-edition newsletters via id routes', async () => {
-    let currentSpecialNewsletter = { ...specialEditionPublishedNewsletter }
+    let currentSpecialNewsletter: AdminNewsletter = { ...specialEditionPublishedNewsletter }
     vi.mocked(adminService.fetchNewsletter).mockImplementation(async () => currentSpecialNewsletter as any)
     vi.mocked(adminService.archiveNewsletter).mockImplementation(async () => {
       currentSpecialNewsletter = { ...currentSpecialNewsletter, status: 'archived' as const }

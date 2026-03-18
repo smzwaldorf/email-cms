@@ -520,6 +520,7 @@ describe('AdminService', () => {
             description: 'Source desc',
             release_date: '2025-11-23',
             status: 'published',
+            is_template: true,
             created_at: '2025-11-20',
             updated_at: '2025-11-20',
           },
@@ -573,6 +574,77 @@ describe('AdminService', () => {
         status: 'draft',
       }))
       expect(mockBuilder.update).not.toHaveBeenCalled()
+      expect(result.articleCount).toBe(1)
+    })
+  })
+
+  describe('createTemplateFromNewsletter', () => {
+    it('creates a template newsletter and copies source composition', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({
+          data: {
+            id: 'source-newsletter',
+            week_number: '2025-W47',
+            title: 'Source',
+            description: 'Source desc',
+            release_date: '2025-11-23',
+            status: 'published',
+            is_template: false,
+            created_at: '2025-11-20',
+            updated_at: '2025-11-20',
+          },
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({
+          data: {
+            id: 'template-newsletter',
+            week_number: null,
+            title: 'Template',
+            description: 'Template desc',
+            release_date: '2025-11-24',
+            status: 'draft',
+            is_template: true,
+            created_at: '2025-11-24',
+            updated_at: '2025-11-24',
+          },
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({
+          data: [
+            {
+              article_order: 1,
+              articles: {
+                title: 'Copied article',
+                content: '<p>Hello</p>',
+                author_id: null,
+                author: null,
+                summary: null,
+                visibility_type: 'public',
+                restricted_to_classes: null,
+                class_ids: [],
+                family_ids: [],
+              },
+            },
+          ],
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({
+          data: [{ id: 'template-article' }],
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({ data: null, error: null }))
+
+      const result = await adminService.createTemplateFromNewsletter('source-newsletter', {
+        title: 'Template',
+        description: 'Template desc',
+        releaseDate: '2025-11-24',
+      })
+
+      expect(mockBuilder.insert).toHaveBeenCalledWith(expect.objectContaining({
+        is_template: true,
+        status: 'draft',
+      }))
+      expect(result.isTemplate).toBe(true)
       expect(result.articleCount).toBe(1)
     })
   })

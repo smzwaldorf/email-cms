@@ -21,6 +21,7 @@ const LazyAdminDashboard = lazy(() => import('@/pages/AdminDashboardPage').then(
 const LazyAdminArticleList = lazy(() => import('@/pages/AdminArticleListPage').then(m => ({ default: m.AdminArticleListPage })))
 const LazyArticleEditorPage = lazy(() => import('@/pages/ArticleEditorPage').then(m => ({ default: m.ArticleEditorPage })))
 const LazyNewsletterCreatePage = lazy(() => import('@/pages/NewsletterCreatePage').then(m => ({ default: m.NewsletterCreatePage })))
+const LazyAdminTemplatesPage = lazy(() => import('@/pages/AdminTemplatesPage').then(m => ({ default: m.AdminTemplatesPage })))
 const LazyClassManagementPage = lazy(() => import('@/pages/ClassManagementPage').then(m => ({ default: m.ClassManagementPage })))
 const LazyFamilyManagementPage = lazy(() => import('@/pages/FamilyManagementPage').then(m => ({ default: m.FamilyManagementPage })))
 const LazyParentStudentPage = lazy(() => import('@/pages/ParentStudentPage').then(m => ({ default: m.ParentStudentPage })))
@@ -135,6 +136,18 @@ export default function App() {
                     <ProtectedRoute requiredRole="admin">
                       <Suspense fallback={<RouteLoader />}>
                         <LazyNewsletterCreatePage />
+                      </Suspense>
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/admin/templates"
+                element={
+                  <ErrorBoundary>
+                    <ProtectedRoute requiredRole="admin">
+                      <Suspense fallback={<RouteLoader />}>
+                        <LazyAdminTemplatesPage />
                       </Suspense>
                     </ProtectedRoute>
                   </ErrorBoundary>

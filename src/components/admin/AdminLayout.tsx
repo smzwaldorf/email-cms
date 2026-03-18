@@ -4,7 +4,7 @@ import { getSupabaseClient } from '@/lib/supabase'
 
 interface AdminLayoutProps {
   children: React.ReactNode
-  activeTab?: 'newsletters' | 'users' | 'audit' | 'classes' | 'families' | 'analytics'
+  activeTab?: 'newsletters' | 'templates' | 'users' | 'audit' | 'classes' | 'families' | 'analytics'
   headerAction?: React.ReactNode
 }
 

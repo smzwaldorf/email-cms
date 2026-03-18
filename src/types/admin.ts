@@ -104,6 +104,7 @@ export interface AdminNewsletter {
   description?: string | null // Newsletter summary/description
   releaseDate: string // ISO 日期字符串
   status: NewsletterStatus
+  isTemplate: boolean
   articleCount: number // 該週的文章數量
   createdAt: string
   updatedAt: string

@@ -342,7 +342,7 @@ export function AdminDashboardPage() {
       setIsNewsletterLoading(true)
       setNewsletterError(null)
       const data = await adminService.fetchNewsletters()
-      setNewsletters(data)
+      setNewsletters(data.filter((newsletter) => !newsletter.isTemplate))
     } catch (err) {
       const message = err instanceof AdminServiceError ? err.message : err instanceof Error ? err.message : '無法載入電子報'
       setNewsletterError(message)
@@ -365,8 +365,8 @@ export function AdminDashboardPage() {
     }
   }
 
-  const handleUseTemplate = (id: string) => {
-    navigate(`/admin/newsletter/create?template=${id}`)
+  const handleCreateTemplate = (id: string) => {
+    navigate(`/admin/newsletter/create?sourceNewsletter=${id}`)
   }
 
   const handlePublish = async (id: string) => {
@@ -609,7 +609,7 @@ export function AdminDashboardPage() {
                   onPublish={handlePublish}
                   onArchive={handleArchive}
                   onDelete={handleDelete}
-                  onUseTemplate={handleUseTemplate}
+                  onCreateTemplate={handleCreateTemplate}
                   onFilterChange={handleFilterChange}
                 />
               </>

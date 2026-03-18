@@ -21,6 +21,8 @@ export interface NewsletterRow {
   release_date: string; // DATE
   /** Newsletter status: draft, published, or archived */
   status: 'draft' | 'published' | 'archived';
+  /** Whether this newsletter record is a reusable template */
+  is_template?: boolean;
   /** Timestamp when the newsletter was published */
   published_at?: string | null; // TIMESTAMP WITH TIME ZONE
   /** Auto-managed creation timestamp */

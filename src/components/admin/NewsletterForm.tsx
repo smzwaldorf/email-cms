@@ -5,11 +5,12 @@ import type { AdminNewsletter } from '@/types/admin'
 import { getAdminNewsletterPath } from '@/utils/adminNewsletterRoutes'
 
 interface NewsletterFormProps {
-  mode?: 'create' | 'edit'
+  mode?: 'create' | 'edit' | 'create-template'
   newsletter?: AdminNewsletter | null
   onCancel?: () => void
   onSuccess?: (newsletter: AdminNewsletter) => void
   initialTemplateId?: string | null
+  initialSourceNewsletterId?: string | null
 }
 
 export function NewsletterForm({
@@ -18,6 +19,7 @@ export function NewsletterForm({
   onCancel,
   onSuccess,
   initialTemplateId = null,
+  initialSourceNewsletterId = null,
 }: NewsletterFormProps) {
   const navigate = useNavigate()
   const [weekNumber, setWeekNumber] = useState('')
@@ -25,10 +27,12 @@ export function NewsletterForm({
   const [description, setDescription] = useState('')
   const [releaseDate, setReleaseDate] = useState('')
   const [templateId, setTemplateId] = useState(initialTemplateId || '')
+  const [sourceNewsletterId, setSourceNewsletterId] = useState(initialSourceNewsletterId || '')
   const [availableTemplates, setAvailableTemplates] = useState<AdminNewsletter[]>([])
-  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false)
+  const [isLoadingSources, setIsLoadingSources] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const isTemplateEditMode = mode === 'edit' && Boolean(newsletter?.isTemplate)
 
   useEffect(() => {
     if (!newsletter) return
@@ -40,21 +44,26 @@ export function NewsletterForm({
   }, [newsletter])
 
   useEffect(() => {
-    if (mode !== 'create') return
+    if (mode !== 'create' && mode !== 'create-template') return
 
-    const loadTemplates = async () => {
+    const loadSources = async () => {
       try {
-        setIsLoadingTemplates(true)
-        const templates = await adminService.fetchNewsletters()
-        setAvailableTemplates(templates)
+        setIsLoadingSources(true)
+        if (mode === 'create') {
+          const templates = await adminService.fetchNewsletterTemplates()
+          setAvailableTemplates(templates)
+        } else {
+          const newsletters = await adminService.fetchNewsletters()
+          setAvailableTemplates(newsletters.filter((item) => !item.isTemplate))
+        }
       } catch (err) {
-        console.error('Failed to load newsletter templates:', err)
+        console.error('Failed to load newsletter sources:', err)
       } finally {
-        setIsLoadingTemplates(false)
+        setIsLoadingSources(false)
       }
     }
 
-    loadTemplates()
+    loadSources()
   }, [mode])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -75,11 +84,31 @@ export function NewsletterForm({
 
       let savedNewsletter: AdminNewsletter
       if (mode === 'edit' && newsletter?.id) {
-        savedNewsletter = await adminService.updateNewsletter(newsletter.id, {
+        const newsletterUpdates: {
+          weekNumber?: string | null
+          title?: string | null
+          description?: string | null
+          releaseDate?: string
+        } = {
           weekNumber: weekNumber || null,
           title,
           description,
-          releaseDate,
+        }
+        if (!newsletter.isTemplate) {
+          newsletterUpdates.releaseDate = releaseDate
+        }
+
+        savedNewsletter = await adminService.updateNewsletter(newsletter.id, {
+          ...newsletterUpdates,
+        })
+      } else if (mode === 'create-template') {
+        if (!sourceNewsletterId) {
+          throw new Error('請先選擇要建立模板的來源電子報')
+        }
+        savedNewsletter = await adminService.createTemplateFromNewsletter(sourceNewsletterId, {
+          title,
+          description,
+          releaseDate: releaseDate || undefined,
         })
       } else if (templateId) {
         savedNewsletter = await adminService.createNewsletterFromTemplate(templateId, {
@@ -127,11 +156,23 @@ export function NewsletterForm({
     setReleaseDate(nextSunday.toISOString().split('T')[0])
   }
 
-  const heading = mode === 'edit' ? '編輯電子報' : '建立新電子報'
+  const heading = mode === 'edit'
+    ? '編輯電子報'
+    : mode === 'create-template'
+      ? '建立電子報模板'
+      : '建立新電子報'
   const descriptionText = mode === 'edit'
-    ? '更新草稿電子報的週次、標題與發布資訊'
-    : '輸入週次、標題和發布日期以建立新的電子報'
-  const submitLabel = mode === 'edit' ? '儲存電子報' : '建立電子報'
+    ? isTemplateEditMode
+      ? '更新模板內容與結構資訊'
+      : '更新草稿電子報的週次、標題與發布資訊'
+    : mode === 'create-template'
+      ? '從既有電子報建立可重複使用的模板，後續可自由調整文章結構。模板不需要發布日期。'
+      : '輸入週次、標題和發布日期以建立新的電子報'
+  const submitLabel = mode === 'edit'
+    ? '儲存電子報'
+    : mode === 'create-template'
+      ? '建立模板'
+      : '建立電子報'
 
   return (
     <div className="bg-white/50 backdrop-blur-sm rounded-2xl shadow-xl shadow-waldorf-clay-200/20 p-8 border border-waldorf-cream-200/50 animate-fade-in-up">
@@ -153,7 +194,7 @@ export function NewsletterForm({
         {mode === 'create' && (
           <div className="animate-fade-in-up">
             <label htmlFor="templateId" className="block text-sm font-semibold text-waldorf-clay-700 mb-2">
-              從既有電子報開始 (可選)
+              從模板建立 (可選)
             </label>
             <select
               id="templateId"
@@ -170,12 +211,39 @@ export function NewsletterForm({
               ))}
             </select>
             <p className="mt-2 text-xs text-waldorf-clay-500 font-medium">
-              {isLoadingTemplates ? '載入模板中...' : '可選擇上一期電子報作為模板，系統會建立新的草稿內容。'}
+              {isLoadingSources ? '載入模板中...' : '可選擇既有模板建立新草稿，或直接建立空白草稿。'}
             </p>
           </div>
         )}
 
-        <div className="animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+        {mode === 'create-template' && (
+          <div className="animate-fade-in-up">
+            <label htmlFor="sourceNewsletterId" className="block text-sm font-semibold text-waldorf-clay-700 mb-2">
+              模板來源電子報 <span className="text-waldorf-rose-500">*</span>
+            </label>
+            <select
+              id="sourceNewsletterId"
+              value={sourceNewsletterId}
+              onChange={(e) => setSourceNewsletterId(e.target.value)}
+              className="w-full px-4 py-3 border border-waldorf-cream-300 rounded-xl bg-waldorf-cream-50 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-300 focus:border-waldorf-sage-400 text-waldorf-clay-700 transition-all duration-200"
+              data-testid="source-newsletter-select"
+              required
+            >
+              <option value="">請選擇來源電子報</option>
+              {availableTemplates.map((source) => (
+                <option key={source.id} value={source.id}>
+                  {source.weekNumber || source.title || source.id} · {source.status}
+                </option>
+              ))}
+            </select>
+            <p className="mt-2 text-xs text-waldorf-clay-500 font-medium">
+              {isLoadingSources ? '載入來源電子報中...' : '系統會複製完整文章內容與排序到模板，來源內容不會被修改。'}
+            </p>
+          </div>
+        )}
+
+        {mode !== 'create-template' && (
+          <div className="animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
           <label htmlFor="weekNumber" className="block text-sm font-semibold text-waldorf-clay-700 mb-2">
             週次 (Week Number)
           </label>
@@ -198,6 +266,7 @@ export function NewsletterForm({
           </div>
           <p className="mt-2 text-xs text-waldorf-clay-500 font-medium">格式: YYYY-Www (例如: 2025-W48) · 選填</p>
         </div>
+        )}
 
         <div className="animate-fade-in-up" style={{ animationDelay: '0.15s' }}>
           <label htmlFor="title" className="block text-sm font-semibold text-waldorf-clay-700 mb-2">
@@ -227,19 +296,21 @@ export function NewsletterForm({
           />
         </div>
 
-        <div className="animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-          <label htmlFor="releaseDate" className="block text-sm font-semibold text-waldorf-clay-700 mb-2">
-            預計發布日期 (Release Date) <span className="text-waldorf-rose-500">*</span>
-          </label>
-          <input
-            type="date"
-            id="releaseDate"
-            value={releaseDate}
-            onChange={(e) => setReleaseDate(e.target.value)}
-            required
-            className="w-full px-4 py-3 border border-waldorf-cream-300 rounded-xl bg-waldorf-cream-50 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-300 focus:border-waldorf-sage-400 text-waldorf-clay-700 transition-all duration-200"
-          />
-        </div>
+        {mode !== 'create-template' && !isTemplateEditMode && (
+          <div className="animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+            <label htmlFor="releaseDate" className="block text-sm font-semibold text-waldorf-clay-700 mb-2">
+              預計發布日期 (Release Date) <span className="text-waldorf-rose-500">*</span>
+            </label>
+            <input
+              type="date"
+              id="releaseDate"
+              value={releaseDate}
+              onChange={(e) => setReleaseDate(e.target.value)}
+              required
+              className="w-full px-4 py-3 border border-waldorf-cream-300 rounded-xl bg-waldorf-cream-50 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-300 focus:border-waldorf-sage-400 text-waldorf-clay-700 transition-all duration-200"
+            />
+          </div>
+        )}
 
         <div className="flex justify-end gap-3 pt-6 border-t border-waldorf-cream-200/50 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
           <button
