@@ -28,6 +28,7 @@ export interface CreateArticleDTO {
  */
 export interface UpdateArticleDTO {
   title?: string
+  summary?: string
   content?: string
   author?: string
   visibilityType?: 'public' | 'class_restricted'
@@ -389,6 +390,7 @@ export class ArticleService {
       const updateData: Record<string, unknown> = {}
 
       if (dto.title !== undefined) updateData.title = dto.title
+      if (dto.summary !== undefined) updateData.summary = dto.summary
       if (dto.content !== undefined) updateData.content = dto.content
       if (dto.author !== undefined) updateData.author = dto.author
       if (dto.visibilityType !== undefined) updateData.visibility_type = dto.visibilityType

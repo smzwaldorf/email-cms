@@ -392,6 +392,7 @@ export function WeeklyReaderPage() {
       // Convert Article type to UpdateArticleDTO for ArticleService
       const updateDTO: Parameters<typeof ArticleService.updateArticle>[1] = {
         title: updates.title,
+        summary: updates.summary,
         content: updates.content,
         author: updates.author,
         isPublished: updates.isPublished,

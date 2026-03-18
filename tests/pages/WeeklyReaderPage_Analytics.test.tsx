@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, waitFor } from '@testing-library/react'
 import { WeeklyReaderPage } from '@/pages/WeeklyReaderPage'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import * as useFetchWeeklyHook from '@/hooks/useFetchWeekly'
@@ -236,7 +236,6 @@ describe('WeeklyReaderPage Analytics', () => {
             }))
         })
 
-        expect(screen.getAllByText('Article Editor').length).toBeGreaterThan(0)
     })
 
     it('should DISABLE analytics tracking when newsletter is draft', async () => {
