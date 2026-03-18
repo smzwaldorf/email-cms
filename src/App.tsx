@@ -24,6 +24,7 @@ const LazyArticleEditorPage = lazy(() => import('@/pages/ArticleEditorPage').the
 const LazyNewsletterCreatePage = lazy(() => import('@/pages/NewsletterCreatePage').then(m => ({ default: m.NewsletterCreatePage })))
 const LazyAdminTemplatesPage = lazy(() => import('@/pages/AdminTemplatesPage').then(m => ({ default: m.AdminTemplatesPage })))
 const LazyClassManagementPage = lazy(() => import('@/pages/ClassManagementPage').then(m => ({ default: m.ClassManagementPage })))
+const LazyTeacherManagementPage = lazy(() => import('@/pages/TeacherManagementPage').then(m => ({ default: m.TeacherManagementPage })))
 const LazyFamilyManagementPage = lazy(() => import('@/pages/FamilyManagementPage').then(m => ({ default: m.FamilyManagementPage })))
 const LazyParentStudentPage = lazy(() => import('@/pages/ParentStudentPage').then(m => ({ default: m.ParentStudentPage })))
 const LazyAnalyticsDashboardPage = lazy(() => import('@/pages/AnalyticsDashboardPage').then(m => ({ default: m.AnalyticsDashboardPage })))
@@ -245,6 +246,18 @@ export default function App() {
                     <ProtectedRoute requiredRole="admin">
                       <Suspense fallback={<RouteLoader />}>
                         <LazyClassManagementPage />
+                      </Suspense>
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/admin/teachers"
+                element={
+                  <ErrorBoundary>
+                    <ProtectedRoute requiredRole="admin">
+                      <Suspense fallback={<RouteLoader />}>
+                        <LazyTeacherManagementPage />
                       </Suspense>
                     </ProtectedRoute>
                   </ErrorBoundary>

@@ -4,7 +4,7 @@ import { getSupabaseClient } from '@/lib/supabase'
 
 interface AdminLayoutProps {
   children: React.ReactNode
-  activeTab?: 'newsletters' | 'articles' | 'templates' | 'users' | 'audit' | 'classes' | 'families' | 'analytics'
+  activeTab?: 'newsletters' | 'articles' | 'templates' | 'users' | 'audit' | 'classes' | 'teachers' | 'families' | 'analytics'
   headerAction?: React.ReactNode
 }
 
@@ -175,7 +175,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, activeTab, h
 
               <div className="border-l border-waldorf-cream-300 mx-2 my-3" />
 
-              <TabLink to="/admin/classes" isActive={activeTab === 'classes'}>
+              <TabLink to="/admin/classes" isActive={activeTab === 'classes' || activeTab === 'teachers'}>
                 Classes
               </TabLink>
               <TabLink to="/admin/families" isActive={activeTab === 'families'}>
@@ -187,6 +187,21 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, activeTab, h
             </nav>
           </div>
         </div>
+
+        {(activeTab === 'classes' || activeTab === 'teachers') && (
+          <div className="mb-8 -mt-4">
+            <div className="bg-white/50 backdrop-blur-sm rounded-xl border border-waldorf-cream-200 px-6 py-3">
+              <nav className="flex items-center gap-6 text-sm" aria-label="Class Sub Navigation">
+                <TabLink to="/admin/classes" isActive={activeTab === 'classes'}>
+                  Class List
+                </TabLink>
+                <TabLink to="/admin/teachers" isActive={activeTab === 'teachers'}>
+                  Teachers
+                </TabLink>
+              </nav>
+            </div>
+          </div>
+        )}
 
         {/* Content Area */}
         <div className="bg-white/80 backdrop-blur-sm shadow-lg shadow-waldorf-clay-100/50 rounded-2xl p-8 min-h-[500px] border border-waldorf-cream-200">

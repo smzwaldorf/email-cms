@@ -46,13 +46,102 @@ interface ClassWriteOptions {
   actorId?: string
 }
 
+export interface FetchTeachersOptions {
+  includeInactive?: boolean
+}
+
+export interface TeacherAssignedClass {
+  id: string
+  name: string
+  isActive: boolean
+}
+
+interface TeacherWriteOptions {
+  actorId?: string
+}
+
 /**
  * Admin Service
  * Provides methods for admin dashboard operations
  */
 class AdminService {
+  private async getCurrentAuthUserId(): Promise<string | null> {
+    const supabase = getSupabaseClient()
+    if (!(supabase as any).auth?.getUser) return null
+    const authResult = await (supabase as any).auth.getUser()
+    return authResult?.data?.user?.id ?? null
+  }
+
   private normalizeClassCode(input: string): string {
     return input.trim().toUpperCase()
+  }
+
+  private async validateTeacherWriteInput(input: {
+    idToExclude?: string
+    email?: string
+    name?: string
+  }): Promise<void> {
+    const fieldErrors: Record<string, string> = {}
+    const normalizedEmail = (input.email || '').trim().toLowerCase()
+    const normalizedName = (input.name || '').trim()
+
+    if (!normalizedEmail) {
+      fieldErrors.email = '教師電子郵件為必填項'
+    }
+    if (!normalizedName) {
+      fieldErrors.name = '教師姓名為必填項'
+    }
+
+    if (Object.keys(fieldErrors).length > 0) {
+      throw new AdminServiceError(
+        JSON.stringify({ fieldErrors }),
+        'TEACHER_VALIDATION_ERROR'
+      )
+    }
+
+    const supabase = getSupabaseClient()
+    const { data, error } = await supabase
+      .from('user_roles')
+      .select('id, role')
+      .ilike('email', normalizedEmail)
+
+    if (error) {
+      throw new AdminServiceError(
+        `Failed to validate teacher uniqueness: ${error.message}`,
+        'TEACHER_VALIDATION_ERROR',
+        error as any
+      )
+    }
+
+    const duplicate = (data || []).find((row: any) => row.id !== input.idToExclude)
+    if (duplicate) {
+      throw new AdminServiceError(
+        JSON.stringify({ fieldErrors: { email: '教師電子郵件已存在' } }),
+        'TEACHER_VALIDATION_ERROR'
+      )
+    }
+  }
+
+  private async writeTeacherAudit(
+    teacherId: string,
+    action: 'create' | 'update' | 'activate' | 'deactivate',
+    priorState: Record<string, unknown> | null,
+    newState: Record<string, unknown> | null,
+    actorId?: string,
+  ): Promise<void> {
+    try {
+      const supabase = getSupabaseClient()
+      const resolvedActorId = actorId || await this.getCurrentAuthUserId()
+      await supabase.from('teacher_audit_log').insert({
+        teacher_id: teacherId,
+        action,
+        actor_id: resolvedActorId,
+        prior_state: priorState,
+        new_state: newState,
+      })
+    } catch (error) {
+      console.error('Failed to log teacher audit event:', error)
+    }
   }
 
   private async validateClassWriteInput(input: {
@@ -2182,7 +2271,11 @@ class AdminService {
           .insert(assignmentsToAdd)
 
         if (teacherError) {
-          console.error('Failed to add teachers to new class:', teacherError)
+          throw new AdminServiceError(
+            `Failed to add teachers to new class: ${teacherError.message}`,
+            'CREATE_CLASS_ERROR',
+            teacherError as any
+          )
         }
       }
 
@@ -2365,7 +2458,11 @@ class AdminService {
           .eq('class_id', id)
 
         if (assignError) {
-          console.error('Failed to fetch current teacher assignments:', assignError)
+          throw new AdminServiceError(
+            `Failed to fetch current teacher assignments: ${assignError.message}`,
+            'UPDATE_CLASS_ERROR',
+            assignError as any
+          )
         }
 
         const currentTeacherIds = (currentAssignments || []).map((a: any) => a.teacher_id)
@@ -2381,7 +2478,11 @@ class AdminService {
             .in('teacher_id', toRemove)
 
           if (deleteError) {
-            console.error('Failed to remove teachers from class:', deleteError)
+            throw new AdminServiceError(
+              `Failed to remove teachers from class: ${deleteError.message}`,
+              'UPDATE_CLASS_ERROR',
+              deleteError as any
+            )
           }
         }
 
@@ -2398,7 +2499,11 @@ class AdminService {
             .insert(assignmentsToAdd)
 
           if (insertError) {
-            console.error('Failed to add teachers to class:', insertError)
+            throw new AdminServiceError(
+              `Failed to add teachers to class: ${insertError.message}`,
+              'UPDATE_CLASS_ERROR',
+              insertError as any
+            )
           }
         }
       }
@@ -3333,6 +3438,380 @@ class AdminService {
   /**
    * ============ USER OPERATIONS ============
    */
+
+  /**
+   * ============ TEACHER OPERATIONS ============
+   */
+  async fetchTeachers(options: FetchTeachersOptions = {}): Promise<AdminUser[]> {
+    try {
+      const supabase = getSupabaseClient()
+      let query = supabase
+        .from('user_roles')
+        .select(`
+          id,
+          email,
+          role,
+          created_at,
+          updated_at,
+          teacher_profiles (
+            display_name,
+            status,
+            is_active,
+            deactivated_at,
+            updated_at
+          )
+        `)
+        .eq('role', 'teacher')
+        .order('email', { ascending: true })
+
+      if (!options.includeInactive) {
+        query = query.eq('teacher_profiles.is_active', true)
+      }
+
+      const { data, error } = await query
+      if (error) {
+        throw new AdminServiceError(
+          `Failed to fetch teachers: ${error.message}`,
+          'FETCH_TEACHERS_ERROR',
+          error as any
+        )
+      }
+
+      return (data || []).map((row: any) => {
+        const profile = row.teacher_profiles?.[0] || {}
+        return {
+          id: row.id,
+          email: row.email,
+          name: profile.display_name || row.email,
+          role: 'teacher' as const,
+          status: (profile.status || 'active') as 'active' | 'disabled' | 'pending_approval',
+          createdAt: row.created_at,
+          updatedAt: profile.updated_at || row.updated_at,
+          lastLoginAt: null,
+        }
+      })
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error fetching teachers: ${err instanceof Error ? err.message : String(err)}`,
+        'FETCH_TEACHERS_ERROR',
+        err as any
+      )
+    }
+  }
+
+  async createTeacher(
+    email: string,
+    name: string,
+    options: TeacherWriteOptions = {},
+  ): Promise<AdminUser> {
+    await this.validateTeacherWriteInput({ email, name })
+    const supabase = getSupabaseClient()
+
+    try {
+      const user = await this.createUser(email, name, 'teacher', 'active')
+
+      const { error: profileError } = await supabase
+        .from('teacher_profiles')
+        .insert({
+          user_id: user.id,
+          display_name: name.trim(),
+          status: 'active',
+          is_active: true,
+        })
+
+      if (profileError) {
+        throw new AdminServiceError(
+          `Failed to create teacher profile: ${profileError.message}`,
+          'CREATE_TEACHER_ERROR',
+          profileError as any
+        )
+      }
+
+      await this.writeTeacherAudit(
+        user.id,
+        'create',
+        null,
+        { email: user.email, display_name: name.trim(), status: 'active', is_active: true },
+        options.actorId,
+      )
+
+      return { ...user, name: name.trim(), status: 'active' }
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error creating teacher: ${err instanceof Error ? err.message : String(err)}`,
+        'CREATE_TEACHER_ERROR',
+        err as any
+      )
+    }
+  }
+
+  async updateTeacher(
+    id: string,
+    updates: { name?: string },
+    options: TeacherWriteOptions = {},
+  ): Promise<AdminUser> {
+    const supabase = getSupabaseClient()
+    try {
+      const { data: existing, error: existingError } = await supabase
+        .from('user_roles')
+        .select(`
+          id,
+          email,
+          role,
+          created_at,
+          updated_at,
+          teacher_profiles (
+            display_name,
+            status,
+            is_active
+          )
+        `)
+        .eq('id', id)
+        .eq('role', 'teacher')
+        .single()
+
+      if (existingError || !existing) {
+        throw new AdminServiceError(
+          `Teacher not found: ${existingError?.message || id}`,
+          'UPDATE_TEACHER_ERROR',
+          existingError as any
+        )
+      }
+
+      await this.validateTeacherWriteInput({
+        idToExclude: id,
+        email: existing.email,
+        name: updates.name ?? existing.teacher_profiles?.[0]?.display_name,
+      })
+
+      const priorState = {
+        display_name: existing.teacher_profiles?.[0]?.display_name || existing.email,
+        status: existing.teacher_profiles?.[0]?.status || 'active',
+        is_active: existing.teacher_profiles?.[0]?.is_active ?? true,
+      }
+
+      const { error } = await supabase
+        .from('teacher_profiles')
+        .update({
+          display_name: updates.name?.trim() || existing.teacher_profiles?.[0]?.display_name || existing.email,
+        })
+        .eq('user_id', id)
+
+      if (error) {
+        throw new AdminServiceError(
+          `Failed to update teacher: ${error.message}`,
+          'UPDATE_TEACHER_ERROR',
+          error as any
+        )
+      }
+
+      const { data: updatedProfile, error: profileError } = await supabase
+        .from('teacher_profiles')
+        .select('*')
+        .eq('user_id', id)
+        .single()
+
+      if (profileError || !updatedProfile) {
+        throw new AdminServiceError(
+          `Failed to load updated teacher profile: ${profileError?.message || id}`,
+          'UPDATE_TEACHER_ERROR',
+          profileError as any
+        )
+      }
+
+      await this.writeTeacherAudit(
+        id,
+        'update',
+        priorState,
+        {
+          display_name: updatedProfile.display_name,
+          status: updatedProfile.status,
+          is_active: updatedProfile.is_active,
+        },
+        options.actorId,
+      )
+
+      return {
+        id: existing.id,
+        email: existing.email,
+        name: updatedProfile.display_name || existing.email,
+        role: 'teacher',
+        status: (updatedProfile.status || 'active') as 'active' | 'disabled' | 'pending_approval',
+        createdAt: existing.created_at,
+        updatedAt: updatedProfile.updated_at || existing.updated_at,
+        lastLoginAt: null,
+      }
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error updating teacher: ${err instanceof Error ? err.message : String(err)}`,
+        'UPDATE_TEACHER_ERROR',
+        err as any
+      )
+    }
+  }
+
+  async activateTeacher(id: string, options: TeacherWriteOptions = {}): Promise<AdminUser> {
+    return this.setTeacherLifecycle(id, true, options)
+  }
+
+  async deactivateTeacher(id: string, options: TeacherWriteOptions = {}): Promise<AdminUser> {
+    return this.setTeacherLifecycle(id, false, options)
+  }
+
+  async fetchTeacherAssignedClasses(teacherId: string): Promise<TeacherAssignedClass[]> {
+    try {
+      const supabase = getSupabaseClient()
+      const { data: assignments, error: assignmentError } = await supabase
+        .from('teacher_class_assignment')
+        .select('class_id')
+        .eq('teacher_id', teacherId)
+
+      if (assignmentError) {
+        throw new AdminServiceError(
+          `Failed to fetch teacher assignments: ${assignmentError.message}`,
+          'FETCH_TEACHER_CLASSES_ERROR',
+          assignmentError as any
+        )
+      }
+
+      const classIds = [...new Set((assignments || []).map((row: any) => row.class_id))]
+      if (classIds.length === 0) return []
+
+      const { data: classes, error: classError } = await supabase
+        .from('classes')
+        .select('id, class_name, is_active')
+        .in('id', classIds)
+        .order('class_name', { ascending: true })
+
+      if (classError) {
+        throw new AdminServiceError(
+          `Failed to fetch teacher classes: ${classError.message}`,
+          'FETCH_TEACHER_CLASSES_ERROR',
+          classError as any
+        )
+      }
+
+      return (classes || []).map((row: any) => ({
+        id: row.id,
+        name: row.class_name,
+        isActive: row.is_active ?? true,
+      }))
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error fetching teacher classes: ${err instanceof Error ? err.message : String(err)}`,
+        'FETCH_TEACHER_CLASSES_ERROR',
+        err as any
+      )
+    }
+  }
+
+  private async setTeacherLifecycle(
+    id: string,
+    isActive: boolean,
+    options: TeacherWriteOptions = {},
+  ): Promise<AdminUser> {
+    const supabase = getSupabaseClient()
+    const action = isActive ? 'activate' : 'deactivate'
+
+    try {
+      const { data: existing, error: existingError } = await supabase
+        .from('user_roles')
+        .select(`
+          id,
+          email,
+          role,
+          created_at,
+          updated_at,
+          teacher_profiles (
+            display_name,
+            status,
+            is_active,
+            deactivated_at,
+            updated_at
+          )
+        `)
+        .eq('id', id)
+        .eq('role', 'teacher')
+        .single()
+
+      if (existingError || !existing) {
+        throw new AdminServiceError(
+          `Teacher not found: ${existingError?.message || id}`,
+          `${action.toUpperCase()}_TEACHER_ERROR`,
+          existingError as any
+        )
+      }
+
+      const priorState = {
+        display_name: existing.teacher_profiles?.[0]?.display_name || existing.email,
+        status: existing.teacher_profiles?.[0]?.status || 'active',
+        is_active: existing.teacher_profiles?.[0]?.is_active ?? true,
+        deactivated_at: existing.teacher_profiles?.[0]?.deactivated_at ?? null,
+      }
+
+      const { error } = await supabase
+        .from('teacher_profiles')
+        .update({ is_active: isActive })
+        .eq('user_id', id)
+
+      if (error) {
+        throw new AdminServiceError(
+          `Failed to ${action} teacher: ${error.message}`,
+          `${action.toUpperCase()}_TEACHER_ERROR`,
+          error as any
+        )
+      }
+
+      const { data: updatedProfile, error: updatedError } = await supabase
+        .from('teacher_profiles')
+        .select('*')
+        .eq('user_id', id)
+        .single()
+
+      if (updatedError || !updatedProfile) {
+        throw new AdminServiceError(
+          `Failed to fetch updated teacher profile: ${updatedError?.message || id}`,
+          `${action.toUpperCase()}_TEACHER_ERROR`,
+          updatedError as any
+        )
+      }
+
+      await this.writeTeacherAudit(
+        id,
+        action as 'activate' | 'deactivate',
+        priorState,
+        {
+          display_name: updatedProfile.display_name,
+          status: updatedProfile.status,
+          is_active: updatedProfile.is_active,
+          deactivated_at: updatedProfile.deactivated_at,
+        },
+        options.actorId,
+      )
+
+      return {
+        id: existing.id,
+        email: existing.email,
+        name: updatedProfile.display_name || existing.email,
+        role: 'teacher',
+        status: (updatedProfile.status || 'active') as 'active' | 'disabled' | 'pending_approval',
+        createdAt: existing.created_at,
+        updatedAt: updatedProfile.updated_at || existing.updated_at,
+        lastLoginAt: null,
+      }
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error updating teacher lifecycle: ${err instanceof Error ? err.message : String(err)}`,
+        `${action.toUpperCase()}_TEACHER_ERROR`,
+        err as any
+      )
+    }
+  }
 
   /**
    * Fetch all users with optional filtering

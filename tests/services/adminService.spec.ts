@@ -1087,4 +1087,187 @@ describe('AdminService', () => {
       expect(mockBuilder.update).toHaveBeenCalledWith({ is_active: true })
     })
   })
+
+  describe('teacher lifecycle workflows', () => {
+    it('fetchTeachers defaults to active teachers only', async () => {
+      mockBuilder.then.mockImplementationOnce((resolve) => resolve({
+        data: [
+          {
+            id: 'teacher-1',
+            email: 'teacher1@example.com',
+            role: 'teacher',
+            created_at: '2025-01-01',
+            updated_at: '2025-01-01',
+            teacher_profiles: [
+              {
+                display_name: '王老師',
+                status: 'active',
+                is_active: true,
+                updated_at: '2025-01-02',
+              },
+            ],
+          },
+        ],
+        error: null,
+      }))
+
+      const teachers = await adminService.fetchTeachers()
+      expect(mockBuilder.eq).toHaveBeenCalledWith('teacher_profiles.is_active', true)
+      expect(teachers[0].status).toBe('active')
+      expect(teachers[0].name).toBe('王老師')
+    })
+
+    it('allows includeInactive option when fetching teachers', async () => {
+      mockBuilder.then.mockImplementationOnce((resolve) => resolve({
+        data: [
+          {
+            id: 'teacher-2',
+            email: 'teacher2@example.com',
+            role: 'teacher',
+            created_at: '2025-01-01',
+            updated_at: '2025-01-01',
+            teacher_profiles: [
+              {
+                display_name: '李老師',
+                status: 'disabled',
+                is_active: false,
+                updated_at: '2025-01-03',
+              },
+            ],
+          },
+        ],
+        error: null,
+      }))
+
+      const teachers = await adminService.fetchTeachers({ includeInactive: true })
+      expect(teachers[0].status).toBe('disabled')
+      expect(mockBuilder.eq).not.toHaveBeenCalledWith('teacher_profiles.is_active', true)
+    })
+
+    it('deactivates teacher profile and returns disabled status', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({
+          data: {
+            id: 'teacher-3',
+            email: 'teacher3@example.com',
+            role: 'teacher',
+            created_at: '2025-01-01',
+            updated_at: '2025-01-01',
+            teacher_profiles: [
+              {
+                display_name: '陳老師',
+                status: 'active',
+                is_active: true,
+                deactivated_at: null,
+                updated_at: '2025-01-01',
+              },
+            ],
+          },
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({ data: null, error: null }))
+        .mockImplementationOnce((resolve) => resolve({
+          data: {
+            user_id: 'teacher-3',
+            display_name: '陳老師',
+            status: 'disabled',
+            is_active: false,
+            deactivated_at: '2025-01-03T00:00:00Z',
+            updated_at: '2025-01-03T00:00:00Z',
+          },
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({ data: null, error: null }))
+
+      const result = await adminService.deactivateTeacher('teacher-3')
+      expect(mockBuilder.update).toHaveBeenCalledWith({ is_active: false })
+      expect(result.status).toBe('disabled')
+    })
+
+    it('reactivates teacher profile and clears deactivated state', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({
+          data: {
+            id: 'teacher-4',
+            email: 'teacher4@example.com',
+            role: 'teacher',
+            created_at: '2025-01-01',
+            updated_at: '2025-01-01',
+            teacher_profiles: [
+              {
+                display_name: '林老師',
+                status: 'disabled',
+                is_active: false,
+                deactivated_at: '2025-01-02T00:00:00Z',
+                updated_at: '2025-01-02T00:00:00Z',
+              },
+            ],
+          },
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({ data: null, error: null }))
+        .mockImplementationOnce((resolve) => resolve({
+          data: {
+            user_id: 'teacher-4',
+            display_name: '林老師',
+            status: 'active',
+            is_active: true,
+            deactivated_at: null,
+            updated_at: '2025-01-04T00:00:00Z',
+          },
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({ data: null, error: null }))
+
+      const result = await adminService.activateTeacher('teacher-4')
+      expect(mockBuilder.update).toHaveBeenCalledWith({ is_active: true })
+      expect(result.status).toBe('active')
+    })
+
+    it('rejects duplicate teacher email during createTeacher', async () => {
+      mockBuilder.then.mockImplementationOnce((resolve) =>
+        resolve({
+          data: [{ id: 'existing-teacher', role: 'teacher' }],
+          error: null,
+        }),
+      )
+
+      await expect(
+        adminService.createTeacher('teacher1@example.com', '王老師'),
+      ).rejects.toMatchObject({ code: 'TEACHER_VALIDATION_ERROR' })
+    })
+
+    it('rejects duplicate teacher email during updateTeacher validation', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) =>
+          resolve({
+            data: {
+              id: 'teacher-5',
+              email: 'teacher5@example.com',
+              role: 'teacher',
+              created_at: '2025-01-01',
+              updated_at: '2025-01-01',
+              teacher_profiles: [
+                {
+                  display_name: '趙老師',
+                  status: 'active',
+                  is_active: true,
+                },
+              ],
+            },
+            error: null,
+          }),
+        )
+        .mockImplementationOnce((resolve) =>
+          resolve({
+            data: [{ id: 'another-user', role: 'teacher' }],
+            error: null,
+          }),
+        )
+
+      await expect(
+        adminService.updateTeacher('teacher-5', { name: '趙老師(更新)' }),
+      ).rejects.toMatchObject({ code: 'TEACHER_VALIDATION_ERROR' })
+    })
+  })
 })

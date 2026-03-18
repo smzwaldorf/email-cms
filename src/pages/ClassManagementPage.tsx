@@ -104,9 +104,7 @@ export function ClassManagementPage() {
    */
   const loadTeachers = async () => {
     try {
-      const allUsers = await adminService.fetchUsers()
-      // Filter for teachers only
-      const teacherList = allUsers.filter((user) => user.role === 'teacher')
+      const teacherList = await adminService.fetchTeachers()
       setTeachers(teacherList)
       console.log(`Loaded ${teacherList.length} teachers:`, teacherList)
     } catch (err) {
