@@ -112,12 +112,22 @@ export interface ArticleWithNewsletters extends ArticleRow {
 export interface ClassRow {
   /** Class identifier (e.g., "A1", "B2") */
   id: string; // VARCHAR(10) PRIMARY KEY
+  /** Stable class identity code used by admin workflows */
+  class_code: string;
   /** Human-readable name (e.g., "Grade 1A") */
   class_name: string;
+  /** Optional class description shown in admin UI */
+  description?: string | null;
   /** Grade level (1-12) */
   class_grade_year: number;
+  /** Lifecycle status */
+  is_active: boolean;
+  /** Deactivation timestamp for inactive classes */
+  deactivated_at?: string | null;
   /** Creation timestamp */
   created_at: string; // TIMESTAMP WITH TIME ZONE
+  /** Last update timestamp */
+  updated_at?: string; // TIMESTAMP WITH TIME ZONE
 }
 
 // ============================================================================

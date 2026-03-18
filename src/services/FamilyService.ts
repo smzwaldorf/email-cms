@@ -139,6 +139,7 @@ export class FamilyService {
       const { data: classes, error: classError } = await table('classes')
         .select('*')
         .in('id', classIds)
+        .eq('is_active', true)
         .order('class_grade_year', { ascending: false })
         .order('id', { ascending: true })
 

@@ -36,11 +36,114 @@ export class AdminServiceError extends Error {
   }
 }
 
+export interface FetchClassesOptions {
+  includeInactive?: boolean
+}
+
+interface ClassWriteOptions {
+  code?: string
+  gradeYear?: number
+  actorId?: string
+}
+
 /**
  * Admin Service
  * Provides methods for admin dashboard operations
  */
 class AdminService {
+  private normalizeClassCode(input: string): string {
+    return input.trim().toUpperCase()
+  }
+
+  private async validateClassWriteInput(input: {
+    idToExclude?: string
+    name?: string
+    code?: string
+    gradeYear?: number
+  }): Promise<void> {
+    const fieldErrors: Record<string, string> = {}
+
+    if (!input.name || input.name.trim() === '') {
+      fieldErrors.name = '班級名稱為必填項'
+    }
+    if (!input.code || input.code.trim() === '') {
+      fieldErrors.code = '班級代碼為必填項'
+    }
+    if (typeof input.gradeYear !== 'number' || Number.isNaN(input.gradeYear)) {
+      fieldErrors.gradeYear = '年級為必填項'
+    } else if (input.gradeYear < 1 || input.gradeYear > 12) {
+      fieldErrors.gradeYear = '年級必須介於 1 到 12'
+    }
+
+    if (Object.keys(fieldErrors).length > 0) {
+      throw new AdminServiceError(
+        JSON.stringify({ fieldErrors }),
+        'CLASS_VALIDATION_ERROR'
+      )
+    }
+
+    const supabase = getSupabaseClient()
+    const normalizedCode = this.normalizeClassCode((input.code || '').trim())
+    const normalizedName = (input.name || '').trim()
+
+    const [codeCheck, nameCheck] = await Promise.all([
+      supabase.from('classes').select('id').ilike('class_code', normalizedCode),
+      supabase.from('classes').select('id').ilike('class_name', normalizedName),
+    ])
+
+    if (codeCheck.error || nameCheck.error) {
+      throw new AdminServiceError(
+        `Failed to validate class identity: ${codeCheck.error?.message || nameCheck.error?.message}`,
+        'CLASS_VALIDATION_ERROR',
+        (codeCheck.error || nameCheck.error) as any
+      )
+    }
+
+    const duplicateCode = (codeCheck.data || []).find((row: any) => row.id !== input.idToExclude)
+    if (duplicateCode) {
+      throw new AdminServiceError(
+        JSON.stringify({ fieldErrors: { code: '班級代碼已存在' } }),
+        'CLASS_VALIDATION_ERROR'
+      )
+    }
+
+    const duplicateName = (nameCheck.data || []).find((row: any) => row.id !== input.idToExclude)
+    if (duplicateName) {
+      throw new AdminServiceError(
+        JSON.stringify({ fieldErrors: { name: '班級名稱已存在' } }),
+        'CLASS_VALIDATION_ERROR'
+      )
+    }
+  }
+
+  private async writeClassAudit(
+    classId: string,
+    action: 'create' | 'update' | 'activate' | 'deactivate',
+    priorState: Record<string, unknown> | null,
+    newState: Record<string, unknown> | null,
+    actorId?: string
+  ): Promise<void> {
+    try {
+      const supabase = getSupabaseClient()
+      let resolvedActorId = actorId || null
+      if (!resolvedActorId && (supabase as any).auth?.getUser) {
+        const authResult = await (supabase as any).auth.getUser()
+        resolvedActorId = authResult?.data?.user?.id ?? null
+      }
+
+      await supabase.from('class_audit_log').insert({
+        class_id: classId,
+        action,
+        actor_id: resolvedActorId,
+        prior_state: priorState,
+        new_state: newState,
+      })
+    } catch (error) {
+      // Class operations should not fail if audit logging is unavailable.
+      console.error('Failed to log class audit event:', error)
+    }
+  }
+
   private normalizeTargeting(
     targetingMode: 'shared' | 'targeted' = 'shared',
     targetClassIds: string[] = []
@@ -1892,13 +1995,17 @@ class AdminService {
   /**
    * Fetch all classes
    */
-  async fetchClasses(): Promise<Class[]> {
+  async fetchClasses(options: FetchClassesOptions = {}): Promise<Class[]> {
     try {
       const supabase = getSupabaseClient()
 
-      const { data, error } = await supabase
+      let classQuery = supabase
         .from('classes')
         .select('*')
+      if (!options.includeInactive) {
+        classQuery = classQuery.eq('is_active', true)
+      }
+      const { data, error } = await classQuery
         .order('class_name', { ascending: true })
 
       if (error) {
@@ -1952,12 +2059,16 @@ class AdminService {
 
       return (data || []).map((row: any) => ({
         id: row.id,
+        code: row.class_code || row.id,
         name: row.class_name,
-        description: '', // Not in DB
+        description: row.description || '',
+        gradeYear: row.class_grade_year,
+        isActive: row.is_active ?? true,
+        deactivatedAt: row.deactivated_at ?? null,
         studentIds: studentsByClass.get(row.id) || [],
         teacherIds: teachersByClass.get(row.id) || [],
         createdAt: row.created_at,
-        updatedAt: row.created_at, // Not in DB
+        updatedAt: row.updated_at || row.created_at,
       }))
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
@@ -1976,21 +2087,28 @@ class AdminService {
     name: string,
     description?: string,
     studentIds?: string[],
-    teacherIds?: string[]
+    teacherIds?: string[],
+    options: ClassWriteOptions = {}
   ): Promise<Class> {
     try {
       const supabase = getSupabaseClient()
-
-      // ID strategy: Use name as ID if short enough, otherwise generate short ID
-      // For now, let's use a simplified approach: use name as ID if < 10 chars
-      const id = name.length <= 10 ? name : name.substring(0, 10)
+      const normalizedCode = this.normalizeClassCode(options.code || name)
+      const gradeYear = options.gradeYear ?? 1
+      await this.validateClassWriteInput({
+        name,
+        code: normalizedCode,
+        gradeYear,
+      })
 
       const { data, error } = await supabase
         .from('classes')
         .insert({
-          id,
+          id: normalizedCode,
+          class_code: normalizedCode,
           class_name: name,
-          class_grade_year: 1, // Default to 1 as it's required
+          class_grade_year: gradeYear,
+          description: description || null,
+          is_active: true,
         })
         .select()
         .single()
@@ -2002,6 +2120,21 @@ class AdminService {
           error as any
         )
       }
+
+      await this.writeClassAudit(
+        data.id,
+        'create',
+        null,
+        {
+          id: data.id,
+          class_code: data.class_code || normalizedCode,
+          class_name: data.class_name,
+          class_grade_year: data.class_grade_year,
+          description: data.description || null,
+          is_active: data.is_active ?? true,
+        },
+        options.actorId
+      )
 
       // Add student enrollments if provided
       if (studentIds && studentIds.length > 0) {
@@ -2055,12 +2188,16 @@ class AdminService {
 
       return {
         id: data.id,
+        code: data.class_code || data.id,
         name: data.class_name,
-        description: description,
+        description: data.description || description,
+        gradeYear: data.class_grade_year,
+        isActive: data.is_active ?? true,
+        deactivatedAt: data.deactivated_at ?? null,
         studentIds: studentIds || [],
         teacherIds: teacherIds || [],
         createdAt: data.created_at,
-        updatedAt: data.created_at,
+        updatedAt: data.updated_at || data.created_at,
       }
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
@@ -2079,17 +2216,43 @@ class AdminService {
     id: string,
     updates: {
       name?: string,
+      code?: string,
+      gradeYear?: number,
+      isActive?: boolean,
       description?: string,
       studentIds?: string[],
       teacherIds?: string[]
-    }
+    },
+    options: ClassWriteOptions = {}
   ): Promise<Class> {
     try {
       const supabase = getSupabaseClient()
+      const { data: existingClass, error: existingError } = await supabase
+        .from('classes')
+        .select('*')
+        .eq('id', id)
+        .single()
+
+      if (existingError || !existingClass) {
+        throw new AdminServiceError(
+          `Failed to load class before update: ${existingError?.message || 'Class not found'}`,
+          'UPDATE_CLASS_ERROR',
+          existingError as any
+        )
+      }
+
+      await this.validateClassWriteInput({
+        idToExclude: id,
+        name: updates.name ?? existingClass.class_name,
+        code: existingClass.class_code || existingClass.id,
+        gradeYear: updates.gradeYear ?? existingClass.class_grade_year,
+      })
 
       const updatePayload: any = {}
       if (updates.name !== undefined) updatePayload.class_name = updates.name
-      // description is not in DB
+      if (updates.description !== undefined) updatePayload.description = updates.description || null
+      if (updates.gradeYear !== undefined) updatePayload.class_grade_year = updates.gradeYear
+      if (updates.isActive !== undefined) updatePayload.is_active = updates.isActive
 
       const { data, error } = await supabase
         .from('classes')
@@ -2105,6 +2268,28 @@ class AdminService {
           error as any
         )
       }
+
+      await this.writeClassAudit(
+        id,
+        updates.isActive === undefined
+          ? 'update'
+          : updates.isActive
+            ? 'activate'
+            : 'deactivate',
+        {
+          class_name: existingClass.class_name,
+          class_grade_year: existingClass.class_grade_year,
+          description: existingClass.description || null,
+          is_active: existingClass.is_active ?? true,
+        },
+        {
+          class_name: data.class_name,
+          class_grade_year: data.class_grade_year,
+          description: data.description || null,
+          is_active: data.is_active ?? true,
+        },
+        options.actorId
+      )
 
       // Handle student enrollments if provided
       if (updates.studentIds !== undefined) {
@@ -2220,12 +2405,16 @@ class AdminService {
 
       return {
         id: data.id,
+        code: data.class_code || data.id,
         name: data.class_name,
-        description: updates.description,
+        description: data.description || updates.description,
+        gradeYear: data.class_grade_year,
+        isActive: data.is_active ?? true,
+        deactivatedAt: data.deactivated_at ?? null,
         studentIds: updates.studentIds || [],
         teacherIds: updates.teacherIds || [],
         createdAt: data.created_at,
-        updatedAt: data.created_at,
+        updatedAt: data.updated_at || data.created_at,
       }
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
@@ -2241,26 +2430,152 @@ class AdminService {
    * Delete class
    */
   async deleteClass(id: string): Promise<void> {
+    await this.deactivateClass(id)
+  }
+
+  async activateClass(id: string, options: ClassWriteOptions = {}): Promise<Class> {
     try {
       const supabase = getSupabaseClient()
 
-      const { error } = await supabase
+      const { data: existingClass, error: existingError } = await supabase
         .from('classes')
-        .delete()
+        .select('*')
         .eq('id', id)
+        .single()
 
-      if (error) {
+      if (existingError || !existingClass) {
         throw new AdminServiceError(
-          `Failed to delete class: ${error.message}`,
-          'DELETE_CLASS_ERROR',
+          `Failed to load class: ${existingError?.message || 'Class not found'}`,
+          'ACTIVATE_CLASS_ERROR',
+          existingError as any
+        )
+      }
+
+      const { data, error } = await supabase
+        .from('classes')
+        .update({ is_active: true })
+        .eq('id', id)
+        .select('*')
+        .single()
+
+      if (error || !data) {
+        throw new AdminServiceError(
+          `Failed to activate class: ${error?.message || 'Unknown error'}`,
+          'ACTIVATE_CLASS_ERROR',
           error as any
         )
+      }
+
+      await this.writeClassAudit(
+        id,
+        'activate',
+        {
+          class_name: existingClass.class_name,
+          class_grade_year: existingClass.class_grade_year,
+          description: existingClass.description || null,
+          is_active: existingClass.is_active ?? true,
+        },
+        {
+          class_name: data.class_name,
+          class_grade_year: data.class_grade_year,
+          description: data.description || null,
+          is_active: data.is_active ?? true,
+        },
+        options.actorId
+      )
+
+      return {
+        id: data.id,
+        code: data.class_code || data.id,
+        name: data.class_name,
+        description: data.description || '',
+        gradeYear: data.class_grade_year,
+        isActive: data.is_active ?? true,
+        deactivatedAt: data.deactivated_at ?? null,
+        studentIds: [],
+        teacherIds: [],
+        createdAt: data.created_at,
+        updatedAt: data.updated_at || data.created_at,
       }
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
       throw new AdminServiceError(
-        `Error deleting class: ${err instanceof Error ? err.message : String(err)}`,
-        'DELETE_CLASS_ERROR',
+        `Error activating class: ${err instanceof Error ? err.message : String(err)}`,
+        'ACTIVATE_CLASS_ERROR',
+        err as any
+      )
+    }
+  }
+
+  async deactivateClass(id: string, options: ClassWriteOptions = {}): Promise<Class> {
+    try {
+      const supabase = getSupabaseClient()
+
+      const { data: existingClass, error: existingError } = await supabase
+        .from('classes')
+        .select('*')
+        .eq('id', id)
+        .single()
+
+      if (existingError || !existingClass) {
+        throw new AdminServiceError(
+          `Failed to load class: ${existingError?.message || 'Class not found'}`,
+          'DEACTIVATE_CLASS_ERROR',
+          existingError as any
+        )
+      }
+
+      const { data, error } = await supabase
+        .from('classes')
+        .update({ is_active: false })
+        .eq('id', id)
+        .select('*')
+        .single()
+
+      if (error || !data) {
+        throw new AdminServiceError(
+          `Failed to deactivate class: ${error?.message || 'Unknown error'}`,
+          'DEACTIVATE_CLASS_ERROR',
+          error as any
+        )
+      }
+
+      await this.writeClassAudit(
+        id,
+        'deactivate',
+        {
+          class_name: existingClass.class_name,
+          class_grade_year: existingClass.class_grade_year,
+          description: existingClass.description || null,
+          is_active: existingClass.is_active ?? true,
+        },
+        {
+          class_name: data.class_name,
+          class_grade_year: data.class_grade_year,
+          description: data.description || null,
+          is_active: data.is_active ?? true,
+        },
+        options.actorId
+      )
+
+      return {
+        id: data.id,
+        code: data.class_code || data.id,
+        name: data.class_name,
+        description: data.description || '',
+        gradeYear: data.class_grade_year,
+        isActive: data.is_active ?? true,
+        deactivatedAt: data.deactivated_at ?? null,
+        studentIds: [],
+        teacherIds: [],
+        createdAt: data.created_at,
+        updatedAt: data.updated_at || data.created_at,
+      }
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error deactivating class: ${err instanceof Error ? err.message : String(err)}`,
+        'DEACTIVATE_CLASS_ERROR',
         err as any
       )
     }

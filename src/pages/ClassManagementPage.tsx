@@ -23,6 +23,21 @@ import { AdminLayout } from '@/components/admin/AdminLayout'
 
 type PageState = 'list' | 'create' | 'edit'
 
+interface ParsedValidationErrors {
+  [key: string]: string
+}
+
+function extractValidationErrors(err: unknown): ParsedValidationErrors | null {
+  if (!(err instanceof AdminServiceError)) return null
+  if (err.code !== 'CLASS_VALIDATION_ERROR') return null
+  try {
+    const parsed = JSON.parse(err.message)
+    return parsed.fieldErrors || null
+  } catch {
+    return null
+  }
+}
+
 /**
  * Class Management Page
  */
@@ -60,7 +75,7 @@ export function ClassManagementPage() {
     try {
       setIsLoading(true)
       setError(null)
-      const data = await adminService.fetchClasses()
+      const data = await adminService.fetchClasses({ includeInactive: true })
       setClasses(data)
     } catch (err: any) {
       const message = err instanceof AdminServiceError ? err.message : 'Failed to load classes'
@@ -106,11 +121,25 @@ export function ClassManagementPage() {
   const handleCreateClass = async (classData: Class) => {
     try {
       setIsSaving(true)
-      await adminService.createClass(classData.name, classData.description, classData.studentIds, classData.teacherIds)
+      await adminService.createClass(
+        classData.name,
+        classData.description,
+        classData.studentIds,
+        classData.teacherIds,
+        {
+          code: classData.code,
+          gradeYear: classData.gradeYear,
+        }
+      )
       setNotification({ message: '班級已成功新增', type: 'success' })
       setPageState('list')
       await loadClasses()
     } catch (err: any) {
+      const fieldErrors = extractValidationErrors(err)
+      if (fieldErrors) {
+        setNotification({ message: Object.values(fieldErrors)[0], type: 'error' })
+        return
+      }
       const message = err instanceof AdminServiceError ? err.message : 'Failed to create class'
       setNotification({ message, type: 'error' })
     } finally {
@@ -126,6 +155,7 @@ export function ClassManagementPage() {
       setIsSaving(true)
       await adminService.updateClass(classData.id, {
         name: classData.name,
+        gradeYear: classData.gradeYear,
         description: classData.description,
         studentIds: classData.studentIds,
         teacherIds: classData.teacherIds,
@@ -134,6 +164,11 @@ export function ClassManagementPage() {
       setPageState('list')
       await loadClasses()
     } catch (err: any) {
+      const fieldErrors = extractValidationErrors(err)
+      if (fieldErrors) {
+        setNotification({ message: Object.values(fieldErrors)[0], type: 'error' })
+        return
+      }
       const message = err instanceof AdminServiceError ? err.message : 'Failed to update class'
       setNotification({ message, type: 'error' })
     } finally {
@@ -144,15 +179,31 @@ export function ClassManagementPage() {
   /**
    * Handle delete class
    */
-  const handleDeleteClass = async (classId: string) => {
+  const handleDeactivateClass = async (classId: string) => {
     try {
       setIsSaving(true)
-      await adminService.deleteClass(classId)
-      setNotification({ message: '班級已成功刪除', type: 'success' })
+      await adminService.deactivateClass(classId)
+      setNotification({ message: '班級已停用', type: 'success' })
       setDeleteConfirm({ isOpen: false })
       await loadClasses()
     } catch (err: any) {
-      const message = err instanceof AdminServiceError ? err.message : 'Failed to delete class'
+      const message = err instanceof AdminServiceError ? err.message : 'Failed to deactivate class'
+      setNotification({ message, type: 'error' })
+      setDeleteConfirm({ isOpen: false })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleActivateClass = async (classId: string) => {
+    try {
+      setIsSaving(true)
+      await adminService.activateClass(classId)
+      setNotification({ message: '班級已啟用', type: 'success' })
+      setDeleteConfirm({ isOpen: false })
+      await loadClasses()
+    } catch (err: any) {
+      const message = err instanceof AdminServiceError ? err.message : 'Failed to activate class'
       setNotification({ message, type: 'error' })
       setDeleteConfirm({ isOpen: false })
     } finally {
@@ -237,7 +288,8 @@ export function ClassManagementPage() {
             isLoading={false}
             error={null}
             onEdit={handleEditClick}
-            onDelete={handleDeleteClick}
+            onDeactivate={handleDeleteClick}
+            onActivate={handleActivateClass}
           />
 
           {/* Notification */}
@@ -252,15 +304,15 @@ export function ClassManagementPage() {
           {/* Delete confirmation dialog */}
           <ConfirmDialog
             isOpen={deleteConfirm.isOpen}
-            title="刪除班級"
-            message="確定要刪除這個班級嗎？此操作無法復原。"
-            confirmText="刪除"
+            title="停用班級"
+            message="確定要停用這個班級嗎？停用後不會出現在預設班級選擇清單中。"
+            confirmText="停用"
             cancelText="取消"
             isDangerous={true}
             isLoading={isSaving}
             onConfirm={() => {
               if (deleteConfirm.classId) {
-                handleDeleteClass(deleteConfirm.classId)
+                handleDeactivateClass(deleteConfirm.classId)
               }
             }}
             onCancel={() => setDeleteConfirm({ isOpen: false })}

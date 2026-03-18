@@ -211,8 +211,11 @@ export function ClassForm({
 }: ClassFormProps) {
   const [formData, setFormData] = useState<Partial<Class>>(
     initialClass || {
+      code: '',
       name: '',
       description: '',
+      gradeYear: 1,
+      isActive: true,
       studentIds: [],
       teacherIds: [],
     }
@@ -230,6 +233,17 @@ export function ClassForm({
     if (!formData.name || formData.name.trim() === '') {
       errors.name = '班級名稱為必填項'
     }
+    if (!formData.code || formData.code.trim() === '') {
+      errors.code = '班級代碼為必填項'
+    }
+    if (
+      typeof formData.gradeYear !== 'number' ||
+      Number.isNaN(formData.gradeYear) ||
+      formData.gradeYear < 1 ||
+      formData.gradeYear > 12
+    ) {
+      errors.gradeYear = '年級必須介於 1 到 12'
+    }
 
     setValidationErrors(errors)
     return Object.keys(errors).length === 0
@@ -243,9 +257,21 @@ export function ClassForm({
     setValidationErrors((prev) => {
       const updated = { ...prev }
       delete updated.name
+      delete updated.code
       return updated
     })
     setFormData({ ...formData, name: e.target.value })
+  }
+
+  const handleCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const normalized = e.target.value.toUpperCase()
+    setSaveError(null)
+    setValidationErrors((prev) => {
+      const updated = { ...prev }
+      delete updated.code
+      return updated
+    })
+    setFormData({ ...formData, code: normalized })
   }
 
   /**
@@ -265,6 +291,16 @@ export function ClassForm({
       ? studentIds.filter((id) => id !== studentId)
       : [...studentIds, studentId]
     setFormData({ ...formData, studentIds: newStudentIds })
+  }
+
+  const handleGradeYearChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSaveError(null)
+    setValidationErrors((prev) => {
+      const updated = { ...prev }
+      delete updated.gradeYear
+      return updated
+    })
+    setFormData({ ...formData, gradeYear: Number(e.target.value) })
   }
 
   /**
@@ -292,9 +328,12 @@ export function ClassForm({
 
       const now = new Date().toISOString()
       const classData: Class = {
-        id: initialClass?.id || crypto.randomUUID(),
+        id: initialClass?.id || (formData.code || '').toUpperCase(),
+        code: (formData.code || '').toUpperCase(),
         name: formData.name || '',
         description: formData.description,
+        gradeYear: formData.gradeYear || 1,
+        isActive: initialClass?.isActive ?? true,
         studentIds: formData.studentIds || [],
         teacherIds: formData.teacherIds || [],
         createdAt: initialClass?.createdAt || now,
@@ -328,6 +367,59 @@ export function ClassForm({
       {/* Form */}
       <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
         {/* Name */}
+        <div>
+          <label className="block text-sm font-medium text-waldorf-clay-600 mb-2">
+            班級代碼 <span className="text-waldorf-rose-500">*</span>
+          </label>
+          <input
+            type="text"
+            value={formData.code || ''}
+            onChange={handleCodeChange}
+            placeholder="例如：G6A"
+            className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all duration-200 bg-waldorf-cream-50/50 ${
+              validationErrors.code
+                ? 'border-waldorf-rose-400 focus:ring-waldorf-rose-300 focus:border-waldorf-rose-400'
+                : 'border-waldorf-cream-300 focus:ring-waldorf-sage-300 focus:border-waldorf-sage-400'
+            }`}
+            data-testid="code-input"
+            required
+            disabled={!isNew}
+          />
+          {validationErrors.code && (
+            <p className="mt-2 text-sm text-waldorf-rose-600" data-testid="code-error">
+              {validationErrors.code}
+            </p>
+          )}
+          {!isNew && (
+            <p className="mt-2 text-xs text-waldorf-clay-500">班級代碼建立後不可修改。</p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-waldorf-clay-600 mb-2">
+            年級 <span className="text-waldorf-rose-500">*</span>
+          </label>
+          <input
+            type="number"
+            min={1}
+            max={12}
+            value={formData.gradeYear || 1}
+            onChange={handleGradeYearChange}
+            className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all duration-200 bg-waldorf-cream-50/50 ${
+              validationErrors.gradeYear
+                ? 'border-waldorf-rose-400 focus:ring-waldorf-rose-300 focus:border-waldorf-rose-400'
+                : 'border-waldorf-cream-300 focus:ring-waldorf-sage-300 focus:border-waldorf-sage-400'
+            }`}
+            data-testid="grade-year-input"
+            required
+          />
+          {validationErrors.gradeYear && (
+            <p className="mt-2 text-sm text-waldorf-rose-600" data-testid="grade-year-error">
+              {validationErrors.gradeYear}
+            </p>
+          )}
+        </div>
+
         <div>
           <label className="block text-sm font-medium text-waldorf-clay-600 mb-2">
             班級名稱 <span className="text-waldorf-rose-500">*</span>

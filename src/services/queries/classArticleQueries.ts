@@ -84,6 +84,7 @@ export async function getArticlesForFamily(
       const { data: classData, error: classError } = await table('classes')
         .select('*')
         .in('id', enrolledClassIds)
+        .eq('is_active', true)
         .order('class_grade_year', { ascending: false })
 
       if (classError) {

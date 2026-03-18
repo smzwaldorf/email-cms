@@ -16,6 +16,7 @@ const mockBuilder = {
   or: vi.fn().mockReturnThis(),
   is: vi.fn().mockReturnThis(),
   in: vi.fn().mockReturnThis(),
+  ilike: vi.fn().mockReturnThis(),
   then: vi.fn((resolve) => resolve({ data: [], error: null })),
 }
 
@@ -949,6 +950,141 @@ describe('AdminService', () => {
       expect(mockBuilder.update).toHaveBeenNthCalledWith(5, { article_order: 2 })
       expect(mockBuilder.update).toHaveBeenNthCalledWith(6, { article_order: 3 })
       expect(mockBuilder.eq).toHaveBeenCalledWith('newsletter_id', 'newsletter-1')
+    })
+  })
+
+  describe('class lifecycle workflows', () => {
+    it('fetchClasses defaults to active-only listings', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({
+          data: [
+            {
+              id: 'G6A',
+              class_code: 'G6A',
+              class_name: '六年級A班',
+              class_grade_year: 6,
+              description: 'desc',
+              is_active: true,
+              created_at: '2025-01-01',
+              updated_at: '2025-01-02',
+            },
+          ],
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({ data: [], error: null }))
+        .mockImplementationOnce((resolve) => resolve({ data: [], error: null }))
+
+      await adminService.fetchClasses()
+
+      expect(mockBuilder.eq).toHaveBeenCalledWith('is_active', true)
+    })
+
+    it('allows including inactive classes in listings', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({
+          data: [
+            {
+              id: 'G6A',
+              class_code: 'G6A',
+              class_name: '六年級A班',
+              class_grade_year: 6,
+              description: 'desc',
+              is_active: false,
+              created_at: '2025-01-01',
+              updated_at: '2025-01-02',
+              deactivated_at: '2025-01-03',
+            },
+          ],
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({ data: [], error: null }))
+        .mockImplementationOnce((resolve) => resolve({ data: [], error: null }))
+
+      const result = await adminService.fetchClasses({ includeInactive: true })
+      expect(result[0].isActive).toBe(false)
+      expect(mockBuilder.eq).not.toHaveBeenCalledWith('is_active', true)
+    })
+
+    it('rejects duplicate class codes during create', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({ data: [{ id: 'EXISTING' }], error: null }))
+        .mockImplementationOnce((resolve) => resolve({ data: [], error: null }))
+
+      await expect(
+        adminService.createClass('六年級A班', 'desc', [], [], { code: 'G6A', gradeYear: 6 })
+      ).rejects.toMatchObject({ code: 'CLASS_VALIDATION_ERROR' })
+    })
+
+    it('deactivates classes via lifecycle API', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({
+          data: {
+            id: 'G6A',
+            class_name: '六年級A班',
+            class_grade_year: 6,
+            description: null,
+            is_active: true,
+            created_at: '2025-01-01',
+            updated_at: '2025-01-01',
+          },
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({
+          data: {
+            id: 'G6A',
+            class_code: 'G6A',
+            class_name: '六年級A班',
+            class_grade_year: 6,
+            description: null,
+            is_active: false,
+            deactivated_at: '2025-01-03',
+            created_at: '2025-01-01',
+            updated_at: '2025-01-03',
+          },
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({ data: null, error: null }))
+
+      const result = await adminService.deactivateClass('G6A')
+      expect(result.isActive).toBe(false)
+      expect(mockBuilder.update).toHaveBeenCalledWith({ is_active: false })
+    })
+
+    it('reactivates previously inactive classes via lifecycle API', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({
+          data: {
+            id: 'G6A',
+            class_name: '六年級A班',
+            class_grade_year: 6,
+            description: null,
+            is_active: false,
+            deactivated_at: '2025-01-03',
+            created_at: '2025-01-01',
+            updated_at: '2025-01-03',
+          },
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({
+          data: {
+            id: 'G6A',
+            class_code: 'G6A',
+            class_name: '六年級A班',
+            class_grade_year: 6,
+            description: null,
+            is_active: true,
+            deactivated_at: null,
+            created_at: '2025-01-01',
+            updated_at: '2025-01-04',
+          },
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({ data: null, error: null }))
+
+      const result = await adminService.activateClass('G6A')
+      expect(result.isActive).toBe(true)
+      expect(result.deactivatedAt).toBeNull()
+      expect(mockBuilder.update).toHaveBeenCalledWith({ is_active: true })
     })
   })
 })

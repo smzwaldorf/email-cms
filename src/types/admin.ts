@@ -25,8 +25,12 @@ export interface AdminUser {
  */
 export interface Class {
   id: string // UUID
+  code?: string // 穩定識別碼（例如：G6A）
   name: string // 班級名稱（例如：6年級A班、高二英文班）
   description?: string
+  gradeYear?: number
+  isActive?: boolean
+  deactivatedAt?: string | null
   studentIds: string[] // 學生 ID 列表
   teacherIds: string[] // 教師 ID 列表
   createdAt: string
