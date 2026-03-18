@@ -230,4 +230,41 @@ describe('AdminArticlesPage', () => {
       expect(screen.getByRole('button', { name: '模板文章列表' })).toBeInTheDocument()
     })
   })
+
+  it('keeps selected newsletter articles visible even if reused in templates', async () => {
+    vi.mocked(adminService.fetchArticlesByNewsletterId).mockResolvedValueOnce([
+      {
+        id: 'article-shared-1',
+        title: 'Reused Article',
+        content: '<p>Reused</p>',
+        weekNumber: '2025-W48',
+        order: 1,
+        status: 'draft',
+        createdAt: '2025-11-02',
+        updatedAt: '2025-11-02',
+      },
+    ] as any)
+    vi.mocked(adminService.fetchArticleNewsletterMemberships).mockResolvedValueOnce({
+      'article-shared-1': [
+        { newsletterId: 'newsletter-1', label: '2025-W48', isTemplate: false },
+        { newsletterId: 'template-newsletter-1', label: 'Template #1', isTemplate: true },
+      ],
+    })
+
+    render(
+      <MemoryRouter>
+        <AdminArticlesPage />
+      </MemoryRouter>
+    )
+
+    await screen.findByText('All Article')
+    fireEvent.change(screen.getByLabelText('依電子報篩選'), {
+      target: { value: 'newsletter-1' },
+    })
+
+    await waitFor(() => {
+      expect(adminService.fetchArticlesByNewsletterId).toHaveBeenCalledWith('newsletter-1')
+      expect(screen.getByText('Reused Article')).toBeInTheDocument()
+    })
+  })
 })

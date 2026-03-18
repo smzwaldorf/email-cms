@@ -106,7 +106,11 @@ export function ArticleEditorPage() {
         article.editedAt || article.updatedAt || new Date().toISOString(),
         user.id
       )
-      const effectiveNewsletterId = state?.newsletterId || id
+      let effectiveNewsletterId = state?.newsletterId || id
+      if (!effectiveNewsletterId && weekNumber) {
+        const newsletter = await adminService.fetchNewsletterByWeek(weekNumber)
+        effectiveNewsletterId = newsletter.id
+      }
       if (effectiveNewsletterId) {
         await adminService.updateArticleTargetingInNewsletterById(
           effectiveNewsletterId,

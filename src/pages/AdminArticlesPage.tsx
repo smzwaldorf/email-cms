@@ -76,6 +76,7 @@ export function AdminArticlesPage() {
 
   useEffect(() => {
     const filtered = allLoadedArticles.filter((article) => {
+      if (selectedNewsletterId) return true
       const memberships = membershipsByArticleId[article.id] || []
       const isTemplateArticle = memberships.some((membership) => membership.isTemplate)
       if (showTemplateOnly) return isTemplateArticle
@@ -83,7 +84,7 @@ export function AdminArticlesPage() {
     })
 
     setArticles(filtered)
-  }, [allLoadedArticles, membershipsByArticleId, showTemplateOnly])
+  }, [allLoadedArticles, membershipsByArticleId, selectedNewsletterId, showTemplateOnly])
 
   return (
     <ErrorBoundary>
