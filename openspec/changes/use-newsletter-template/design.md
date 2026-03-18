@@ -1,17 +1,18 @@
 ## Context
 
-The product requirements call for a weekly template-copy workflow, but the current admin UI only supports creating a blank newsletter and then composing it manually. The existing schema and service layer already separate newsletters from articles through `newsletter_articles`, which makes copy-based issue creation possible without a new data model. The main constraint is to deliver a safe, focused template-use flow that can later plug into the broader newsletter admin workflow.
+The product requirements call for reusable newsletter templates that can be shaped by editors and used repeatedly for new weekly drafts. The current admin UI supports blank newsletter creation but does not support creating templates from existing issues or managing template structure. The existing newsletter/article composition model can be reused for copy-based instantiation.
 
 Stakeholders are administrators and editors who prepare recurring weekly newsletters and want to preserve structure while editing the new issue independently from the previous one.
 
 ## Goals / Non-Goals
 
 **Goals:**
-- Let an admin create a new draft newsletter from an existing newsletter template.
-- Reuse the current newsletter, article, and newsletter-article relationship model.
-- Copy enough data to preserve composition structure, ordering, and content while making the new issue fully editable.
-- Keep the source newsletter and its articles unchanged after template use.
-- Provide a clear admin entry point for picking a source issue and starting the copy flow.
+- Let an admin create a template from an existing newsletter.
+- Let admins modify template structure and canonical content before use.
+- Let an admin create a new draft newsletter from a selected template.
+- Copy full article body content and ordering into independently editable draft newsletter records.
+- Keep source newsletters and template records unchanged by downstream edits in created newsletters.
+- Keep created newsletters fully normal so hybrid edits are allowed after template use.
 
 **Non-Goals:**
 - Build the full newsletter management experience.
@@ -21,66 +22,77 @@ Stakeholders are administrators and editors who prepare recurring weekly newslet
 
 ## Decisions
 
-### 1. Template use creates a new draft newsletter plus new draft article records
+### 1. Admin creates template from an existing newsletter
 
-Using a newsletter as a template should duplicate the source newsletter's composition into a brand-new draft newsletter and create new article records for the copied issue.
-
-Rationale:
-- Editors expect copied issues to be safe to edit.
-- Shared article references would create accidental cross-issue mutations.
-- This aligns with the repo's weekly editorial workflow requirement rather than content reuse across live issues.
-
-Alternatives considered:
-- Reuse the same articles via additional `newsletter_articles` rows. Rejected because edits would affect the source issue.
-- Copy only newsletter metadata and ask editors to add articles manually. Rejected because it misses most of the value of template reuse.
-
-### 2. Copied articles default to draft state
-
-The new issue and all copied articles should start in draft state, even if the source issue or source articles were published.
+Creating a template from an existing newsletter should create a separate template newsletter record plus template article records that copy composition structure, ordering, and full body content.
 
 Rationale:
-- A new issue should not become public by accident.
-- Draft status matches the editorial review step expected after copying.
+- Provides a deliberate template lifecycle instead of ad-hoc duplication.
+- Keeps source newsletters stable and auditable.
+- Gives editors a canonical structure they can refine over time.
 
 Alternatives considered:
-- Preserve source publication status. Rejected because it increases accidental publish risk.
+- One-step newsletter duplication without template creation. Rejected because it does not provide reusable canonical templates.
 
-### 3. Source selection should happen inside newsletter creation flow
+### 2. Templates are mutable and not versioned
 
-Admins should be able to start from a blank newsletter or choose an existing newsletter as the template source during creation.
+Template newsletters are edited in place with no explicit versioning model.
 
 Rationale:
-- Keeps the decision close to the "create newsletter" action.
-- Avoids adding a separate, disconnected template tool.
-- Fits the current admin dashboard entry patterns.
+- Matches requested operational simplicity.
+- Reduces UX and storage complexity for v1.
 
 Alternatives considered:
-- Add only row-level "duplicate" actions in the newsletter table. Rejected because it is less discoverable as the default weekly creation path.
+- Template version history per change. Rejected for now because no-versioning was explicitly requested.
 
-### 4. Template copy should preserve composition fields, not operational history
+### 3. Newsletter creation from template deep-copies full content into draft
 
-The copy workflow should bring over content and composition-relevant fields such as article title, body, ordering, and visibility metadata, but it should not copy audit history or publish timestamps.
+Creating a newsletter from a template should deep-copy template composition into new newsletter/article draft records, including full article bodies.
 
 Rationale:
-- Preserves editorial value while preventing confusing historical carryover.
-- Keeps copied issues semantically new rather than cloned historical records.
+- Prevents cross-record mutation between template and instantiated newsletters.
+- Preserves editorial value by copying full content, not only skeletons.
+- Maintains safe default state for newly created issues.
 
 Alternatives considered:
-- Full record cloning including historical metadata. Rejected because it would blur source-versus-copy semantics.
+- Reference template articles directly from created newsletters. Rejected because downstream edits would mutate canonical template content.
+
+### 4. Instantiated newsletters are normal newsletters (hybrid editing allowed)
+
+After template instantiation, the resulting newsletter behaves exactly like any normal newsletter and can be edited freely (add/remove/reorder/edit articles).
+
+Rationale:
+- Avoids locking editors into template-only constraints.
+- Fits existing editorial workflow expectations.
+
+Alternatives considered:
+- Keep hard linkage to template with restricted edits. Rejected because hybrid editing is explicitly required.
+
+### 5. Copy safety boundaries are strict
+
+Creating a template must not mutate source newsletters, and editing instantiated newsletters must not mutate templates.
+
+Rationale:
+- Establishes clear ownership boundaries between source newsletter, template, and created newsletters.
+- Prevents accidental regressions in recurring editorial workflows.
+
+Alternatives considered:
+- Allow optional write-back from created newsletter to template. Rejected for v1 due to high accidental overwrite risk.
 
 ## Risks / Trade-offs
 
-- [Copying articles creates more records] -> Mitigation: keep the initial scope limited to newsletter templates where duplication is intentional and high-value.
-- [Template UI can overlap with the broader newsletter admin workflow change] -> Mitigation: define this change as a focused slice that can later be folded into the broader workflow.
-- [Unclear field-copy rules can lead to inconsistent issues] -> Mitigation: explicitly define copied fields and reset fields in service-level logic and tests.
+- [No versioning can make template edits hard to roll back] -> Mitigation: keep audit metadata and provide clear "last modified" visibility in admin UI.
+- [Deep-copy creates more records over time] -> Mitigation: scope to high-value recurring templates and monitor storage growth.
+- [Unclear boundaries between source/template/newsletter records can cause mutation bugs] -> Mitigation: enforce explicit copy flows and isolation tests.
 
 ## Migration Plan
 
-- No database migration is required if the existing newsletter and article schema are reused.
-- Add the template path to the admin newsletter creation workflow without removing the blank-create path.
-- Roll back by disabling the template entry point while preserving copied data that has already been created.
+- Reuse existing schema if feasible by introducing template-typed newsletter records, or add minimal template-identification fields if needed.
+- Add admin entry points for template creation from existing newsletter and newsletter creation from template.
+- Keep blank newsletter creation available in parallel.
+- Roll back by disabling template entry points while preserving already created templates/newsletters.
 
 ## Open Questions
 
-- Should the template chooser default to the latest published newsletter, latest draft newsletter, or a searchable list?
-- Should the new newsletter inherit the source newsletter's title/description as-is, or should the UI encourage immediate edits after creation?
+- Should template lists and source-newsletter pickers default to latest updated, latest published, or searchable only?
+- Should template deletion be hard delete, soft delete, or archive-only?

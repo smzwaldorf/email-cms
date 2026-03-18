@@ -1,14 +1,15 @@
 ## Why
 
-Editors need a fast way to start each week's newsletter from an existing issue instead of rebuilding structure and content manually. This change is needed now because template reuse is a stated product requirement and is the highest-value slice of the broader newsletter admin workflow.
+Editors need a fast way to define reusable newsletter templates from real issues, then generate weekly drafts without rebuilding structure and content manually. This change is needed now because template reuse is a stated product requirement and a high-value foundation for newsletter operations.
 
 ## What Changes
 
-- Add a focused admin workflow to create a new draft newsletter from an existing newsletter template.
-- Define which newsletter metadata and article composition details are copied into the new draft issue.
-- Ensure template use produces editable draft content without mutating the source newsletter or its articles.
-- Add admin entry points for choosing a source newsletter and starting a new issue from it.
-- Keep this change scoped to template use, not the full newsletter-management experience.
+- Add an admin workflow to create a newsletter template from an existing newsletter.
+- Add template management behavior for modifying template article structure (count and order) and canonical content.
+- Add an admin workflow to create a new draft newsletter from a selected template.
+- Define deep-copy behavior so new newsletters receive full article body content and ordering from the template.
+- Ensure editing newsletters created from templates never mutates the source newsletter or the template records.
+- Keep the created newsletter fully normal after instantiation (hybrid editing allowed).
 
 ## Capabilities
 
@@ -21,7 +22,7 @@ None.
 
 ## Impact
 
-- Affected UI: admin newsletter creation flow and newsletter list actions.
-- Affected services: newsletter duplication and article-copy workflow in admin services.
-- Affected data behavior: creation of new draft newsletters and copied draft article records derived from a source newsletter.
-- Relationship to other changes: this can stand alone as a focused improvement and also fit inside the broader `newsletter-admin-workflow` direction.
+- Affected UI: admin template creation flow, template editing flow, and newsletter-from-template creation flow.
+- Affected services: template creation, template-article management, and newsletter instantiation by deep copy.
+- Affected data behavior: creation of template newsletters with canonical template articles, and independent draft newsletters copied from templates.
+- Relationship to other changes: this remains a focused slice and can integrate into broader newsletter admin workflow changes.
