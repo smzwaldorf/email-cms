@@ -88,9 +88,9 @@ export async function getArticlesForFamily(
       }
     }
 
-    // Step 1: Get all active classes for family's children
-    const { data: childEnrollments, error: enrollError } = await table('child_class_enrollment')
-      .select('class_id')
+    // Step 1: Get student-class enrollments for the family
+    const { data: childEnrollments, error: enrollError } = await table('student_class_enrollment')
+      .select('class_id, student_id')
       .eq('family_id', familyId)
       .is('graduated_at', null)
 
@@ -102,7 +102,32 @@ export async function getArticlesForFamily(
       )
     }
 
-    const enrolledClassIds = (childEnrollments || []).map((e) => e.class_id)
+    const enrolledStudentIds = Array.from(
+      new Set((childEnrollments || []).map((e: any) => e.student_id).filter(Boolean))
+    )
+    const { data: activeStudents, error: activeStudentError } = enrolledStudentIds.length
+      ? await table('students')
+        .select('id')
+        .in('id', enrolledStudentIds)
+        .eq('is_active', true)
+      : { data: [], error: null }
+
+    if (activeStudentError) {
+      throw new ArticleServiceError(
+        `Failed to validate active students: ${activeStudentError.message}`,
+        'FETCH_ENROLLMENTS_ERROR',
+        activeStudentError as Error,
+      )
+    }
+
+    const activeStudentSet = new Set((activeStudents || []).map((row: any) => row.id))
+    const enrolledClassIds = Array.from(
+      new Set(
+        (childEnrollments || [])
+          .filter((e: any) => activeStudentSet.has(e.student_id))
+          .map((e: any) => e.class_id)
+      )
+    )
 
     // Step 2: Get class details (for sorting by grade year)
     let classes: ClassRow[] = []

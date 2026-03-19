@@ -48,12 +48,13 @@ export function StudentManagementPage() {
   const [availableClasses, setAvailableClasses] = useState<Class[]>([])
   const [wizardResult, setWizardResult] = useState<WizardResult | null>(null)
   const [isLoadingWizardOptions, setIsLoadingWizardOptions] = useState(false)
+  const [showInactiveStudents, setShowInactiveStudents] = useState(false)
 
   const loadStudents = async () => {
     try {
       setIsLoading(true)
       setError(null)
-      const data = await adminService.fetchStudents()
+      const data = await adminService.fetchStudents({ includeInactive: showInactiveStudents })
       setStudents(data)
     } catch (err) {
       setError(err instanceof AdminServiceError ? err.message : 'Failed to load students')
@@ -64,7 +65,7 @@ export function StudentManagementPage() {
 
   useEffect(() => {
     void loadStudents()
-  }, [])
+  }, [showInactiveStudents])
 
   const resetWizard = () => {
     setName('')
@@ -322,8 +323,8 @@ export function StudentManagementPage() {
     if (!deleteConfirm.studentId) return
     try {
       setIsSaving(true)
-      await adminService.deleteStudent(deleteConfirm.studentId)
-      setNotification({ message: '學生已刪除', type: 'success' })
+      await adminService.deactivateStudent(deleteConfirm.studentId)
+      setNotification({ message: '學生已停用', type: 'success' })
       setDeleteConfirm({ isOpen: false })
       await loadStudents()
     } catch (err) {
@@ -332,6 +333,22 @@ export function StudentManagementPage() {
         type: 'error',
       })
       setDeleteConfirm({ isOpen: false })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleActivate = async (studentId: string) => {
+    try {
+      setIsSaving(true)
+      await adminService.activateStudent(studentId)
+      setNotification({ message: '學生已啟用', type: 'success' })
+      await loadStudents()
+    } catch (err) {
+      setNotification({
+        message: err instanceof AdminServiceError ? err.message : 'Failed to activate student',
+        type: 'error',
+      })
     } finally {
       setIsSaving(false)
     }
@@ -665,6 +682,15 @@ export function StudentManagementPage() {
     >
       <div className="space-y-6">
         <p className="text-waldorf-clay-600">學生總數：{students.length}</p>
+        <label className="inline-flex items-center gap-2 text-sm text-waldorf-clay-700">
+          <input
+            type="checkbox"
+            checked={showInactiveStudents}
+            onChange={(event) => setShowInactiveStudents(event.target.checked)}
+            className="rounded border-waldorf-cream-300 text-waldorf-sage-600 focus:ring-waldorf-sage-300"
+          />
+          顯示停用學生
+        </label>
         {error && <div className="text-waldorf-rose-700 bg-waldorf-rose-50 border border-waldorf-rose-200 rounded-xl p-4">{error}</div>}
         {isLoading ? (
           <div className="text-waldorf-clay-500">載入中...</div>
@@ -675,6 +701,7 @@ export function StudentManagementPage() {
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-waldorf-clay-600 uppercase">姓名</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-waldorf-clay-600 uppercase">建立時間</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-waldorf-clay-600 uppercase">狀態</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-waldorf-clay-600 uppercase">操作</th>
                 </tr>
               </thead>
@@ -684,6 +711,9 @@ export function StudentManagementPage() {
                     <td className="px-4 py-3 text-sm text-waldorf-clay-700">{student.name}</td>
                     <td className="px-4 py-3 text-sm text-waldorf-clay-700">
                       {new Date(student.createdAt).toLocaleDateString('zh-TW')}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-waldorf-clay-700">
+                      {student.status === 'active' ? '啟用中' : '已停用'}
                     </td>
                     <td className="px-4 py-3 space-x-2">
                       <button
@@ -696,12 +726,21 @@ export function StudentManagementPage() {
                       >
                         編輯
                       </button>
-                      <button
-                        onClick={() => setDeleteConfirm({ isOpen: true, studentId: student.id })}
-                        className="px-3 py-1.5 bg-waldorf-rose-100 text-waldorf-rose-700 text-xs rounded-lg hover:bg-waldorf-rose-200"
-                      >
-                        刪除
-                      </button>
+                      {student.status === 'active' ? (
+                        <button
+                          onClick={() => setDeleteConfirm({ isOpen: true, studentId: student.id })}
+                          className="px-3 py-1.5 bg-waldorf-rose-100 text-waldorf-rose-700 text-xs rounded-lg hover:bg-waldorf-rose-200"
+                        >
+                          停用
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleActivate(student.id)}
+                          className="px-3 py-1.5 bg-waldorf-sage-100 text-waldorf-sage-700 text-xs rounded-lg hover:bg-waldorf-sage-200"
+                        >
+                          啟用
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -712,9 +751,9 @@ export function StudentManagementPage() {
 
         <ConfirmDialog
           isOpen={deleteConfirm.isOpen}
-          title="刪除學生"
-          message="確定要刪除這位學生嗎？相關家庭與班級關聯也會移除。"
-          confirmText="刪除"
+          title="停用學生"
+          message="確定要停用這位學生嗎？停用後可再啟用，歷史關聯會保留。"
+          confirmText="停用"
           cancelText="取消"
           isDangerous={true}
           isLoading={isSaving}

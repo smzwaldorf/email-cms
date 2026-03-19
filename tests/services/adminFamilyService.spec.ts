@@ -234,6 +234,9 @@ describe('AdminService family management', () => {
         resolve({ data: null, error: null })
       ) // add audit
       .mockImplementationOnce((resolve: any) =>
+        resolve({ data: null, error: null })
+      ) // add student audit
+      .mockImplementationOnce((resolve: any) =>
         resolve({ data: { id: 'link-1' }, error: null })
       ) // remove existing link
       .mockImplementationOnce((resolve: any) =>
@@ -242,6 +245,9 @@ describe('AdminService family management', () => {
       .mockImplementationOnce((resolve: any) =>
         resolve({ data: null, error: null })
       ) // remove audit
+      .mockImplementationOnce((resolve: any) =>
+        resolve({ data: null, error: null })
+      ) // remove student audit
 
     await adminService.addStudentToFamily('family-1', 'student-1')
     expect(mockBuilder.insert).toHaveBeenCalledWith(expect.objectContaining({
@@ -257,11 +263,26 @@ describe('AdminService family management', () => {
   it('adds student class enrollment with family linkage', async () => {
     mockBuilder.then
       .mockImplementationOnce((resolve: any) =>
+        resolve({ data: { id: 'student-1', is_active: true }, error: null })
+      ) // student exists
+      .mockImplementationOnce((resolve: any) =>
+        resolve({ data: { id: 'class-1', is_active: true }, error: null })
+      ) // class exists
+      .mockImplementationOnce((resolve: any) =>
+        resolve({ data: { id: 'family-1', is_active: true }, error: null })
+      ) // family exists
+      .mockImplementationOnce((resolve: any) =>
+        resolve({ data: { id: 'link-1' }, error: null })
+      ) // family link exists
+      .mockImplementationOnce((resolve: any) =>
         resolve({ data: null, error: null })
       ) // existing enrollment check
       .mockImplementationOnce((resolve: any) =>
         resolve({ data: null, error: null })
       ) // insert
+      .mockImplementationOnce((resolve: any) =>
+        resolve({ data: null, error: null })
+      ) // student audit
 
     await adminService.addStudentToClassEnrollment('class-1', 'student-1', 'family-1')
 

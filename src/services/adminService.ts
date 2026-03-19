@@ -57,11 +57,19 @@ export interface FetchFamiliesOptions {
   includeInactive?: boolean
 }
 
+export interface FetchStudentsOptions {
+  includeInactive?: boolean
+}
+
 export interface FetchArticleTaxonomyOptions {
   includeInactive?: boolean
 }
 
 interface FamilyWriteOptions {
+  actorId?: string
+}
+
+interface StudentWriteOptions {
   actorId?: string
 }
 
@@ -4474,6 +4482,12 @@ class AdminService {
         null,
         { student_id: studentId },
       )
+      await this.writeStudentAudit(
+        studentId,
+        'add_family',
+        null,
+        { family_id: familyId }
+      )
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
       throw new AdminServiceError(
@@ -4532,6 +4546,12 @@ class AdminService {
         { student_id: studentId },
         null,
       )
+      await this.writeStudentAudit(
+        studentId,
+        'remove_family',
+        { family_id: familyId },
+        null
+      )
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
       throw new AdminServiceError(
@@ -4560,6 +4580,68 @@ class AdminService {
       }
       if (!normalizedFamilyId) {
         throw new AdminServiceError('家庭為必填項', 'ADD_STUDENT_CLASS_ENROLLMENT_ERROR')
+      }
+
+      const [studentResult, classResult, familyResult] = await Promise.all([
+        supabase.from('students').select('id, is_active').eq('id', normalizedStudentId).single(),
+        supabase.from('classes').select('id, is_active').eq('id', normalizedClassId).single(),
+        supabase.from('families').select('id, is_active').eq('id', normalizedFamilyId).single(),
+      ])
+      const legacyStudentResult = (studentResult.error && this.isMissingStudentColumnError(studentResult.error, 'is_active'))
+        ? await supabase.from('students').select('id').eq('id', normalizedStudentId).single()
+        : null
+      const resolvedStudentError = legacyStudentResult ? legacyStudentResult.error : studentResult.error
+      const resolvedStudentData = legacyStudentResult ? legacyStudentResult.data : studentResult.data
+
+      if (resolvedStudentError || !resolvedStudentData) {
+        throw new AdminServiceError(
+          `Unknown student: ${normalizedStudentId}`,
+          'ADD_STUDENT_CLASS_ENROLLMENT_ERROR',
+          resolvedStudentError as any
+        )
+      }
+      if ((resolvedStudentData as any).is_active === false) {
+        throw new AdminServiceError('停用學生無法加入班級', 'ADD_STUDENT_CLASS_ENROLLMENT_ERROR')
+      }
+
+      if (classResult.error || !classResult.data) {
+        throw new AdminServiceError(
+          `Unknown class: ${normalizedClassId}`,
+          'ADD_STUDENT_CLASS_ENROLLMENT_ERROR',
+          classResult.error as any
+        )
+      }
+      if ((classResult.data as any).is_active === false) {
+        throw new AdminServiceError('停用班級無法新增學生', 'ADD_STUDENT_CLASS_ENROLLMENT_ERROR')
+      }
+
+      if (familyResult.error || !familyResult.data) {
+        throw new AdminServiceError(
+          `Unknown family: ${normalizedFamilyId}`,
+          'ADD_STUDENT_CLASS_ENROLLMENT_ERROR',
+          familyResult.error as any
+        )
+      }
+      if ((familyResult.data as any).is_active === false) {
+        throw new AdminServiceError('停用家庭無法分配班級', 'ADD_STUDENT_CLASS_ENROLLMENT_ERROR')
+      }
+
+      const { data: familyLink, error: familyLinkError } = await supabase
+        .from('family_enrollment')
+        .select('id')
+        .eq('family_id', normalizedFamilyId)
+        .eq('student_id', normalizedStudentId)
+        .maybeSingle()
+
+      if (familyLinkError) {
+        throw new AdminServiceError(
+          `Failed to validate student-family relationship: ${familyLinkError.message}`,
+          'ADD_STUDENT_CLASS_ENROLLMENT_ERROR',
+          familyLinkError as any
+        )
+      }
+      if (!familyLink) {
+        throw new AdminServiceError('學生需先加入家庭，才能分配班級', 'ADD_STUDENT_CLASS_ENROLLMENT_ERROR')
       }
 
       const { data: existing, error: existingError } = await supabase
@@ -4594,11 +4676,72 @@ class AdminService {
           error as any
         )
       }
+
+      await this.writeStudentAudit(
+        normalizedStudentId,
+        'add_class',
+        null,
+        { class_id: normalizedClassId, family_id: normalizedFamilyId }
+      )
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
       throw new AdminServiceError(
         `Error assigning student to class: ${err instanceof Error ? err.message : String(err)}`,
         'ADD_STUDENT_CLASS_ENROLLMENT_ERROR',
+        err as any
+      )
+    }
+  }
+
+  async removeStudentFromClassEnrollment(classId: string, studentId: string): Promise<void> {
+    try {
+      const supabase = getSupabaseClient()
+      const normalizedClassId = classId.trim()
+      const normalizedStudentId = studentId.trim()
+
+      const { data: existing, error: existingError } = await supabase
+        .from('student_class_enrollment')
+        .select('id, family_id')
+        .eq('class_id', normalizedClassId)
+        .eq('student_id', normalizedStudentId)
+        .maybeSingle()
+
+      if (existingError) {
+        throw new AdminServiceError(
+          `Failed to validate class enrollment: ${existingError.message}`,
+          'REMOVE_STUDENT_CLASS_ENROLLMENT_ERROR',
+          existingError as any
+        )
+      }
+      if (!existing) {
+        throw new AdminServiceError('找不到該學生與班級關聯', 'REMOVE_STUDENT_CLASS_ENROLLMENT_ERROR')
+      }
+
+      const { error } = await supabase
+        .from('student_class_enrollment')
+        .delete()
+        .eq('class_id', normalizedClassId)
+        .eq('student_id', normalizedStudentId)
+
+      if (error) {
+        throw new AdminServiceError(
+          `Failed to remove student class enrollment: ${error.message}`,
+          'REMOVE_STUDENT_CLASS_ENROLLMENT_ERROR',
+          error as any
+        )
+      }
+
+      await this.writeStudentAudit(
+        normalizedStudentId,
+        'remove_class',
+        { class_id: normalizedClassId, family_id: (existing as any).family_id },
+        null
+      )
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error removing student class enrollment: ${err instanceof Error ? err.message : String(err)}`,
+        'REMOVE_STUDENT_CLASS_ENROLLMENT_ERROR',
         err as any
       )
     }
@@ -4679,18 +4822,30 @@ class AdminService {
       // Get all students
       const { data: allStudents, error: fetchError } = await supabase
         .from('students')
-        .select('id, name, created_at, updated_at')
+        .select('id, name, student_code, is_active, created_at, updated_at')
+        .eq('is_active', true)
         .order('name', { ascending: true })
 
-      if (fetchError) {
+      let studentsData: any[] | null = allStudents as any[] | null
+      let studentsError: any = fetchError
+      if (studentsError && (this.isMissingStudentColumnError(studentsError, 'student_code') || this.isMissingStudentColumnError(studentsError, 'is_active'))) {
+        const legacyStudents = await supabase
+          .from('students')
+          .select('id, name, created_at, updated_at')
+          .order('name', { ascending: true })
+        studentsData = legacyStudents.data as any
+        studentsError = legacyStudents.error as any
+      }
+
+      if (studentsError) {
         throw new AdminServiceError(
-          `Failed to fetch students: ${fetchError.message}`,
+          `Failed to fetch students: ${studentsError.message}`,
           'FETCH_STUDENTS_ERROR',
-          fetchError as any
+          studentsError as any
         )
       }
 
-      if (!allStudents) {
+      if (!studentsData) {
         return []
       }
 
@@ -4711,11 +4866,11 @@ class AdminService {
       const existingStudentIds = (enrollments || []).map((e: any) => e.student_id).filter(Boolean)
 
       // Filter out students already in family
-      return allStudents
+      return studentsData
         .filter((s: any) => !existingStudentIds.includes(s.id))
         .map((row: any) => ({
           id: row.id,
-          email: row.name || '', // Students table doesn't have email, use name as display
+          email: row.student_code || row.name || '',
           name: row.name || 'Unknown',
           role: 'student' as const,
           status: 'active' as const,
@@ -4733,17 +4888,125 @@ class AdminService {
     }
   }
 
-  /**
-   * Fetch all students for admin UI pickers
-   */
-  async fetchStudents(): Promise<AdminUser[]> {
+  private normalizeStudentCode(input: string): string {
+    return input.trim().replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-_]/g, '').toUpperCase()
+  }
+
+  private isMissingStudentColumnError(error: any, columnName: string): boolean {
+    const message = String(error?.message || '')
+    return error?.code === '42703' || message.includes(`students.${columnName}`) || message.includes('does not exist')
+  }
+
+  private mapStudentRow(row: any): AdminUser {
+    const isActive = row.is_active ?? true
+    return {
+      id: row.id,
+      email: row.student_code || row.name || '',
+      name: row.name || 'Unknown',
+      role: 'student',
+      status: isActive ? 'active' : 'disabled',
+      createdAt: row.created_at,
+      updatedAt: row.updated_at || row.created_at,
+      lastLoginAt: null,
+    }
+  }
+
+  private async validateStudentWriteInput(input: {
+    idToExclude?: string
+    name?: string
+  }): Promise<{ normalizedName: string; normalizedCode: string }> {
+    const normalizedName = (input.name || '').trim()
+    if (!normalizedName) {
+      throw new AdminServiceError('學生姓名為必填項', 'STUDENT_VALIDATION_ERROR')
+    }
+
+    const normalizedCode = this.normalizeStudentCode(normalizedName)
+    const supabase = getSupabaseClient()
+    let duplicateRows: any[] = []
+    const lifecycleQuery = await supabase
+      .from('students')
+      .select('id')
+      .eq('is_active', true)
+      .or(`student_code.ilike.${normalizedCode},name.ilike.${normalizedName}`)
+
+    if (lifecycleQuery.error && (this.isMissingStudentColumnError(lifecycleQuery.error, 'student_code') || this.isMissingStudentColumnError(lifecycleQuery.error, 'is_active'))) {
+      const legacyQuery = await supabase
+        .from('students')
+        .select('id')
+        .ilike('name', normalizedName)
+      if (legacyQuery.error) {
+        throw new AdminServiceError(
+          `Failed to validate student identity: ${legacyQuery.error.message}`,
+          'STUDENT_VALIDATION_ERROR',
+          legacyQuery.error as any
+        )
+      }
+      duplicateRows = legacyQuery.data || []
+    } else if (lifecycleQuery.error) {
+      throw new AdminServiceError(
+        `Failed to validate student identity: ${lifecycleQuery.error.message}`,
+        'STUDENT_VALIDATION_ERROR',
+        lifecycleQuery.error as any
+      )
+    } else {
+      duplicateRows = lifecycleQuery.data || []
+    }
+    const duplicate = duplicateRows.find((row: any) => row.id !== input.idToExclude)
+    if (duplicate) {
+      throw new AdminServiceError('學生姓名已存在', 'STUDENT_VALIDATION_ERROR')
+    }
+
+    return { normalizedName, normalizedCode }
+  }
+
+  private async writeStudentAudit(
+    studentId: string,
+    action: 'create' | 'update' | 'activate' | 'deactivate' | 'add_class' | 'remove_class' | 'add_family' | 'remove_family',
+    priorState: Record<string, unknown> | null,
+    newState: Record<string, unknown> | null,
+    actorId?: string
+  ): Promise<void> {
     try {
       const supabase = getSupabaseClient()
+      const resolvedActorId = actorId || await this.getCurrentAuthUserId()
+      await supabase.from('student_audit_log').insert({
+        student_id: studentId,
+        action,
+        actor_id: resolvedActorId,
+        prior_state: priorState,
+        new_state: newState,
+      })
+    } catch (error) {
+      console.error('Failed to log student audit event:', error)
+    }
+  }
 
-      const { data, error } = await supabase
+  /**
+   * Fetch students for admin UI pickers
+   */
+  async fetchStudents(options: FetchStudentsOptions = {}): Promise<AdminUser[]> {
+    try {
+      const supabase = getSupabaseClient()
+      let query = supabase
         .from('students')
-        .select('id, name, created_at, updated_at')
+        .select('id, name, student_code, is_active, created_at, updated_at')
         .order('name', { ascending: true })
+
+      if (!options.includeInactive) {
+        query = query.eq('is_active', true)
+      }
+
+      const queryResult = await query
+      let data: any[] | null = queryResult.data as any[] | null
+      let error: any = queryResult.error
+      if (error && (this.isMissingStudentColumnError(error, 'student_code') || this.isMissingStudentColumnError(error, 'is_active'))) {
+        const legacyQuery = await supabase
+          .from('students')
+          .select('id, name, created_at, updated_at')
+          .order('name', { ascending: true })
+        data = legacyQuery.data as any[] | null
+        error = legacyQuery.error as any
+      }
 
       if (error) {
         throw new AdminServiceError(
@@ -4753,16 +5016,7 @@ class AdminService {
         )
       }
 
-      return (data || []).map((row: any) => ({
-        id: row.id,
-        email: row.name || '',
-        name: row.name || 'Unknown',
-        role: 'student' as const,
-        status: 'active' as const,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
-        lastLoginAt: null,
-      }))
+      return (data || []).map((row: any) => this.mapStudentRow(row))
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
       throw new AdminServiceError(
@@ -4773,19 +5027,29 @@ class AdminService {
     }
   }
 
-  async createStudent(name: string): Promise<AdminUser> {
+  async createStudent(name: string, options: StudentWriteOptions = {}): Promise<AdminUser> {
     try {
-      const normalizedName = name.trim()
-      if (!normalizedName) {
-        throw new AdminServiceError('學生姓名為必填項', 'CREATE_STUDENT_ERROR')
-      }
-
+      const { normalizedName, normalizedCode } = await this.validateStudentWriteInput({ name })
       const supabase = getSupabaseClient()
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('students')
-        .insert({ name: normalizedName })
+        .insert({
+          name: normalizedName,
+          student_code: normalizedCode,
+          is_active: true,
+        })
         .select('*')
         .single()
+
+      if (error && (this.isMissingStudentColumnError(error, 'student_code') || this.isMissingStudentColumnError(error, 'is_active'))) {
+        const legacyInsert = await supabase
+          .from('students')
+          .insert({ name: normalizedName })
+          .select('*')
+          .single()
+        data = legacyInsert.data
+        error = legacyInsert.error as any
+      }
 
       if (error || !data) {
         throw new AdminServiceError(
@@ -4795,16 +5059,19 @@ class AdminService {
         )
       }
 
-      return {
-        id: data.id,
-        email: normalizedName,
-        name: data.name,
-        role: 'student',
-        status: 'active',
-        createdAt: data.created_at,
-        updatedAt: data.updated_at,
-        lastLoginAt: null,
-      }
+      await this.writeStudentAudit(
+        data.id,
+        'create',
+        null,
+        {
+          name: data.name,
+          student_code: data.student_code,
+          is_active: data.is_active ?? true,
+        },
+        options.actorId
+      )
+
+      return this.mapStudentRow(data)
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
       throw new AdminServiceError(
@@ -4815,23 +5082,52 @@ class AdminService {
     }
   }
 
-  async updateStudent(id: string, updates: { name: string }): Promise<AdminUser> {
+  async updateStudent(id: string, updates: { name: string }, options: StudentWriteOptions = {}): Promise<AdminUser> {
     try {
-      const normalizedName = updates.name.trim()
-      if (!normalizedName) {
-        throw new AdminServiceError('學生姓名為必填項', 'UPDATE_STUDENT_ERROR')
+      const supabase = getSupabaseClient()
+      const { data: existing, error: existingError } = await supabase
+        .from('students')
+        .select('*')
+        .eq('id', id)
+        .single()
+
+      if (existingError || !existing) {
+        throw new AdminServiceError(
+          `Failed to load student before update: ${existingError?.message || 'Student not found'}`,
+          'UPDATE_STUDENT_ERROR',
+          existingError as any
+        )
       }
 
-      const supabase = getSupabaseClient()
-      const { data, error } = await supabase
+      const { normalizedName, normalizedCode } = await this.validateStudentWriteInput({
+        idToExclude: id,
+        name: updates.name,
+      })
+
+      let { data, error } = await supabase
         .from('students')
         .update({
           name: normalizedName,
+          student_code: normalizedCode,
           updated_at: new Date().toISOString(),
         })
         .eq('id', id)
         .select('*')
         .maybeSingle()
+
+      if (error && this.isMissingStudentColumnError(error, 'student_code')) {
+        const legacyUpdate = await supabase
+          .from('students')
+          .update({
+            name: normalizedName,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', id)
+          .select('*')
+          .maybeSingle()
+        data = legacyUpdate.data
+        error = legacyUpdate.error as any
+      }
 
       if (error) {
         throw new AdminServiceError(
@@ -4848,16 +5144,23 @@ class AdminService {
         )
       }
 
-      return {
-        id: data.id,
-        email: data.name,
-        name: data.name,
-        role: 'student',
-        status: 'active',
-        createdAt: data.created_at,
-        updatedAt: data.updated_at,
-        lastLoginAt: null,
-      }
+      await this.writeStudentAudit(
+        id,
+        'update',
+        {
+          name: existing.name,
+          student_code: existing.student_code,
+          is_active: existing.is_active ?? true,
+        },
+        {
+          name: data.name,
+          student_code: data.student_code,
+          is_active: data.is_active ?? true,
+        },
+        options.actorId
+      )
+
+      return this.mapStudentRow(data)
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
       throw new AdminServiceError(
@@ -4868,29 +5171,74 @@ class AdminService {
     }
   }
 
-  async deleteStudent(id: string): Promise<void> {
+  async activateStudent(id: string, options: StudentWriteOptions = {}): Promise<AdminUser> {
     try {
       const supabase = getSupabaseClient()
-      const { error } = await supabase
+      const { data: existing, error: existingError } = await supabase
         .from('students')
-        .delete()
+        .select('*')
         .eq('id', id)
-
-      if (error) {
-        throw new AdminServiceError(
-          `Failed to delete student: ${error.message}`,
-          'DELETE_STUDENT_ERROR',
-          error as any
-        )
+        .single()
+      if (existingError || !existing) {
+        throw new AdminServiceError(`Student ${id} not found`, 'ACTIVATE_STUDENT_ERROR', existingError as any)
       }
+
+      let { data, error } = await supabase
+        .from('students')
+        .update({ is_active: true })
+        .eq('id', id)
+        .select('*')
+        .single()
+      if (error && this.isMissingStudentColumnError(error, 'is_active')) {
+        return this.mapStudentRow(existing)
+      }
+      if (error || !data) {
+        throw new AdminServiceError(`Failed to activate student: ${error?.message || 'Unknown error'}`, 'ACTIVATE_STUDENT_ERROR', error as any)
+      }
+
+      await this.writeStudentAudit(id, 'activate', { is_active: existing.is_active ?? true }, { is_active: true }, options.actorId)
+      return this.mapStudentRow(data)
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
-      throw new AdminServiceError(
-        `Error deleting student: ${err instanceof Error ? err.message : String(err)}`,
-        'DELETE_STUDENT_ERROR',
-        err as any
-      )
+      throw new AdminServiceError(`Error activating student: ${err instanceof Error ? err.message : String(err)}`, 'ACTIVATE_STUDENT_ERROR', err as any)
     }
+  }
+
+  async deactivateStudent(id: string, options: StudentWriteOptions = {}): Promise<AdminUser> {
+    try {
+      const supabase = getSupabaseClient()
+      const { data: existing, error: existingError } = await supabase
+        .from('students')
+        .select('*')
+        .eq('id', id)
+        .single()
+      if (existingError || !existing) {
+        throw new AdminServiceError(`Student ${id} not found`, 'DEACTIVATE_STUDENT_ERROR', existingError as any)
+      }
+
+      let { data, error } = await supabase
+        .from('students')
+        .update({ is_active: false })
+        .eq('id', id)
+        .select('*')
+        .single()
+      if (error && this.isMissingStudentColumnError(error, 'is_active')) {
+        throw new AdminServiceError('目前資料庫尚未升級學生停用欄位，請先執行 migration up。', 'DEACTIVATE_STUDENT_ERROR', error as any)
+      }
+      if (error || !data) {
+        throw new AdminServiceError(`Failed to deactivate student: ${error?.message || 'Unknown error'}`, 'DEACTIVATE_STUDENT_ERROR', error as any)
+      }
+
+      await this.writeStudentAudit(id, 'deactivate', { is_active: existing.is_active ?? true }, { is_active: false }, options.actorId)
+      return this.mapStudentRow(data)
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(`Error deactivating student: ${err instanceof Error ? err.message : String(err)}`, 'DEACTIVATE_STUDENT_ERROR', err as any)
+    }
+  }
+
+  async deleteStudent(id: string): Promise<void> {
+    await this.deactivateStudent(id)
   }
 
   async fetchParents(): Promise<AdminUser[]> {

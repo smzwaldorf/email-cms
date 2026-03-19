@@ -3,7 +3,9 @@ import { adminService } from '@/services/adminService'
 import { getArticlesForFamily } from '@/services/queries/classArticleQueries'
 
 type MockClass = { id: string; class_name: string; class_grade_year: number }
-type MockEnrollment = { family_id: string; class_id: string; graduated_at: string | null }
+type MockEnrollment = { family_id: string; class_id: string; student_id: string; graduated_at: string | null }
+type MockStudent = { id: string; is_active: boolean }
+type MockFamily = { id: string; is_active: boolean }
 type MockNewsletterArticle = {
   newsletter_id: string
   article_id: string
@@ -20,7 +22,9 @@ type MockNewsletterArticle = {
 
 const mockDb = vi.hoisted(() => ({
   classes: [] as MockClass[],
-  childClassEnrollment: [] as MockEnrollment[],
+  studentClassEnrollment: [] as MockEnrollment[],
+  students: [] as MockStudent[],
+  families: [] as MockFamily[],
   newsletterArticles: [] as MockNewsletterArticle[],
 }))
 
@@ -72,8 +76,12 @@ function createMockBuilder(tableName: string) {
       let dataset: any[] = []
       if (tableName === 'classes') {
         dataset = [...mockDb.classes]
-      } else if (tableName === 'child_class_enrollment') {
-        dataset = [...mockDb.childClassEnrollment]
+      } else if (tableName === 'student_class_enrollment') {
+        dataset = [...mockDb.studentClassEnrollment]
+      } else if (tableName === 'students') {
+        dataset = [...mockDb.students]
+      } else if (tableName === 'families') {
+        dataset = [...mockDb.families]
       } else if (tableName === 'newsletter_articles') {
         dataset = [...mockDb.newsletterArticles]
       }
@@ -121,9 +129,17 @@ describe('Admin control to parent visibility flow', () => {
       { id: 'A1', class_name: 'A1', class_grade_year: 1 },
       { id: 'B1', class_name: 'B1', class_grade_year: 1 },
     ]
-    mockDb.childClassEnrollment = [
-      { family_id: 'family-a1', class_id: 'A1', graduated_at: null },
-      { family_id: 'family-b1', class_id: 'B1', graduated_at: null },
+    mockDb.families = [
+      { id: 'family-a1', is_active: true },
+      { id: 'family-b1', is_active: true },
+    ]
+    mockDb.students = [
+      { id: 'student-a1', is_active: true },
+      { id: 'student-b1', is_active: true },
+    ]
+    mockDb.studentClassEnrollment = [
+      { family_id: 'family-a1', class_id: 'A1', student_id: 'student-a1', graduated_at: null },
+      { family_id: 'family-b1', class_id: 'B1', student_id: 'student-b1', graduated_at: null },
     ]
     mockDb.newsletterArticles = [
       {
