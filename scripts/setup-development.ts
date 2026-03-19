@@ -79,21 +79,25 @@ const testWeeks = [
 const testClasses = [
   {
     id: 'A1',
+    class_code: 'A1',
     class_name: 'Grade 1A (一年級甲班)',
     class_grade_year: 1,
   },
   {
     id: 'A2',
+    class_code: 'A2',
     class_name: 'Grade 1B (一年級乙班)',
     class_grade_year: 1,
   },
   {
     id: 'B1',
+    class_code: 'B1',
     class_name: 'Grade 2A (二年級甲班)',
     class_grade_year: 2,
   },
   {
     id: 'B2',
+    class_code: 'B2',
     class_name: 'Grade 2B (二年級乙班)',
     class_grade_year: 2,
   },
@@ -103,10 +107,14 @@ const testFamilies = [
   {
     id: 'f1111111-1111-1111-1111-111111111111',
     family_code: 'FAMILY001',
+    family_name: 'Family 001',
+    guardian_email: 'guardian1@example.com',
   },
   {
     id: 'f2222222-2222-2222-2222-222222222222',
     family_code: 'FAMILY002',
+    family_name: 'Family 002',
+    guardian_email: 'guardian2@example.com',
   },
 ]
 

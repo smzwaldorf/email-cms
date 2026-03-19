@@ -20,6 +20,9 @@ import type {
   ParentStudentRelationship,
   NewsletterFilterOptions,
   NewsletterPublishReadiness,
+  ArticleCategory,
+  ArticleTag,
+  ArticleRevision,
 } from '@/types/admin'
 
 /**
@@ -50,6 +53,18 @@ export interface FetchTeachersOptions {
   includeInactive?: boolean
 }
 
+export interface FetchFamiliesOptions {
+  includeInactive?: boolean
+}
+
+export interface FetchArticleTaxonomyOptions {
+  includeInactive?: boolean
+}
+
+interface FamilyWriteOptions {
+  actorId?: string
+}
+
 export interface TeacherAssignedClass {
   id: string
   name: string
@@ -58,6 +73,28 @@ export interface TeacherAssignedClass {
 
 interface TeacherWriteOptions {
   actorId?: string
+}
+
+const REVISION_TRACKED_FIELDS = [
+  'title',
+  'summary',
+  'content',
+  'status',
+  'visibility_type',
+  'restricted_to_classes',
+  'author_id',
+  'deleted_at',
+] as const
+
+const REVISION_FIELD_LABELS: Record<(typeof REVISION_TRACKED_FIELDS)[number], string> = {
+  title: '標題',
+  summary: '摘要',
+  content: '內容',
+  status: '狀態',
+  visibility_type: '可見性',
+  restricted_to_classes: '班級限制',
+  author_id: '作者',
+  deleted_at: '刪除狀態',
 }
 
 /**
@@ -74,6 +111,144 @@ class AdminService {
 
   private normalizeClassCode(input: string): string {
     return input.trim().toUpperCase()
+  }
+
+  private mapArticleCategoryRow(row: any): ArticleCategory {
+    return {
+      id: row.id,
+      name: row.name,
+      description: row.description || '',
+      isActive: row.is_active ?? true,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at || row.created_at,
+      deactivatedAt: row.deactivated_at ?? null,
+    }
+  }
+
+  private mapArticleTagRow(row: any): ArticleTag {
+    return {
+      id: row.id,
+      name: row.name,
+      description: row.description || '',
+      isActive: row.is_active ?? true,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at || row.created_at,
+      deactivatedAt: row.deactivated_at ?? null,
+    }
+  }
+
+  private mapAdminArticleRow(row: any, fallbackWeekNumber: string = ''): AdminArticle {
+    return {
+      id: row.id,
+      title: row.title,
+      content: row.content,
+      author: row.author_id,
+      summary: row.summary,
+      weekNumber: row.week_number || fallbackWeekNumber,
+      order: row.article_order || 0,
+      classIds: row.class_ids || [],
+      familyIds: row.family_ids || [],
+      status: row.status,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      publishedAt: row.published_at,
+      lastEditedBy: row.last_edited_by,
+      editedAt: row.edited_at,
+    }
+  }
+
+  private formatRevisionValue(value: unknown, field: string): string {
+    if (value === null || value === undefined) return '（空）'
+
+    if (field === 'content' && typeof value === 'string') {
+      const normalized = value.replace(/\s+/g, ' ').trim()
+      return normalized.length > 120 ? `${normalized.slice(0, 117)}...` : normalized
+    }
+
+    if (Array.isArray(value)) {
+      return value.length === 0 ? '（空）' : value.join(', ')
+    }
+
+    if (typeof value === 'object') {
+      return JSON.stringify(value)
+    }
+
+    const strValue = String(value)
+    return strValue.trim() === '' ? '（空）' : strValue
+  }
+
+  private buildRevisionDiffs(
+    oldValues?: Record<string, unknown> | null,
+    newValues?: Record<string, unknown> | null,
+  ) {
+    const before = oldValues || {}
+    const after = newValues || {}
+
+    const diffs = REVISION_TRACKED_FIELDS
+      .filter((field) => {
+        const beforeValue = before[field]
+        const afterValue = after[field]
+        return JSON.stringify(beforeValue ?? null) !== JSON.stringify(afterValue ?? null)
+      })
+      .map((field) => ({
+        field,
+        label: REVISION_FIELD_LABELS[field],
+        before: this.formatRevisionValue(before[field], field),
+        after: this.formatRevisionValue(after[field], field),
+      }))
+
+    return diffs
+  }
+
+  private getRevisionActionLabel(action: string): string {
+    switch (action) {
+      case 'create':
+        return '建立文章'
+      case 'update':
+        return '更新內容'
+      case 'publish':
+        return '發布文章'
+      case 'unpublish':
+        return '取消發布'
+      case 'delete':
+        return '刪除文章'
+      default:
+        return '變更'
+    }
+  }
+
+  private async validateTaxonomyIds(
+    tableName: 'article_categories' | 'article_tags',
+    ids: string[]
+  ): Promise<void> {
+    if (ids.length === 0) return
+
+    const supabase = getSupabaseClient()
+    const idField = tableName === 'article_categories' ? 'category_id' : 'tag_id'
+
+    const { data, error } = await supabase
+      .from(tableName)
+      .select('id')
+      .in('id', ids)
+      .eq('is_active', true)
+
+    if (error) {
+      throw new AdminServiceError(
+        `Failed to validate taxonomy IDs: ${error.message}`,
+        'ARTICLE_TAXONOMY_VALIDATION_ERROR',
+        error as any
+      )
+    }
+
+    const existingIds = new Set((data || []).map((row: any) => row.id))
+    const unknownIds = ids.filter((id) => !existingIds.has(id))
+
+    if (unknownIds.length > 0) {
+      throw new AdminServiceError(
+        `Unknown ${idField.replace('_id', '')} IDs: ${unknownIds.join(', ')}`,
+        'ARTICLE_TAXONOMY_VALIDATION_ERROR'
+      )
+    }
   }
 
   private async validateTeacherWriteInput(input: {
@@ -230,6 +405,115 @@ class AdminService {
     } catch (error) {
       // Class operations should not fail if audit logging is unavailable.
       console.error('Failed to log class audit event:', error)
+    }
+  }
+
+  private normalizeFamilyCode(input: string): string {
+    return input
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-zA-Z0-9-_]/g, '')
+      .toUpperCase()
+  }
+
+  private async validateFamilyWriteInput(input: {
+    idToExclude?: string
+    name?: string
+    guardianEmail?: string
+  }): Promise<void> {
+    const fieldErrors: Record<string, string> = {}
+    const normalizedName = (input.name || '').trim()
+    const normalizedEmail = (input.guardianEmail || '').trim().toLowerCase()
+
+    if (!normalizedName) {
+      fieldErrors.name = '家族名稱為必填項'
+    }
+    if (!normalizedEmail) {
+      fieldErrors.guardianEmail = '監護人電子郵件為必填項'
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      fieldErrors.guardianEmail = '監護人電子郵件格式不正確'
+    }
+
+    if (Object.keys(fieldErrors).length > 0) {
+      throw new AdminServiceError(
+        JSON.stringify({ fieldErrors }),
+        'FAMILY_VALIDATION_ERROR'
+      )
+    }
+
+    const supabase = getSupabaseClient()
+    const normalizedCode = this.normalizeFamilyCode(normalizedName)
+    const [codeCheck, emailCheck] = await Promise.all([
+      supabase
+        .from('families')
+        .select('id')
+        .eq('is_active', true)
+        .ilike('family_code', normalizedCode),
+      supabase
+        .from('families')
+        .select('id')
+        .eq('is_active', true)
+        .ilike('guardian_email', normalizedEmail),
+    ])
+
+    if (codeCheck.error || emailCheck.error) {
+      throw new AdminServiceError(
+        `Failed to validate family identity: ${codeCheck.error?.message || emailCheck.error?.message}`,
+        'FAMILY_VALIDATION_ERROR',
+        (codeCheck.error || emailCheck.error) as any
+      )
+    }
+
+    const duplicateCode = (codeCheck.data || []).find((row: any) => row.id !== input.idToExclude)
+    if (duplicateCode) {
+      throw new AdminServiceError(
+        JSON.stringify({ fieldErrors: { name: '家族名稱已存在' } }),
+        'FAMILY_VALIDATION_ERROR'
+      )
+    }
+
+    const duplicateEmail = (emailCheck.data || []).find((row: any) => row.id !== input.idToExclude)
+    if (duplicateEmail) {
+      throw new AdminServiceError(
+        JSON.stringify({ fieldErrors: { guardianEmail: '監護人電子郵件已存在' } }),
+        'FAMILY_VALIDATION_ERROR'
+      )
+    }
+  }
+
+  private mapFamilyRow(row: any): Family {
+    return {
+      id: row.id,
+      name: row.family_name || row.family_code || '',
+      guardianEmail: row.guardian_email || '',
+      description: row.description || '',
+      relatedTopics: Array.isArray(row.related_topics) ? row.related_topics : [],
+      isActive: row.is_active ?? true,
+      deactivatedAt: row.deactivated_at ?? null,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at || row.created_at,
+    }
+  }
+
+  private async writeFamilyAudit(
+    familyId: string,
+    action: 'create' | 'update' | 'activate' | 'deactivate' | 'add_child' | 'remove_child',
+    priorState: Record<string, unknown> | null,
+    newState: Record<string, unknown> | null,
+    actorId?: string
+  ): Promise<void> {
+    try {
+      const supabase = getSupabaseClient()
+      const resolvedActorId = actorId || await this.getCurrentAuthUserId()
+      await supabase.from('family_audit_log').insert({
+        family_id: familyId,
+        action,
+        actor_id: resolvedActorId,
+        prior_state: priorState,
+        new_state: newState,
+      })
+    } catch (error) {
+      console.error('Failed to log family audit event:', error)
     }
   }
 
@@ -1168,6 +1452,152 @@ class AdminService {
     }
   }
 
+  async fetchArticleVersionHistory(
+    articleId: string,
+    limit: number = 20,
+  ): Promise<ArticleRevision[]> {
+    try {
+      const supabase = getSupabaseClient()
+      const { data, error } = await supabase
+        .from('article_audit_log')
+        .select('id, article_id, action, changed_by, old_values, new_values, changed_at')
+        .eq('article_id', articleId)
+        .order('changed_at', { ascending: false })
+        .limit(limit)
+
+      if (error) {
+        throw new AdminServiceError(
+          `Failed to fetch article version history: ${error.message}`,
+          'FETCH_ARTICLE_VERSION_HISTORY_ERROR',
+          error as any,
+        )
+      }
+
+      return (data || []).map((row: any) => {
+        const oldValues = (row.old_values || null) as Record<string, unknown> | null
+        const newValues = (row.new_values || null) as Record<string, unknown> | null
+        const fieldDiffs = this.buildRevisionDiffs(oldValues, newValues)
+        const actionLabel = this.getRevisionActionLabel(row.action)
+        const changeSummary = fieldDiffs.length > 0
+          ? `${actionLabel}（${fieldDiffs.length} 項欄位變更）`
+          : actionLabel
+
+        return {
+          id: row.id,
+          articleId: row.article_id,
+          action: row.action,
+          changedBy: row.changed_by,
+          changedAt: row.changed_at,
+          canRestore: Boolean(oldValues || newValues),
+          changeSummary,
+          fieldDiffs,
+        } as ArticleRevision
+      })
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error fetching article version history: ${err instanceof Error ? err.message : String(err)}`,
+        'FETCH_ARTICLE_VERSION_HISTORY_ERROR',
+        err as any,
+      )
+    }
+  }
+
+  async restoreArticleVersion(
+    articleId: string,
+    revisionId: string,
+  ): Promise<AdminArticle> {
+    try {
+      const supabase = getSupabaseClient()
+      const { data: auditEntry, error: auditError } = await supabase
+        .from('article_audit_log')
+        .select('id, article_id, action, old_values, new_values')
+        .eq('id', revisionId)
+        .eq('article_id', articleId)
+        .single()
+
+      if (auditError || !auditEntry) {
+        throw new AdminServiceError(
+          `Article revision not found: ${revisionId}`,
+          'ARTICLE_REVISION_NOT_FOUND',
+          auditError as any,
+        )
+      }
+
+      const snapshot = (auditEntry.new_values || auditEntry.old_values || null) as Record<string, unknown> | null
+      if (!snapshot) {
+        throw new AdminServiceError(
+          'Selected revision has no snapshot data to restore',
+          'ARTICLE_REVISION_RESTORE_ERROR',
+        )
+      }
+
+      if (snapshot.id && snapshot.id !== articleId) {
+        throw new AdminServiceError(
+          'Revision snapshot does not match requested article',
+          'ARTICLE_REVISION_RESTORE_ERROR',
+        )
+      }
+
+      const updatePayload: Record<string, unknown> = {}
+      const assignIfPresent = (column: string, snapshotKey: string = column) => {
+        if (Object.prototype.hasOwnProperty.call(snapshot, snapshotKey)) {
+          updatePayload[column] = snapshot[snapshotKey]
+        }
+      }
+
+      assignIfPresent('title')
+      assignIfPresent('content')
+      assignIfPresent('summary')
+      assignIfPresent('status')
+      assignIfPresent('visibility_type')
+      assignIfPresent('restricted_to_classes')
+      assignIfPresent('author_id')
+      assignIfPresent('deleted_at')
+
+      if (
+        updatePayload.visibility_type === 'class_restricted' &&
+        (!Array.isArray(updatePayload.restricted_to_classes) || updatePayload.restricted_to_classes.length === 0)
+      ) {
+        throw new AdminServiceError(
+          'Class-restricted revisions must include at least one target class',
+          'ARTICLE_REVISION_RESTORE_ERROR',
+        )
+      }
+
+      if (Object.keys(updatePayload).length === 0) {
+        throw new AdminServiceError(
+          'Selected revision has no restorable fields',
+          'ARTICLE_REVISION_RESTORE_ERROR',
+        )
+      }
+
+      const { data: restoredRow, error: restoreError } = await supabase
+        .from('articles')
+        .update(updatePayload)
+        .eq('id', articleId)
+        .select('*')
+        .single()
+
+      if (restoreError || !restoredRow) {
+        throw new AdminServiceError(
+          `Failed to restore article version: ${restoreError?.message || 'Unknown error'}`,
+          'ARTICLE_REVISION_RESTORE_ERROR',
+          restoreError as any,
+        )
+      }
+
+      return this.mapAdminArticleRow(restoredRow)
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error restoring article version: ${err instanceof Error ? err.message : String(err)}`,
+        'ARTICLE_REVISION_RESTORE_ERROR',
+        err as any,
+      )
+    }
+  }
+
   /**
    * Update article with Last-Write-Wins conflict resolution
    */
@@ -1697,6 +2127,617 @@ class AdminService {
       throw new AdminServiceError(
         `Error fetching article newsletter memberships: ${err instanceof Error ? err.message : String(err)}`,
         'GET_NEWSLETTERS_ERROR',
+        err as any
+      )
+    }
+  }
+
+  async fetchArticleCategories(
+    options: FetchArticleTaxonomyOptions = {}
+  ): Promise<ArticleCategory[]> {
+    try {
+      const supabase = getSupabaseClient()
+      let query = supabase
+        .from('article_categories')
+        .select('*')
+        .order('name', { ascending: true })
+
+      if (!options.includeInactive) {
+        query = query.eq('is_active', true)
+      }
+
+      const { data, error } = await query
+      if (error) {
+        throw new AdminServiceError(
+          `Failed to fetch article categories: ${error.message}`,
+          'FETCH_ARTICLE_CATEGORIES_ERROR',
+          error as any
+        )
+      }
+
+      return (data || []).map((row: any) => this.mapArticleCategoryRow(row))
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error fetching article categories: ${err instanceof Error ? err.message : String(err)}`,
+        'FETCH_ARTICLE_CATEGORIES_ERROR',
+        err as any
+      )
+    }
+  }
+
+  async createArticleCategory(
+    name: string,
+    description?: string
+  ): Promise<ArticleCategory> {
+    const normalizedName = name.trim()
+    if (!normalizedName) {
+      throw new AdminServiceError('分類名稱為必填項', 'ARTICLE_CATEGORY_VALIDATION_ERROR')
+    }
+
+    try {
+      const supabase = getSupabaseClient()
+      const { data: duplicates, error: duplicateError } = await supabase
+        .from('article_categories')
+        .select('id')
+        .ilike('name', normalizedName)
+        .eq('is_active', true)
+
+      if (duplicateError) {
+        throw new AdminServiceError(
+          `Failed to validate category uniqueness: ${duplicateError.message}`,
+          'ARTICLE_CATEGORY_VALIDATION_ERROR',
+          duplicateError as any
+        )
+      }
+
+      if ((duplicates || []).length > 0) {
+        throw new AdminServiceError('分類名稱已存在', 'ARTICLE_CATEGORY_VALIDATION_ERROR')
+      }
+
+      const { data, error } = await supabase
+        .from('article_categories')
+        .insert({
+          name: normalizedName,
+          description: description?.trim() || null,
+          is_active: true,
+        })
+        .select('*')
+        .single()
+
+      if (error) {
+        throw new AdminServiceError(
+          `Failed to create category: ${error.message}`,
+          'CREATE_ARTICLE_CATEGORY_ERROR',
+          error as any
+        )
+      }
+
+      return this.mapArticleCategoryRow(data)
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error creating category: ${err instanceof Error ? err.message : String(err)}`,
+        'CREATE_ARTICLE_CATEGORY_ERROR',
+        err as any
+      )
+    }
+  }
+
+  async updateArticleCategory(
+    id: string,
+    updates: { name?: string; description?: string }
+  ): Promise<ArticleCategory> {
+    try {
+      const supabase = getSupabaseClient()
+      const { data: existing, error: existingError } = await supabase
+        .from('article_categories')
+        .select('*')
+        .eq('id', id)
+        .single()
+
+      if (existingError || !existing) {
+        throw new AdminServiceError(
+          `Failed to load category: ${existingError?.message || 'Category not found'}`,
+          'UPDATE_ARTICLE_CATEGORY_ERROR',
+          existingError as any
+        )
+      }
+
+      const updatePayload: Record<string, unknown> = {}
+      if (updates.name !== undefined) {
+        const normalizedName = updates.name.trim()
+        if (!normalizedName) {
+          throw new AdminServiceError('分類名稱為必填項', 'ARTICLE_CATEGORY_VALIDATION_ERROR')
+        }
+
+        const { data: duplicates, error: duplicateError } = await supabase
+          .from('article_categories')
+          .select('id')
+          .ilike('name', normalizedName)
+          .eq('is_active', true)
+
+        if (duplicateError) {
+          throw new AdminServiceError(
+            `Failed to validate category uniqueness: ${duplicateError.message}`,
+            'ARTICLE_CATEGORY_VALIDATION_ERROR',
+            duplicateError as any
+          )
+        }
+
+        const duplicate = (duplicates || []).find((row: any) => row.id !== id)
+        if (duplicate) {
+          throw new AdminServiceError('分類名稱已存在', 'ARTICLE_CATEGORY_VALIDATION_ERROR')
+        }
+
+        updatePayload.name = normalizedName
+      }
+
+      if (updates.description !== undefined) {
+        updatePayload.description = updates.description.trim() || null
+      }
+
+      const { data, error } = await supabase
+        .from('article_categories')
+        .update(updatePayload)
+        .eq('id', id)
+        .select('*')
+        .single()
+
+      if (error || !data) {
+        throw new AdminServiceError(
+          `Failed to update category: ${error?.message || 'Unknown error'}`,
+          'UPDATE_ARTICLE_CATEGORY_ERROR',
+          error as any
+        )
+      }
+
+      return this.mapArticleCategoryRow(data)
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error updating category: ${err instanceof Error ? err.message : String(err)}`,
+        'UPDATE_ARTICLE_CATEGORY_ERROR',
+        err as any
+      )
+    }
+  }
+
+  async activateArticleCategory(id: string): Promise<ArticleCategory> {
+    try {
+      const supabase = getSupabaseClient()
+      const { data, error } = await supabase
+        .from('article_categories')
+        .update({ is_active: true })
+        .eq('id', id)
+        .select('*')
+        .single()
+
+      if (error || !data) {
+        throw new AdminServiceError(
+          `Failed to activate category: ${error?.message || 'Unknown error'}`,
+          'ACTIVATE_ARTICLE_CATEGORY_ERROR',
+          error as any
+        )
+      }
+
+      return this.mapArticleCategoryRow(data)
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error activating category: ${err instanceof Error ? err.message : String(err)}`,
+        'ACTIVATE_ARTICLE_CATEGORY_ERROR',
+        err as any
+      )
+    }
+  }
+
+  async deactivateArticleCategory(id: string): Promise<ArticleCategory> {
+    try {
+      const supabase = getSupabaseClient()
+      const { data, error } = await supabase
+        .from('article_categories')
+        .update({ is_active: false })
+        .eq('id', id)
+        .select('*')
+        .single()
+
+      if (error || !data) {
+        throw new AdminServiceError(
+          `Failed to deactivate category: ${error?.message || 'Unknown error'}`,
+          'DEACTIVATE_ARTICLE_CATEGORY_ERROR',
+          error as any
+        )
+      }
+
+      return this.mapArticleCategoryRow(data)
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error deactivating category: ${err instanceof Error ? err.message : String(err)}`,
+        'DEACTIVATE_ARTICLE_CATEGORY_ERROR',
+        err as any
+      )
+    }
+  }
+
+  async fetchArticleTags(
+    options: FetchArticleTaxonomyOptions = {}
+  ): Promise<ArticleTag[]> {
+    try {
+      const supabase = getSupabaseClient()
+      let query = supabase
+        .from('article_tags')
+        .select('*')
+        .order('name', { ascending: true })
+
+      if (!options.includeInactive) {
+        query = query.eq('is_active', true)
+      }
+
+      const { data, error } = await query
+      if (error) {
+        throw new AdminServiceError(
+          `Failed to fetch article tags: ${error.message}`,
+          'FETCH_ARTICLE_TAGS_ERROR',
+          error as any
+        )
+      }
+
+      return (data || []).map((row: any) => this.mapArticleTagRow(row))
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error fetching article tags: ${err instanceof Error ? err.message : String(err)}`,
+        'FETCH_ARTICLE_TAGS_ERROR',
+        err as any
+      )
+    }
+  }
+
+  async createArticleTag(
+    name: string,
+    description?: string
+  ): Promise<ArticleTag> {
+    const normalizedName = name.trim()
+    if (!normalizedName) {
+      throw new AdminServiceError('標籤名稱為必填項', 'ARTICLE_TAG_VALIDATION_ERROR')
+    }
+
+    try {
+      const supabase = getSupabaseClient()
+      const { data: duplicates, error: duplicateError } = await supabase
+        .from('article_tags')
+        .select('id')
+        .ilike('name', normalizedName)
+        .eq('is_active', true)
+
+      if (duplicateError) {
+        throw new AdminServiceError(
+          `Failed to validate tag uniqueness: ${duplicateError.message}`,
+          'ARTICLE_TAG_VALIDATION_ERROR',
+          duplicateError as any
+        )
+      }
+
+      if ((duplicates || []).length > 0) {
+        throw new AdminServiceError('標籤名稱已存在', 'ARTICLE_TAG_VALIDATION_ERROR')
+      }
+
+      const { data, error } = await supabase
+        .from('article_tags')
+        .insert({
+          name: normalizedName,
+          description: description?.trim() || null,
+          is_active: true,
+        })
+        .select('*')
+        .single()
+
+      if (error) {
+        throw new AdminServiceError(
+          `Failed to create tag: ${error.message}`,
+          'CREATE_ARTICLE_TAG_ERROR',
+          error as any
+        )
+      }
+
+      return this.mapArticleTagRow(data)
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error creating tag: ${err instanceof Error ? err.message : String(err)}`,
+        'CREATE_ARTICLE_TAG_ERROR',
+        err as any
+      )
+    }
+  }
+
+  async updateArticleTag(
+    id: string,
+    updates: { name?: string; description?: string }
+  ): Promise<ArticleTag> {
+    try {
+      const supabase = getSupabaseClient()
+      const { data: existing, error: existingError } = await supabase
+        .from('article_tags')
+        .select('*')
+        .eq('id', id)
+        .single()
+
+      if (existingError || !existing) {
+        throw new AdminServiceError(
+          `Failed to load tag: ${existingError?.message || 'Tag not found'}`,
+          'UPDATE_ARTICLE_TAG_ERROR',
+          existingError as any
+        )
+      }
+
+      const updatePayload: Record<string, unknown> = {}
+      if (updates.name !== undefined) {
+        const normalizedName = updates.name.trim()
+        if (!normalizedName) {
+          throw new AdminServiceError('標籤名稱為必填項', 'ARTICLE_TAG_VALIDATION_ERROR')
+        }
+
+        const { data: duplicates, error: duplicateError } = await supabase
+          .from('article_tags')
+          .select('id')
+          .ilike('name', normalizedName)
+          .eq('is_active', true)
+
+        if (duplicateError) {
+          throw new AdminServiceError(
+            `Failed to validate tag uniqueness: ${duplicateError.message}`,
+            'ARTICLE_TAG_VALIDATION_ERROR',
+            duplicateError as any
+          )
+        }
+
+        const duplicate = (duplicates || []).find((row: any) => row.id !== id)
+        if (duplicate) {
+          throw new AdminServiceError('標籤名稱已存在', 'ARTICLE_TAG_VALIDATION_ERROR')
+        }
+
+        updatePayload.name = normalizedName
+      }
+
+      if (updates.description !== undefined) {
+        updatePayload.description = updates.description.trim() || null
+      }
+
+      const { data, error } = await supabase
+        .from('article_tags')
+        .update(updatePayload)
+        .eq('id', id)
+        .select('*')
+        .single()
+
+      if (error || !data) {
+        throw new AdminServiceError(
+          `Failed to update tag: ${error?.message || 'Unknown error'}`,
+          'UPDATE_ARTICLE_TAG_ERROR',
+          error as any
+        )
+      }
+
+      return this.mapArticleTagRow(data)
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error updating tag: ${err instanceof Error ? err.message : String(err)}`,
+        'UPDATE_ARTICLE_TAG_ERROR',
+        err as any
+      )
+    }
+  }
+
+  async activateArticleTag(id: string): Promise<ArticleTag> {
+    try {
+      const supabase = getSupabaseClient()
+      const { data, error } = await supabase
+        .from('article_tags')
+        .update({ is_active: true })
+        .eq('id', id)
+        .select('*')
+        .single()
+
+      if (error || !data) {
+        throw new AdminServiceError(
+          `Failed to activate tag: ${error?.message || 'Unknown error'}`,
+          'ACTIVATE_ARTICLE_TAG_ERROR',
+          error as any
+        )
+      }
+
+      return this.mapArticleTagRow(data)
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error activating tag: ${err instanceof Error ? err.message : String(err)}`,
+        'ACTIVATE_ARTICLE_TAG_ERROR',
+        err as any
+      )
+    }
+  }
+
+  async deactivateArticleTag(id: string): Promise<ArticleTag> {
+    try {
+      const supabase = getSupabaseClient()
+      const { data, error } = await supabase
+        .from('article_tags')
+        .update({ is_active: false })
+        .eq('id', id)
+        .select('*')
+        .single()
+
+      if (error || !data) {
+        throw new AdminServiceError(
+          `Failed to deactivate tag: ${error?.message || 'Unknown error'}`,
+          'DEACTIVATE_ARTICLE_TAG_ERROR',
+          error as any
+        )
+      }
+
+      return this.mapArticleTagRow(data)
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error deactivating tag: ${err instanceof Error ? err.message : String(err)}`,
+        'DEACTIVATE_ARTICLE_TAG_ERROR',
+        err as any
+      )
+    }
+  }
+
+  async fetchArticleTaxonomyAssignments(
+    articleIds: string[]
+  ): Promise<Record<string, { categoryIds: string[]; tagIds: string[] }>> {
+    if (!articleIds.length) return {}
+
+    try {
+      const supabase = getSupabaseClient()
+      const [categoryRows, tagRows] = await Promise.all([
+        supabase
+          .from('article_category_assignments')
+          .select('article_id, category_id')
+          .in('article_id', articleIds),
+        supabase
+          .from('article_tag_assignments')
+          .select('article_id, tag_id')
+          .in('article_id', articleIds),
+      ])
+
+      if (categoryRows.error) {
+        throw new AdminServiceError(
+          `Failed to fetch category assignments: ${categoryRows.error.message}`,
+          'FETCH_ARTICLE_TAXONOMY_ASSIGNMENTS_ERROR',
+          categoryRows.error as any
+        )
+      }
+
+      if (tagRows.error) {
+        throw new AdminServiceError(
+          `Failed to fetch tag assignments: ${tagRows.error.message}`,
+          'FETCH_ARTICLE_TAXONOMY_ASSIGNMENTS_ERROR',
+          tagRows.error as any
+        )
+      }
+
+      const result: Record<string, { categoryIds: string[]; tagIds: string[] }> = {}
+      articleIds.forEach((articleId) => {
+        result[articleId] = { categoryIds: [], tagIds: [] }
+      })
+
+      ;(categoryRows.data || []).forEach((row: any) => {
+        const articleId = row.article_id as string
+        const categoryId = row.category_id as string
+        if (!result[articleId]) {
+          result[articleId] = { categoryIds: [], tagIds: [] }
+        }
+        if (!result[articleId].categoryIds.includes(categoryId)) {
+          result[articleId].categoryIds.push(categoryId)
+        }
+      })
+
+      ;(tagRows.data || []).forEach((row: any) => {
+        const articleId = row.article_id as string
+        const tagId = row.tag_id as string
+        if (!result[articleId]) {
+          result[articleId] = { categoryIds: [], tagIds: [] }
+        }
+        if (!result[articleId].tagIds.includes(tagId)) {
+          result[articleId].tagIds.push(tagId)
+        }
+      })
+
+      return result
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error fetching taxonomy assignments: ${err instanceof Error ? err.message : String(err)}`,
+        'FETCH_ARTICLE_TAXONOMY_ASSIGNMENTS_ERROR',
+        err as any
+      )
+    }
+  }
+
+  async updateArticleTaxonomyAssignments(
+    articleId: string,
+    payload: { categoryIds: string[]; tagIds: string[] }
+  ): Promise<void> {
+    try {
+      const supabase = getSupabaseClient()
+      const categoryIds = [...new Set(payload.categoryIds)]
+      const tagIds = [...new Set(payload.tagIds)]
+
+      await this.validateTaxonomyIds('article_categories', categoryIds)
+      await this.validateTaxonomyIds('article_tags', tagIds)
+
+      const { error: deleteCategoryError } = await supabase
+        .from('article_category_assignments')
+        .delete()
+        .eq('article_id', articleId)
+      if (deleteCategoryError) {
+        throw new AdminServiceError(
+          `Failed to clear category assignments: ${deleteCategoryError.message}`,
+          'UPDATE_ARTICLE_TAXONOMY_ASSIGNMENTS_ERROR',
+          deleteCategoryError as any
+        )
+      }
+
+      const { error: deleteTagError } = await supabase
+        .from('article_tag_assignments')
+        .delete()
+        .eq('article_id', articleId)
+      if (deleteTagError) {
+        throw new AdminServiceError(
+          `Failed to clear tag assignments: ${deleteTagError.message}`,
+          'UPDATE_ARTICLE_TAXONOMY_ASSIGNMENTS_ERROR',
+          deleteTagError as any
+        )
+      }
+
+      if (categoryIds.length > 0) {
+        const { error: insertCategoryError } = await supabase
+          .from('article_category_assignments')
+          .insert(
+            categoryIds.map((categoryId) => ({
+              article_id: articleId,
+              category_id: categoryId,
+            }))
+          )
+        if (insertCategoryError) {
+          throw new AdminServiceError(
+            `Failed to save category assignments: ${insertCategoryError.message}`,
+            'UPDATE_ARTICLE_TAXONOMY_ASSIGNMENTS_ERROR',
+            insertCategoryError as any
+          )
+        }
+      }
+
+      if (tagIds.length > 0) {
+        const { error: insertTagError } = await supabase
+          .from('article_tag_assignments')
+          .insert(
+            tagIds.map((tagId) => ({
+              article_id: articleId,
+              tag_id: tagId,
+            }))
+          )
+        if (insertTagError) {
+          throw new AdminServiceError(
+            `Failed to save tag assignments: ${insertTagError.message}`,
+            'UPDATE_ARTICLE_TAXONOMY_ASSIGNMENTS_ERROR',
+            insertTagError as any
+          )
+        }
+      }
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error updating taxonomy assignments: ${err instanceof Error ? err.message : String(err)}`,
+        'UPDATE_ARTICLE_TAXONOMY_ASSIGNMENTS_ERROR',
         err as any
       )
     }
@@ -2790,16 +3831,21 @@ class AdminService {
    */
 
   /**
-   * Fetch all families
+   * Fetch families (active by default)
    */
-  async fetchFamilies(): Promise<Family[]> {
+  async fetchFamilies(options: FetchFamiliesOptions = {}): Promise<Family[]> {
     try {
       const supabase = getSupabaseClient()
-
-      const { data, error } = await supabase
+      let query = supabase
         .from('families')
         .select('*')
         .order('family_code', { ascending: true })
+
+      if (!options.includeInactive) {
+        query = query.eq('is_active', true)
+      }
+
+      const { data, error } = await query
 
       if (error) {
         throw new AdminServiceError(
@@ -2809,14 +3855,7 @@ class AdminService {
         )
       }
 
-      return (data || []).map((row: any) => ({
-        id: row.id,
-        name: row.family_code || '', // Use family_code as name since name column doesn't exist
-        description: '', // Not in DB
-        relatedTopics: [], // Not in DB
-        createdAt: row.created_at,
-        updatedAt: row.created_at, // Not in DB, use created_at
-      }))
+      return (data || []).map((row: any) => this.mapFamilyRow(row))
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
       throw new AdminServiceError(
@@ -2832,17 +3871,27 @@ class AdminService {
    */
   async createFamily(
     name: string,
-    _description?: string,
-    _relatedTopics?: string[]
+    description?: string,
+    relatedTopics?: string[],
+    guardianEmail?: string,
+    options: FamilyWriteOptions = {}
   ): Promise<Family> {
     try {
+      await this.validateFamilyWriteInput({ name, guardianEmail })
       const supabase = getSupabaseClient()
+      const normalizedName = name.trim()
+      const normalizedCode = this.normalizeFamilyCode(normalizedName)
+      const normalizedEmail = (guardianEmail || '').trim().toLowerCase()
 
-      // Use name as family_code since family_code is the only text field that exists
       const { data, error } = await supabase
         .from('families')
         .insert({
-          family_code: name, // Map name to family_code
+          family_code: normalizedCode,
+          family_name: normalizedName,
+          guardian_email: normalizedEmail,
+          description: description?.trim() || null,
+          related_topics: relatedTopics || [],
+          is_active: true,
         })
         .select()
         .single()
@@ -2855,14 +3904,20 @@ class AdminService {
         )
       }
 
-      return {
-        id: data.id,
-        name: data.family_code,
-        description: '', // description parameter is not used in DB
-        relatedTopics: [], // relatedTopics parameter is not used in DB
-        createdAt: data.created_at,
-        updatedAt: data.created_at,
-      }
+      await this.writeFamilyAudit(
+        data.id,
+        'create',
+        null,
+        {
+          family_name: data.family_name || data.family_code,
+          family_code: data.family_code,
+          guardian_email: data.guardian_email,
+          is_active: data.is_active ?? true,
+        },
+        options.actorId
+      )
+
+      return this.mapFamilyRow(data)
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
       throw new AdminServiceError(
@@ -2880,17 +3935,51 @@ class AdminService {
     id: string,
     updates: {
       name?: string,
+      guardianEmail?: string,
       description?: string,
       relatedTopics?: string[]
-    }
+    },
+    options: FamilyWriteOptions = {}
   ): Promise<Family> {
     try {
       const supabase = getSupabaseClient()
+      const { data: existing, error: existingError } = await supabase
+        .from('families')
+        .select('*')
+        .eq('id', id)
+        .single()
+
+      if (existingError || !existing) {
+        throw new AdminServiceError(
+          `Failed to load family: ${existingError?.message || 'Family not found'}`,
+          'UPDATE_FAMILY_ERROR',
+          existingError as any
+        )
+      }
 
       const updatePayload: any = {}
-      // Map name to family_code since family_code is the only text field that exists
-      if (updates.name !== undefined) updatePayload.family_code = updates.name
-      // description and relatedTopics are not stored in DB
+      const resolvedName = updates.name ?? existing.family_name ?? existing.family_code
+      const resolvedGuardianEmail = updates.guardianEmail ?? existing.guardian_email
+      await this.validateFamilyWriteInput({
+        idToExclude: id,
+        name: resolvedName,
+        guardianEmail: resolvedGuardianEmail,
+      })
+
+      if (updates.name !== undefined) {
+        const normalizedName = updates.name.trim()
+        updatePayload.family_name = normalizedName
+        updatePayload.family_code = this.normalizeFamilyCode(normalizedName)
+      }
+      if (updates.guardianEmail !== undefined) {
+        updatePayload.guardian_email = updates.guardianEmail.trim().toLowerCase()
+      }
+      if (updates.description !== undefined) {
+        updatePayload.description = updates.description.trim() || null
+      }
+      if (updates.relatedTopics !== undefined) {
+        updatePayload.related_topics = updates.relatedTopics
+      }
 
       const { data, error } = await supabase
         .from('families')
@@ -2907,14 +3996,29 @@ class AdminService {
         )
       }
 
-      return {
-        id: data.id,
-        name: data.family_code,
-        description: updates.description || '', // Not in DB
-        relatedTopics: updates.relatedTopics || [], // Not in DB
-        createdAt: data.created_at,
-        updatedAt: data.created_at,
-      }
+      await this.writeFamilyAudit(
+        id,
+        'update',
+        {
+          family_name: existing.family_name || existing.family_code,
+          family_code: existing.family_code,
+          guardian_email: existing.guardian_email,
+          description: existing.description,
+          related_topics: existing.related_topics || [],
+          is_active: existing.is_active ?? true,
+        },
+        {
+          family_name: data.family_name || data.family_code,
+          family_code: data.family_code,
+          guardian_email: data.guardian_email,
+          description: data.description,
+          related_topics: data.related_topics || [],
+          is_active: data.is_active ?? true,
+        },
+        options.actorId
+      )
+
+      return this.mapFamilyRow(data)
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
       throw new AdminServiceError(
@@ -2929,26 +4033,106 @@ class AdminService {
    * Delete family
    */
   async deleteFamily(id: string): Promise<void> {
+    await this.deactivateFamily(id)
+  }
+
+  async activateFamily(id: string, options: FamilyWriteOptions = {}): Promise<Family> {
     try {
       const supabase = getSupabaseClient()
-
-      const { error } = await supabase
+      const { data: existing, error: existingError } = await supabase
         .from('families')
-        .delete()
+        .select('*')
         .eq('id', id)
+        .single()
 
-      if (error) {
+      if (existingError || !existing) {
         throw new AdminServiceError(
-          `Failed to delete family: ${error.message}`,
-          'DELETE_FAMILY_ERROR',
+          `Failed to load family: ${existingError?.message || 'Family not found'}`,
+          'ACTIVATE_FAMILY_ERROR',
+          existingError as any
+        )
+      }
+
+      const { data, error } = await supabase
+        .from('families')
+        .update({ is_active: true })
+        .eq('id', id)
+        .select('*')
+        .single()
+
+      if (error || !data) {
+        throw new AdminServiceError(
+          `Failed to activate family: ${error?.message || 'Unknown error'}`,
+          'ACTIVATE_FAMILY_ERROR',
           error as any
         )
       }
+
+      await this.writeFamilyAudit(
+        id,
+        'activate',
+        { is_active: existing.is_active ?? true, deactivated_at: existing.deactivated_at ?? null },
+        { is_active: data.is_active ?? true, deactivated_at: data.deactivated_at ?? null },
+        options.actorId
+      )
+
+      return this.mapFamilyRow(data)
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
       throw new AdminServiceError(
-        `Error deleting family: ${err instanceof Error ? err.message : String(err)}`,
-        'DELETE_FAMILY_ERROR',
+        `Error activating family: ${err instanceof Error ? err.message : String(err)}`,
+        'ACTIVATE_FAMILY_ERROR',
+        err as any
+      )
+    }
+  }
+
+  async deactivateFamily(id: string, options: FamilyWriteOptions = {}): Promise<Family> {
+    try {
+      const supabase = getSupabaseClient()
+      const { data: existing, error: existingError } = await supabase
+        .from('families')
+        .select('*')
+        .eq('id', id)
+        .single()
+
+      if (existingError || !existing) {
+        throw new AdminServiceError(
+          `Failed to load family: ${existingError?.message || 'Family not found'}`,
+          'DEACTIVATE_FAMILY_ERROR',
+          existingError as any
+        )
+      }
+
+      const { data, error } = await supabase
+        .from('families')
+        .update({ is_active: false })
+        .eq('id', id)
+        .select('*')
+        .single()
+
+      if (error || !data) {
+        throw new AdminServiceError(
+          `Failed to deactivate family: ${error?.message || 'Unknown error'}`,
+          'DEACTIVATE_FAMILY_ERROR',
+          error as any
+        )
+      }
+
+      await this.writeFamilyAudit(
+        id,
+        'deactivate',
+        { is_active: existing.is_active ?? true, deactivated_at: existing.deactivated_at ?? null },
+        { is_active: data.is_active ?? true, deactivated_at: data.deactivated_at ?? null },
+        options.actorId
+      )
+
+      return this.mapFamilyRow(data)
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error deactivating family: ${err instanceof Error ? err.message : String(err)}`,
+        'DEACTIVATE_FAMILY_ERROR',
         err as any
       )
     }
@@ -3211,12 +4395,69 @@ class AdminService {
   async addStudentToFamily(familyId: string, studentId: string): Promise<void> {
     try {
       const supabase = getSupabaseClient()
+      const { data: family, error: familyError } = await supabase
+        .from('families')
+        .select('id, is_active')
+        .eq('id', familyId)
+        .single()
+
+      if (familyError || !family) {
+        throw new AdminServiceError(
+          `Family ${familyId} not found`,
+          'ADD_STUDENT_ERROR',
+          familyError as any
+        )
+      }
+
+      if (family.is_active === false) {
+        throw new AdminServiceError(
+          '已停用的家族無法新增學生，請先啟用家族',
+          'FAMILY_ASSOCIATION_ERROR'
+        )
+      }
+
+      const { data: student, error: studentError } = await supabase
+        .from('students')
+        .select('id')
+        .eq('id', studentId)
+        .single()
+
+      if (studentError || !student) {
+        throw new AdminServiceError(
+          `Student ${studentId} not found`,
+          'FAMILY_ASSOCIATION_ERROR',
+          studentError as any
+        )
+      }
+
+      const { data: existingLink, error: linkError } = await supabase
+        .from('family_enrollment')
+        .select('id')
+        .eq('family_id', familyId)
+        .eq('student_id', studentId)
+        .maybeSingle()
+
+      if (linkError) {
+        throw new AdminServiceError(
+          `Failed to validate family association: ${linkError.message}`,
+          'FAMILY_ASSOCIATION_ERROR',
+          linkError as any
+        )
+      }
+
+      if (existingLink) {
+        throw new AdminServiceError(
+          '學生已在此家族中',
+          'FAMILY_ASSOCIATION_ERROR'
+        )
+      }
 
       const { error } = await supabase
         .from('family_enrollment')
         .insert({
           family_id: familyId,
           student_id: studentId,
+          relationship: 'student',
         })
 
       if (error) {
@@ -3226,6 +4467,13 @@ class AdminService {
           error as any
         )
       }
+
+      await this.writeFamilyAudit(
+        familyId,
+        'add_child',
+        null,
+        { student_id: studentId },
+      )
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
       throw new AdminServiceError(
@@ -3242,6 +4490,27 @@ class AdminService {
   async removeStudentFromFamily(familyId: string, studentId: string): Promise<void> {
     try {
       const supabase = getSupabaseClient()
+      const { data: existingLink, error: existingError } = await supabase
+        .from('family_enrollment')
+        .select('id')
+        .eq('family_id', familyId)
+        .eq('student_id', studentId)
+        .maybeSingle()
+
+      if (existingError) {
+        throw new AdminServiceError(
+          `Failed to verify student association: ${existingError.message}`,
+          'REMOVE_STUDENT_ERROR',
+          existingError as any
+        )
+      }
+
+      if (!existingLink) {
+        throw new AdminServiceError(
+          '找不到該學生與家族的關聯',
+          'FAMILY_ASSOCIATION_ERROR'
+        )
+      }
 
       const { error } = await supabase
         .from('family_enrollment')
@@ -3256,6 +4525,13 @@ class AdminService {
           error as any
         )
       }
+
+      await this.writeFamilyAudit(
+        familyId,
+        'remove_child',
+        { student_id: studentId },
+        null,
+      )
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
       throw new AdminServiceError(
@@ -3433,6 +4709,211 @@ class AdminService {
         err as any
       )
     }
+  }
+
+  async createStudent(name: string): Promise<AdminUser> {
+    try {
+      const normalizedName = name.trim()
+      if (!normalizedName) {
+        throw new AdminServiceError('學生姓名為必填項', 'CREATE_STUDENT_ERROR')
+      }
+
+      const supabase = getSupabaseClient()
+      const { data, error } = await supabase
+        .from('students')
+        .insert({ name: normalizedName })
+        .select('*')
+        .single()
+
+      if (error || !data) {
+        throw new AdminServiceError(
+          `Failed to create student: ${error?.message || 'Unknown error'}`,
+          'CREATE_STUDENT_ERROR',
+          error as any
+        )
+      }
+
+      return {
+        id: data.id,
+        email: normalizedName,
+        name: data.name,
+        role: 'student',
+        status: 'active',
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+        lastLoginAt: null,
+      }
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error creating student: ${err instanceof Error ? err.message : String(err)}`,
+        'CREATE_STUDENT_ERROR',
+        err as any
+      )
+    }
+  }
+
+  async updateStudent(id: string, updates: { name: string }): Promise<AdminUser> {
+    try {
+      const normalizedName = updates.name.trim()
+      if (!normalizedName) {
+        throw new AdminServiceError('學生姓名為必填項', 'UPDATE_STUDENT_ERROR')
+      }
+
+      const supabase = getSupabaseClient()
+      const { data, error } = await supabase
+        .from('students')
+        .update({
+          name: normalizedName,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id)
+        .select('*')
+        .maybeSingle()
+
+      if (error) {
+        throw new AdminServiceError(
+          `Failed to update student: ${error.message}`,
+          'UPDATE_STUDENT_ERROR',
+          error as any
+        )
+      }
+
+      if (!data) {
+        throw new AdminServiceError(
+          'Failed to update student: no matching student row was returned. Please ensure the student exists and latest write-policy migration has been applied.',
+          'UPDATE_STUDENT_ERROR'
+        )
+      }
+
+      return {
+        id: data.id,
+        email: data.name,
+        name: data.name,
+        role: 'student',
+        status: 'active',
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+        lastLoginAt: null,
+      }
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error updating student: ${err instanceof Error ? err.message : String(err)}`,
+        'UPDATE_STUDENT_ERROR',
+        err as any
+      )
+    }
+  }
+
+  async deleteStudent(id: string): Promise<void> {
+    try {
+      const supabase = getSupabaseClient()
+      const { error } = await supabase
+        .from('students')
+        .delete()
+        .eq('id', id)
+
+      if (error) {
+        throw new AdminServiceError(
+          `Failed to delete student: ${error.message}`,
+          'DELETE_STUDENT_ERROR',
+          error as any
+        )
+      }
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error deleting student: ${err instanceof Error ? err.message : String(err)}`,
+        'DELETE_STUDENT_ERROR',
+        err as any
+      )
+    }
+  }
+
+  async fetchParents(): Promise<AdminUser[]> {
+    try {
+      const parents = await this.fetchUsers('parent')
+      return parents.map((parent) => ({
+        ...parent,
+        name: parent.name || parent.email,
+      }))
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error fetching parents: ${err instanceof Error ? err.message : String(err)}`,
+        'FETCH_PARENTS_ERROR',
+        err as any
+      )
+    }
+  }
+
+  async createParent(email: string): Promise<AdminUser> {
+    const normalizedEmail = email.trim().toLowerCase()
+    if (!normalizedEmail) {
+      throw new AdminServiceError('家長/監護人電子郵件為必填項', 'CREATE_PARENT_ERROR')
+    }
+
+    return this.createUser(normalizedEmail, normalizedEmail, 'parent', 'active')
+  }
+
+  async updateParent(id: string, updates: { name: string }): Promise<AdminUser> {
+    try {
+      const normalizedName = updates.name.trim()
+      if (!normalizedName) {
+        throw new AdminServiceError('家長/監護人名稱為必填項', 'UPDATE_PARENT_ERROR')
+      }
+
+      const supabase = getSupabaseClient()
+      const { data, error } = await supabase.rpc('admin_update_user_display_name', {
+        target_user_id: id,
+        target_display_name: normalizedName,
+      })
+
+      if (error) {
+        throw new AdminServiceError(
+          `Failed to update parent/guardian: ${error.message}`,
+          'UPDATE_PARENT_ERROR',
+          error as any
+        )
+      }
+
+      if (!data) {
+        throw new AdminServiceError(
+          'Failed to update parent/guardian: no matching parent row was returned.',
+          'UPDATE_PARENT_ERROR'
+        )
+      }
+
+      if (data.role !== 'parent') {
+        throw new AdminServiceError(
+          'Failed to update parent/guardian: selected user is not a parent role.',
+          'UPDATE_PARENT_ERROR'
+        )
+      }
+
+      return {
+        id: data.id,
+        email: data.email,
+        name: data.display_name || data.name || data.email,
+        role: 'parent',
+        status: (data.status || 'active') as 'active' | 'disabled' | 'pending_approval',
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+        lastLoginAt: data.last_login_at,
+      }
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error updating parent/guardian: ${err instanceof Error ? err.message : String(err)}`,
+        'UPDATE_PARENT_ERROR',
+        err as any
+      )
+    }
+  }
+
+  async deleteParent(id: string): Promise<void> {
+    await this.deleteUser(id)
   }
 
   /**
@@ -3842,7 +5323,7 @@ class AdminService {
       return (data || []).map((row: any) => ({
         id: row.id,
         email: row.email,
-        name: row.name,
+        name: row.display_name || row.name || row.email,
         role: row.role,
         status: row.status,
         createdAt: row.created_at,

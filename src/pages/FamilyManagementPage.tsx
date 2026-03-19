@@ -24,6 +24,20 @@ import { AdminLayout } from '@/components/admin/AdminLayout'
 
 type PageState = 'list' | 'create' | 'edit'
 
+interface ParsedValidationErrors {
+  [key: string]: string
+}
+
+function extractValidationErrors(err: unknown): ParsedValidationErrors | null {
+  if (!(err instanceof AdminServiceError) || !err.message) return null
+  try {
+    const parsed = JSON.parse(err.message)
+    return parsed.fieldErrors || null
+  } catch {
+    return null
+  }
+}
+
 /**
  * Family Management Page
  */
@@ -46,13 +60,14 @@ export function FamilyManagementPage() {
   const [availableParents, setAvailableParents] = useState<AdminUser[]>([])
   const [availableStudents, setAvailableStudents] = useState<AdminUser[]>([])
   const [isLoadingRelationships, setIsLoadingRelationships] = useState(false)
+  const [showInactiveFamilies, setShowInactiveFamilies] = useState(false)
 
   /**
    * Load families on mount
    */
   useEffect(() => {
     loadFamilies()
-  }, [])
+  }, [showInactiveFamilies])
 
   /**
    * Load all families
@@ -61,7 +76,7 @@ export function FamilyManagementPage() {
     try {
       setIsLoading(true)
       setError(null)
-      const data = await adminService.fetchFamilies()
+      const data = await adminService.fetchFamilies({ includeInactive: showInactiveFamilies })
       setFamilies(data)
     } catch (err: any) {
       const message = err instanceof AdminServiceError ? err.message : 'Failed to load families'
@@ -80,12 +95,18 @@ export function FamilyManagementPage() {
       await adminService.createFamily(
         familyData.name,
         familyData.description,
-        familyData.relatedTopics
+        familyData.relatedTopics,
+        familyData.guardianEmail
       )
       setNotification({ message: '家族已成功新增', type: 'success' })
       setPageState('list')
       await loadFamilies()
     } catch (err: any) {
+      const fieldErrors = extractValidationErrors(err)
+      if (fieldErrors) {
+        setNotification({ message: Object.values(fieldErrors)[0], type: 'error' })
+        return
+      }
       const message = err instanceof AdminServiceError ? err.message : 'Failed to create family'
       setNotification({ message, type: 'error' })
     } finally {
@@ -101,6 +122,7 @@ export function FamilyManagementPage() {
       setIsSaving(true)
       await adminService.updateFamily(familyData.id, {
         name: familyData.name,
+        guardianEmail: familyData.guardianEmail,
         description: familyData.description,
         relatedTopics: familyData.relatedTopics,
       })
@@ -108,6 +130,11 @@ export function FamilyManagementPage() {
       setPageState('list')
       await loadFamilies()
     } catch (err: any) {
+      const fieldErrors = extractValidationErrors(err)
+      if (fieldErrors) {
+        setNotification({ message: Object.values(fieldErrors)[0], type: 'error' })
+        return
+      }
       const message = err instanceof AdminServiceError ? err.message : 'Failed to update family'
       setNotification({ message, type: 'error' })
     } finally {
@@ -121,14 +148,28 @@ export function FamilyManagementPage() {
   const handleDeleteFamily = async (familyId: string) => {
     try {
       setIsSaving(true)
-      await adminService.deleteFamily(familyId)
-      setNotification({ message: '家族已成功刪除', type: 'success' })
+      await adminService.deactivateFamily(familyId)
+      setNotification({ message: '家族已成功停用', type: 'success' })
       setDeleteConfirm({ isOpen: false })
       await loadFamilies()
     } catch (err: any) {
       const message = err instanceof AdminServiceError ? err.message : 'Failed to delete family'
       setNotification({ message, type: 'error' })
       setDeleteConfirm({ isOpen: false })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleActivateFamily = async (familyId: string) => {
+    try {
+      setIsSaving(true)
+      await adminService.activateFamily(familyId)
+      setNotification({ message: '家族已成功啟用', type: 'success' })
+      await loadFamilies()
+    } catch (err: any) {
+      const message = err instanceof AdminServiceError ? err.message : 'Failed to activate family'
+      setNotification({ message, type: 'error' })
     } finally {
       setIsSaving(false)
     }
@@ -241,7 +282,9 @@ export function FamilyManagementPage() {
       await loadFamilyRelationships(selectedFamily)
       setNotification({ message: '學生已成功新增', type: 'success' })
     } catch (err: any) {
-      const message = err instanceof AdminServiceError ? err.message : 'Failed to add student'
+      const message = err instanceof AdminServiceError
+        ? err.message
+        : 'Failed to add student'
       setNotification({ message, type: 'error' })
     } finally {
       setIsSaving(false)
@@ -259,7 +302,9 @@ export function FamilyManagementPage() {
       await loadFamilyRelationships(selectedFamily)
       setNotification({ message: '學生已成功移除', type: 'success' })
     } catch (err: any) {
-      const message = err instanceof AdminServiceError ? err.message : 'Failed to remove student'
+      const message = err instanceof AdminServiceError
+        ? err.message
+        : 'Failed to remove student'
       setNotification({ message, type: 'error' })
     } finally {
       setIsSaving(false)
@@ -311,6 +356,16 @@ export function FamilyManagementPage() {
             </div>
           </div>
 
+          <label className="inline-flex items-center gap-2 text-sm text-waldorf-clay-700">
+            <input
+              type="checkbox"
+              checked={showInactiveFamilies}
+              onChange={(event) => setShowInactiveFamilies(event.target.checked)}
+              className="rounded border-waldorf-cream-300 text-waldorf-sage-600 focus:ring-waldorf-sage-300"
+            />
+            顯示停用家族
+          </label>
+
           {/* Error message */}
           {error && (
             <div className="p-4 bg-waldorf-rose-50 border border-waldorf-rose-200 rounded-xl animate-fade-in">
@@ -325,7 +380,8 @@ export function FamilyManagementPage() {
             isLoading={false}
             error={null}
             onEdit={handleEditClick}
-            onDelete={handleDeleteClick}
+            onDeactivate={handleDeleteClick}
+            onActivate={handleActivateFamily}
           />
 
           {/* Notification */}
@@ -341,8 +397,8 @@ export function FamilyManagementPage() {
           <ConfirmDialog
             isOpen={deleteConfirm.isOpen}
             title="刪除家族"
-            message="確定要刪除這個家族嗎？此操作無法復原。"
-            confirmText="刪除"
+            message="確定要停用這個家族嗎？停用後不會刪除歷史資料。"
+            confirmText="停用"
             cancelText="取消"
             isDangerous={true}
             isLoading={isSaving}

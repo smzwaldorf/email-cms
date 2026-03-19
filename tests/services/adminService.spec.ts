@@ -146,7 +146,7 @@ describe('AdminService', () => {
 
     it('throws DUPLICATE_NEWSLETTER_ERROR on duplicate key violation', async () => {
       const error = { code: '23505', message: 'duplicate key value' }
-      // @ts-ignore
+      // @ts-expect-error - mock then signature differs from PromiseLike in test harness
       mockBuilder.then.mockImplementation((resolve, reject) => reject(error))
 
       await expect(adminService.createNewsletter('2025-W48', '2025-11-30'))
@@ -447,6 +447,97 @@ describe('AdminService', () => {
     })
   })
 
+  describe('article version history', () => {
+    it('fetchArticleVersionHistory maps audit entries with diffs', async () => {
+      mockBuilder.then.mockImplementationOnce((resolve) => resolve({
+        data: [
+          {
+            id: 'revision-1',
+            article_id: 'article-1',
+            action: 'update',
+            changed_by: 'editor-1',
+            changed_at: '2025-11-03T10:00:00Z',
+            old_values: { title: 'Before', status: 'draft' },
+            new_values: { title: 'After', status: 'published' },
+          },
+        ],
+        error: null,
+      }))
+
+      const result = await adminService.fetchArticleVersionHistory('article-1')
+
+      expect(mockSupabase.from).toHaveBeenCalledWith('article_audit_log')
+      expect(result).toHaveLength(1)
+      expect(result[0].changeSummary).toContain('更新內容')
+      expect(result[0].fieldDiffs).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          field: 'title',
+          before: 'Before',
+          after: 'After',
+        }),
+      ]))
+      expect(result[0].canRestore).toBe(true)
+    })
+
+    it('restoreArticleVersion applies selected snapshot to article record', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({
+          data: {
+            id: 'revision-1',
+            article_id: 'article-1',
+            action: 'update',
+            old_values: { title: 'Before', status: 'draft' },
+            new_values: {
+              id: 'article-1',
+              title: 'After',
+              content: '<p>Updated</p>',
+              summary: 'new summary',
+              status: 'published',
+              visibility_type: 'public',
+              restricted_to_classes: null,
+              author_id: null,
+              deleted_at: null,
+            },
+          },
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({
+          data: {
+            id: 'article-1',
+            title: 'After',
+            content: '<p>Updated</p>',
+            summary: 'new summary',
+            status: 'published',
+            week_number: '2025-W48',
+            article_order: 2,
+            class_ids: [],
+            family_ids: [],
+            author_id: null,
+            created_at: '2025-11-01',
+            updated_at: '2025-11-03',
+            published_at: null,
+            edited_at: null,
+            last_edited_by: null,
+          },
+          error: null,
+        }))
+
+      const result = await adminService.restoreArticleVersion('article-1', 'revision-1')
+
+      expect(mockSupabase.from).toHaveBeenCalledWith('article_audit_log')
+      expect(mockSupabase.from).toHaveBeenCalledWith('articles')
+      expect(mockBuilder.update).toHaveBeenCalledWith(expect.objectContaining({
+        title: 'After',
+        content: '<p>Updated</p>',
+        summary: 'new summary',
+        status: 'published',
+      }))
+      expect(result.id).toBe('article-1')
+      expect(result.title).toBe('After')
+      expect(result.weekNumber).toBe('2025-W48')
+    })
+  })
+
   describe('fetchArticleNewsletterMemberships', () => {
     it('returns newsletter tags grouped by article id', async () => {
       mockBuilder.then.mockImplementationOnce((resolve) => resolve({
@@ -480,6 +571,87 @@ describe('AdminService', () => {
       expect(result['article-1']).toEqual([
         { newsletterId: 'newsletter-1', label: '2025-W48', isTemplate: false },
         { newsletterId: 'newsletter-2', label: 'Special Edition', isTemplate: true },
+      ])
+    })
+  })
+
+  describe('article taxonomy management', () => {
+    it('fetchArticleCategories defaults to active-only listings', async () => {
+      mockBuilder.then.mockImplementationOnce((resolve) => resolve({
+        data: [
+          {
+            id: 'category-1',
+            name: '校務公告',
+            description: null,
+            is_active: true,
+            created_at: '2025-01-01',
+            updated_at: '2025-01-01',
+            deactivated_at: null,
+          },
+        ],
+        error: null,
+      }))
+
+      const result = await adminService.fetchArticleCategories()
+      expect(mockSupabase.from).toHaveBeenCalledWith('article_categories')
+      expect(mockBuilder.eq).toHaveBeenCalledWith('is_active', true)
+      expect(result[0].name).toBe('校務公告')
+    })
+
+    it('createArticleCategory rejects duplicate active names', async () => {
+      mockBuilder.then.mockImplementationOnce((resolve) => resolve({
+        data: [{ id: 'existing-category' }],
+        error: null,
+      }))
+
+      await expect(adminService.createArticleCategory('校務公告'))
+        .rejects.toMatchObject({ code: 'ARTICLE_CATEGORY_VALIDATION_ERROR' })
+    })
+
+    it('fetchArticleTaxonomyAssignments groups category and tag ids by article', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({
+          data: [{ article_id: 'article-1', category_id: 'category-1' }],
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({
+          data: [
+            { article_id: 'article-1', tag_id: 'tag-1' },
+            { article_id: 'article-1', tag_id: 'tag-2' },
+          ],
+          error: null,
+        }))
+
+      const result = await adminService.fetchArticleTaxonomyAssignments(['article-1'])
+
+      expect(mockSupabase.from).toHaveBeenCalledWith('article_category_assignments')
+      expect(mockSupabase.from).toHaveBeenCalledWith('article_tag_assignments')
+      expect(result['article-1']).toEqual({
+        categoryIds: ['category-1'],
+        tagIds: ['tag-1', 'tag-2'],
+      })
+    })
+
+    it('updateArticleTaxonomyAssignments rewrites article assignments', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({ data: [{ id: 'category-1' }], error: null }))
+        .mockImplementationOnce((resolve) => resolve({ data: [{ id: 'tag-1' }], error: null }))
+        .mockImplementationOnce((resolve) => resolve({ error: null }))
+        .mockImplementationOnce((resolve) => resolve({ error: null }))
+        .mockImplementationOnce((resolve) => resolve({ error: null }))
+        .mockImplementationOnce((resolve) => resolve({ error: null }))
+
+      await adminService.updateArticleTaxonomyAssignments('article-1', {
+        categoryIds: ['category-1'],
+        tagIds: ['tag-1'],
+      })
+
+      expect(mockBuilder.delete).toHaveBeenCalled()
+      expect(mockBuilder.insert).toHaveBeenCalledWith([
+        { article_id: 'article-1', category_id: 'category-1' },
+      ])
+      expect(mockBuilder.insert).toHaveBeenCalledWith([
+        { article_id: 'article-1', tag_id: 'tag-1' },
       ])
     })
   })

@@ -44,8 +44,11 @@ export interface Class {
 export interface Family {
   id: string // UUID
   name: string // 家族名稱（例如：升學進路、親子教育）
+  guardianEmail?: string
   description?: string
   relatedTopics?: string[] // 相關主題清單
+  isActive?: boolean
+  deactivatedAt?: string | null
   createdAt: string
   updatedAt: string
 }
@@ -60,6 +63,46 @@ export interface ArticleClass {
   description?: string
   createdAt: string
   updatedAt: string
+}
+
+export interface ArticleCategory {
+  id: string
+  name: string
+  description?: string
+  isActive?: boolean
+  createdAt: string
+  updatedAt: string
+  deactivatedAt?: string | null
+}
+
+export interface ArticleTag {
+  id: string
+  name: string
+  description?: string
+  isActive?: boolean
+  createdAt: string
+  updatedAt: string
+  deactivatedAt?: string | null
+}
+
+export type ArticleRevisionAction = 'create' | 'update' | 'publish' | 'unpublish' | 'delete'
+
+export interface ArticleRevisionDiff {
+  field: string
+  label: string
+  before: string
+  after: string
+}
+
+export interface ArticleRevision {
+  id: string
+  articleId: string
+  action: ArticleRevisionAction
+  changedBy?: string | null
+  changedAt: string
+  canRestore: boolean
+  changeSummary: string
+  fieldDiffs: ArticleRevisionDiff[]
 }
 
 /**
@@ -85,11 +128,11 @@ export interface AuditLogEntry {
   action: 'create' | 'read' | 'update' | 'delete' | 'login' | 'logout'
   resourceType: 'user' | 'article' | 'class' | 'family' | 'newsletter' | 'relationship'
   resourceId: string | null // 受影響的資源 ID
-  changes?: Record<string, any> // 變更前後的值（用於 update 操作）
+  changes?: Record<string, unknown> // 變更前後的值（用於 update 操作）
   timestamp: string
   ipAddress?: string | null
   userAgent?: string | null
-  details?: Record<string, any> // 額外的上下文訊息
+  details?: Record<string, unknown> // 額外的上下文訊息
 }
 
 /**
@@ -136,6 +179,8 @@ export interface AdminArticle {
   newsletterTargetClassIds?: string[]
   classIds?: string[] // 分類 ID 列表
   familyIds?: string[] // 家族 ID 列表
+  categoryIds?: string[] // 文章分類 ID 列表
+  tagIds?: string[] // 文章標籤 ID 列表
   status: 'draft' | 'published'
   createdAt: string
   updatedAt: string
@@ -170,7 +215,7 @@ export interface ApiResponse<T> {
   error?: {
     code: string
     message: string
-    details?: Record<string, any>
+    details?: Record<string, unknown>
   }
 }
 
@@ -207,7 +252,7 @@ export function hasPermission(
   permission: string
 ): boolean {
   const permissions = ROLE_PERMISSIONS[userRole] || []
-  return permissions.includes(permission as any)
+  return permissions.includes(permission)
 }
 
 /**

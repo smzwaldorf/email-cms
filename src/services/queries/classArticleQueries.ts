@@ -46,11 +46,37 @@ export interface ClassArticleQueryResult {
 export async function getArticlesForFamily(
   familyId: string,
   newsletterId: string,
+  includeInactiveFamily: boolean = false,
 ): Promise<ClassArticleQueryResult> {
   const startTime = Date.now()
 
   try {
     const supabase = getSupabaseClient()
+
+    const familyQuery = table('families')
+      .select('id, is_active')
+      .eq('id', familyId)
+
+    const { data: familyRecord, error: familyError } = await (
+      includeInactiveFamily ? familyQuery : familyQuery.eq('is_active', true)
+    ).maybeSingle()
+
+    if (familyError) {
+      throw new ArticleServiceError(
+        `Failed to validate family status: ${familyError.message}`,
+        'FETCH_FAMILY_ERROR',
+        familyError as Error,
+      )
+    }
+
+    if (!familyRecord) {
+      return {
+        articles: [],
+        classes: [],
+        totalCount: 0,
+        executionTimeMs: Date.now() - startTime,
+      }
+    }
 
     // Check if newsletter ID is provided
     if (!newsletterId) {

@@ -26,6 +26,8 @@ const LazyAdminTemplatesPage = lazy(() => import('@/pages/AdminTemplatesPage').t
 const LazyClassManagementPage = lazy(() => import('@/pages/ClassManagementPage').then(m => ({ default: m.ClassManagementPage })))
 const LazyTeacherManagementPage = lazy(() => import('@/pages/TeacherManagementPage').then(m => ({ default: m.TeacherManagementPage })))
 const LazyFamilyManagementPage = lazy(() => import('@/pages/FamilyManagementPage').then(m => ({ default: m.FamilyManagementPage })))
+const LazyParentManagementPage = lazy(() => import('@/pages/ParentManagementPage').then(m => ({ default: m.ParentManagementPage })))
+const LazyStudentManagementPage = lazy(() => import('@/pages/StudentManagementPage').then(m => ({ default: m.StudentManagementPage })))
 const LazyParentStudentPage = lazy(() => import('@/pages/ParentStudentPage').then(m => ({ default: m.ParentStudentPage })))
 const LazyAnalyticsDashboardPage = lazy(() => import('@/pages/AnalyticsDashboardPage').then(m => ({ default: m.AnalyticsDashboardPage })))
 const LazyClassAnalyticsPage = lazy(() => import('@/pages/analytics/ClassAnalyticsPage').then(m => ({ default: m.ClassAnalyticsPage })))
@@ -270,6 +272,30 @@ export default function App() {
                     <ProtectedRoute requiredRole="admin">
                       <Suspense fallback={<RouteLoader />}>
                         <LazyFamilyManagementPage />
+                      </Suspense>
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/admin/parents"
+                element={
+                  <ErrorBoundary>
+                    <ProtectedRoute requiredRole="admin">
+                      <Suspense fallback={<RouteLoader />}>
+                        <LazyParentManagementPage />
+                      </Suspense>
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/admin/students"
+                element={
+                  <ErrorBoundary>
+                    <ProtectedRoute requiredRole="admin">
+                      <Suspense fallback={<RouteLoader />}>
+                        <LazyStudentManagementPage />
                       </Suspense>
                     </ProtectedRoute>
                   </ErrorBoundary>

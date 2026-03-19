@@ -156,8 +156,22 @@ export interface FamilyRow {
   id: string;
   /** Unique enrollment code for parents to join */
   family_code: string;
+  /** Optional display name for admin UI */
+  family_name?: string | null;
+  /** Guardian contact email */
+  guardian_email?: string | null;
+  /** Optional free-form description */
+  description?: string | null;
+  /** Related topic labels */
+  related_topics?: string[] | null;
+  /** Lifecycle status */
+  is_active?: boolean;
+  /** Deactivation timestamp */
+  deactivated_at?: string | null;
   /** Creation timestamp */
   created_at: string; // TIMESTAMP WITH TIME ZONE
+  /** Last update timestamp */
+  updated_at?: string;
 }
 
 // ============================================================================
