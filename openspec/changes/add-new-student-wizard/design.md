@@ -6,7 +6,7 @@ Student creation currently uses a basic admin form that does not guide operators
 
 **Goals:**
 - Provide a multi-step wizard for creating a student with clear progress and per-step validation.
-- Allow optional linking of the new student to an active family and optional class enrollment during the same flow.
+- Allow optional linking of the new student to an active family, optional inline family creation, and optional class enrollment during the same flow.
 - Keep writes reliable by validating dependencies before submission and returning actionable errors.
 - Reuse existing admin service primitives where possible to avoid duplicate write logic.
 
@@ -33,10 +33,14 @@ Student creation currently uses a basic admin form that does not guide operators
    - Rationale: aligns with recipient and family management defaults to avoid linking students to inactive families.
    - Alternative: show all families. Rejected due to higher risk of invalid operational links.
 
+5. Support inline family creation as part of the family step.
+   - Rationale: admins often onboard students before family records exist; inline creation avoids abandoning the wizard and reduces data loss.
+   - Alternative: force users to leave wizard and create family in a separate page. Rejected due to workflow fragmentation.
+
 ## Risks / Trade-offs
 
 - [Risk] Multi-call submit can partially succeed (student created but optional links fail). -> Mitigation: show post-submit status for each step and provide retry actions on failed optional links.
-- [Risk] Additional wizard state increases UI complexity. -> Mitigation: keep state machine minimal (`details`, `family`, `class`, `review`, `done`) and cover transitions with integration tests.
+- [Risk] Additional wizard state (including inline family mode) increases UI complexity. -> Mitigation: keep state machine minimal (`details`, `family`, `class`, `review`, `done`) and cover transitions with integration tests.
 - [Trade-off] Reusing existing APIs avoids backend churn but is not fully atomic. -> Mitigation: document behavior and plan transactional endpoint as a follow-up if needed.
 
 ## Migration Plan

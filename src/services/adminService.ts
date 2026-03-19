@@ -4543,6 +4543,68 @@ class AdminService {
   }
 
   /**
+   * Add student to class enrollment table with explicit family linkage
+   */
+  async addStudentToClassEnrollment(classId: string, studentId: string, familyId: string): Promise<void> {
+    try {
+      const supabase = getSupabaseClient()
+      const normalizedClassId = classId.trim()
+      const normalizedStudentId = studentId.trim()
+      const normalizedFamilyId = familyId.trim()
+
+      if (!normalizedClassId) {
+        throw new AdminServiceError('班級為必填項', 'ADD_STUDENT_CLASS_ENROLLMENT_ERROR')
+      }
+      if (!normalizedStudentId) {
+        throw new AdminServiceError('學生為必填項', 'ADD_STUDENT_CLASS_ENROLLMENT_ERROR')
+      }
+      if (!normalizedFamilyId) {
+        throw new AdminServiceError('家庭為必填項', 'ADD_STUDENT_CLASS_ENROLLMENT_ERROR')
+      }
+
+      const { data: existing, error: existingError } = await supabase
+        .from('student_class_enrollment')
+        .select('id')
+        .eq('class_id', normalizedClassId)
+        .eq('student_id', normalizedStudentId)
+        .maybeSingle()
+
+      if (existingError) {
+        throw new AdminServiceError(
+          `Failed to validate class enrollment: ${existingError.message}`,
+          'ADD_STUDENT_CLASS_ENROLLMENT_ERROR',
+          existingError as any
+        )
+      }
+
+      if (existing) return
+
+      const { error } = await supabase
+        .from('student_class_enrollment')
+        .insert({
+          class_id: normalizedClassId,
+          student_id: normalizedStudentId,
+          family_id: normalizedFamilyId,
+        })
+
+      if (error) {
+        throw new AdminServiceError(
+          `Failed to assign student to class: ${error.message}`,
+          'ADD_STUDENT_CLASS_ENROLLMENT_ERROR',
+          error as any
+        )
+      }
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error assigning student to class: ${err instanceof Error ? err.message : String(err)}`,
+        'ADD_STUDENT_CLASS_ENROLLMENT_ERROR',
+        err as any
+      )
+    }
+  }
+
+  /**
    * Get available parents (not already in family)
    */
   async getAvailableParents(familyId: string): Promise<AdminUser[]> {

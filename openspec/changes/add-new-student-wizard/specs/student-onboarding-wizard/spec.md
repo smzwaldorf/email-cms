@@ -12,7 +12,7 @@ The system SHALL provide a multi-step wizard that guides admins through student 
 - **THEN** the system SHALL create the student and show a success state with the created student summary
 
 ### Requirement: Wizard supports optional family and class setup
-The system SHALL allow admins to optionally link a newly created student to an active family and optionally create initial class enrollment during the same wizard flow.
+The system SHALL allow admins to optionally link a newly created student to an active family, optionally create a new family inline, and optionally create initial class enrollment during the same wizard flow.
 
 #### Scenario: Admin skips optional association steps
 - **WHEN** an admin skips family and class steps and submits the wizard
@@ -21,6 +21,14 @@ The system SHALL allow admins to optionally link a newly created student to an a
 #### Scenario: Wizard applies selected optional associations
 - **WHEN** an admin selects an active family and class during wizard setup
 - **THEN** the system SHALL create the student and persist the selected family/class associations
+
+#### Scenario: Wizard creates new family inline before association
+- **WHEN** an admin chooses to create a new family in the wizard and provides valid family details
+- **THEN** the system SHALL create the family, link the new student to that family, and use that family for optional class enrollment
+
+#### Scenario: Class assignment deferred when family is not yet available
+- **WHEN** an admin does not provide or create a family during wizard setup
+- **THEN** the system SHALL allow student creation and mark class assignment as deferred/skipped
 
 ### Requirement: Wizard surfaces partial-failure outcomes clearly
 The system SHALL report per-operation outcomes when student creation succeeds but optional association writes fail.

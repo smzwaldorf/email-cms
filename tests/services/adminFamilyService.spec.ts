@@ -253,4 +253,22 @@ describe('AdminService family management', () => {
     await adminService.removeStudentFromFamily('family-1', 'student-1')
     expect(mockBuilder.delete).toHaveBeenCalled()
   })
+
+  it('adds student class enrollment with family linkage', async () => {
+    mockBuilder.then
+      .mockImplementationOnce((resolve: any) =>
+        resolve({ data: null, error: null })
+      ) // existing enrollment check
+      .mockImplementationOnce((resolve: any) =>
+        resolve({ data: null, error: null })
+      ) // insert
+
+    await adminService.addStudentToClassEnrollment('class-1', 'student-1', 'family-1')
+
+    expect(mockBuilder.insert).toHaveBeenCalledWith(expect.objectContaining({
+      class_id: 'class-1',
+      student_id: 'student-1',
+      family_id: 'family-1',
+    }))
+  })
 })

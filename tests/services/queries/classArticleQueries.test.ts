@@ -7,6 +7,7 @@ const mockTableBuilder = {
   is: vi.fn().mockReturnThis(),
   in: vi.fn().mockReturnThis(),
   order: vi.fn().mockReturnThis(),
+  maybeSingle: vi.fn().mockReturnThis(),
   then: vi.fn(),
 }
 
@@ -35,6 +36,7 @@ describe('classArticleQueries', () => {
 
   it('includes shared articles, excludes unmatched targeted, preserves order', async () => {
     mockTableBuilder.then
+      .mockImplementationOnce((resolve: any) => resolve({ data: { id: 'family-1', is_active: true }, error: null }))
       .mockImplementationOnce((resolve: any) => resolve({ data: [{ class_id: 'A1' }], error: null }))
       .mockImplementationOnce((resolve: any) => resolve({ data: [{ id: 'A1', class_name: 'A1', class_grade_year: 1 }], error: null }))
 
@@ -101,6 +103,7 @@ describe('classArticleQueries', () => {
 
   it('countArticlesForFamily reflects filtered article count', async () => {
     mockTableBuilder.then
+      .mockImplementationOnce((resolve: any) => resolve({ data: { id: 'family-1', is_active: true }, error: null }))
       .mockImplementationOnce((resolve: any) => resolve({ data: [{ class_id: 'A1' }], error: null }))
       .mockImplementationOnce((resolve: any) => resolve({ data: [{ id: 'A1', class_name: 'A1', class_grade_year: 1 }], error: null }))
     mockNewsletterBuilder.then.mockImplementationOnce((resolve: any) =>
