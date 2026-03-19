@@ -5,6 +5,7 @@
  */
 
 import { useEditor, EditorContent } from '@tiptap/react'
+import type { Content } from '@tiptap/react'
 import { useEffect, useRef } from 'react'
 import StarterKit from '@tiptap/starter-kit'
 import { TipTapImageNode } from './extensions/TipTapImageNode'
@@ -92,12 +93,19 @@ export function SimpleEditor({
   const { uploadFiles } = useMediaUpload()
 
   // Parse content based on type
-  let initialContent: any = ''
+  let initialContent: Content = ''
   if (contentType === 'json' && content) {
     try {
-      initialContent = JSON.parse(content)
+      const parsedContent = JSON.parse(content) as Content
+      initialContent = parsedContent
       // Validate it's a proper TipTap document
-      if (!initialContent || typeof initialContent !== 'object' || initialContent.type !== 'doc') {
+      if (
+        !parsedContent ||
+        Array.isArray(parsedContent) ||
+        typeof parsedContent !== 'object' ||
+        !('type' in parsedContent) ||
+        parsedContent.type !== 'doc'
+      ) {
         console.warn('Invalid TipTap document, using empty content')
         initialContent = {
           type: 'doc',

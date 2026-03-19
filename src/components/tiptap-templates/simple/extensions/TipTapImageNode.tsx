@@ -1,6 +1,9 @@
 
 import { NodeViewWrapper, ReactNodeViewRenderer } from '@tiptap/react'
+import type { ReactNodeViewProps } from '@tiptap/react'
 import Image from '@tiptap/extension-image'
+import type { Editor } from '@tiptap/core'
+import { NodeSelection } from '@tiptap/pm/state'
 import { useEffect, useState, useRef } from 'react'
 import { getSupabaseClient } from '@/lib/supabase'
 import { articleMediaManager } from '@/services/articleMediaManager'
@@ -76,7 +79,7 @@ function SecureImageComponent({
   deleteNode,
   editor,
   extension,
-}: any) {
+}: ReactNodeViewProps) {
   // Initialize with src only if it's NOT a storage URL
   const [src, setSrc] = useState(
     node.attrs.src && !node.attrs.src.startsWith('storage://') ? node.attrs.src : ''
@@ -269,8 +272,13 @@ function SecureImageComponent({
 
 export const TipTapImageNode = Image.extend({
   addOptions() {
+    const parentOptions = this.parent?.()
+
     return {
-      ...this.parent?.(),
+      inline: parentOptions?.inline ?? false,
+      allowBase64: parentOptions?.allowBase64 ?? false,
+      HTMLAttributes: parentOptions?.HTMLAttributes ?? {},
+      resize: parentOptions?.resize ?? false,
       articleId: undefined,
     }
   },
@@ -345,8 +353,11 @@ export const TipTapImageNode = Image.extend({
   },
   addKeyboardShortcuts() {
     return {
-      Backspace: ({ editor }: any) => {
-        const selectedNode = editor.state.selection.node
+      Backspace: ({ editor }: { editor: Editor }) => {
+        const selectedNode =
+          editor.state.selection instanceof NodeSelection
+            ? editor.state.selection.node
+            : null
         if (selectedNode?.type.name !== this.name) {
           return false
         }
@@ -360,8 +371,11 @@ export const TipTapImageNode = Image.extend({
 
         return editor.commands.deleteSelection()
       },
-      Delete: ({ editor }: any) => {
-        const selectedNode = editor.state.selection.node
+      Delete: ({ editor }: { editor: Editor }) => {
+        const selectedNode =
+          editor.state.selection instanceof NodeSelection
+            ? editor.state.selection.node
+            : null
         if (selectedNode?.type.name !== this.name) {
           return false
         }

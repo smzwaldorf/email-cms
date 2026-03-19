@@ -6,7 +6,7 @@
 
 import { Editor } from '@tiptap/react'
 import { Music } from 'lucide-react'
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useMediaUpload } from '@/hooks/useMediaUpload'
 import AudioUploader from '@/components/AudioUploader'
@@ -53,7 +53,7 @@ export function AudioButton({ editor, articleId }: AudioButtonProps) {
             duration: file.duration,
           })
 
-          editor.chain().focus().setAudio?.(audioNode).run()
+          editor.chain().focus().setAudio(audioNode).run()
         }
       })
 

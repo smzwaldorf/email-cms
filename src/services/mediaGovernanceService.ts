@@ -1,12 +1,15 @@
 import { getSupabaseClient } from '@/lib/supabase'
 import { imageOptimizer } from '@/services/imageOptimizer'
 import { storageService } from '@/services/storageService'
+import {
+  MediaFileStatus,
+  MediaVariantStatus,
+  MediaVariantType,
+} from '@/types/media'
 import type {
   MediaDeletePreflight,
   MediaFile,
   MediaUsageTargetType,
-  MediaVariantStatus,
-  MediaVariantType,
 } from '@/types/media'
 
 type RegisterUsageInput = {
@@ -113,24 +116,121 @@ export class MediaGovernanceService {
 
     return [
       {
-        variantType: 'thumbnail',
+        variantType: MediaVariantType.THUMBNAIL,
         format: 'image/webp',
         width: thumbnail320.width,
         height: thumbnail320.height,
       },
       {
-        variantType: 'thumbnail',
+        variantType: MediaVariantType.THUMBNAIL,
         format: 'image/webp',
         width: thumbnail640.width,
         height: thumbnail640.height,
       },
       {
-        variantType: 'webp',
+        variantType: MediaVariantType.WEBP,
         format: 'image/webp',
         width: original.width,
         height: original.height,
       },
     ]
+  }
+
+  getPreferredAudioVariantFormat(sourceFormat: string): string {
+    if (sourceFormat === 'audio/ogg') {
+      return sourceFormat
+    }
+
+    if (
+      typeof MediaRecorder !== 'undefined' &&
+      (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus') ||
+        MediaRecorder.isTypeSupported('audio/ogg'))
+    ) {
+      return 'audio/ogg'
+    }
+
+    return sourceFormat
+  }
+
+  private async transcodeAudioVariant(
+    sourceFile: File,
+    targetFormat: string
+  ): Promise<File> {
+    if (sourceFile.type === targetFormat) {
+      return sourceFile
+    }
+
+    if (targetFormat !== 'audio/ogg' || typeof MediaRecorder === 'undefined') {
+      return sourceFile
+    }
+
+    const supportedMimeType = MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')
+      ? 'audio/ogg;codecs=opus'
+      : MediaRecorder.isTypeSupported('audio/ogg')
+        ? 'audio/ogg'
+        : null
+
+    if (!supportedMimeType) {
+      return sourceFile
+    }
+
+    const audioWindow = globalThis as typeof globalThis & {
+      webkitAudioContext?: typeof AudioContext
+    }
+    const AudioContextCtor = audioWindow.AudioContext ?? audioWindow.webkitAudioContext
+
+    if (!AudioContextCtor) {
+      return sourceFile
+    }
+
+    const audioContext = new AudioContextCtor()
+
+    try {
+      const sourceBuffer = await sourceFile.arrayBuffer()
+      const audioBuffer = await audioContext.decodeAudioData(sourceBuffer.slice(0))
+      const destination = audioContext.createMediaStreamDestination()
+      const source = audioContext.createBufferSource()
+      const chunks: Blob[] = []
+
+      source.buffer = audioBuffer
+      source.connect(destination)
+
+      await new Promise<void>((resolve, reject) => {
+        const recorder = new MediaRecorder(destination.stream, {
+          mimeType: supportedMimeType,
+        })
+
+        recorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            chunks.push(event.data)
+          }
+        }
+        recorder.onerror = () => {
+          reject(new Error('Failed to record optimized audio'))
+        }
+        recorder.onstop = () => resolve()
+        source.onended = () => {
+          if (recorder.state !== 'inactive') {
+            recorder.stop()
+          }
+        }
+
+        recorder.start()
+        source.start(0)
+      })
+
+      if (!chunks.length) {
+        return sourceFile
+      }
+
+      const fileNameBase = sourceFile.name.replace(/\.[^.]+$/, '') || sourceFile.name
+
+      return new File(chunks, `${fileNameBase}.ogg`, {
+        type: targetFormat,
+      })
+    } finally {
+      await audioContext.close().catch(() => undefined)
+    }
   }
 
   private buildVariantStoragePath(
@@ -179,7 +279,7 @@ export class MediaGovernanceService {
       mediaId,
       variantType: blueprint.variantType,
       format: blueprint.format,
-      status: 'processing',
+      status: MediaVariantStatus.PROCESSING,
       width: blueprint.width,
       height: blueprint.height,
     })
@@ -211,7 +311,7 @@ export class MediaGovernanceService {
         mediaId,
         variantType: blueprint.variantType,
         format: blueprint.format,
-        status: 'ready',
+        status: MediaVariantStatus.READY,
         storagePath,
         fileSize: processedFile.size,
         width: blueprint.width,
@@ -222,7 +322,7 @@ export class MediaGovernanceService {
         mediaId,
         variantType: blueprint.variantType,
         format: blueprint.format,
-        status: 'failed',
+        status: MediaVariantStatus.FAILED,
         width: blueprint.width,
         height: blueprint.height,
         errorMessage: error instanceof Error ? error.message : String(error),
@@ -235,9 +335,10 @@ export class MediaGovernanceService {
     sourceStoragePath: string,
     sourceFile: File
   ): Promise<void> {
+    const targetFormat = this.getPreferredAudioVariantFormat(sourceFile.type)
     const blueprint: VariantBlueprint = {
-      variantType: 'audio_optimized',
-      format: sourceFile.type === 'audio/ogg' ? 'audio/ogg' : 'audio/ogg',
+      variantType: MediaVariantType.AUDIO_OPTIMIZED,
+      format: targetFormat,
       width: 0,
       height: 0,
     }
@@ -246,13 +347,11 @@ export class MediaGovernanceService {
       mediaId,
       variantType: blueprint.variantType,
       format: blueprint.format,
-      status: 'processing',
+      status: MediaVariantStatus.PROCESSING,
     })
 
     try {
-      if (sourceFile.type !== 'audio/ogg') {
-        throw new Error('Audio optimization is not yet supported for this format')
-      }
+      const processedFile = await this.transcodeAudioVariant(sourceFile, targetFormat)
 
       const storagePath = this.buildVariantStoragePath(
         mediaId,
@@ -260,22 +359,22 @@ export class MediaGovernanceService {
         blueprint
       )
 
-      await this.uploadVariantFile(storagePath, sourceFile)
+      await this.uploadVariantFile(storagePath, processedFile)
 
       await this.upsertVariant({
         mediaId,
         variantType: blueprint.variantType,
         format: blueprint.format,
-        status: 'ready',
+        status: MediaVariantStatus.READY,
         storagePath,
-        fileSize: sourceFile.size,
+        fileSize: processedFile.size,
       })
     } catch (error) {
       await this.upsertVariant({
         mediaId,
         variantType: blueprint.variantType,
         format: blueprint.format,
-        status: 'failed',
+        status: MediaVariantStatus.FAILED,
         errorMessage: error instanceof Error ? error.message : String(error),
       })
     }
@@ -539,7 +638,8 @@ export class MediaGovernanceService {
   async enqueueDefaultVariantsForMedia(
     mediaId: string,
     mediaType: string,
-    dimensions?: VariantDimensions
+    dimensions?: VariantDimensions,
+    audioFormat?: string
   ): Promise<void> {
     if (mediaType === 'image') {
       const variants = this.getImageVariantBlueprints(dimensions)
@@ -548,7 +648,7 @@ export class MediaGovernanceService {
           mediaId,
           variantType: variant.variantType,
           format: variant.format,
-          status: 'pending',
+          status: MediaVariantStatus.PENDING,
           width: variant.width,
           height: variant.height,
         })
@@ -559,9 +659,9 @@ export class MediaGovernanceService {
     if (mediaType === 'audio') {
       await this.upsertVariant({
         mediaId,
-        variantType: 'audio_optimized',
-        format: 'audio/ogg',
-        status: 'pending',
+        variantType: MediaVariantType.AUDIO_OPTIMIZED,
+        format: this.getPreferredAudioVariantFormat(audioFormat ?? 'audio/ogg'),
+        status: MediaVariantStatus.PENDING,
       })
     }
   }
@@ -672,7 +772,7 @@ export class MediaGovernanceService {
           fileSize: row.file_size,
           mimeType: row.mime_type,
           mediaType: row.file_type,
-          status: 'ready',
+          status: MediaFileStatus.READY,
           uploadedBy: row.uploaded_by,
           uploadedAt: row.uploaded_at,
           updatedAt: row.updated_at,

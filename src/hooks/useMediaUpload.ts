@@ -229,7 +229,7 @@ export function useMediaUpload() {
           await mediaGovernanceService.enqueueDefaultVariantsForMedia(mediaId, mediaType, {
             width: metadata.width,
             height: metadata.height,
-          })
+          }, optimizedFile.type)
 
           if (mediaType === 'image' || mediaType === 'audio') {
             void mediaGovernanceService
@@ -345,5 +345,3 @@ export function useMediaUpload() {
     reset,
   }
 }
-
-export type { UploadState, UploadProgressCallback }

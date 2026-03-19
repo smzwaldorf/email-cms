@@ -5,7 +5,10 @@
  */
 
 import { Node } from '@tiptap/core'
+import type { Editor } from '@tiptap/core'
+import { NodeSelection } from '@tiptap/pm/state'
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react'
+import type { ReactNodeViewProps } from '@tiptap/react'
 import AudioPlayer from '@/components/AudioPlayer'
 import { useState, useEffect, useRef } from 'react'
 import { storageService } from '@/services/storageService'
@@ -29,7 +32,14 @@ async function cleanupAudioReference(
  * 音訊節點視圖組件
  * Audio node view component for rendering audio player
  */
-function AudioView({ node, selected, editor, deleteNode, updateAttributes, extension }: any) {
+function AudioView({
+  node,
+  selected,
+  editor,
+  deleteNode,
+  updateAttributes,
+  extension,
+}: ReactNodeViewProps) {
   const { src, title, mediaId, duration, caption } = node.attrs
   const isReadOnly = editor?.isEditable === false
   const isEditable = editor?.isEditable !== false
@@ -369,7 +379,7 @@ export const TipTapAudioNode = Node.create({
     return {
       setAudio:
         (options: AudioNodeOptions) =>
-        ({ commands }: any) => {
+        ({ commands }) => {
           return commands.insertContent({
             type: this.name,
             attrs: {
@@ -383,17 +393,18 @@ export const TipTapAudioNode = Node.create({
 
       updateAudio:
         (options: Partial<AudioNodeOptions>) =>
-        ({ commands }: any) => {
+        ({ commands }) => {
           return commands.updateAttributes(this.name, options)
         },
-    } as any
+    }
   },
 
   addKeyboardShortcuts() {
     return {
-      Backspace: ({ editor }: any) => {
+      Backspace: ({ editor }: { editor: Editor }) => {
         const { selection } = editor.state
-        const selectedNode = selection.node
+        const selectedNode =
+          selection instanceof NodeSelection ? selection.node : null
         const targetAttrs =
           selectedNode?.type.name === this.name
             ? selectedNode.attrs
@@ -410,9 +421,10 @@ export const TipTapAudioNode = Node.create({
 
         return false
       },
-      Delete: ({ editor }: any) => {
+      Delete: ({ editor }: { editor: Editor }) => {
         const { selection } = editor.state
-        const selectedNode = selection.node
+        const selectedNode =
+          selection instanceof NodeSelection ? selection.node : null
         const targetAttrs =
           selectedNode?.type.name === this.name
             ? selectedNode.attrs
