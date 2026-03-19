@@ -19,7 +19,8 @@ export interface FamilyListProps {
   isLoading?: boolean
   error?: string | null
   onEdit?: (id: string) => void
-  onDelete?: (id: string) => void
+  onDeactivate?: (id: string) => void
+  onActivate?: (id: string) => void
   onSearchChange?: (searchTerm: string) => void
 }
 
@@ -34,7 +35,8 @@ export function FamilyList({
   isLoading = false,
   error = null,
   onEdit,
-  onDelete,
+  onDeactivate,
+  onActivate,
   onSearchChange,
 }: FamilyListProps) {
   const [sortField, setSortField] = useState<SortField>('name')
@@ -208,6 +210,9 @@ export function FamilyList({
                 </span>
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">
+                監護人信箱
+              </th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">
                 描述
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">
@@ -221,6 +226,9 @@ export function FamilyList({
                 <span className="inline-flex items-center">
                   建立日期{renderSortIndicator('createdAt')}
                 </span>
+              </th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">
+                狀態
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">
                 操作
@@ -239,6 +247,9 @@ export function FamilyList({
                   <span className="font-display text-lg font-semibold text-waldorf-clay-800">
                     {family.name}
                   </span>
+                </td>
+                <td className="px-6 py-4 text-sm text-waldorf-clay-600">
+                  {family.guardianEmail || <span className="text-waldorf-clay-400">-</span>}
                 </td>
                 <td className="px-6 py-4 text-sm text-waldorf-clay-600">
                   {family.description || <span className="text-waldorf-clay-400">-</span>}
@@ -271,6 +282,17 @@ export function FamilyList({
                     day: '2-digit',
                   })}
                 </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  {family.isActive === false ? (
+                    <span className="inline-flex items-center rounded-full bg-waldorf-rose-100 px-2.5 py-1 text-xs font-medium text-waldorf-rose-700">
+                      停用
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center rounded-full bg-waldorf-sage-100 px-2.5 py-1 text-xs font-medium text-waldorf-sage-700">
+                      啟用
+                    </span>
+                  )}
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center gap-2">
                     <button
@@ -282,12 +304,20 @@ export function FamilyList({
                       編輯
                     </button>
                     <button
-                      onClick={() => onDelete?.(family.id)}
-                      className="px-3 py-1.5 bg-waldorf-rose-100 text-waldorf-rose-700 text-xs font-medium rounded-lg hover:bg-waldorf-rose-200 transition-all duration-200 disabled:opacity-50"
-                      data-testid={`delete-btn-${family.id}`}
-                      disabled={!onDelete}
+                      onClick={() =>
+                        family.isActive === false
+                          ? onActivate?.(family.id)
+                          : onDeactivate?.(family.id)
+                      }
+                      className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 disabled:opacity-50 ${
+                        family.isActive === false
+                          ? 'bg-waldorf-sage-100 text-waldorf-sage-700 hover:bg-waldorf-sage-200'
+                          : 'bg-waldorf-rose-100 text-waldorf-rose-700 hover:bg-waldorf-rose-200'
+                      }`}
+                      data-testid={`${family.isActive === false ? 'activate' : 'deactivate'}-btn-${family.id}`}
+                      disabled={family.isActive === false ? !onActivate : !onDeactivate}
                     >
-                      刪除
+                      {family.isActive === false ? '啟用' : '停用'}
                     </button>
                   </div>
                 </td>

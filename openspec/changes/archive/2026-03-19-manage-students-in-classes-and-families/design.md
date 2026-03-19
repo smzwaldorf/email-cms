@@ -49,7 +49,8 @@ This change introduces a single workflow for student lifecycle and cross-entity 
 3. Implement student management and association APIs.
 4. Update admin UI for student management and link editing.
 5. Update recipient-resolution inputs to use active students with valid class/family links.
-6. Rollback strategy: disable new association write paths and continue legacy read behavior while preserving migrated schema.
+6. Require applying lifecycle migration before relying on lifecycle-only fields in production paths (temporary runtime fallback may exist for mixed environments).
+7. Rollback strategy: disable new association write paths and continue legacy read behavior while preserving migrated schema.
 
 ## Open Questions
 

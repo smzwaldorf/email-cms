@@ -87,15 +87,22 @@ describe('Analytics - Article Reader Class Info', () => {
         testUserIds.push(adminUserId);
 
         // 3. Create Class
-        await adminSupabase.from('classes').insert({
+        const { error: classError } = await adminSupabase.from('classes').insert({
             id: mockClassName,
+            class_code: mockClassName,
             class_name: mockClassName,
-            class_grade_year: 1
+            class_grade_year: 1,
+            is_active: true
         });
+        if (classError) {
+            throw new Error(`Class creation failed: ${classError.message}`);
+        }
 
         // 4. Create Family
         const { data: family } = await adminSupabase.from('families').insert({
-            family_code: `F-${testId}`
+            family_code: `F-${testId}`,
+            family_name: `Family-${testId}`,
+            guardian_email: `guardian-${testId}@test.com`
         }).select().single();
         
         if (!family) throw new Error('Family creation failed');
@@ -110,7 +117,8 @@ describe('Analytics - Article Reader Class Info', () => {
 
         // 6. Create Student
         const { data: student } = await adminSupabase.from('students').insert({
-            name: mockStudentName
+            name: mockStudentName,
+            student_code: `ST-${testId}`
         }).select().single();
         
         if (!student) throw new Error('Student creation failed');

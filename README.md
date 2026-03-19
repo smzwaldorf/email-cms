@@ -654,7 +654,6 @@ Validated performance against success criteria:
 **Phase 8+ Planned Features**:
 - REST API endpoints for external integrations
 - WebSocket support for real-time updates
-- File upload/image handling for articles
 - Full-text search across article content
 - Rate limiting and request throttling
 - GraphQL API alternative
@@ -662,9 +661,17 @@ Validated performance against success criteria:
 
 **Known Limitations**:
 - No user authentication (Phase 8+)
-- No file attachments (Phase 8+)
 - No real-time sync (Phase 8+)
 - No recovery UI for soft-deleted articles (Phase 8+)
+
+### Media Governance Workflows (Current)
+
+- Centralized media browsing supports search/filter/sort, grid/list toggle, and metadata details.
+- Editor insert flow supports both new upload and "insert existing media" reuse.
+- Media usage is tracked with a durable ledger (`media_usage`) across insert/remove/copy/delete lifecycle actions.
+- Safe deletion is enforced with preflight validation; cleanup actions re-validate and write audit records.
+- Variant metadata (`media_variants`) tracks thumbnail/WebP/audio optimization readiness and errors.
+- Dashboard surfaces storage utilization, media-type distribution, top-used assets, and unused cleanup candidates.
 
 ---
 

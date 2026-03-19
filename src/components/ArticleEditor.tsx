@@ -277,6 +277,7 @@ export function ArticleEditor({
                 contentType="html"
                 onChange={(html) => handleContentChange(html)}
                 placeholder="輸入文章內容..."
+                articleId={article.id}
               />
             </div>
             <p className="text-xs text-waldorf-clay-500 mt-1">

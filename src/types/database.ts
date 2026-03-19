@@ -112,12 +112,22 @@ export interface ArticleWithNewsletters extends ArticleRow {
 export interface ClassRow {
   /** Class identifier (e.g., "A1", "B2") */
   id: string; // VARCHAR(10) PRIMARY KEY
+  /** Stable class identity code used by admin workflows */
+  class_code: string;
   /** Human-readable name (e.g., "Grade 1A") */
   class_name: string;
+  /** Optional class description shown in admin UI */
+  description?: string | null;
   /** Grade level (1-12) */
   class_grade_year: number;
+  /** Lifecycle status */
+  is_active: boolean;
+  /** Deactivation timestamp for inactive classes */
+  deactivated_at?: string | null;
   /** Creation timestamp */
   created_at: string; // TIMESTAMP WITH TIME ZONE
+  /** Last update timestamp */
+  updated_at?: string; // TIMESTAMP WITH TIME ZONE
 }
 
 // ============================================================================
@@ -146,8 +156,22 @@ export interface FamilyRow {
   id: string;
   /** Unique enrollment code for parents to join */
   family_code: string;
+  /** Optional display name for admin UI */
+  family_name?: string | null;
+  /** Guardian contact email */
+  guardian_email?: string | null;
+  /** Optional free-form description */
+  description?: string | null;
+  /** Related topic labels */
+  related_topics?: string[] | null;
+  /** Lifecycle status */
+  is_active?: boolean;
+  /** Deactivation timestamp */
+  deactivated_at?: string | null;
   /** Creation timestamp */
   created_at: string; // TIMESTAMP WITH TIME ZONE
+  /** Last update timestamp */
+  updated_at?: string;
 }
 
 // ============================================================================
@@ -161,23 +185,40 @@ export interface FamilyEnrollmentRow {
   /** Foreign key to families */
   family_id: string;
   /** Foreign key to user_roles (parent's user ID) */
-  parent_id: string;
-  /** Enum: 'father' | 'mother' | 'guardian' */
-  relationship: 'father' | 'mother' | 'guardian';
+  parent_id?: string | null;
+  /** Foreign key to students (student ID) */
+  student_id?: string | null;
+  /** Enum: parent/student relationship */
+  relationship: 'father' | 'mother' | 'guardian' | 'child' | 'student';
   /** Enrollment timestamp */
   enrolled_at: string; // TIMESTAMP WITH TIME ZONE
 }
 
 // ============================================================================
-// Child Class Enrollment (兒童班級註冊)
-// Links children to classes they're enrolled in
+// Student (學生)
+// ============================================================================
+
+export interface StudentRow {
+  id: string;
+  name: string;
+  student_code: string;
+  is_active: boolean;
+  deactivated_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// ============================================================================
+// Student Class Enrollment (學生班級註冊)
 // ============================================================================
 
 export interface ChildClassEnrollmentRow {
   /** UUID primary key */
   id: string;
-  /** Foreign key to user_roles (child's user ID, role = 'student') */
-  child_id: string;
+  /** Legacy foreign key name retained for compatibility */
+  child_id?: string;
+  /** Foreign key to students (student ID) */
+  student_id: string;
   /** Foreign key to families - links back to family */
   family_id: string;
   /** Foreign key to classes */
@@ -232,6 +273,7 @@ export interface ArticleAuditLogRow {
 
 /** All database table row types */
 export type DatabaseRow =
+  | StudentRow
   | NewsletterWeekRow
   | ArticleRow
   | NewsletterArticleRow

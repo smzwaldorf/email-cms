@@ -12,8 +12,11 @@ import type { Class, AdminUser } from '@/types/admin'
 describe('ClassForm', () => {
   const mockClass: Class = {
     id: 'class-001',
+    code: 'G6A',
     name: '6年級A班',
     description: '六年級甲班',
+    gradeYear: 6,
+    isActive: true,
     studentIds: ['student-001', 'student-002'],
     createdAt: '2025-01-01T00:00:00Z',
     updatedAt: '2025-01-01T00:00:00Z',
@@ -63,6 +66,7 @@ describe('ClassForm', () => {
     )
 
     expect(screen.getByText('新增班級')).toBeInTheDocument()
+    expect(screen.getByTestId('code-input')).toHaveValue('')
     expect(screen.getByTestId('name-input')).toHaveValue('')
     expect(screen.getByTestId('description-input')).toHaveValue('')
   })
@@ -82,6 +86,8 @@ describe('ClassForm', () => {
     )
 
     expect(screen.getByText('編輯班級')).toBeInTheDocument()
+    expect(screen.getByTestId('code-input')).toHaveValue('G6A')
+    expect(screen.getByTestId('grade-year-input')).toHaveValue(6)
     expect(screen.getByTestId('name-input')).toHaveValue('6年級A班')
     expect(screen.getByTestId('description-input')).toHaveValue('六年級甲班')
   })
@@ -238,6 +244,8 @@ describe('ClassForm', () => {
     )
 
     // Fill in form
+    const codeInput = screen.getByTestId('code-input')
+    await user.type(codeInput, 'N1A')
     const nameInput = screen.getByTestId('name-input')
     await user.type(nameInput, '新班級')
 

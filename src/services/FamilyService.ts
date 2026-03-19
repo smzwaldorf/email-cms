@@ -139,6 +139,7 @@ export class FamilyService {
       const { data: classes, error: classError } = await table('classes')
         .select('*')
         .in('id', classIds)
+        .eq('is_active', true)
         .order('class_grade_year', { ascending: false })
         .order('id', { ascending: true })
 
@@ -339,6 +340,7 @@ export class FamilyService {
       const { data: families, error: familyError } = await table('families')
         .select('*')
         .in('id', familyIds)
+        .eq('is_active', true)
         .order('created_at', { ascending: false })
 
       if (familyError) {
@@ -365,12 +367,17 @@ export class FamilyService {
    * @param familyCode Enrollment code (used for parents to join family)
    * @returns Family details
    */
-  static async getFamilyByCode(familyCode: string): Promise<FamilyRow> {
+  static async getFamilyByCode(familyCode: string, includeInactive: boolean = false): Promise<FamilyRow> {
     try {
-      const { data, error } = await table('families')
+      let query = table('families')
         .select('*')
         .eq('family_code', familyCode)
-        .single()
+
+      if (!includeInactive) {
+        query = query.eq('is_active', true)
+      }
+
+      const { data, error } = await query.single()
 
       if (error || !data) {
         throw new FamilyServiceError(

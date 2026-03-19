@@ -36,6 +36,10 @@ This change defines family management as a first-class admin workflow with valid
    - Rationale: operational workflows should use current recipients by default while still supporting audits.
    - Alternative: always return all statuses. Rejected because it increases accidental targeting of inactive families.
 
+5. Keep permission changes scoped by using targeted admin policies and security-definer RPCs for display-name updates.
+   - Rationale: family/parent/student management requires controlled write access, but broad role-model redesign remains out of scope.
+   - Alternative: broad `user_roles` write policy as the primary mechanism. Rejected to reduce RLS blast radius and recursion risks.
+
 ## Risks / Trade-offs
 
 - [Risk] Existing family data may violate new validation constraints. -> Mitigation: migration checks, remediation tooling, and staged enforcement.

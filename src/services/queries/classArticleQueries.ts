@@ -46,11 +46,37 @@ export interface ClassArticleQueryResult {
 export async function getArticlesForFamily(
   familyId: string,
   newsletterId: string,
+  includeInactiveFamily: boolean = false,
 ): Promise<ClassArticleQueryResult> {
   const startTime = Date.now()
 
   try {
     const supabase = getSupabaseClient()
+
+    const familyQuery = table('families')
+      .select('id, is_active')
+      .eq('id', familyId)
+
+    const { data: familyRecord, error: familyError } = await (
+      includeInactiveFamily ? familyQuery : familyQuery.eq('is_active', true)
+    ).maybeSingle()
+
+    if (familyError) {
+      throw new ArticleServiceError(
+        `Failed to validate family status: ${familyError.message}`,
+        'FETCH_FAMILY_ERROR',
+        familyError as Error,
+      )
+    }
+
+    if (!familyRecord) {
+      return {
+        articles: [],
+        classes: [],
+        totalCount: 0,
+        executionTimeMs: Date.now() - startTime,
+      }
+    }
 
     // Check if newsletter ID is provided
     if (!newsletterId) {
@@ -62,9 +88,9 @@ export async function getArticlesForFamily(
       }
     }
 
-    // Step 1: Get all active classes for family's children
-    const { data: childEnrollments, error: enrollError } = await table('child_class_enrollment')
-      .select('class_id')
+    // Step 1: Get student-class enrollments for the family
+    const { data: childEnrollments, error: enrollError } = await table('student_class_enrollment')
+      .select('class_id, student_id')
       .eq('family_id', familyId)
       .is('graduated_at', null)
 
@@ -76,7 +102,32 @@ export async function getArticlesForFamily(
       )
     }
 
-    const enrolledClassIds = (childEnrollments || []).map((e) => e.class_id)
+    const enrolledStudentIds = Array.from(
+      new Set((childEnrollments || []).map((e: any) => e.student_id).filter(Boolean))
+    )
+    const { data: activeStudents, error: activeStudentError } = enrolledStudentIds.length
+      ? await table('students')
+        .select('id')
+        .in('id', enrolledStudentIds)
+        .eq('is_active', true)
+      : { data: [], error: null }
+
+    if (activeStudentError) {
+      throw new ArticleServiceError(
+        `Failed to validate active students: ${activeStudentError.message}`,
+        'FETCH_ENROLLMENTS_ERROR',
+        activeStudentError as Error,
+      )
+    }
+
+    const activeStudentSet = new Set((activeStudents || []).map((row: any) => row.id))
+    const enrolledClassIds = Array.from(
+      new Set(
+        (childEnrollments || [])
+          .filter((e: any) => activeStudentSet.has(e.student_id))
+          .map((e: any) => e.class_id)
+      )
+    )
 
     // Step 2: Get class details (for sorting by grade year)
     let classes: ClassRow[] = []
@@ -84,6 +135,7 @@ export async function getArticlesForFamily(
       const { data: classData, error: classError } = await table('classes')
         .select('*')
         .in('id', enrolledClassIds)
+        .eq('is_active', true)
         .order('class_grade_year', { ascending: false })
 
       if (classError) {

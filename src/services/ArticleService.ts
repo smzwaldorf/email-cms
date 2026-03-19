@@ -9,6 +9,7 @@
 import { table, getSupabaseClient } from '@/lib/supabase'
 import type { ArticleRow } from '@/types/database'
 import PermissionService, { PermissionError } from './PermissionService'
+import { articleMediaManager } from './articleMediaManager'
 
 /**
  * Article data transfer object for creation
@@ -479,6 +480,8 @@ export class ArticleService {
           'ARTICLE_NOT_FOUND',
         )
       }
+
+      await articleMediaManager.deactivateArticleMediaUsage(id)
 
       return data
     } catch (err) {

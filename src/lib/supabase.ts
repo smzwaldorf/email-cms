@@ -164,6 +164,8 @@ export interface DatabaseTables {
   user_roles: any
   families: any
   family_enrollment: any
+  students: any
+  student_class_enrollment: any
   child_class_enrollment: any
   teacher_class_assignment: any
   article_audit_log: any

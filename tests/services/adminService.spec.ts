@@ -16,6 +16,7 @@ const mockBuilder = {
   or: vi.fn().mockReturnThis(),
   is: vi.fn().mockReturnThis(),
   in: vi.fn().mockReturnThis(),
+  ilike: vi.fn().mockReturnThis(),
   then: vi.fn((resolve) => resolve({ data: [], error: null })),
 }
 
@@ -145,7 +146,7 @@ describe('AdminService', () => {
 
     it('throws DUPLICATE_NEWSLETTER_ERROR on duplicate key violation', async () => {
       const error = { code: '23505', message: 'duplicate key value' }
-      // @ts-ignore
+      // @ts-expect-error - mock then signature differs from PromiseLike in test harness
       mockBuilder.then.mockImplementation((resolve, reject) => reject(error))
 
       await expect(adminService.createNewsletter('2025-W48', '2025-11-30'))
@@ -446,6 +447,97 @@ describe('AdminService', () => {
     })
   })
 
+  describe('article version history', () => {
+    it('fetchArticleVersionHistory maps audit entries with diffs', async () => {
+      mockBuilder.then.mockImplementationOnce((resolve) => resolve({
+        data: [
+          {
+            id: 'revision-1',
+            article_id: 'article-1',
+            action: 'update',
+            changed_by: 'editor-1',
+            changed_at: '2025-11-03T10:00:00Z',
+            old_values: { title: 'Before', status: 'draft' },
+            new_values: { title: 'After', status: 'published' },
+          },
+        ],
+        error: null,
+      }))
+
+      const result = await adminService.fetchArticleVersionHistory('article-1')
+
+      expect(mockSupabase.from).toHaveBeenCalledWith('article_audit_log')
+      expect(result).toHaveLength(1)
+      expect(result[0].changeSummary).toContain('更新內容')
+      expect(result[0].fieldDiffs).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          field: 'title',
+          before: 'Before',
+          after: 'After',
+        }),
+      ]))
+      expect(result[0].canRestore).toBe(true)
+    })
+
+    it('restoreArticleVersion applies selected snapshot to article record', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({
+          data: {
+            id: 'revision-1',
+            article_id: 'article-1',
+            action: 'update',
+            old_values: { title: 'Before', status: 'draft' },
+            new_values: {
+              id: 'article-1',
+              title: 'After',
+              content: '<p>Updated</p>',
+              summary: 'new summary',
+              status: 'published',
+              visibility_type: 'public',
+              restricted_to_classes: null,
+              author_id: null,
+              deleted_at: null,
+            },
+          },
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({
+          data: {
+            id: 'article-1',
+            title: 'After',
+            content: '<p>Updated</p>',
+            summary: 'new summary',
+            status: 'published',
+            week_number: '2025-W48',
+            article_order: 2,
+            class_ids: [],
+            family_ids: [],
+            author_id: null,
+            created_at: '2025-11-01',
+            updated_at: '2025-11-03',
+            published_at: null,
+            edited_at: null,
+            last_edited_by: null,
+          },
+          error: null,
+        }))
+
+      const result = await adminService.restoreArticleVersion('article-1', 'revision-1')
+
+      expect(mockSupabase.from).toHaveBeenCalledWith('article_audit_log')
+      expect(mockSupabase.from).toHaveBeenCalledWith('articles')
+      expect(mockBuilder.update).toHaveBeenCalledWith(expect.objectContaining({
+        title: 'After',
+        content: '<p>Updated</p>',
+        summary: 'new summary',
+        status: 'published',
+      }))
+      expect(result.id).toBe('article-1')
+      expect(result.title).toBe('After')
+      expect(result.weekNumber).toBe('2025-W48')
+    })
+  })
+
   describe('fetchArticleNewsletterMemberships', () => {
     it('returns newsletter tags grouped by article id', async () => {
       mockBuilder.then.mockImplementationOnce((resolve) => resolve({
@@ -479,6 +571,87 @@ describe('AdminService', () => {
       expect(result['article-1']).toEqual([
         { newsletterId: 'newsletter-1', label: '2025-W48', isTemplate: false },
         { newsletterId: 'newsletter-2', label: 'Special Edition', isTemplate: true },
+      ])
+    })
+  })
+
+  describe('article taxonomy management', () => {
+    it('fetchArticleCategories defaults to active-only listings', async () => {
+      mockBuilder.then.mockImplementationOnce((resolve) => resolve({
+        data: [
+          {
+            id: 'category-1',
+            name: '校務公告',
+            description: null,
+            is_active: true,
+            created_at: '2025-01-01',
+            updated_at: '2025-01-01',
+            deactivated_at: null,
+          },
+        ],
+        error: null,
+      }))
+
+      const result = await adminService.fetchArticleCategories()
+      expect(mockSupabase.from).toHaveBeenCalledWith('article_categories')
+      expect(mockBuilder.eq).toHaveBeenCalledWith('is_active', true)
+      expect(result[0].name).toBe('校務公告')
+    })
+
+    it('createArticleCategory rejects duplicate active names', async () => {
+      mockBuilder.then.mockImplementationOnce((resolve) => resolve({
+        data: [{ id: 'existing-category' }],
+        error: null,
+      }))
+
+      await expect(adminService.createArticleCategory('校務公告'))
+        .rejects.toMatchObject({ code: 'ARTICLE_CATEGORY_VALIDATION_ERROR' })
+    })
+
+    it('fetchArticleTaxonomyAssignments groups category and tag ids by article', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({
+          data: [{ article_id: 'article-1', category_id: 'category-1' }],
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({
+          data: [
+            { article_id: 'article-1', tag_id: 'tag-1' },
+            { article_id: 'article-1', tag_id: 'tag-2' },
+          ],
+          error: null,
+        }))
+
+      const result = await adminService.fetchArticleTaxonomyAssignments(['article-1'])
+
+      expect(mockSupabase.from).toHaveBeenCalledWith('article_category_assignments')
+      expect(mockSupabase.from).toHaveBeenCalledWith('article_tag_assignments')
+      expect(result['article-1']).toEqual({
+        categoryIds: ['category-1'],
+        tagIds: ['tag-1', 'tag-2'],
+      })
+    })
+
+    it('updateArticleTaxonomyAssignments rewrites article assignments', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({ data: [{ id: 'category-1' }], error: null }))
+        .mockImplementationOnce((resolve) => resolve({ data: [{ id: 'tag-1' }], error: null }))
+        .mockImplementationOnce((resolve) => resolve({ error: null }))
+        .mockImplementationOnce((resolve) => resolve({ error: null }))
+        .mockImplementationOnce((resolve) => resolve({ error: null }))
+        .mockImplementationOnce((resolve) => resolve({ error: null }))
+
+      await adminService.updateArticleTaxonomyAssignments('article-1', {
+        categoryIds: ['category-1'],
+        tagIds: ['tag-1'],
+      })
+
+      expect(mockBuilder.delete).toHaveBeenCalled()
+      expect(mockBuilder.insert).toHaveBeenCalledWith([
+        { article_id: 'article-1', category_id: 'category-1' },
+      ])
+      expect(mockBuilder.insert).toHaveBeenCalledWith([
+        { article_id: 'article-1', tag_id: 'tag-1' },
       ])
     })
   })
@@ -949,6 +1122,324 @@ describe('AdminService', () => {
       expect(mockBuilder.update).toHaveBeenNthCalledWith(5, { article_order: 2 })
       expect(mockBuilder.update).toHaveBeenNthCalledWith(6, { article_order: 3 })
       expect(mockBuilder.eq).toHaveBeenCalledWith('newsletter_id', 'newsletter-1')
+    })
+  })
+
+  describe('class lifecycle workflows', () => {
+    it('fetchClasses defaults to active-only listings', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({
+          data: [
+            {
+              id: 'G6A',
+              class_code: 'G6A',
+              class_name: '六年級A班',
+              class_grade_year: 6,
+              description: 'desc',
+              is_active: true,
+              created_at: '2025-01-01',
+              updated_at: '2025-01-02',
+            },
+          ],
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({ data: [], error: null }))
+        .mockImplementationOnce((resolve) => resolve({ data: [], error: null }))
+
+      await adminService.fetchClasses()
+
+      expect(mockBuilder.eq).toHaveBeenCalledWith('is_active', true)
+    })
+
+    it('allows including inactive classes in listings', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({
+          data: [
+            {
+              id: 'G6A',
+              class_code: 'G6A',
+              class_name: '六年級A班',
+              class_grade_year: 6,
+              description: 'desc',
+              is_active: false,
+              created_at: '2025-01-01',
+              updated_at: '2025-01-02',
+              deactivated_at: '2025-01-03',
+            },
+          ],
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({ data: [], error: null }))
+        .mockImplementationOnce((resolve) => resolve({ data: [], error: null }))
+
+      const result = await adminService.fetchClasses({ includeInactive: true })
+      expect(result[0].isActive).toBe(false)
+      expect(mockBuilder.eq).not.toHaveBeenCalledWith('is_active', true)
+    })
+
+    it('rejects duplicate class codes during create', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({ data: [{ id: 'EXISTING' }], error: null }))
+        .mockImplementationOnce((resolve) => resolve({ data: [], error: null }))
+
+      await expect(
+        adminService.createClass('六年級A班', 'desc', [], [], { code: 'G6A', gradeYear: 6 })
+      ).rejects.toMatchObject({ code: 'CLASS_VALIDATION_ERROR' })
+    })
+
+    it('deactivates classes via lifecycle API', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({
+          data: {
+            id: 'G6A',
+            class_name: '六年級A班',
+            class_grade_year: 6,
+            description: null,
+            is_active: true,
+            created_at: '2025-01-01',
+            updated_at: '2025-01-01',
+          },
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({
+          data: {
+            id: 'G6A',
+            class_code: 'G6A',
+            class_name: '六年級A班',
+            class_grade_year: 6,
+            description: null,
+            is_active: false,
+            deactivated_at: '2025-01-03',
+            created_at: '2025-01-01',
+            updated_at: '2025-01-03',
+          },
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({ data: null, error: null }))
+
+      const result = await adminService.deactivateClass('G6A')
+      expect(result.isActive).toBe(false)
+      expect(mockBuilder.update).toHaveBeenCalledWith({ is_active: false })
+    })
+
+    it('reactivates previously inactive classes via lifecycle API', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({
+          data: {
+            id: 'G6A',
+            class_name: '六年級A班',
+            class_grade_year: 6,
+            description: null,
+            is_active: false,
+            deactivated_at: '2025-01-03',
+            created_at: '2025-01-01',
+            updated_at: '2025-01-03',
+          },
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({
+          data: {
+            id: 'G6A',
+            class_code: 'G6A',
+            class_name: '六年級A班',
+            class_grade_year: 6,
+            description: null,
+            is_active: true,
+            deactivated_at: null,
+            created_at: '2025-01-01',
+            updated_at: '2025-01-04',
+          },
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({ data: null, error: null }))
+
+      const result = await adminService.activateClass('G6A')
+      expect(result.isActive).toBe(true)
+      expect(result.deactivatedAt).toBeNull()
+      expect(mockBuilder.update).toHaveBeenCalledWith({ is_active: true })
+    })
+  })
+
+  describe('teacher lifecycle workflows', () => {
+    it('fetchTeachers defaults to active teachers only', async () => {
+      mockBuilder.then.mockImplementationOnce((resolve) => resolve({
+        data: [
+          {
+            id: 'teacher-1',
+            email: 'teacher1@example.com',
+            role: 'teacher',
+            created_at: '2025-01-01',
+            updated_at: '2025-01-01',
+            teacher_profiles: [
+              {
+                display_name: '王老師',
+                status: 'active',
+                is_active: true,
+                updated_at: '2025-01-02',
+              },
+            ],
+          },
+        ],
+        error: null,
+      }))
+
+      const teachers = await adminService.fetchTeachers()
+      expect(mockBuilder.eq).toHaveBeenCalledWith('teacher_profiles.is_active', true)
+      expect(teachers[0].status).toBe('active')
+      expect(teachers[0].name).toBe('王老師')
+    })
+
+    it('allows includeInactive option when fetching teachers', async () => {
+      mockBuilder.then.mockImplementationOnce((resolve) => resolve({
+        data: [
+          {
+            id: 'teacher-2',
+            email: 'teacher2@example.com',
+            role: 'teacher',
+            created_at: '2025-01-01',
+            updated_at: '2025-01-01',
+            teacher_profiles: [
+              {
+                display_name: '李老師',
+                status: 'disabled',
+                is_active: false,
+                updated_at: '2025-01-03',
+              },
+            ],
+          },
+        ],
+        error: null,
+      }))
+
+      const teachers = await adminService.fetchTeachers({ includeInactive: true })
+      expect(teachers[0].status).toBe('disabled')
+      expect(mockBuilder.eq).not.toHaveBeenCalledWith('teacher_profiles.is_active', true)
+    })
+
+    it('deactivates teacher profile and returns disabled status', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({
+          data: {
+            id: 'teacher-3',
+            email: 'teacher3@example.com',
+            role: 'teacher',
+            created_at: '2025-01-01',
+            updated_at: '2025-01-01',
+            teacher_profiles: [
+              {
+                display_name: '陳老師',
+                status: 'active',
+                is_active: true,
+                deactivated_at: null,
+                updated_at: '2025-01-01',
+              },
+            ],
+          },
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({ data: null, error: null }))
+        .mockImplementationOnce((resolve) => resolve({
+          data: {
+            user_id: 'teacher-3',
+            display_name: '陳老師',
+            status: 'disabled',
+            is_active: false,
+            deactivated_at: '2025-01-03T00:00:00Z',
+            updated_at: '2025-01-03T00:00:00Z',
+          },
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({ data: null, error: null }))
+
+      const result = await adminService.deactivateTeacher('teacher-3')
+      expect(mockBuilder.update).toHaveBeenCalledWith({ is_active: false })
+      expect(result.status).toBe('disabled')
+    })
+
+    it('reactivates teacher profile and clears deactivated state', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({
+          data: {
+            id: 'teacher-4',
+            email: 'teacher4@example.com',
+            role: 'teacher',
+            created_at: '2025-01-01',
+            updated_at: '2025-01-01',
+            teacher_profiles: [
+              {
+                display_name: '林老師',
+                status: 'disabled',
+                is_active: false,
+                deactivated_at: '2025-01-02T00:00:00Z',
+                updated_at: '2025-01-02T00:00:00Z',
+              },
+            ],
+          },
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({ data: null, error: null }))
+        .mockImplementationOnce((resolve) => resolve({
+          data: {
+            user_id: 'teacher-4',
+            display_name: '林老師',
+            status: 'active',
+            is_active: true,
+            deactivated_at: null,
+            updated_at: '2025-01-04T00:00:00Z',
+          },
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({ data: null, error: null }))
+
+      const result = await adminService.activateTeacher('teacher-4')
+      expect(mockBuilder.update).toHaveBeenCalledWith({ is_active: true })
+      expect(result.status).toBe('active')
+    })
+
+    it('rejects duplicate teacher email during createTeacher', async () => {
+      mockBuilder.then.mockImplementationOnce((resolve) =>
+        resolve({
+          data: [{ id: 'existing-teacher', role: 'teacher' }],
+          error: null,
+        }),
+      )
+
+      await expect(
+        adminService.createTeacher('teacher1@example.com', '王老師'),
+      ).rejects.toMatchObject({ code: 'TEACHER_VALIDATION_ERROR' })
+    })
+
+    it('rejects duplicate teacher email during updateTeacher validation', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) =>
+          resolve({
+            data: {
+              id: 'teacher-5',
+              email: 'teacher5@example.com',
+              role: 'teacher',
+              created_at: '2025-01-01',
+              updated_at: '2025-01-01',
+              teacher_profiles: [
+                {
+                  display_name: '趙老師',
+                  status: 'active',
+                  is_active: true,
+                },
+              ],
+            },
+            error: null,
+          }),
+        )
+        .mockImplementationOnce((resolve) =>
+          resolve({
+            data: [{ id: 'another-user', role: 'teacher' }],
+            error: null,
+          }),
+        )
+
+      await expect(
+        adminService.updateTeacher('teacher-5', { name: '趙老師(更新)' }),
+      ).rejects.toMatchObject({ code: 'TEACHER_VALIDATION_ERROR' })
     })
   })
 })

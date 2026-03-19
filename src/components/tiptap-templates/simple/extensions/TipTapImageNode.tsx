@@ -1,10 +1,85 @@
 
 import { NodeViewWrapper, ReactNodeViewRenderer } from '@tiptap/react'
+import type { ReactNodeViewProps } from '@tiptap/react'
 import Image from '@tiptap/extension-image'
+import type { Editor } from '@tiptap/core'
+import { NodeSelection } from '@tiptap/pm/state'
 import { useEffect, useState, useRef } from 'react'
 import { getSupabaseClient } from '@/lib/supabase'
+import { articleMediaManager } from '@/services/articleMediaManager'
 
-function SecureImageComponent({ node, updateAttributes, selected, deleteNode, editor }: any) {
+async function resolveImageMediaId(attrs: { mediaId?: string; src?: string }): Promise<string | null> {
+  if (attrs.mediaId) {
+    return attrs.mediaId
+  }
+
+  const src = attrs.src
+  if (!src) {
+    return null
+  }
+
+  const supabase = getSupabaseClient()
+
+  if (src.startsWith('storage://')) {
+    const pathWithoutProtocol = src.replace('storage://', '')
+    const [bucket, ...pathParts] = pathWithoutProtocol.split('/')
+    const storagePath = pathParts.join('/')
+
+    if (bucket === 'media' && storagePath) {
+      const { data, error } = await supabase
+        .from('media_files')
+        .select('id')
+        .eq('storage_path', storagePath)
+        .maybeSingle()
+
+      if (error) {
+        throw error
+      }
+
+      return data?.id ?? null
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('media_files')
+    .select('id')
+    .eq('public_url', src)
+    .maybeSingle()
+
+  if (error) {
+    throw error
+  }
+
+  return data?.id ?? null
+}
+
+async function cleanupImageReference(
+  articleId: string | undefined,
+  attrs: { mediaId?: string; src?: string }
+): Promise<void> {
+  if (!articleId) {
+    return
+  }
+
+  const mediaId = await resolveImageMediaId(attrs)
+  if (!mediaId) {
+    return
+  }
+
+  const result = await articleMediaManager.removeMediaFromArticle(articleId, mediaId)
+  if (!result.success) {
+    throw new Error(result.error || 'Failed to remove image media reference')
+  }
+}
+
+function SecureImageComponent({
+  node,
+  updateAttributes,
+  selected,
+  deleteNode,
+  editor,
+  extension,
+}: ReactNodeViewProps) {
   // Initialize with src only if it's NOT a storage URL
   const [src, setSrc] = useState(
     node.attrs.src && !node.attrs.src.startsWith('storage://') ? node.attrs.src : ''
@@ -18,6 +93,7 @@ function SecureImageComponent({ node, updateAttributes, selected, deleteNode, ed
   const [retryCount, setRetryCount] = useState(0)
   const [hasError, setHasError] = useState(false)
   const isEditable = editor?.isEditable !== false
+  const articleId = extension?.options?.articleId as string | undefined
 
   // Sync caption when node.attrs.caption changes
   useEffect(() => {
@@ -88,7 +164,16 @@ function SecureImageComponent({ node, updateAttributes, selected, deleteNode, ed
   }
 
   const handleDelete = () => {
-    deleteNode()
+    void cleanupImageReference(articleId, {
+      mediaId: node.attrs.mediaId,
+      src: node.attrs.src,
+    })
+      .catch((error) => {
+        console.error('Failed to clean up image reference:', error)
+      })
+      .finally(() => {
+        deleteNode()
+      })
   }
 
   const handleCaptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -186,6 +271,17 @@ function SecureImageComponent({ node, updateAttributes, selected, deleteNode, ed
 }
 
 export const TipTapImageNode = Image.extend({
+  addOptions() {
+    const parentOptions = this.parent?.()
+
+    return {
+      inline: parentOptions?.inline ?? false,
+      allowBase64: parentOptions?.allowBase64 ?? false,
+      HTMLAttributes: parentOptions?.HTMLAttributes ?? {},
+      resize: parentOptions?.resize ?? false,
+      articleId: undefined,
+    }
+  },
   addAttributes() {
     return {
       src: {
@@ -239,12 +335,59 @@ export const TipTapImageNode = Image.extend({
       title: {
         default: null,
       },
+      mediaId: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-media-id'),
+        renderHTML: (attributes) => ({
+          'data-media-id': attributes.mediaId,
+        }),
+      },
       caption: {
         default: null,
         parseHTML: (element) => element.getAttribute('data-caption'),
         renderHTML: (attributes) => ({
           'data-caption': attributes.caption,
         }),
+      },
+    }
+  },
+  addKeyboardShortcuts() {
+    return {
+      Backspace: ({ editor }: { editor: Editor }) => {
+        const selectedNode =
+          editor.state.selection instanceof NodeSelection
+            ? editor.state.selection.node
+            : null
+        if (selectedNode?.type.name !== this.name) {
+          return false
+        }
+
+        void cleanupImageReference(this.options.articleId, {
+          mediaId: selectedNode.attrs.mediaId,
+          src: selectedNode.attrs.src,
+        }).catch((error) => {
+          console.error('Failed to clean up image reference:', error)
+        })
+
+        return editor.commands.deleteSelection()
+      },
+      Delete: ({ editor }: { editor: Editor }) => {
+        const selectedNode =
+          editor.state.selection instanceof NodeSelection
+            ? editor.state.selection.node
+            : null
+        if (selectedNode?.type.name !== this.name) {
+          return false
+        }
+
+        void cleanupImageReference(this.options.articleId, {
+          mediaId: selectedNode.attrs.mediaId,
+          src: selectedNode.attrs.src,
+        }).catch((error) => {
+          console.error('Failed to clean up image reference:', error)
+        })
+
+        return editor.commands.deleteSelection()
       },
     }
   },

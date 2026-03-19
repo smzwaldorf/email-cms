@@ -49,6 +49,20 @@ export enum MediaFileStatus {
   DELETED = 'deleted',
 }
 
+export enum MediaVariantStatus {
+  PENDING = 'pending',
+  PROCESSING = 'processing',
+  READY = 'ready',
+  FAILED = 'failed',
+}
+
+export enum MediaVariantType {
+  ORIGINAL = 'original',
+  THUMBNAIL = 'thumbnail',
+  WEBP = 'webp',
+  AUDIO_OPTIMIZED = 'audio_optimized',
+}
+
 /**
  * 媒體檔案元資料
  * Media file metadata
@@ -71,6 +85,55 @@ export interface MediaFile {
   height?: number; // 圖片高度（像素）
   // 音訊專用欄位
   duration?: number; // 音訊時長（秒）Duration in seconds
+  usageCount?: number; // 啟用中的引用數 Active references
+  variants?: MediaVariant[]; // 已知衍生版本 Known generated variants
+}
+
+export interface MediaVariant {
+  id: string;
+  mediaId: string;
+  variantType: MediaVariantType;
+  format: string;
+  status: MediaVariantStatus;
+  storagePath?: string;
+  fileSize?: number;
+  width?: number;
+  height?: number;
+  duration?: number;
+  retryCount: number;
+  errorMessage?: string;
+  lastProcessedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type MediaUsageTargetType = 'article' | 'newsletter' | 'template' | 'unknown';
+
+export interface MediaUsageRecord {
+  id: string;
+  mediaId: string;
+  targetType: MediaUsageTargetType;
+  targetId: string;
+  contextKey: string;
+  active: boolean;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+  deactivatedAt?: string;
+}
+
+export interface MediaDeleteImpact {
+  usageId: string;
+  targetType: MediaUsageTargetType;
+  targetId: string;
+  contextKey: string;
+}
+
+export interface MediaDeletePreflight {
+  mediaId: string;
+  canDelete: boolean;
+  activeUsageCount: number;
+  impacts: MediaDeleteImpact[];
 }
 
 /**

@@ -5,12 +5,42 @@
 
 import { getSupabaseClient } from '@/lib/supabase'
 import type { MediaFile } from '@/types/media'
+import { mediaGovernanceService } from '@/services/mediaGovernanceService'
 
 /**
  * 文章媒體管理服務類
  * Article Media Manager Service class
  */
 export class ArticleMediaManager {
+  private isUuid(value: string): boolean {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      value
+    )
+  }
+
+  private async resolveArticleId(articleId: string): Promise<string | null> {
+    if (this.isUuid(articleId)) {
+      return articleId
+    }
+
+    try {
+      const supabase = getSupabaseClient()
+      const { data, error } = await supabase
+        .from('articles')
+        .select('id')
+        .eq('short_id', articleId)
+        .maybeSingle()
+
+      if (error) {
+        throw error
+      }
+
+      return data?.id ?? articleId
+    } catch {
+      return articleId
+    }
+  }
+
   /**
    * 取得文章的所有媒體檔案
    * Get all media files for an article
@@ -70,42 +100,45 @@ export class ArticleMediaManager {
     }
   ): Promise<{ success: boolean; error?: string }> {
     try {
+      const canonicalArticleId = await this.resolveArticleId(articleId)
+      if (!canonicalArticleId) {
+        throw new Error(`Article not found: ${articleId}`)
+      }
+
       const supabase = getSupabaseClient()
       // 檢查關聯是否已存在
       // Check if reference already exists
       const { data: existing } = await supabase
         .from('article_media_references')
         .select('id')
-        .eq('article_id', articleId)
+        .eq('article_id', canonicalArticleId)
         .eq('media_id', mediaId)
         .single()
 
       if (existing) {
-        // 若已存在，更新屬性
-        // If already exists, update properties
-        const { error: updateError } = await supabase
-          .from('article_media_references')
-          .update({
-            properties: properties || {},
-            updated_at: new Date().toISOString(),
-          })
-          .eq('article_id', articleId)
-          .eq('media_id', mediaId)
-
-        if (updateError) throw updateError
+        // 已存在關聯時不重複插入
+        // Skip duplicate insert if relation already exists
       } else {
         // 建立新關聯
         // Create new reference
         const { error: insertError } = await supabase
           .from('article_media_references')
           .insert({
-            article_id: articleId,
+            article_id: canonicalArticleId,
             media_id: mediaId,
-            properties: properties || {},
+            reference_type: 'inline',
+            position: 0,
           })
 
         if (insertError) throw insertError
       }
+
+      await mediaGovernanceService.registerUsage({
+        mediaId,
+        targetType: 'article',
+        targetId: canonicalArticleId,
+        contextKey: `article_media:${mediaId}`,
+      })
 
       return { success: true }
     } catch (error) {
@@ -126,14 +159,26 @@ export class ArticleMediaManager {
     mediaId: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
+      const canonicalArticleId = await this.resolveArticleId(articleId)
+      if (!canonicalArticleId) {
+        throw new Error(`Article not found: ${articleId}`)
+      }
+
       const supabase = getSupabaseClient()
       const { error } = await supabase
         .from('article_media_references')
         .delete()
-        .eq('article_id', articleId)
+        .eq('article_id', canonicalArticleId)
         .eq('media_id', mediaId)
 
       if (error) throw error
+
+      await mediaGovernanceService.deactivateUsage(
+        mediaId,
+        'article',
+        canonicalArticleId,
+        `article_media:${mediaId}`
+      )
 
       return { success: true }
     } catch (error) {
@@ -265,14 +310,18 @@ export class ArticleMediaManager {
       }
 
       const supabase = getSupabaseClient()
-      // 刪除資料庫記錄
-      // Delete database records
-      const { error: dbError } = await supabase
-        .from('media_files')
-        .delete()
-        .in('id', mediaIds)
+      const userId = (await supabase.auth.getUser()).data.user?.id
+      if (!userId) {
+        throw new Error('User not authenticated')
+      }
 
-      if (dbError) throw dbError
+      for (const mediaId of mediaIds) {
+        await mediaGovernanceService.safeDeleteUnusedMedia(
+          mediaId,
+          userId,
+          'unused_media_cleanup'
+        )
+      }
 
       // 刪除儲存中的檔案
       // Delete files from storage
@@ -305,18 +354,11 @@ export class ArticleMediaManager {
     }
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      const supabase = getSupabaseClient()
-      const { error } = await supabase
-        .from('article_media_references')
-        .update({
-          properties,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('article_id', articleId)
-        .eq('media_id', mediaId)
-
-      if (error) throw error
-
+      // article_media_references schema currently has no mutable properties column.
+      // Keep API compatibility as a no-op until schema extension is added.
+      void articleId
+      void mediaId
+      void properties
       return { success: true }
     } catch (error) {
       console.error('Failed to update media properties:', error)
@@ -325,6 +367,25 @@ export class ArticleMediaManager {
         error: error instanceof Error ? error.message : 'Unknown error',
       }
     }
+  }
+
+  async preflightMediaDelete(mediaId: string) {
+    return mediaGovernanceService.getDeletePreflight(mediaId)
+  }
+
+  async copyArticleMediaUsage(
+    sourceArticleId: string,
+    targetArticleId: string
+  ): Promise<void> {
+    await mediaGovernanceService.copyUsageToTarget(
+      sourceArticleId,
+      targetArticleId,
+      'article'
+    )
+  }
+
+  async deactivateArticleMediaUsage(articleId: string): Promise<void> {
+    await mediaGovernanceService.deactivateUsageByTarget('article', articleId)
   }
 }
 

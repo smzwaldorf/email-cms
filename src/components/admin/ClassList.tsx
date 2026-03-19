@@ -19,7 +19,8 @@ export interface ClassListProps {
   isLoading?: boolean
   error?: string | null
   onEdit?: (id: string) => void
-  onDelete?: (id: string) => void
+  onDeactivate?: (id: string) => void
+  onActivate?: (id: string) => void
   onSearchChange?: (searchTerm: string) => void
 }
 
@@ -34,7 +35,8 @@ export function ClassList({
   isLoading = false,
   error = null,
   onEdit,
-  onDelete,
+  onDeactivate,
+  onActivate,
   onSearchChange,
 }: ClassListProps) {
   const [sortField, setSortField] = useState<SortField>('name')
@@ -230,6 +232,9 @@ export function ClassList({
                 </span>
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">
+                狀態
+              </th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">
                 操作
               </th>
             </tr>
@@ -263,6 +268,17 @@ export function ClassList({
                   })}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
+                  <span
+                    className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+                      classItem.isActive === false
+                        ? 'bg-waldorf-clay-100 text-waldorf-clay-700'
+                        : 'bg-waldorf-sage-100 text-waldorf-sage-700'
+                    }`}
+                  >
+                    {classItem.isActive === false ? '停用' : '啟用'}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => onEdit?.(classItem.id)}
@@ -272,14 +288,25 @@ export function ClassList({
                     >
                       編輯
                     </button>
-                    <button
-                      onClick={() => onDelete?.(classItem.id)}
-                      className="px-3 py-1.5 bg-waldorf-rose-100 text-waldorf-rose-700 text-xs font-medium rounded-lg hover:bg-waldorf-rose-200 transition-all duration-200 disabled:opacity-50"
-                      data-testid={`delete-btn-${classItem.id}`}
-                      disabled={!onDelete}
-                    >
-                      刪除
-                    </button>
+                    {classItem.isActive === false ? (
+                      <button
+                        onClick={() => onActivate?.(classItem.id)}
+                        className="px-3 py-1.5 bg-waldorf-sage-100 text-waldorf-sage-700 text-xs font-medium rounded-lg hover:bg-waldorf-sage-200 transition-all duration-200 disabled:opacity-50"
+                        data-testid={`activate-btn-${classItem.id}`}
+                        disabled={!onActivate}
+                      >
+                        啟用
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => onDeactivate?.(classItem.id)}
+                        className="px-3 py-1.5 bg-waldorf-rose-100 text-waldorf-rose-700 text-xs font-medium rounded-lg hover:bg-waldorf-rose-200 transition-all duration-200 disabled:opacity-50"
+                        data-testid={`deactivate-btn-${classItem.id}`}
+                        disabled={!onDeactivate}
+                      >
+                        停用
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
