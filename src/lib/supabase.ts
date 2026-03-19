@@ -169,6 +169,10 @@ export interface DatabaseTables {
   child_class_enrollment: any
   teacher_class_assignment: any
   article_audit_log: any
+  email_platform_subscriber_mappings: any
+  email_platform_sync_jobs: any
+  email_platform_webhook_events: any
+  email_platform_subscription_audit: any
 }
 
 /**

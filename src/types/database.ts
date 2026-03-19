@@ -166,6 +166,16 @@ export interface FamilyRow {
   related_topics?: string[] | null;
   /** Lifecycle status */
   is_active?: boolean;
+  /** Local newsletter subscription state reconciled with Kit */
+  newsletter_subscription_status?: 'pending' | 'subscribed' | 'unsubscribed' | 'bounced' | 'complained';
+  /** Origin of the most recent subscription state change */
+  newsletter_subscription_source?: string | null;
+  /** Timestamp for the latest local subscription transition */
+  newsletter_subscription_updated_at?: string | null;
+  /** Timestamp for a confirmed subscribe event */
+  newsletter_subscribed_at?: string | null;
+  /** Timestamp for a confirmed unsubscribe event */
+  newsletter_unsubscribed_at?: string | null;
   /** Deactivation timestamp */
   deactivated_at?: string | null;
   /** Creation timestamp */
@@ -246,6 +256,96 @@ export interface TeacherClassAssignmentRow {
 }
 
 // ============================================================================
+// Email Platform Integration
+// ============================================================================
+
+export interface EmailPlatformSubscriberMappingRow {
+  id: string;
+  family_id: string;
+  provider: 'kit';
+  external_identity_key: string;
+  external_subscriber_id?: string | null;
+  external_email_address?: string | null;
+  provider_state?: string | null;
+  last_synced_at?: string | null;
+  last_payload_fingerprint?: string | null;
+  last_provider_version_marker?: string | null;
+  last_reconciled_at?: string | null;
+  last_drift_reason?: string | null;
+  sync_metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EmailPlatformSyncJobRow {
+  id: string;
+  family_id?: string | null;
+  mapping_id?: string | null;
+  provider: 'kit';
+  job_type: 'upsert_subscriber' | 'reconcile_subscriber';
+  status: 'pending' | 'processing' | 'retryable' | 'succeeded' | 'failed' | 'dead_lettered';
+  enqueue_reason: string;
+  payload: Record<string, unknown>;
+  payload_fingerprint?: string | null;
+  attempt_count: number;
+  max_attempts: number;
+  next_retry_at: string;
+  processing_started_at?: string | null;
+  completed_at?: string | null;
+  dead_lettered_at?: string | null;
+  mismatch_reason?: string | null;
+  last_error_code?: string | null;
+  last_error_message?: string | null;
+  metrics: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EmailPlatformWebhookEventRow {
+  id: string;
+  provider: 'kit';
+  provider_event_id: string;
+  event_type: string;
+  delivery_key: string;
+  signature_valid: boolean;
+  signature_failure_reason?: string | null;
+  payload: Record<string, unknown>;
+  payload_hash: string;
+  occurred_at?: string | null;
+  received_at: string;
+  status: 'received' | 'processing' | 'retryable' | 'processed' | 'unresolved' | 'failed' | 'dead_lettered';
+  attempt_count: number;
+  max_attempts: number;
+  next_retry_at: string;
+  processing_started_at?: string | null;
+  processed_at?: string | null;
+  dead_lettered_at?: string | null;
+  resolved_family_id?: string | null;
+  resolved_mapping_id?: string | null;
+  unresolved_reason?: string | null;
+  last_error_code?: string | null;
+  last_error_message?: string | null;
+  metrics: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EmailPlatformSubscriptionAuditRow {
+  id: string;
+  family_id: string;
+  provider: 'kit';
+  mapping_id?: string | null;
+  webhook_event_id?: string | null;
+  old_status?: 'pending' | 'subscribed' | 'unsubscribed' | 'bounced' | 'complained' | null;
+  new_status: 'pending' | 'subscribed' | 'unsubscribed' | 'bounced' | 'complained';
+  source: string;
+  event_type?: string | null;
+  occurred_at?: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+// ============================================================================
 // Article Audit Log (文章審計日誌)
 // Complete audit trail of article modifications
 // ============================================================================
@@ -283,6 +383,10 @@ export type DatabaseRow =
   | FamilyEnrollmentRow
   | ChildClassEnrollmentRow
   | TeacherClassAssignmentRow
+  | EmailPlatformSubscriberMappingRow
+  | EmailPlatformSyncJobRow
+  | EmailPlatformWebhookEventRow
+  | EmailPlatformSubscriptionAuditRow
   | ArticleAuditLogRow;
 
 // ============================================================================
