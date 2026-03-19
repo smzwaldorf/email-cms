@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
 import { AuthProvider } from '@/context/AuthContext'
 import { NavigationProvider } from '@/context/NavigationContext'
@@ -44,22 +44,6 @@ const RouteLoader = () => (
   </div>
 )
 
-// Placeholder pages
-const HomePage = () => (
-  <div className="flex items-center justify-center h-screen bg-gray-50">
-    <div className="text-center">
-      <h1 className="text-3xl font-bold text-gray-900 mb-4">電子報閱讀器</h1>
-      <p className="text-gray-600 mb-4">Newsletter Viewer</p>
-      <a
-        href="/login"
-        className="inline-block px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-      >
-        登入查看週報
-      </a>
-    </div>
-  </div>
-)
-
 export default function App() {
   return (
     <ErrorBoundary>
@@ -68,7 +52,7 @@ export default function App() {
           <AnalyticsProvider>
             <Router>
               <Routes>
-              <Route path="/" element={<HomePage />} />
+              <Route path="/" element={<Navigate to="/login" replace />} />
               <Route path="/login" element={<LoginPage />} />
 
               <Route path="/auth/callback" element={<AuthCallbackPage />} />

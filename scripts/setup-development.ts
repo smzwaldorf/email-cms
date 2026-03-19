@@ -523,6 +523,16 @@ const testChildren = [
 // Helper Functions
 // ============================================================================
 
+function buildStudentCode(name: string, id: string): string {
+  const normalizedName = name
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
+  return `${normalizedName}-${id.slice(0, 8).toUpperCase()}`
+}
+
 async function seedData(
   table: string,
   data: any[],
@@ -705,6 +715,7 @@ async function setupDevelopment() {
     // PHASE 3: Create Children & Enrollments
     // ========================================================================
     console.log('👶 PHASE 3: Creating children and enrollments\n')
+    let successfulChildren = 0
 
     for (const child of testChildren) {
       try {
@@ -714,6 +725,7 @@ async function setupDevelopment() {
         const { error: studentError } = await supabase.from('students').insert({
           id: child.id,
           name: child.name,
+          student_code: buildStudentCode(child.name, child.id),
         })
 
         if (studentError) {
@@ -750,6 +762,7 @@ async function setupDevelopment() {
         }
 
         console.log(`  ✅ Student enrolled in class: ${child.classId}\n`)
+        successfulChildren++
       } catch (err) {
         console.error(`  ❌ Error: ${(err as any).message}\n`)
       }
@@ -766,7 +779,7 @@ async function setupDevelopment() {
     console.log(`    - Classes: ${classesResult.success} created`)
     console.log(`    - Families: ${familiesResult.success} created`)
     console.log(`    - Articles: ${articlesResult.success} created
-    - Children: ${testChildren.length} created`)
+    - Children: ${successfulChildren} created`)
     console.log(`\n  Test Users:`)
     testUsers.forEach((user) => {
       if ('familyId' in user) {
