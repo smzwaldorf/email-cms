@@ -117,7 +117,8 @@ describe('Analytics - Article Reader Class Info', () => {
 
         // 6. Create Student
         const { data: student } = await adminSupabase.from('students').insert({
-            name: mockStudentName
+            name: mockStudentName,
+            student_code: `ST-${testId}`
         }).select().single();
         
         if (!student) throw new Error('Student creation failed');

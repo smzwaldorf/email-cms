@@ -29,6 +29,7 @@ const LazyFamilyManagementPage = lazy(() => import('@/pages/FamilyManagementPage
 const LazyParentManagementPage = lazy(() => import('@/pages/ParentManagementPage').then(m => ({ default: m.ParentManagementPage })))
 const LazyStudentManagementPage = lazy(() => import('@/pages/StudentManagementPage').then(m => ({ default: m.StudentManagementPage })))
 const LazyParentStudentPage = lazy(() => import('@/pages/ParentStudentPage').then(m => ({ default: m.ParentStudentPage })))
+const LazyAdminMediaPage = lazy(() => import('@/pages/AdminMediaPage').then(m => ({ default: m.AdminMediaPage })))
 const LazyAnalyticsDashboardPage = lazy(() => import('@/pages/AnalyticsDashboardPage').then(m => ({ default: m.AnalyticsDashboardPage })))
 const LazyClassAnalyticsPage = lazy(() => import('@/pages/analytics/ClassAnalyticsPage').then(m => ({ default: m.ClassAnalyticsPage })))
 const LazyArticleAnalyticsPage = lazy(() => import('@/pages/analytics/ArticleAnalyticsPage').then(m => ({ default: m.ArticleAnalyticsPage })))
@@ -296,6 +297,18 @@ export default function App() {
                     <ProtectedRoute requiredRole="admin">
                       <Suspense fallback={<RouteLoader />}>
                         <LazyStudentManagementPage />
+                      </Suspense>
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/admin/media"
+                element={
+                  <ErrorBoundary>
+                    <ProtectedRoute requiredRole="admin">
+                      <Suspense fallback={<RouteLoader />}>
+                        <LazyAdminMediaPage />
                       </Suspense>
                     </ProtectedRoute>
                   </ErrorBoundary>

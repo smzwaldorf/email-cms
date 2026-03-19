@@ -16,6 +16,8 @@ interface MediaLibraryProps {
   onMediasSelected?: (mediaFiles: MediaFile[]) => void
   multiSelect?: boolean
   disabled?: boolean
+  onFilesSelected?: (files: File[]) => void
+  showUploadDropzone?: boolean
   className?: string
 }
 
@@ -42,6 +44,8 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
   onMediasSelected,
   multiSelect = false,
   disabled = false,
+  onFilesSelected,
+  showUploadDropzone = false,
   className = '',
 }) => {
   const [searchQuery, setSearchQuery] = useState('')
@@ -49,6 +53,9 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
   const [selectedMediaType, setSelectedMediaType] = useState<MediaFileType | 'all'>('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set())
+  const [focusedFile, setFocusedFile] = useState<MediaFile | null>(null)
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [uploadError, setUploadError] = useState<string>('')
   const itemsPerPage = 12
 
   /**
@@ -136,6 +143,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
    * Handle file selection
    */
   const handleSelectFile = (file: MediaFile) => {
+    setFocusedFile(file)
     if (!multiSelect) {
       setSelectedFiles(new Set([file.id]))
       onMediaSelected?.(file)
@@ -155,12 +163,26 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
     }
   }
 
+  const handleDropUpload = (files: FileList | null) => {
+    if (!files || !onFilesSelected) return
+    const items = Array.from(files)
+    if (items.length === 0) return
+    onFilesSelected(items)
+    setUploadError('')
+  }
+
   /**
    * 渲染媒體項目
    * Render media item
    */
   const renderMediaItem = (file: MediaFile) => {
     const isSelected = selectedFiles.has(file.id)
+    const previewUrl = file.signedUrl || file.publicUrl
+    const canRenderImagePreview =
+      file.mediaType === 'image' &&
+      typeof previewUrl === 'string' &&
+      previewUrl.length > 0 &&
+      !previewUrl.startsWith('storage://')
 
     return (
       <div
@@ -188,9 +210,9 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
 
         {/* 媒體預覽 / Media preview */}
         <div className="aspect-square rounded-md bg-gray-100 mb-2 overflow-hidden">
-          {file.mediaType === 'image' && file.publicUrl ? (
+          {canRenderImagePreview ? (
             <img
-              src={file.publicUrl}
+              src={previewUrl}
               alt={file.fileName}
               className="w-full h-full object-cover"
             />
@@ -228,6 +250,28 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
     <div className={`space-y-4 ${className}`}>
       {/* 搜尋和篩選 / Search and filters */}
       <div className="space-y-3">
+        {showUploadDropzone && onFilesSelected && (
+          <label
+            className="flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-4 text-sm text-gray-600 hover:border-waldorf-sage-400 cursor-pointer"
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => {
+              event.preventDefault()
+              handleDropUpload(event.dataTransfer.files)
+            }}
+          >
+            拖放檔案到此處上傳 / Drop files here to upload
+            <input
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(event) => handleDropUpload(event.target.files)}
+            />
+          </label>
+        )}
+        {uploadError ? (
+          <div className="text-xs text-red-600">{uploadError}</div>
+        ) : null}
+
         {/* 搜尋框 / Search input */}
         <input
           type="text"
@@ -243,6 +287,29 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
 
         {/* 篩選和排序 / Filter and sort */}
         <div className="flex gap-3 flex-wrap">
+          <div className="flex gap-1">
+            <button
+              type="button"
+              onClick={() => setViewMode('grid')}
+              disabled={disabled}
+              className={`px-2 py-1 text-xs rounded ${
+                viewMode === 'grid' ? 'bg-waldorf-sage-600 text-white' : 'bg-gray-100 text-gray-700'
+              }`}
+            >
+              Grid
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('list')}
+              disabled={disabled}
+              className={`px-2 py-1 text-xs rounded ${
+                viewMode === 'list' ? 'bg-waldorf-sage-600 text-white' : 'bg-gray-100 text-gray-700'
+              }`}
+            >
+              List
+            </button>
+          </div>
+
           {/* 媒體類型篩選 / Media type filter */}
           <div className="flex gap-2">
             {[
@@ -294,7 +361,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
 
       {/* 媒體網格 / Media grid */}
       {paginatedFiles.length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+        <div className={viewMode === 'grid' ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4' : 'space-y-2'}>
           {paginatedFiles.map((file) => renderMediaItem(file))}
         </div>
       ) : (
@@ -304,6 +371,30 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
           </p>
         </div>
       )}
+
+      {/* 詳細資訊面板 / Details panel */}
+      {focusedFile ? (
+        <div className="border rounded-lg border-gray-200 p-4 bg-gray-50">
+          <h4 className="font-semibold text-sm mb-2">媒體詳情 / Media Details</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-700">
+            <div>檔名 / Name: {focusedFile.fileName}</div>
+            <div>大小 / Size: {formatFileSize(focusedFile.fileSize)}</div>
+            <div>上傳時間 / Uploaded: {formatDate(focusedFile.uploadedAt)}</div>
+            <div>類型 / Type: {focusedFile.mediaType}</div>
+            <div>
+              尺寸 / Dimensions: {focusedFile.width && focusedFile.height ? `${focusedFile.width}×${focusedFile.height}` : 'N/A'}
+            </div>
+            <div>時長 / Duration: {focusedFile.duration ? `${Math.round(focusedFile.duration)}s` : 'N/A'}</div>
+            <div>引用數 / Active usage: {focusedFile.usageCount ?? 0}</div>
+            <div>
+              最佳化 / Optimization:{' '}
+              {focusedFile.variants?.length
+                ? focusedFile.variants.map((variant) => variant.status).join(', ')
+                : 'N/A'}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {/* 分頁 / Pagination */}
       {totalPages > 1 && (

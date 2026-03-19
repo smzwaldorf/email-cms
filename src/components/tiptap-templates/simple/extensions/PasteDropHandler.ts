@@ -205,6 +205,7 @@ async function handleUpload(
               src,
               alt: file.fileName,
               title: file.fileName,
+              mediaId: file.id,
             })
             .run()
         } catch (e) {

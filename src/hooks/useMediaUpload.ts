@@ -10,6 +10,7 @@ import { mediaService } from '@/services/mediaService'
 import { imageOptimizer } from '@/services/imageOptimizer'
 import { storageService } from '@/services/storageService'
 import { articleMediaManager } from '@/services/articleMediaManager'
+import { mediaGovernanceService } from '@/services/mediaGovernanceService'
 import { getSupabaseClient } from '@/lib/supabase'
 import { checkRateLimit, recordUploadAttempt } from '@/services/rateLimiter'
 import { quotaManager } from '@/services/quotaManager'
@@ -225,10 +226,37 @@ export function useMediaUpload() {
 
           if (dbError) throw dbError
 
+          await mediaGovernanceService.enqueueDefaultVariantsForMedia(mediaId, mediaType, {
+            width: metadata.width,
+            height: metadata.height,
+          })
+
+          if (mediaType === 'image' || mediaType === 'audio') {
+            void mediaGovernanceService
+              .processDefaultVariantsForMedia({
+                mediaId,
+                mediaType,
+                sourceFile: optimizedFile,
+                sourceStoragePath: finalPath,
+                dimensions: {
+                  width: metadata.width,
+                  height: metadata.height,
+                },
+              })
+              .catch((error) => {
+                console.warn('Variant generation failed', error)
+              })
+          }
+
           // 如果指定了文章 ID，將媒體添加到文章
           // If article ID specified, add media to article
           if (articleId && dbFile) {
-            await articleMediaManager.addMediaToArticle(articleId, mediaId)
+            const association = await articleMediaManager.addMediaToArticle(articleId, mediaId)
+            if (!association.success) {
+              throw new Error(
+                association.error || `Failed to link media ${mediaId} to article ${articleId}`
+              )
+            }
           }
 
           const mediaFile: MediaFile = {

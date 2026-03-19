@@ -29,9 +29,10 @@ import { AudioButton } from './buttons/audio-button'
 
 interface EditorToolbarProps {
   editor: Editor
+  articleId?: string
 }
 
-export function EditorToolbar({ editor }: EditorToolbarProps) {
+export function EditorToolbar({ editor, articleId }: EditorToolbarProps) {
   // Force re-render when editor state changes
   const [, setUpdateCount] = useState(0)
 
@@ -149,9 +150,9 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
 
       {/* 7. Add Image & YouTube Video & Audio */}
       <div className="toolbar-group">
-        <InsertButton editor={editor} />
+        <InsertButton editor={editor} articleId={articleId} />
         <YouTubeButton editor={editor} />
-        <AudioButton editor={editor} />
+        <AudioButton editor={editor} articleId={articleId} />
       </div>
     </div>
   )

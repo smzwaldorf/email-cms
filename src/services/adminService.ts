@@ -11,6 +11,7 @@
  */
 
 import { getSupabaseClient } from '@/lib/supabase'
+import { articleMediaManager } from '@/services/articleMediaManager'
 import type {
   AdminNewsletter,
   AdminArticle,
@@ -607,6 +608,7 @@ class AdminService {
         targeting_mode,
         target_class_ids,
         articles!inner (
+          id,
           title,
           content,
           author_id,
@@ -682,6 +684,58 @@ class AdminService {
         'ADD_ARTICLE_TO_NEWSLETTER_ERROR',
         linkError as any
       )
+    }
+
+    // Preserve media references and usage ledger when copying articles.
+    const referenceInserts: Array<{
+      article_id: string
+      media_id: string
+      reference_type: string
+      position: number
+    }> = []
+
+    for (let index = 0; index < (copiedArticles || []).length; index++) {
+      const sourceArticleId = sourceArticles[index]?.articles?.id
+      const copiedArticleId = copiedArticles?.[index]?.id
+      if (!sourceArticleId || !copiedArticleId) continue
+
+      const { data: sourceReferences, error: sourceReferencesError } = await supabase
+        .from('article_media_references')
+        .select('media_id, reference_type, position')
+        .eq('article_id', sourceArticleId)
+
+      if (sourceReferencesError) {
+        throw new AdminServiceError(
+          `Failed to fetch source media references: ${sourceReferencesError.message}`,
+          'FETCH_ARTICLE_MEDIA_REFERENCES_ERROR',
+          sourceReferencesError as any
+        )
+      }
+
+      for (const ref of sourceReferences || []) {
+        referenceInserts.push({
+          article_id: copiedArticleId,
+          media_id: ref.media_id,
+          reference_type: ref.reference_type ?? 'inline',
+          position: ref.position ?? 0,
+        })
+      }
+
+      await articleMediaManager.copyArticleMediaUsage(sourceArticleId, copiedArticleId)
+    }
+
+    if (referenceInserts.length > 0) {
+      const { error: referencesInsertError } = await supabase
+        .from('article_media_references')
+        .insert(referenceInserts)
+
+      if (referencesInsertError) {
+        throw new AdminServiceError(
+          `Failed to copy article media references: ${referencesInsertError.message}`,
+          'COPY_ARTICLE_MEDIA_REFERENCES_ERROR',
+          referencesInsertError as any
+        )
+      }
     }
 
     return copiedLinks.length

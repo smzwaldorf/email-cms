@@ -125,6 +125,7 @@ export function SimpleEditor({
       }),
       TipTapImageNode.configure({
         allowBase64: true,
+        articleId,
       }),
       Link.configure({
         openOnClick: true,
@@ -145,7 +146,9 @@ export function SimpleEditor({
         nested: true,
       }),
       TipTapYoutubeNode,
-      TipTapAudioNode,
+      TipTapAudioNode.configure({
+        articleId,
+      }),
       Placeholder.configure({
         placeholder: readOnly ? undefined : placeholder,
       }),
@@ -195,7 +198,7 @@ export function SimpleEditor({
 
   return (
     <div className={`tiptap-editor ${readOnly ? 'read-only' : ''} ${className}`}>
-      {editor && !readOnly && <EditorToolbar editor={editor} />}
+      {editor && !readOnly && <EditorToolbar editor={editor} articleId={articleId} />}
       <EditorContent editor={editor} className="editor-content" />
     </div>
   )
