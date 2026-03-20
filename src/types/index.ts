@@ -164,3 +164,4 @@ export * from './database';
 // ============ 管理員儀表板類型定義 ============
 // Re-export all admin types from admin.ts
 export * from './admin';
+export * from './personalization';
