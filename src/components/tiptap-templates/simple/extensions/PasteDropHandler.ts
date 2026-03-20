@@ -8,12 +8,30 @@ import { Extension } from '@tiptap/core'
 import { Plugin, PluginKey, Selection } from '@tiptap/pm/state'
 import type { Editor } from '@tiptap/core'
 import type { EditorView } from '@tiptap/pm/view'
+import type { MediaFile } from '@/types/media'
 
 export interface PasteDropHandlerOptions {
-  uploadFiles?: (files: File[], articleId?: string) => Promise<any[]>
+  uploadFiles?: (files: File[], articleId?: string) => Promise<MediaFile[]>
   articleId?: string
   maxFileSize?: number // in bytes, default 10MB
   allowedMimeTypes?: string[]
+}
+
+/** Chain surface used after upload (image/audio extensions extend the editor chain). */
+interface PasteDropChain {
+  focus(): PasteDropChain
+  setImage(attrs: {
+    src: string
+    alt?: string
+    title?: string
+    mediaId?: string
+  }): PasteDropChain
+  insertContent(content: { type: string; attrs: Record<string, string> }): PasteDropChain
+  run(): boolean
+}
+
+function pasteDropChain(editor: Editor): PasteDropChain {
+  return editor.chain() as unknown as PasteDropChain
 }
 
 export const PasteDropHandler = Extension.create<PasteDropHandlerOptions>({
@@ -182,7 +200,7 @@ function validateFile(
 async function handleUpload(
   files: File[],
   editor: Editor,
-  uploadFiles: (files: File[], articleId?: string) => Promise<any[]>,
+  uploadFiles: (files: File[], articleId?: string) => Promise<MediaFile[]>,
   articleId?: string
 ) {
   try {
@@ -193,13 +211,13 @@ async function handleUpload(
     const uploadedFiles = await uploadFiles(files, articleId)
 
     // Insert each uploaded file into the editor
-    uploadedFiles.forEach((file: any) => {
+    uploadedFiles.forEach((file) => {
       const src = file.storageUrl || file.publicUrl
       if (!src) return
 
       if (file.mediaType === 'image') {
         try {
-          ;(editor.chain() as any)
+          pasteDropChain(editor)
             .focus()
             .setImage({
               src,
@@ -215,7 +233,7 @@ async function handleUpload(
         // Insert audio - check if there's an audio node type
         // For now, we'll insert it as a custom node if available
         try {
-          ;(editor.chain() as any)
+          pasteDropChain(editor)
             .focus()
             .insertContent({
               type: 'audioNode',
@@ -224,7 +242,7 @@ async function handleUpload(
               },
             })
             .run()
-        } catch (e) {
+        } catch {
           console.warn('Audio node not available, skipping audio insert')
         }
       }

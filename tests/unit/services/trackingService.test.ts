@@ -1,15 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { trackingService } from '@/services/trackingService'
-import { getSupabaseClient } from '@/lib/supabase'
 
 // Mock Supabase client
 const mockInsert = vi.fn()
 const mockSelect = vi.fn()
-const mockEq = vi.fn()
-const mockIn = vi.fn()
-const mockOrder = vi.fn()
-const mockLimit = vi.fn()
-const mockNot = vi.fn()
 
 // Mock for newsletter lookup (used by getReadArticles)
 const mockNewsletterSelect = vi.fn()
@@ -117,7 +111,8 @@ describe('trackingService', () => {
     const queryChain = {
       eq: vi.fn().mockReturnThis(),
       not: vi.fn().mockImplementation(() => queryChain),
-      then: (cb: any) => cb({ data: mockData, error: null })
+      then: (cb: (value: { data: typeof mockData; error: null }) => unknown) =>
+        cb({ data: mockData, error: null }),
     }
     mockSelect.mockReturnValue(queryChain)
 

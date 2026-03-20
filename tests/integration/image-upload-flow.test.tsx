@@ -5,10 +5,9 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { MediaService } from '@/services/mediaService'
 import { imageOptimizer } from '@/services/imageOptimizer'
+import { MediaFileType, type ImageProperties } from '@/types/media'
 
 // Mock storage service
 vi.mock('@/services/storageService', () => ({
@@ -53,7 +52,7 @@ describe('Integration: Image Upload Flow (T058)', () => {
 
       const result = mediaService.validateFile(
         imageFile,
-        'image' as any
+        MediaFileType.IMAGE
       )
 
       expect(result.valid).toBe(true)
@@ -70,7 +69,7 @@ describe('Integration: Image Upload Flow (T058)', () => {
 
       const result = mediaService.validateFile(
         largeFile,
-        'image' as any
+        MediaFileType.IMAGE
       )
 
       expect(result.valid).toBe(false)
@@ -86,7 +85,7 @@ describe('Integration: Image Upload Flow (T058)', () => {
 
       const result = mediaService.validateFile(
         invalidFile,
-        'image' as any
+        MediaFileType.IMAGE
       )
 
       expect(result.valid).toBe(false)
@@ -99,7 +98,7 @@ describe('Integration: Image Upload Flow (T058)', () => {
         const file = new File([new ArrayBuffer(1024)], 'test', {
           type: format,
         })
-        const result = mediaService.validateFile(file, 'image' as any)
+        const result = mediaService.validateFile(file, MediaFileType.IMAGE)
         expect(result.valid).toBe(true)
       })
     })
@@ -219,8 +218,8 @@ describe('Integration: Image Upload Flow (T058)', () => {
     it('should reject invalid alignment values', () => {
       const props = {
         alt: 'Test',
-        align: 'invalid' as any,
-      }
+        align: 'invalid' as ImageProperties['align'],
+      } as ImageProperties
 
       const result = mediaService.validateImageProperties(props)
 
@@ -265,7 +264,7 @@ describe('Integration: Image Upload Flow (T058)', () => {
         const file = new File([new ArrayBuffer(1024)], 'test', {
           type: mimeType,
         })
-        const result = mediaService.validateFile(file, 'image' as any)
+        const result = mediaService.validateFile(file, MediaFileType.IMAGE)
         expect(result.valid).toBe(true)
       })
     })
@@ -275,7 +274,7 @@ describe('Integration: Image Upload Flow (T058)', () => {
         type: 'text/plain',
       })
 
-      const result = mediaService.validateFile(file, 'image' as any)
+      const result = mediaService.validateFile(file, MediaFileType.IMAGE)
 
       expect(result.valid).toBe(false)
       expect(result.errors[0]).toContain('不支援的檔案格式')
@@ -290,7 +289,7 @@ describe('Integration: Image Upload Flow (T058)', () => {
         { type: 'image/jpeg' }
       )
 
-      const result = mediaService.validateFile(limitFile, 'image' as any)
+      const result = mediaService.validateFile(limitFile, MediaFileType.IMAGE)
 
       expect(result.valid).toBe(true)
     })
@@ -302,7 +301,7 @@ describe('Integration: Image Upload Flow (T058)', () => {
         { type: 'image/jpeg' }
       )
 
-      const result = mediaService.validateFile(overFile, 'image' as any)
+      const result = mediaService.validateFile(overFile, MediaFileType.IMAGE)
 
       expect(result.valid).toBe(false)
       expect(result.errors[0]).toContain('檔案大小超過限制')
@@ -317,7 +316,7 @@ describe('Integration: Image Upload Flow (T058)', () => {
 
       const result = mediaService.validateFile(
         approachFile,
-        'image' as any
+        MediaFileType.IMAGE
       )
 
       expect(result.warnings.length).toBeGreaterThan(0)
@@ -366,7 +365,7 @@ describe('Integration: Image Upload Flow (T058)', () => {
 
       const validationResult = mediaService.validateFile(
         imageFile,
-        'image' as any
+        MediaFileType.IMAGE
       )
       expect(validationResult.valid).toBe(true)
 

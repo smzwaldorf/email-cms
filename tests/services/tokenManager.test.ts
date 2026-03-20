@@ -28,8 +28,11 @@ vi.mock('@/lib/supabase', () => {
 
 import { getSupabaseClient } from '@/lib/supabase'
 
+type AuthClient = ReturnType<typeof getSupabaseClient>['auth']
+
 describe('TokenManager', () => {
   const mockSupabase = getSupabaseClient()
+  const mockAuth = mockSupabase.auth as AuthClient
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -51,7 +54,7 @@ describe('TokenManager', () => {
         expires_in: 900, // 15 minutes
       }
 
-      ;(mockSupabase.auth.getSession as any).mockResolvedValueOnce({
+      vi.mocked(mockAuth.getSession).mockResolvedValueOnce({
         data: { session: mockSession },
       })
 
@@ -64,7 +67,7 @@ describe('TokenManager', () => {
     })
 
     it('should handle no existing session gracefully', async () => {
-      ;(mockSupabase.auth.getSession as any).mockResolvedValueOnce({
+      vi.mocked(mockAuth.getSession).mockResolvedValueOnce({
         data: { session: null },
       })
 
@@ -75,7 +78,7 @@ describe('TokenManager', () => {
     })
 
     it('should start auto-refresh checker on initialization', async () => {
-      ;(mockSupabase.auth.getSession as any).mockResolvedValueOnce({
+      vi.mocked(mockAuth.getSession).mockResolvedValueOnce({
         data: { session: null },
       })
 
@@ -87,7 +90,7 @@ describe('TokenManager', () => {
     })
 
     it('should handle errors during initialization gracefully', async () => {
-      ;(mockSupabase.auth.getSession as any).mockRejectedValueOnce(
+      vi.mocked(mockAuth.getSession).mockRejectedValueOnce(
         new Error('Network error')
       )
 
@@ -109,7 +112,7 @@ describe('TokenManager', () => {
         expires_in: 900,
       }
 
-      ;(mockSupabase.auth.getSession as any).mockResolvedValueOnce({
+      vi.mocked(mockAuth.getSession).mockResolvedValueOnce({
         data: { session: mockSession },
       })
 
@@ -136,11 +139,11 @@ describe('TokenManager', () => {
         expires_in: 900,
       }
 
-      ;(mockSupabase.auth.getSession as any).mockResolvedValueOnce({
+      vi.mocked(mockAuth.getSession).mockResolvedValueOnce({
         data: { session: mockSession },
       })
 
-      ;(mockSupabase.auth.refreshSession as any).mockResolvedValueOnce({
+      vi.mocked(mockAuth.refreshSession).mockResolvedValueOnce({
         data: { session: mockRefreshedSession },
       })
 
@@ -152,7 +155,7 @@ describe('TokenManager', () => {
       const token = await tokenManager.getAccessToken()
 
       expect(token).toBe('new-token')
-      expect(mockSupabase.auth.refreshSession).toHaveBeenCalled()
+      expect(mockAuth.refreshSession).toHaveBeenCalled()
     })
 
     it('should not trigger refresh when token has plenty of time', async () => {
@@ -161,7 +164,7 @@ describe('TokenManager', () => {
         expires_in: 900,
       }
 
-      ;(mockSupabase.auth.getSession as any).mockResolvedValueOnce({
+      vi.mocked(mockAuth.getSession).mockResolvedValueOnce({
         data: { session: mockSession },
       })
 
@@ -173,7 +176,7 @@ describe('TokenManager', () => {
       const token = await tokenManager.getAccessToken()
 
       expect(token).toBe('valid-token')
-      expect(mockSupabase.auth.refreshSession).not.toHaveBeenCalled()
+      expect(mockAuth.refreshSession).not.toHaveBeenCalled()
     })
   })
 
@@ -184,7 +187,7 @@ describe('TokenManager', () => {
         expires_in: 900,
       }
 
-      ;(mockSupabase.auth.getSession as any).mockResolvedValueOnce({
+      vi.mocked(mockAuth.getSession).mockResolvedValueOnce({
         data: { session: mockSession },
       })
 
@@ -208,7 +211,7 @@ describe('TokenManager', () => {
         expires_in: 900,
       }
 
-      ;(mockSupabase.auth.getSession as any).mockResolvedValueOnce({
+      vi.mocked(mockAuth.getSession).mockResolvedValueOnce({
         data: { session: mockSession },
       })
 
@@ -220,8 +223,10 @@ describe('TokenManager', () => {
 
       const tokenInfo2 = tokenManager.getTokenInfo()
 
-      expect(tokenInfo1?.expiresIn).toBeGreaterThan(tokenInfo2?.expiresIn!)
-      expect(tokenInfo1?.expiresIn! - tokenInfo2?.expiresIn!).toBeCloseTo(100, 1)
+      expect(tokenInfo1).not.toBeNull()
+      expect(tokenInfo2).not.toBeNull()
+      expect((tokenInfo1?.expiresIn ?? 0)).toBeGreaterThan(tokenInfo2?.expiresIn ?? 0)
+      expect((tokenInfo1?.expiresIn ?? 0) - (tokenInfo2?.expiresIn ?? 0)).toBeCloseTo(100, 1)
     })
   })
 
@@ -237,11 +242,11 @@ describe('TokenManager', () => {
         expires_in: 900,
       }
 
-      ;(mockSupabase.auth.getSession as any).mockResolvedValueOnce({
+      vi.mocked(mockAuth.getSession).mockResolvedValueOnce({
         data: { session: mockSession },
       })
 
-      ;(mockSupabase.auth.refreshSession as any).mockResolvedValueOnce({
+      vi.mocked(mockAuth.refreshSession).mockResolvedValueOnce({
         data: { session: mockRefreshedSession },
       })
 
@@ -249,7 +254,7 @@ describe('TokenManager', () => {
       const result = await tokenManager.forceRefresh()
 
       expect(result).toBe(true)
-      expect(mockSupabase.auth.refreshSession).toHaveBeenCalled()
+      expect(mockAuth.refreshSession).toHaveBeenCalled()
 
       const tokenInfo = tokenManager.getTokenInfo()
       expect(tokenInfo?.accessToken).toBe('new-token')
@@ -266,11 +271,11 @@ describe('TokenManager', () => {
         expires_in: 900,
       }
 
-      ;(mockSupabase.auth.getSession as any).mockResolvedValueOnce({
+      vi.mocked(mockAuth.getSession).mockResolvedValueOnce({
         data: { session: mockSession },
       })
 
-      ;(mockSupabase.auth.refreshSession as any).mockResolvedValueOnce({
+      vi.mocked(mockAuth.refreshSession).mockResolvedValueOnce({
         data: { session: mockRefreshedSession },
       })
 
@@ -285,7 +290,7 @@ describe('TokenManager', () => {
       expect(result1).toBe(true)
       expect(result2).toBe(true)
       // refreshSession should only be called once (request deduplication)
-      expect(mockSupabase.auth.refreshSession).toHaveBeenCalledTimes(1)
+      expect(mockAuth.refreshSession).toHaveBeenCalledTimes(1)
     })
 
     it('should clear tokens on fatal refresh failure', async () => {
@@ -294,12 +299,12 @@ describe('TokenManager', () => {
         expires_in: 900,
       }
 
-      ;(mockSupabase.auth.getSession as any).mockResolvedValueOnce({
+      vi.mocked(mockAuth.getSession).mockResolvedValueOnce({
         data: { session: mockSession },
       })
 
       // Use a FATAL error to verify clearing behavior
-      ;(mockSupabase.auth.refreshSession as any).mockResolvedValueOnce({
+      vi.mocked(mockAuth.refreshSession).mockResolvedValueOnce({
         data: { session: null },
         error: new Error('Invalid Refresh Token'), // Fatal error
       })
@@ -321,12 +326,12 @@ describe('TokenManager', () => {
         expires_in: 900,
       }
 
-      ;(mockSupabase.auth.getSession as any).mockResolvedValueOnce({
+      vi.mocked(mockAuth.getSession).mockResolvedValueOnce({
         data: { session: mockSession },
       })
 
       // Generic error should NOT clear the token (Resilience Policy)
-      ;(mockSupabase.auth.refreshSession as any).mockRejectedValueOnce(
+      vi.mocked(mockAuth.refreshSession).mockRejectedValueOnce(
         new Error('Network error')
       )
 
@@ -348,7 +353,7 @@ describe('TokenManager', () => {
         expires_in: 900,
       }
 
-      ;(mockSupabase.auth.getSession as any).mockResolvedValueOnce({
+      vi.mocked(mockAuth.getSession).mockResolvedValueOnce({
         data: { session: mockSession },
       })
 
@@ -369,7 +374,7 @@ describe('TokenManager', () => {
         expires_in: 900,
       }
 
-      ;(mockSupabase.auth.getSession as any).mockResolvedValueOnce({
+      vi.mocked(mockAuth.getSession).mockResolvedValueOnce({
         data: { session: mockSession },
       })
 
@@ -384,7 +389,7 @@ describe('TokenManager', () => {
         expires_in: 10, // Very short expiry
       }
 
-      ;(mockSupabase.auth.getSession as any).mockResolvedValueOnce({
+      vi.mocked(mockAuth.getSession).mockResolvedValueOnce({
         data: { session: mockSession },
       })
 
@@ -408,7 +413,7 @@ describe('TokenManager', () => {
         expires_in: 900, // 15 minutes
       }
 
-      ;(mockSupabase.auth.getSession as any).mockResolvedValueOnce({
+      vi.mocked(mockAuth.getSession).mockResolvedValueOnce({
         data: { session: mockSession },
       })
 
@@ -430,7 +435,7 @@ describe('TokenManager', () => {
         expires_in: 900,
       }
 
-      ;(mockSupabase.auth.getSession as any).mockResolvedValueOnce({
+      vi.mocked(mockAuth.getSession).mockResolvedValueOnce({
         data: { session: mockSession },
       })
 
@@ -455,7 +460,7 @@ describe('TokenManager', () => {
         expires_in: 900,
       }
 
-      ;(mockSupabase.auth.getSession as any).mockResolvedValueOnce({
+      vi.mocked(mockAuth.getSession).mockResolvedValueOnce({
         data: { session: mockSession },
       })
 

@@ -4,6 +4,8 @@ import { WeeklyReaderPage } from './WeeklyReaderPage'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import * as useFetchWeeklyHook from '@/hooks/useFetchWeekly'
 import * as useFetchArticleHook from '@/hooks/useFetchArticle'
+import type { Article, NewsletterWeek } from '@/types'
+import type { AuthUser } from '@/types/auth'
 
 // Mock child components to avoid rendering issues
 vi.mock('@/components/ArticleListView', () => ({ ArticleListView: () => <div data-testid="article-list">Article List</div> }))
@@ -52,7 +54,7 @@ import { useNavigation } from '@/context/NavigationContext'
 const mockNewsletterId = '11111111-1111-1111-1111-111111111111'
 
 // Mock data - articles now include newsletterId
-const mockArticles = [
+const mockArticles: Article[] = [
   {
     id: 'article-1',
     title: 'Article 1',
@@ -83,6 +85,23 @@ const mockArticles = [
   },
 ]
 
+const mockNewsletter: NewsletterWeek = {
+  id: mockNewsletterId,
+  weekNumber: '2025-W47',
+  isPublished: true,
+  releaseDate: '2025-11-17',
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+  articleIds: ['article-1', 'article-2'],
+  totalArticles: 2,
+}
+
+const mockAuthUser: AuthUser = {
+  id: 'user-1',
+  email: 'test@example.com',
+  role: 'parent',
+}
+
 describe('WeeklyReaderPage Short URL Logic', () => {
   const mockSetCurrentWeek = vi.fn()
   const mockSetArticleList = vi.fn()
@@ -96,17 +115,8 @@ describe('WeeklyReaderPage Short URL Logic', () => {
 
     // Mock useFetchWeekly to return articles
     vi.spyOn(useFetchWeeklyHook, 'useFetchWeekly').mockReturnValue({
-      articles: mockArticles as any,
-      newsletter: { 
-        id: mockNewsletterId,
-        weekNumber: '2025-W47', 
-        isPublished: true, 
-        releaseDate: '2025-11-17',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        articleIds: ['article-1', 'article-2'],
-        totalArticles: 2
-      } as any,
+      articles: mockArticles,
+      newsletter: mockNewsletter,
       isLoading: false,
       error: null,
       refetch: vi.fn(),
@@ -114,7 +124,7 @@ describe('WeeklyReaderPage Short URL Logic', () => {
 
     // Mock useFetchArticle with newsletterId
     vi.spyOn(useFetchArticleHook, 'useFetchArticle').mockReturnValue({
-      article: mockArticles[0] as any,
+      article: mockArticles[0],
       isLoading: false,
       error: null,
       refetch: vi.fn(),
@@ -122,10 +132,13 @@ describe('WeeklyReaderPage Short URL Logic', () => {
 
     // Mock useAuth default (authenticated)
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: 'user-1', email: 'test@example.com' } as any,
+      user: mockAuthUser,
       isAuthenticated: true,
       isLoading: false,
       signIn: vi.fn(),
+      signInWithGoogle: vi.fn(),
+      sendMagicLink: vi.fn(),
+      verifyMagicLink: vi.fn(),
       signOut: vi.fn(),
     })
 
@@ -136,7 +149,7 @@ describe('WeeklyReaderPage Short URL Logic', () => {
         currentArticleId: 'article-1',
         currentArticleOrder: 1,
         totalArticlesInWeek: 2,
-        articleList: mockArticles as any,
+        articleList: mockArticles,
         isLoading: false,
         error: undefined,
         previousArticleId: undefined,

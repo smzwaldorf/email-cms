@@ -26,6 +26,8 @@ vi.mock('@/lib/supabase', () => {
 
 import { getSupabaseClient } from '@/lib/supabase'
 
+type SignInWithOtpArgs = Parameters<ReturnType<typeof getSupabaseClient>['auth']['signInWithOtp']>[0]
+
 describe('AuthService - Magic Link with Redirect', () => {
   const mockSupabase = getSupabaseClient()
   const testEmail = 'test@example.com'
@@ -50,28 +52,28 @@ describe('AuthService - Magic Link with Redirect', () => {
 
   describe('sendMagicLink', () => {
     it('should send magic link without redirect parameter', async () => {
-      ;(mockSupabase.auth.signInWithOtp as any).mockResolvedValueOnce({ error: null })
+      vi.mocked(mockSupabase.auth.signInWithOtp).mockResolvedValueOnce({ error: null, data: {} })
 
       const result = await authService.sendMagicLink(testEmail)
 
       expect(result).toBe(true)
       expect(mockSupabase.auth.signInWithOtp).toHaveBeenCalledOnce()
 
-      const callArgs = (mockSupabase.auth.signInWithOtp as any).mock.calls[0][0]
+      const callArgs = vi.mocked(mockSupabase.auth.signInWithOtp).mock.calls[0][0] as SignInWithOtpArgs
       expect(callArgs.email).toBe(testEmail)
       expect(callArgs.options.emailRedirectTo).toContain('http://localhost:5173/auth/callback')
       expect(callArgs.options.emailRedirectTo).not.toContain('redirect_to')
     })
 
     it('should send magic link with redirect parameter', async () => {
-      ;(mockSupabase.auth.signInWithOtp as any).mockResolvedValueOnce({ error: null })
+      vi.mocked(mockSupabase.auth.signInWithOtp).mockResolvedValueOnce({ error: null, data: {} })
 
       const result = await authService.sendMagicLink(testEmail, testRedirectUrl)
 
       expect(result).toBe(true)
       expect(mockSupabase.auth.signInWithOtp).toHaveBeenCalledOnce()
 
-      const callArgs = (mockSupabase.auth.signInWithOtp as any).mock.calls[0][0]
+      const callArgs = vi.mocked(mockSupabase.auth.signInWithOtp).mock.calls[0][0] as SignInWithOtpArgs
       expect(callArgs.email).toBe(testEmail)
 
       // Check that the redirect URL includes the redirect_to parameter
@@ -81,12 +83,12 @@ describe('AuthService - Magic Link with Redirect', () => {
     })
 
     it('should properly encode redirect URL with special characters', async () => {
-      ;(mockSupabase.auth.signInWithOtp as any).mockResolvedValueOnce({ error: null })
+      vi.mocked(mockSupabase.auth.signInWithOtp).mockResolvedValueOnce({ error: null, data: {} })
 
       const redirectWithSpecialChars = '/week/2025-W43/a001?param=value&other=123'
       await authService.sendMagicLink(testEmail, redirectWithSpecialChars)
 
-      const callArgs = (mockSupabase.auth.signInWithOtp as any).mock.calls[0][0]
+      const callArgs = vi.mocked(mockSupabase.auth.signInWithOtp).mock.calls[0][0] as SignInWithOtpArgs
       const emailRedirectUrl = callArgs.options.emailRedirectTo
 
       // Verify the URL is properly encoded
@@ -97,7 +99,7 @@ describe('AuthService - Magic Link with Redirect', () => {
 
     it('should return false when magic link send fails', async () => {
       const mockError = new Error('Email service error')
-      ;(mockSupabase.auth.signInWithOtp as any).mockResolvedValueOnce({ error: mockError })
+      vi.mocked(mockSupabase.auth.signInWithOtp).mockResolvedValueOnce({ error: mockError, data: {} })
 
       const result = await authService.sendMagicLink(testEmail, testRedirectUrl)
 
@@ -105,7 +107,7 @@ describe('AuthService - Magic Link with Redirect', () => {
     })
 
     it('should handle exceptions during magic link send', async () => {
-      ;(mockSupabase.auth.signInWithOtp as any).mockRejectedValueOnce(
+      vi.mocked(mockSupabase.auth.signInWithOtp).mockRejectedValueOnce(
         new Error('Network error')
       )
 
@@ -115,12 +117,12 @@ describe('AuthService - Magic Link with Redirect', () => {
     })
 
     it('should send magic link with complex redirect URL', async () => {
-      ;(mockSupabase.auth.signInWithOtp as any).mockResolvedValueOnce({ error: null })
+      vi.mocked(mockSupabase.auth.signInWithOtp).mockResolvedValueOnce({ error: null, data: {} })
 
       const complexRedirectUrl = '/week/2025-W43/a001'
       await authService.sendMagicLink(testEmail, complexRedirectUrl)
 
-      const callArgs = (mockSupabase.auth.signInWithOtp as any).mock.calls[0][0]
+      const callArgs = vi.mocked(mockSupabase.auth.signInWithOtp).mock.calls[0][0] as SignInWithOtpArgs
       const emailRedirectUrl = callArgs.options.emailRedirectTo
 
       // Verify URL construction
@@ -132,26 +134,26 @@ describe('AuthService - Magic Link with Redirect', () => {
 
   describe('sendMagicLink - redirect URL variations', () => {
     it('should handle article short ID redirect', async () => {
-      ;(mockSupabase.auth.signInWithOtp as any).mockResolvedValueOnce({ error: null })
+      vi.mocked(mockSupabase.auth.signInWithOtp).mockResolvedValueOnce({ error: null, data: {} })
 
       const articleRedirect = '/week/2025-W43/a001'
       await authService.sendMagicLink(testEmail, articleRedirect)
 
-      const callArgs = (mockSupabase.auth.signInWithOtp as any).mock.calls[0][0]
+      const callArgs = vi.mocked(mockSupabase.auth.signInWithOtp).mock.calls[0][0] as SignInWithOtpArgs
       const url = new URL(callArgs.options.emailRedirectTo)
 
       expect(url.searchParams.get('redirect_to')).toBe(articleRedirect)
     })
 
     it('should handle different week numbers in redirect', async () => {
-      ;(mockSupabase.auth.signInWithOtp as any).mockResolvedValueOnce({ error: null })
+      vi.mocked(mockSupabase.auth.signInWithOtp).mockResolvedValue({ error: null, data: {} })
 
       const weeks = ['2025-W40', '2025-W50', '2026-W01']
       for (const week of weeks) {
         const redirect = `/week/${week}/a001`
         await authService.sendMagicLink(testEmail, redirect)
 
-        const callArgs = (mockSupabase.auth.signInWithOtp as any).mock.calls.pop()[0]
+        const callArgs = vi.mocked(mockSupabase.auth.signInWithOtp).mock.calls.pop()?.[0] as SignInWithOtpArgs
         const url = new URL(callArgs.options.emailRedirectTo)
 
         expect(url.searchParams.get('redirect_to')).toBe(redirect)
@@ -159,11 +161,11 @@ describe('AuthService - Magic Link with Redirect', () => {
     })
 
     it('should handle root path redirect', async () => {
-      ;(mockSupabase.auth.signInWithOtp as any).mockResolvedValueOnce({ error: null })
+      vi.mocked(mockSupabase.auth.signInWithOtp).mockResolvedValueOnce({ error: null, data: {} })
 
       await authService.sendMagicLink(testEmail, '/week/2025-W43')
 
-      const callArgs = (mockSupabase.auth.signInWithOtp as any).mock.calls[0][0]
+      const callArgs = vi.mocked(mockSupabase.auth.signInWithOtp).mock.calls[0][0] as SignInWithOtpArgs
       const url = new URL(callArgs.options.emailRedirectTo)
 
       expect(url.searchParams.get('redirect_to')).toBe('/week/2025-W43')
@@ -173,8 +175,9 @@ describe('AuthService - Magic Link with Redirect', () => {
   describe('sendMagicLink - error handling', () => {
     it('should log error when Supabase fails', async () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-      ;(mockSupabase.auth.signInWithOtp as any).mockResolvedValueOnce({
+      vi.mocked(mockSupabase.auth.signInWithOtp).mockResolvedValueOnce({
         error: { message: 'Email not sent' },
+        data: {},
       })
 
       await authService.sendMagicLink(testEmail, testRedirectUrl)
@@ -185,7 +188,7 @@ describe('AuthService - Magic Link with Redirect', () => {
 
     it('should log when redirect URL is provided', async () => {
       const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-      ;(mockSupabase.auth.signInWithOtp as any).mockResolvedValueOnce({ error: null })
+      vi.mocked(mockSupabase.auth.signInWithOtp).mockResolvedValueOnce({ error: null, data: {} })
 
       await authService.sendMagicLink(testEmail, testRedirectUrl)
 

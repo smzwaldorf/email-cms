@@ -251,7 +251,7 @@ describe('Phase 5: YouTube Video Embedding - Feature Verification (T066-T068)', 
         ]
 
         untrustedInputs.forEach((input) => {
-          // @ts-ignore - testing untrusted input
+          // @ts-expect-error - testing untrusted input
           const result = isValidYouTubeUrl(input)
           expect(typeof result).toBe('boolean')
         })
@@ -318,7 +318,7 @@ describe('Phase 5: YouTube Video Embedding - Feature Verification (T066-T068)', 
         { size: '1920px', name: 'Desktop' },
       ]
 
-      deviceSizes.forEach(({ size, name }) => {
+      deviceSizes.forEach(({ size, name: _name }) => {
         const { container } = render(<VideoEmbed videoId="dQw4w9WgXcQ" width={size} />)
         const embeds = container.querySelectorAll('[data-testid="video-embed"]')
         expect(embeds.length).toBeGreaterThan(0)

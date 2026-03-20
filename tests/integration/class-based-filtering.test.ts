@@ -289,7 +289,6 @@ describe('Class-Based Article Filtering (US3)', () => {
     })
 
     it('should show articles assigned to selected class', async () => {
-      const selectedClass = 'B1'
       const articleCount = 2 // Public + B1-specific
       expect(articleCount).toBe(2)
     })
@@ -372,7 +371,7 @@ describe('Class-Based Article Filtering (US3)', () => {
 
   describe('Error Scenarios', () => {
     it('should handle family with no children gracefully', async () => {
-      const noChildren: any[] = []
+      const noChildren: unknown[] = []
       expect(noChildren).toHaveLength(0)
     })
 

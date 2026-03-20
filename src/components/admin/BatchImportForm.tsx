@@ -36,14 +36,14 @@ function parseCSV(csvText: string): string[][] {
  * Convert CSV rows to objects with headers
  * 將 CSV 行轉換為帶標題的物件
  */
-function csvToObjects(rows: string[][]): Record<string, any>[] {
+function csvToObjects(rows: string[][]): Record<string, string>[] {
   if (rows.length < 2) {
     return []
   }
 
   const headers = rows[0]
   const objects = rows.slice(1).map((row) => {
-    const obj: Record<string, any> = {}
+    const obj: Record<string, string> = {}
     headers.forEach((header, index) => {
       obj[header] = row[index] || ''
     })
@@ -61,7 +61,7 @@ export function BatchImportForm({
   onValidationComplete,
   disabled = false,
 }: BatchImportFormProps) {
-  const [csvRows, setCSVRows] = useState<Record<string, any>[]>([])
+  const [csvRows, setCSVRows] = useState<Record<string, string>[]>([])
   const [validation, setValidation] = useState<BatchValidationResult | null>(null)
   const [importResult, setImportResult] = useState<BatchImportResult | null>(null)
   const [isValidating, setIsValidating] = useState(false)

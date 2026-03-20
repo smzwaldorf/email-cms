@@ -1,6 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { analyticsAggregator } from '@/services/analyticsAggregator'
 
+type QueryResult<T> = { data: T; error: null }
+type QueryResolver<T> = (value: QueryResult<T>) => unknown
+
+const resolveQuery =
+  <T>(data: T) =>
+  (resolve: QueryResolver<T>) =>
+    resolve({ data, error: null })
+
 // Mock Supabase client
 const mockInsert = vi.fn()
 const mockSelect = vi.fn()
@@ -13,7 +21,7 @@ const mockOrder = vi.fn()
 const mockLimit = vi.fn()
 const mockIn = vi.fn()
 
-const mockFrom = vi.fn((table: string) => {
+const mockFrom = vi.fn((_table: string) => {
   return {
     select: mockSelect,
     insert: mockInsert,
@@ -45,10 +53,10 @@ describe('analyticsAggregator', () => {
       order: mockOrder,
       limit: mockLimit,
       in: mockIn,
-      then: (resolve: any) => resolve({ data: [], error: null })
+      then: resolveQuery([]),
     }
 
-    mockFrom.mockReturnValue(queryBuilder as any)
+    mockFrom.mockReturnValue(queryBuilder as unknown)
     mockSelect.mockReturnValue(queryBuilder)
     mockEq.mockReturnValue(queryBuilder)
     mockGte.mockReturnValue(queryBuilder)
@@ -121,19 +129,19 @@ describe('analyticsAggregator', () => {
       delete: mockDelete,
       insert: mockInsert,
       single: mockSingle,
-      then: (resolve: any) => resolve({ data: mockEvents, error: null })
+      then: resolveQuery(mockEvents),
     }
     
-    mockSelect.mockReturnValue(queryBuilder as any)
-    mockGte.mockReturnValue(queryBuilder as any)
-    mockLte.mockReturnValue(queryBuilder as any)
+    mockSelect.mockReturnValue(queryBuilder as unknown)
+    mockGte.mockReturnValue(queryBuilder as unknown)
+    mockLte.mockReturnValue(queryBuilder as unknown)
     
     // Chain for Delete
     const deleteChain = {
       eq: mockEq,
-      then: (resolve: any) => resolve({ error: null })
+      then: resolveQuery(undefined),
     }
-    mockDelete.mockReturnValue(deleteChain as any)
+    mockDelete.mockReturnValue(deleteChain as unknown)
 
     await analyticsAggregator.generateDailySnapshot(targetDate)
 
@@ -193,40 +201,37 @@ describe('analyticsAggregator', () => {
         return eventsBuilder
       }),
       in: vi.fn(() => eventsBuilder),
-      then: (resolve: any) => {
+      then: (resolve: QueryResolver<Array<{ user_id: string } | { metadata: Record<string, unknown> }>>) => {
         if (eventType === 'email_open') {
-          return resolve({ data: [{ user_id: 'u1' }, { user_id: 'u2' }], error: null })
+          return resolveQuery([{ user_id: 'u1' }, { user_id: 'u2' }])(resolve)
         }
         if (eventType === 'link_click') {
-          return resolve({ data: [{ user_id: 'u1' }], error: null })
+          return resolveQuery([{ user_id: 'u1' }])(resolve)
         }
         if (eventType === 'page_view') {
-          return resolve({ data: [{ metadata: {} }, { metadata: {} }], error: null })
+          return resolveQuery([{ metadata: {} }, { metadata: {} }])(resolve)
         }
         if (eventType === 'session_end') {
-          return resolve({
-            data: [
-              { metadata: { time_spent_seconds: 30 } },
-              { metadata: { time_spent_seconds: 90 } },
-            ],
-            error: null,
-          })
+          return resolveQuery([
+            { metadata: { time_spent_seconds: 30 } },
+            { metadata: { time_spent_seconds: 90 } },
+          ])(resolve)
         }
-        return resolve({ data: [], error: null })
+        return resolveQuery([])(resolve)
       },
     }
     eventsBuilder.select.mockReturnValue(eventsBuilder)
 
     mockFrom.mockImplementation((table: string) => {
       if (table === 'analytics_events') {
-        return eventsBuilder as any
+        return eventsBuilder as unknown
       }
       return {
         select: vi.fn(),
         eq: vi.fn(),
         single: vi.fn(),
-        then: (resolve: any) => resolve({ data: [], error: null }),
-      } as any
+        then: resolveQuery([]),
+      } as unknown
     })
 
     const metrics = await analyticsAggregator.getNewsletterMetrics(mockNewsletterId)
@@ -260,7 +265,7 @@ describe('analyticsAggregator', () => {
         insert: vi.fn(),
         delete: vi.fn(),
         single: vi.fn().mockResolvedValue({ data: { id: newsletterId }, error: null }),
-        then: (cb: any) => cb({ data: mockSnapshots, error: null })
+        then: resolveQuery(mockSnapshots),
     }
     snapshotBuilder.select.mockReturnValue(snapshotBuilder)
     snapshotBuilder.eq.mockReturnValue(snapshotBuilder)
@@ -273,7 +278,7 @@ describe('analyticsAggregator', () => {
         eq: vi.fn(),
         order: vi.fn(),
         single: vi.fn().mockResolvedValue({ data: { id: newsletterId }, error: null }),
-        then: (cb: any) => cb({ data: mockJunctionData, error: null })
+        then: resolveQuery(mockJunctionData),
     }
     junctionBuilder.select.mockReturnValue(junctionBuilder)
     junctionBuilder.eq.mockReturnValue(junctionBuilder)
@@ -284,17 +289,17 @@ describe('analyticsAggregator', () => {
         select: vi.fn(),
         eq: vi.fn(),
         single: vi.fn().mockResolvedValue({ data: { id: newsletterId }, error: null }),
-        then: (cb: any) => cb({ data: { id: newsletterId }, error: null })
+        then: resolveQuery({ id: newsletterId }),
     }
     newsletterBuilder.select.mockReturnValue(newsletterBuilder)
     newsletterBuilder.eq.mockReturnValue(newsletterBuilder)
 
     // Override mockFrom to separate tables
     mockFrom.mockImplementation((table) => {
-        if (table === 'analytics_snapshots') return snapshotBuilder as any
-        if (table === 'newsletter_articles') return junctionBuilder as any
-        if (table === 'newsletters') return newsletterBuilder as any
-        return snapshotBuilder as any
+        if (table === 'analytics_snapshots') return snapshotBuilder as unknown
+        if (table === 'newsletter_articles') return junctionBuilder as unknown
+        if (table === 'newsletters') return newsletterBuilder as unknown
+        return snapshotBuilder as unknown
     })
 
     const result = await analyticsAggregator.getArticleStatsWithFallback(newsletterId)
@@ -322,7 +327,7 @@ describe('analyticsAggregator', () => {
         select: vi.fn(),
         eq: vi.fn(),
         single: vi.fn().mockResolvedValue({ data: { id: newsletterId }, error: null }),
-        then: (cb: any) => cb({ data: { id: newsletterId }, error: null })
+        then: resolveQuery({ id: newsletterId }),
     }
     newsletterBuilder.select.mockReturnValue(newsletterBuilder)
     newsletterBuilder.eq.mockReturnValue(newsletterBuilder)
@@ -334,7 +339,7 @@ describe('analyticsAggregator', () => {
         insert: vi.fn(),
         delete: vi.fn(),
         single: vi.fn().mockResolvedValue({ data: { id: newsletterId }, error: null }),
-        then: (cb: any) => cb({ data: [], error: null })
+        then: resolveQuery([]),
     }
     emptySnapshotBuilder.select.mockReturnValue(emptySnapshotBuilder)
     emptySnapshotBuilder.eq.mockReturnValue(emptySnapshotBuilder)
@@ -349,7 +354,7 @@ describe('analyticsAggregator', () => {
         insert: vi.fn(),
         delete: vi.fn(),
         single: vi.fn().mockResolvedValue({ data: { id: newsletterId }, error: null }),
-        then: (cb: any) => cb({ data: [], error: null })
+        then: resolveQuery([]),
     }
     rawEventsBuilder.select.mockReturnValue(rawEventsBuilder)
     rawEventsBuilder.eq.mockReturnValue(rawEventsBuilder)
@@ -359,10 +364,10 @@ describe('analyticsAggregator', () => {
 
     // Override mockFrom
     mockFrom.mockImplementation((table) => {
-        if (table === 'newsletters') return newsletterBuilder as any
-        if (table === 'analytics_snapshots') return emptySnapshotBuilder as any
-        if (table === 'analytics_events') return rawEventsBuilder as any
-        return rawEventsBuilder as any
+        if (table === 'newsletters') return newsletterBuilder as unknown
+        if (table === 'analytics_snapshots') return emptySnapshotBuilder as unknown
+        if (table === 'analytics_events') return rawEventsBuilder as unknown
+        return rawEventsBuilder as unknown
     })
     
     await analyticsAggregator.getArticleStatsWithFallback(newsletterId)

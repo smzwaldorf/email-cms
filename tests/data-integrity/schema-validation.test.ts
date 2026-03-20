@@ -17,6 +17,9 @@ import type { ArticleRow, ClassRow } from '@/types/database'
 import { ArticleService } from '@/services/ArticleService'
 import { ClassService } from '@/services/ClassService'
 
+type CreateArticleInput = Parameters<typeof ArticleService.createArticle>[0]
+type UpdateArticleResult = Awaited<ReturnType<typeof ArticleService.updateArticle>>
+
 // Mock services
 vi.mock('@/services/ArticleService')
 vi.mock('@/services/WeekService')
@@ -67,7 +70,7 @@ describe('Data Integrity & Schema Validation', () => {
             title: '', // Empty title - should fail
             content: 'Content',
             visibilityType: 'public',
-          } as any)
+          } as CreateArticleInput)
         ).rejects.toThrow('MISSING_REQUIRED_FIELD')
       })
 
@@ -80,7 +83,7 @@ describe('Data Integrity & Schema Validation', () => {
             title: '', // Empty title - should fail
             content: 'Content',
             visibilityType: 'public',
-          } as any)
+          } as CreateArticleInput)
         ).rejects.toThrow('MISSING_REQUIRED_FIELD')
       })
 
@@ -103,7 +106,7 @@ describe('Data Integrity & Schema Validation', () => {
           title: 'Article 1',
           content: 'Content',
           visibilityType: 'public',
-        } as any)
+        } as CreateArticleInput)
 
         // The article order uniqueness is now enforced in the newsletter_articles junction table
         // Duplicate article order in the same newsletter should fail
@@ -115,7 +118,7 @@ describe('Data Integrity & Schema Validation', () => {
             title: 'Article 2',
             content: 'Content',
             visibilityType: 'public',
-          } as any)
+          } as CreateArticleInput)
         ).rejects.toThrow('DUPLICATE_ARTICLE_ORDER')
       })
 
@@ -129,7 +132,7 @@ describe('Data Integrity & Schema Validation', () => {
           title: 'Article 1',
           content: 'Content',
           visibilityType: 'public',
-        } as any)
+        } as CreateArticleInput)
 
         // Same order in different newsletter should be allowed (via junction table)
         vi.mocked(ArticleService.createArticle).mockResolvedValueOnce({
@@ -141,7 +144,7 @@ describe('Data Integrity & Schema Validation', () => {
           title: 'Article 2',
           content: 'Content',
           visibilityType: 'public',
-        } as any)
+        } as CreateArticleInput)
 
         expect(article2.id).toBe('article-2')
       })
@@ -171,8 +174,8 @@ describe('Data Integrity & Schema Validation', () => {
           ArticleService.createArticle({
             title: 'Article',
             content: 'Content',
-            visibilityType: 'invalid_type' as any, // Invalid!
-          } as any)
+            visibilityType: 'invalid_type' as unknown as CreateArticleInput['visibilityType'], // Invalid!
+          } as CreateArticleInput)
         ).rejects.toThrow('INVALID_VISIBILITY_TYPE')
       })
 
@@ -186,7 +189,7 @@ describe('Data Integrity & Schema Validation', () => {
             content: 'Content',
             visibilityType: 'class_restricted',
             restrictedToClasses: [], // Empty!
-          } as any)
+          } as CreateArticleInput)
         ).rejects.toThrow('EMPTY_CLASS_RESTRICTION')
       })
 
@@ -202,7 +205,7 @@ describe('Data Integrity & Schema Validation', () => {
           content: 'Content',
           visibilityType: 'public',
           restrictedToClasses: null,
-        } as any)
+        } as CreateArticleInput)
 
         expect(article.visibility_type).toBe('public')
         expect(article.restricted_to_classes).toBeNull()
@@ -277,7 +280,7 @@ describe('Data Integrity & Schema Validation', () => {
         title: 'Test Article',
         content: 'Content',
         visibilityType: 'public',
-      } as any)
+      } as CreateArticleInput)
 
       // Verify article created
       expect(article.id).toBeDefined()
@@ -411,7 +414,7 @@ describe('Data Integrity & Schema Validation', () => {
 
       vi.mocked(ArticleService.updateArticle).mockResolvedValue({
         ...mockArticle,
-      } as any)
+      } as UpdateArticleResult)
 
       await Promise.all([
         ArticleService.updateArticle('article-1', { title: 'Updated 1' }),
@@ -530,7 +533,7 @@ describe('Data Integrity & Schema Validation', () => {
         title: 'Long Article',
         content: longContent,
         visibilityType: 'public',
-      } as any)
+      } as CreateArticleInput)
 
       expect(article.content.length).toBe(longContent.length)
     })
@@ -547,7 +550,7 @@ describe('Data Integrity & Schema Validation', () => {
         title: 'Special Characters Article',
         content: specialContent,
         visibilityType: 'public',
-      } as any)
+      } as CreateArticleInput)
 
       expect(article.content).toBe(specialContent)
     })
@@ -577,7 +580,7 @@ describe('Data Integrity & Schema Validation', () => {
         title: 'Article',
         content: 'Content',
         visibilityType: 'public',
-      } as any)
+      } as CreateArticleInput)
 
       expect(article.id).toBeDefined()
     })

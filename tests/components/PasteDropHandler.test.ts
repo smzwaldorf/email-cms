@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { PasteDropHandler } from '@/components/tiptap-templates/simple/extensions/PasteDropHandler'
 
 describe('PasteDropHandler Extension', () => {

@@ -16,6 +16,18 @@ interface PerformanceMetrics {
   totalTime: number
 }
 
+type NewsletterRecord = {
+  id: string
+  weekNumber: string
+  publishDate: string
+  status: string
+  articleCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+type NewsletterSortKey = 'week' | 'date' | 'articles'
+
 // Mock data generator
 const generateMockNewsletters = (count: number) => {
   const newsletters = []
@@ -90,7 +102,11 @@ const measurePerformance = (fn: () => void): number => {
   return end - start
 }
 
-const filterNewsletters = (newsletters: any[], status?: string, weekRange?: { start: string; end: string }) => {
+const filterNewsletters = (
+  newsletters: NewsletterRecord[],
+  status?: string,
+  weekRange?: { start: string; end: string },
+) => {
   let filtered = newsletters
   if (status) {
     filtered = filtered.filter((n) => n.status === status)
@@ -101,14 +117,14 @@ const filterNewsletters = (newsletters: any[], status?: string, weekRange?: { st
   return filtered
 }
 
-const searchNewsletters = (newsletters: any[], query: string) => {
+const searchNewsletters = (newsletters: NewsletterRecord[], query: string) => {
   const lowerQuery = query.toLowerCase()
   return newsletters.filter((n) =>
     n.weekNumber.toLowerCase().includes(lowerQuery) || n.status.toLowerCase().includes(lowerQuery),
   )
 }
 
-const sortNewsletters = (newsletters: any[], sortBy: 'week' | 'date' | 'articles') => {
+const sortNewsletters = (newsletters: NewsletterRecord[], sortBy: NewsletterSortKey) => {
   const copy = [...newsletters]
   switch (sortBy) {
     case 'week':
@@ -271,10 +287,10 @@ describe('Admin Dashboard Performance - Search & Filter', () => {
     it('should handle complex search queries', () => {
       const newsletters = generateMockNewsletters(500)
       const time = measurePerformance(() => {
-        let results = newsletters
-        results = filterNewsletters(results, 'published')
-        results = searchNewsletters(results, 'W3')
-        expect(results.length).toBeGreaterThanOrEqual(0)
+        let filteredResults = newsletters
+        filteredResults = filterNewsletters(filteredResults, 'published')
+        filteredResults = searchNewsletters(filteredResults, 'W3')
+        expect(filteredResults.length).toBeGreaterThanOrEqual(0)
       })
       expect(time).toBeLessThan(100)
     })
@@ -357,7 +373,8 @@ describe('Admin Dashboard Performance - Combined Operations', () => {
       for (let i = 0; i < 5; i++) {
         const filtered = filterNewsletters(newsletters, ['draft', 'published', 'archived'][i % 3])
         const searched = searchNewsletters(filtered, `W${i + 1}`)
-        const sorted = sortNewsletters(searched, ['week', 'date', 'articles'][i % 3] as any)
+        const sortKey: NewsletterSortKey = ['week', 'date', 'articles'][i % 3] as NewsletterSortKey
+        const sorted = sortNewsletters(searched, sortKey)
         expect(sorted.length).toBeGreaterThanOrEqual(0)
       }
     })
@@ -393,7 +410,8 @@ describe('Admin Dashboard Performance - Memory Usage', () => {
     for (let i = 0; i < 100; i++) {
       filterNewsletters(newsletters, i % 2 === 0 ? 'published' : 'draft')
       searchNewsletters(newsletters, `W${(i % 52) + 1}`)
-      sortNewsletters(newsletters, ['week', 'date', 'articles'][i % 3] as any)
+      const sortKey: NewsletterSortKey = ['week', 'date', 'articles'][i % 3] as NewsletterSortKey
+      sortNewsletters(newsletters, sortKey)
     }
 
     // If we get here without running out of memory, test passes

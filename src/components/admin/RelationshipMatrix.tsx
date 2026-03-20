@@ -8,7 +8,7 @@
  * - Validate one-to-many and many-to-one constraints
  */
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import type { AdminUser } from '@/types/admin'
 
 export interface RelationshipMatrixProps {

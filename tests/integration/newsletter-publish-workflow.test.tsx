@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import { NewsletterTable } from '@/components/admin/NewsletterTable'
@@ -219,14 +219,13 @@ describe('Newsletter Publish Workflow', () => {
 
     it('calls onPublish when publish action is triggered', async () => {
       const onPublish = vi.fn()
-      const onArchive = vi.fn()
 
       const { container } = render(
         <BrowserRouter>
           <NewsletterTable
             newsletters={mockNewsletters}
             onPublish={onPublish}
-            onArchive={onArchive}
+            onArchive={vi.fn()}
           />
         </BrowserRouter>
       )
@@ -273,7 +272,6 @@ describe('Newsletter Publish Workflow', () => {
   describe('Complete Publish Workflow', () => {
     it('should complete full workflow: draft -> publish -> archive', async () => {
       const onPublish = vi.fn().mockResolvedValue(undefined)
-      const onArchive = vi.fn().mockResolvedValue(undefined)
       const onCancel = vi.fn()
 
       // Step 1: Display draft newsletter with publish button

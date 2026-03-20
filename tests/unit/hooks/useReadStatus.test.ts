@@ -21,11 +21,11 @@ describe('useReadStatus', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-        (useAuth as any).mockReturnValue({ user: { id: mockUserId } })
+        vi.mocked(useAuth).mockReturnValue({ user: { id: mockUserId } } as ReturnType<typeof useAuth>)
     })
 
     it('should fetch initial read status on mount', async () => {
-        (trackingService.getReadArticles as any).mockResolvedValue(['art-1', 'art-2'])
+        vi.mocked(trackingService.getReadArticles).mockResolvedValue(['art-1', 'art-2'])
 
         const { result } = renderHook(() => useReadStatus(mockWeekNumber))
 
@@ -44,7 +44,7 @@ describe('useReadStatus', () => {
     })
 
     it('should allow optimistic marking as read', async () => {
-        (trackingService.getReadArticles as any).mockResolvedValue([])
+        vi.mocked(trackingService.getReadArticles).mockResolvedValue([])
 
         const { result } = renderHook(() => useReadStatus(mockWeekNumber))
 
@@ -61,7 +61,7 @@ describe('useReadStatus', () => {
     })
 
     it('should handle anonymous user (no fetch)', () => {
-        (useAuth as any).mockReturnValue({ user: null })
+        vi.mocked(useAuth).mockReturnValue({ user: null } as ReturnType<typeof useAuth>)
 
         const { result } = renderHook(() => useReadStatus(mockWeekNumber))
 

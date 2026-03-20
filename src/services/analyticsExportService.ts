@@ -3,41 +3,64 @@
  * Handles exporting analytics data in various formats (CSV, JSON, XLSX)
  */
 
+import type { AnalyticsMetrics } from '@/types/analytics';
+
+export interface ExportArticleRow {
+  id: string;
+  title: string;
+  clicks: number;
+  clickRate: number;
+  avgTimeSpent: number;
+}
+
+export interface ExportClassRow {
+  id: string;
+  name: string;
+  sent: number;
+  opens: number;
+  clicks: number;
+  openRate: number;
+  clickRate: number;
+  avgStayTime: number;
+}
+
+export interface ExportTrendRow {
+  week: string;
+  openRate: number;
+  clickRate: number;
+}
+
+/** Dashboard metrics shape may include optional counts beyond AnalyticsMetrics. */
+export type MetricsExportInput = AnalyticsMetrics & {
+  sentCount?: number;
+  openCount?: number;
+  clickCount?: number;
+};
+
+export interface ArticleExportInput {
+  id: string;
+  title?: string | null;
+  clicks?: number;
+  clickRate?: number;
+  avgTimeSpent?: number;
+}
+
+export interface ClassExportInput {
+  id: string;
+  name?: string | null;
+  sent?: number;
+  opens?: number;
+  clicks?: number;
+  openRate?: number;
+  clickRate?: number;
+  avgStayTime?: number;
+}
+
 export interface ExportData {
-  metrics?: {
-    openRate: number;
-    clickRate: number;
-    totalViews: number;
-    avgTimeSpent: number;
-    sentCount?: number;
-    openCount?: number;
-    clickCount?: number;
-  };
-  articles?: Array<{
-    id: string;
-    title: string;
-    clicks: number;
-    clickRate: number;
-    avgTimeSpent: number;
-    [key: string]: any;
-  }>;
-  classes?: Array<{
-    id: string;
-    name: string;
-    sent: number;
-    opens: number;
-    clicks: number;
-    openRate: number;
-    clickRate: number;
-    avgStayTime: number;
-    [key: string]: any;
-  }>;
-  trends?: Array<{
-    week: string;
-    openRate: number;
-    clickRate: number;
-    [key: string]: any;
-  }>;
+  metrics?: MetricsExportInput;
+  articles?: ExportArticleRow[];
+  classes?: ExportClassRow[];
+  trends?: ExportTrendRow[];
   weekNumber?: string;
   exportDate?: string;
 }
@@ -192,7 +215,7 @@ export const analyticsExportService = {
 
       /*
       // Full XLSX implementation (requires exceljs)
-      let ExcelJS: any;
+      let ExcelJS;
       try {
         const excelModule = require('exceljs');
         ExcelJS = excelModule.default || excelModule;
@@ -304,7 +327,7 @@ export const analyticsExportService = {
   /**
    * Format metrics for export
    */
-  formatMetricsForExport(metrics: any): ExportData['metrics'] {
+  formatMetricsForExport(metrics: MetricsExportInput | null | undefined): ExportData['metrics'] {
     return {
       openRate: metrics?.openRate || 0,
       clickRate: metrics?.clickRate || 0,
@@ -319,7 +342,7 @@ export const analyticsExportService = {
   /**
    * Format articles for export
    */
-  formatArticlesForExport(articles: any[]): ExportData['articles'] {
+  formatArticlesForExport(articles: ArticleExportInput[]): ExportData['articles'] {
     return articles.map(article => ({
       id: article.id,
       title: article.title || 'Untitled',
@@ -332,7 +355,7 @@ export const analyticsExportService = {
   /**
    * Format classes for export
    */
-  formatClassesForExport(classes: any[]): ExportData['classes'] {
+  formatClassesForExport(classes: ClassExportInput[]): ExportData['classes'] {
     return classes.map(cls => ({
       id: cls.id,
       name: cls.name || 'Unknown',

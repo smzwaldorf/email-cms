@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { adminService, AdminServiceError } from '@/services/adminService'
 
+type QueryResolver<T> = (value: { data: T; error: null | { message?: string } }) => unknown
+
 const mockBuilder = {
   select: vi.fn().mockReturnThis(),
   insert: vi.fn().mockReturnThis(),
@@ -11,7 +13,7 @@ const mockBuilder = {
   ilike: vi.fn().mockReturnThis(),
   single: vi.fn().mockReturnThis(),
   maybeSingle: vi.fn().mockReturnThis(),
-  then: vi.fn((resolve: any) => resolve({ data: [], error: null })),
+  then: vi.fn((resolve: QueryResolver<unknown[]>) => resolve({ data: [], error: null })),
 }
 
 const mockSupabase = {
@@ -25,14 +27,16 @@ vi.mock('@/lib/supabase', () => ({
 describe('AdminService family management', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    Object.values(mockBuilder).forEach((mock: any) => {
+    Object.values(mockBuilder).forEach((mock) => {
       if (mock.mockReturnThis) mock.mockReturnThis()
     })
-    mockBuilder.then.mockImplementation((resolve: any) => resolve({ data: [], error: null }))
+    mockBuilder.then.mockImplementation((resolve: QueryResolver<unknown[]>) =>
+      resolve({ data: [], error: null })
+    )
   })
 
   it('fetchFamilies defaults to active-only filter', async () => {
-    mockBuilder.then.mockImplementation((resolve: any) =>
+    mockBuilder.then.mockImplementation((resolve: QueryResolver<Array<Record<string, unknown>>>) =>
       resolve({
         data: [
           {
@@ -58,7 +62,7 @@ describe('AdminService family management', () => {
   })
 
   it('fetchFamilies includeInactive skips active-only filter', async () => {
-    mockBuilder.then.mockImplementation((resolve: any) =>
+    mockBuilder.then.mockImplementation((resolve: QueryResolver<Array<Record<string, unknown>>>) =>
       resolve({
         data: [
           {
@@ -90,8 +94,8 @@ describe('AdminService family management', () => {
 
   it('createFamily rejects duplicate guardian email', async () => {
     mockBuilder.then
-      .mockImplementationOnce((resolve: any) => resolve({ data: [], error: null })) // code check
-      .mockImplementationOnce((resolve: any) =>
+      .mockImplementationOnce((resolve: QueryResolver<unknown[]>) => resolve({ data: [], error: null })) // code check
+      .mockImplementationOnce((resolve: QueryResolver<Array<{ id: string }>>) =>
         resolve({ data: [{ id: 'existing-family' }], error: null }) // email check
       )
 
@@ -102,7 +106,7 @@ describe('AdminService family management', () => {
 
   it('updateFamily updates metadata successfully', async () => {
     mockBuilder.then
-      .mockImplementationOnce((resolve: any) =>
+      .mockImplementationOnce((resolve: QueryResolver<Record<string, unknown>>) =>
         resolve({
           data: {
             id: 'family-1',
@@ -118,9 +122,9 @@ describe('AdminService family management', () => {
           error: null,
         })
       )
-      .mockImplementationOnce((resolve: any) => resolve({ data: [], error: null })) // code check
-      .mockImplementationOnce((resolve: any) => resolve({ data: [], error: null })) // email check
-      .mockImplementationOnce((resolve: any) =>
+      .mockImplementationOnce((resolve: QueryResolver<unknown[]>) => resolve({ data: [], error: null })) // code check
+      .mockImplementationOnce((resolve: QueryResolver<unknown[]>) => resolve({ data: [], error: null })) // email check
+      .mockImplementationOnce((resolve: QueryResolver<Record<string, unknown>>) =>
         resolve({
           data: {
             id: 'family-1',
@@ -136,7 +140,7 @@ describe('AdminService family management', () => {
           error: null,
         })
       )
-      .mockImplementationOnce((resolve: any) => resolve({ data: null, error: null })) // audit insert
+      .mockImplementationOnce((resolve: QueryResolver<null>) => resolve({ data: null, error: null })) // audit insert
 
     const result = await adminService.updateFamily('family-1', {
       name: 'Smith Updated',
@@ -158,7 +162,7 @@ describe('AdminService family management', () => {
 
   it('deactivateFamily performs soft lifecycle update', async () => {
     mockBuilder.then
-      .mockImplementationOnce((resolve: any) =>
+      .mockImplementationOnce((resolve: QueryResolver<Record<string, unknown>>) =>
         resolve({
           data: {
             id: 'family-1',
@@ -173,7 +177,7 @@ describe('AdminService family management', () => {
           error: null,
         })
       )
-      .mockImplementationOnce((resolve: any) =>
+      .mockImplementationOnce((resolve: QueryResolver<Record<string, unknown>>) =>
         resolve({
           data: {
             id: 'family-1',
@@ -188,7 +192,7 @@ describe('AdminService family management', () => {
           error: null,
         })
       )
-      .mockImplementationOnce((resolve: any) => resolve({ data: null, error: null }))
+      .mockImplementationOnce((resolve: QueryResolver<null>) => resolve({ data: null, error: null }))
 
     const result = await adminService.deactivateFamily('family-1')
 
@@ -198,13 +202,13 @@ describe('AdminService family management', () => {
 
   it('addStudentToFamily rejects unknown students', async () => {
     mockBuilder.then
-      .mockImplementationOnce((resolve: any) =>
+      .mockImplementationOnce((resolve: QueryResolver<{ id: string; is_active: boolean }>) =>
         resolve({
           data: { id: 'family-1', is_active: true },
           error: null,
         })
       )
-      .mockImplementationOnce((resolve: any) =>
+      .mockImplementationOnce((resolve: QueryResolver<null>) =>
         resolve({
           data: null,
           error: { message: 'not found' },
@@ -218,34 +222,34 @@ describe('AdminService family management', () => {
 
   it('adds and removes student associations successfully', async () => {
     mockBuilder.then
-      .mockImplementationOnce((resolve: any) =>
+      .mockImplementationOnce((resolve: QueryResolver<{ id: string; is_active: boolean }>) =>
         resolve({ data: { id: 'family-1', is_active: true }, error: null })
       ) // load family
-      .mockImplementationOnce((resolve: any) =>
+      .mockImplementationOnce((resolve: QueryResolver<{ id: string }>) =>
         resolve({ data: { id: 'student-1' }, error: null })
       ) // load student
-      .mockImplementationOnce((resolve: any) =>
+      .mockImplementationOnce((resolve: QueryResolver<null>) =>
         resolve({ data: null, error: null })
       ) // existing link maybeSingle
-      .mockImplementationOnce((resolve: any) =>
+      .mockImplementationOnce((resolve: QueryResolver<null>) =>
         resolve({ data: null, error: null })
       ) // add insert
-      .mockImplementationOnce((resolve: any) =>
+      .mockImplementationOnce((resolve: QueryResolver<null>) =>
         resolve({ data: null, error: null })
       ) // add audit
-      .mockImplementationOnce((resolve: any) =>
+      .mockImplementationOnce((resolve: QueryResolver<null>) =>
         resolve({ data: null, error: null })
       ) // add student audit
-      .mockImplementationOnce((resolve: any) =>
+      .mockImplementationOnce((resolve: QueryResolver<{ id: string }>) =>
         resolve({ data: { id: 'link-1' }, error: null })
       ) // remove existing link
-      .mockImplementationOnce((resolve: any) =>
+      .mockImplementationOnce((resolve: QueryResolver<null>) =>
         resolve({ data: null, error: null })
       ) // remove delete
-      .mockImplementationOnce((resolve: any) =>
+      .mockImplementationOnce((resolve: QueryResolver<null>) =>
         resolve({ data: null, error: null })
       ) // remove audit
-      .mockImplementationOnce((resolve: any) =>
+      .mockImplementationOnce((resolve: QueryResolver<null>) =>
         resolve({ data: null, error: null })
       ) // remove student audit
 
@@ -262,25 +266,25 @@ describe('AdminService family management', () => {
 
   it('adds student class enrollment with family linkage', async () => {
     mockBuilder.then
-      .mockImplementationOnce((resolve: any) =>
+      .mockImplementationOnce((resolve: QueryResolver<{ id: string; is_active: boolean }>) =>
         resolve({ data: { id: 'student-1', is_active: true }, error: null })
       ) // student exists
-      .mockImplementationOnce((resolve: any) =>
+      .mockImplementationOnce((resolve: QueryResolver<{ id: string; is_active: boolean }>) =>
         resolve({ data: { id: 'class-1', is_active: true }, error: null })
       ) // class exists
-      .mockImplementationOnce((resolve: any) =>
+      .mockImplementationOnce((resolve: QueryResolver<{ id: string; is_active: boolean }>) =>
         resolve({ data: { id: 'family-1', is_active: true }, error: null })
       ) // family exists
-      .mockImplementationOnce((resolve: any) =>
+      .mockImplementationOnce((resolve: QueryResolver<{ id: string }>) =>
         resolve({ data: { id: 'link-1' }, error: null })
       ) // family link exists
-      .mockImplementationOnce((resolve: any) =>
+      .mockImplementationOnce((resolve: QueryResolver<null>) =>
         resolve({ data: null, error: null })
       ) // existing enrollment check
-      .mockImplementationOnce((resolve: any) =>
+      .mockImplementationOnce((resolve: QueryResolver<null>) =>
         resolve({ data: null, error: null })
       ) // insert
-      .mockImplementationOnce((resolve: any) =>
+      .mockImplementationOnce((resolve: QueryResolver<null>) =>
         resolve({ data: null, error: null })
       ) // student audit
 

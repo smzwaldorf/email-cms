@@ -4,15 +4,17 @@
  * 擴展 @tiptap/extension-youtube 以支援自訂屬性和行為
  */
 
-import Youtube from '@tiptap/extension-youtube'
+import Youtube, { type YoutubeOptions } from '@tiptap/extension-youtube'
+import type { CommandProps, Editor, RawCommands } from '@tiptap/core'
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react'
+import type { ReactNodeViewProps } from '@tiptap/react'
 import { useState, useEffect, useRef } from 'react'
 
 /**
  * YouTube 節點視圖組件
  * YouTube node view component for rendering embedded videos
  */
-function YoutubeView({ node, selected, deleteNode, editor, updateAttributes }: any) {
+function YoutubeView({ node, selected, deleteNode, editor, updateAttributes }: ReactNodeViewProps) {
   const { src, width, height, caption } = node.attrs
   const isEditable = editor?.isEditable !== false
   const [isEditingCaption, setIsEditingCaption] = useState(false)
@@ -174,7 +176,7 @@ export const TipTapYoutubeNode = Youtube.extend({
     return {
       ...this.parent?.(),
       addPasteHandler: false, // Disable automatic paste detection for YouTube URLs
-    } as any
+    } as YoutubeOptions
   },
 
   addAttributes() {
@@ -309,13 +311,13 @@ export const TipTapYoutubeNode = Youtube.extend({
     return {
       setYoutubeVideo:
         (options: { src: string; width?: string; height?: string; startTime?: number }) =>
-        ({ commands }: any) => {
+        ({ commands }: CommandProps) => {
           return commands.insertContent({
             type: this.name,
             attrs: {
               src: options.src,
-              width: (options.width || '100%') as any,
-              height: (options.height || '480') as any,
+              width: options.width || '100%',
+              height: options.height || '480',
               startTime: options.startTime || null,
             },
           })
@@ -323,7 +325,7 @@ export const TipTapYoutubeNode = Youtube.extend({
 
       updateYoutubeVideo:
         (options: { src?: string; width?: string; height?: string; startTime?: number }) =>
-        ({ commands }: any) => {
+        ({ commands }: CommandProps) => {
           return commands.updateAttributes(this.name, {
             src: options.src,
             width: options.width,
@@ -331,12 +333,12 @@ export const TipTapYoutubeNode = Youtube.extend({
             startTime: options.startTime,
           })
         },
-    }
+    } as Partial<RawCommands>
   },
 
   addKeyboardShortcuts() {
     return {
-      Backspace: ({ editor }: any) => {
+      Backspace: ({ editor }: { editor: Editor }) => {
         // 刪除選中的 YouTube 節點
         const { selection } = editor.state
         const { $from } = selection

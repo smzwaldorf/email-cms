@@ -156,8 +156,8 @@ export function FamilyForm({
       }
 
       onSave?.(familyData)
-    } catch (err: any) {
-      const error = new Error(err.message || 'Failed to save family')
+    } catch (err: unknown) {
+      const error = new Error(err instanceof Error ? err.message : 'Failed to save family')
       setSaveError(error.message)
       onError?.(error)
     } finally {

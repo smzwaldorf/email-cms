@@ -3,6 +3,26 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { AnalyticsDashboardPage } from '@/pages/AnalyticsDashboardPage';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import React from 'react';
+
+type FixedSizeListChildProps = {
+  index: number
+  style: React.CSSProperties
+}
+
+type FixedSizeListProps = {
+  children: (props: FixedSizeListChildProps) => React.ReactNode
+  itemCount: number
+  itemSize: number
+  height: number | string
+  width: number | string
+}
+
+type CountUpProps = {
+  end: number
+  suffix?: string
+  prefix?: string
+}
 
 // Mock Hooks
 const mockRefetch = vi.fn();
@@ -14,7 +34,7 @@ const mockNewsletterId2 = '22222222-2222-2222-2222-222222222222';
 
 // Mock react-window
 vi.mock('react-window', () => ({
-  FixedSizeList: ({ children, itemCount, itemSize, height, width }: any) => (
+  FixedSizeList: ({ children, itemCount, itemSize, height, width }: FixedSizeListProps) => (
     <div data-testid="virtual-list" style={{ height, width }}>
       {Array.from({ length: itemCount }).map((_, index) => (
          <div key={index}>{children({ index, style: { height: itemSize } })}</div>
@@ -31,7 +51,7 @@ vi.mock('@/hooks/useAnalyticsQuery', () => ({
         ],
         loading: false 
     })),
-    useNewsletterMetrics: vi.fn((newsletterId) => ({ 
+    useNewsletterMetrics: vi.fn((newsletterId: string | null | undefined) => ({ 
         metrics: newsletterId ? { openRate: 45.5, clickRate: 12.3, totalViews: 1200, avgTimeSpent: 185 } : null,
         loading: false,
         refetch: mockRefetch
@@ -82,12 +102,12 @@ vi.mock('@/hooks/useAnalyticsQuery', () => ({
 
 // Mock CountUp to render immediately
 vi.mock('@/components/common/CountUp', () => ({
-    CountUp: ({ end, suffix = '', prefix = '' }: any) => <span>{prefix}{end.toLocaleString()}{suffix}</span>
+    CountUp: ({ end, suffix = '', prefix = '' }: CountUpProps) => <span>{prefix}{end.toLocaleString()}{suffix}</span>
 }));
 
 // Mock AdminLayout to avoid side effects (Supabase calls, Auth)
 vi.mock('@/components/admin/AdminLayout', () => ({
-    AdminLayout: ({ children }: any) => <div>{children}</div>
+    AdminLayout: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
 }));
 
 // Setup Providers
@@ -109,7 +129,7 @@ vi.mock('@/context/AuthContext', () => ({
         checkSession: vi.fn(),
         refreshSession: vi.fn()
     }),
-    AuthContext: { Provider: ({ children }: any) => children } // Fallback if needed
+    AuthContext: { Provider: ({ children }: { children: React.ReactNode }) => children } // Fallback if needed
 }));
 
 // Import Context
@@ -216,7 +236,7 @@ describe('AnalyticsDashboardPage Integration', () => {
                 },
             ],
             loading: false,
-        } as any)
+        } as ReturnType<typeof useAnalyticsQuery.useAvailableWeeks>)
 
         renderDashboard()
 

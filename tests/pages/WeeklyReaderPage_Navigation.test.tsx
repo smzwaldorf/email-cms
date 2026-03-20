@@ -7,9 +7,28 @@ import * as useFetchArticleHook from '@/hooks/useFetchArticle'
 import PermissionService from '@/services/PermissionService'
 import ArticleService from '@/services/ArticleService'
 
+type ArticleListViewProps = {
+  disabled?: boolean
+  headerAction?: React.ReactNode
+}
+
+type ArticleEditorProps = {
+  onSave?: (values: { title: string }) => void
+}
+
+type DisabledProps = {
+  disabled?: boolean
+}
+
+type FetchWeeklyResult = ReturnType<typeof useFetchWeeklyHook.useFetchWeekly>
+type FetchArticleResult = ReturnType<typeof useFetchArticleHook.useFetchArticle>
+type AuthResult = ReturnType<typeof useAuth>
+type NavigationResult = ReturnType<typeof useNavigation>
+type ArticleByIdResult = Awaited<ReturnType<typeof ArticleService.getArticleById>>
+
 // Mock child components to verify props
 vi.mock('@/components/ArticleListView', () => ({ 
-  ArticleListView: (props: any) => (
+  ArticleListView: (props: ArticleListViewProps) => (
     <div data-testid="article-list" data-disabled={props.disabled ? 'true' : 'false'}>
       Article List
       {props.headerAction}
@@ -18,7 +37,7 @@ vi.mock('@/components/ArticleListView', () => ({
 }))
 vi.mock('@/components/ArticleContent', () => ({ ArticleContent: () => <div data-testid="article-content">Article Content</div> }))
 vi.mock('@/components/ArticleEditor', () => ({
-  ArticleEditor: (props: any) => (
+  ArticleEditor: (props: ArticleEditorProps) => (
     <div data-testid="article-editor">
       Article Editor
       <button onClick={() => props.onSave?.({ title: 'Saved Title' })}>Mock Save</button>
@@ -26,10 +45,10 @@ vi.mock('@/components/ArticleEditor', () => ({
   )
 }))
 vi.mock('@/components/NavigationBar', () => ({ 
-  NavigationBar: (props: any) => <div data-testid="nav-bar" data-disabled={props.disabled ? 'true' : 'false'}>Nav Bar</div> 
+  NavigationBar: (props: DisabledProps) => <div data-testid="nav-bar" data-disabled={props.disabled ? 'true' : 'false'}>Nav Bar</div> 
 }))
 vi.mock('@/components/SideButton', () => ({ 
-  SideButton: (props: any) => <div data-testid="side-btn" data-disabled={props.disabled ? 'true' : 'false'}>Side Button</div> 
+  SideButton: (props: DisabledProps) => <div data-testid="side-btn" data-disabled={props.disabled ? 'true' : 'false'}>Side Button</div> 
 }))
 vi.mock('@/components/UserMenu', () => ({ UserMenu: () => <div data-testid="user-menu">User Menu</div> }))
 vi.mock('@/components/LoadingTimeout', () => ({ useLoadingTimeout: () => ({ isTimedOut: false }) }))
@@ -106,29 +125,29 @@ describe('WeeklyReaderPage Navigation', () => {
 
     // Mock useFetchWeekly
     vi.spyOn(useFetchWeeklyHook, 'useFetchWeekly').mockReturnValue({
-      articles: mockArticles as any,
-      newsletter: { totalArticles: 2 } as any,
+      articles: mockArticles as FetchWeeklyResult['articles'],
+      newsletter: { totalArticles: 2 } as FetchWeeklyResult['newsletter'],
       isLoading: false,
       error: null,
       refetch: vi.fn(),
-    })
+    } as FetchWeeklyResult)
 
     // Mock useFetchArticle
     vi.spyOn(useFetchArticleHook, 'useFetchArticle').mockReturnValue({
-      article: mockArticles[0] as any,
+      article: mockArticles[0] as FetchArticleResult['article'],
       isLoading: false,
       error: null,
       refetch: vi.fn(),
-    })
+    } as FetchArticleResult)
 
     // Mock useAuth
     vi.mocked(useAuth).mockReturnValue({
-      user: { id: '00000000-0000-0000-0000-000000000000', email: 'test@example.com' } as any,
+      user: { id: '00000000-0000-0000-0000-000000000000', email: 'test@example.com' } as AuthResult['user'],
       isAuthenticated: true,
       isLoading: false,
       signIn: vi.fn(),
       signOut: vi.fn(),
-    } as any)
+    } as AuthResult)
 
     // Mock useNavigation
     vi.mocked(useNavigation).mockReturnValue({
@@ -137,7 +156,7 @@ describe('WeeklyReaderPage Navigation', () => {
         currentArticleId: 'article-1',
         currentArticleOrder: 1,
         totalArticlesInWeek: 2,
-        articleList: mockArticles as any,
+        articleList: mockArticles as NavigationResult['navigationState']['articleList'],
         isLoading: false,
         error: undefined,
         previousArticleId: undefined,
@@ -151,16 +170,16 @@ describe('WeeklyReaderPage Navigation', () => {
       setPreviousArticleId: vi.fn(),
       setNextArticleId: mockSetNextArticleId,
       refreshArticleList: vi.fn(),
-    })
+    } as NavigationResult)
 
     // Mock PermissionService
     vi.mocked(PermissionService.canEditArticle).mockResolvedValue(true)
-    vi.mocked(ArticleService.getArticleById).mockResolvedValue(mockArticles[0] as any)
+    vi.mocked(ArticleService.getArticleById).mockResolvedValue(mockArticles[0] as ArticleByIdResult)
   })
 
   const renderPage = (initialEntry: string | { pathname: string; state?: unknown } = '/newsletter/11111111-1111-1111-1111-111111111111') => {
     return render(
-      <MemoryRouter initialEntries={[initialEntry as any]}>
+      <MemoryRouter initialEntries={[initialEntry]}>
         <Routes>
           <Route path="/newsletter/:newsletterId" element={<WeeklyReaderPage />} />
         </Routes>

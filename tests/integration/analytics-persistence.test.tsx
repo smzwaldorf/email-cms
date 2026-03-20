@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { AnalyticsDashboardPage } from '@/pages/AnalyticsDashboardPage';
 import { AnalyticsProvider } from '@/context/AnalyticsContext';
@@ -32,7 +32,7 @@ vi.mock('@/hooks/useAnalyticsQuery', () => ({
 
 // Mock AdminLayout
 vi.mock('@/components/admin/AdminLayout', () => ({
-    AdminLayout: ({ children }: any) => <div>{children}</div>
+    AdminLayout: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
 }));
 
 // Mock Components to avoid rendering noise

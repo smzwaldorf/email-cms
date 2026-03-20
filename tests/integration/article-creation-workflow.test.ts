@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import type { ArticleRow, NewsletterWeekRow } from '@/types/database'
+import type { ArticleRow } from '@/types/database'
 
 // Mock database
 vi.mock('@/lib/supabase', () => ({

@@ -100,13 +100,13 @@ export interface ConversionResult {
  */
 export interface TipTapNode {
   type: string;
-  attrs?: Record<string, any>;
+  attrs?: Record<string, unknown>;
   content?: Array<TipTapNode | TipTapMark>;
 }
 
 export interface TipTapMark {
   type: string;
-  attrs?: Record<string, any>;
+  attrs?: Record<string, unknown>;
 }
 
 /**

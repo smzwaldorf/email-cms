@@ -8,6 +8,13 @@ import { render, screen, waitFor, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MagicLinkForm } from '@/components/MagicLinkForm'
 
+type MockStorage = Storage & {
+  getItem: ReturnType<typeof vi.fn>
+  setItem: ReturnType<typeof vi.fn>
+  removeItem: ReturnType<typeof vi.fn>
+  clear: ReturnType<typeof vi.fn>
+}
+
 // Mock useAuth hook
 const mockSendMagicLink = vi.fn()
 const mockUseAuth = vi.fn()
@@ -29,13 +36,15 @@ describe('MagicLinkForm - Redirect URL Handling', () => {
     })
 
     // Mock localStorage
-    const localStorageMock = {
+    const localStorageMock: MockStorage = {
       getItem: vi.fn(),
       setItem: vi.fn(),
       removeItem: vi.fn(),
       clear: vi.fn(),
+      length: 0,
+      key: vi.fn(),
     }
-    global.localStorage = localStorageMock as any
+    global.localStorage = localStorageMock
   })
 
   afterEach(() => {
@@ -91,7 +100,7 @@ describe('MagicLinkForm - Redirect URL Handling', () => {
 
     it('should prioritize redirectTo prop over localStorage', async () => {
       const user = userEvent.setup()
-      const localStorageMock = global.localStorage as any
+      const localStorageMock = global.localStorage as MockStorage
       localStorageMock.getItem.mockReturnValue('cached_value')
 
       render(<MagicLinkForm onSuccess={mockOnSuccess} redirectTo={testRedirectUrl} />)
@@ -111,7 +120,7 @@ describe('MagicLinkForm - Redirect URL Handling', () => {
   describe('magic link sending with cached redirect', () => {
     it('should send magic link with cached shortId and weekNumber', async () => {
       const user = userEvent.setup()
-      const localStorageMock = global.localStorage as any
+      const localStorageMock = global.localStorage as MockStorage
       localStorageMock.getItem.mockImplementation((key: string) => {
         if (key === 'pending_short_id') return 'a001'
         if (key === 'pending_week_number') return '2025-W43'
@@ -134,7 +143,7 @@ describe('MagicLinkForm - Redirect URL Handling', () => {
 
     it('should not construct redirect URL if only shortId exists without weekNumber', async () => {
       const user = userEvent.setup()
-      const localStorageMock = global.localStorage as any
+      const localStorageMock = global.localStorage as MockStorage
       localStorageMock.getItem.mockImplementation((key: string) => {
         if (key === 'pending_short_id') return 'a001'
         return null
@@ -288,7 +297,7 @@ describe('MagicLinkForm - Redirect URL Handling', () => {
 
     it('should construct redirect from localStorage and pass to sendMagicLink', async () => {
       const user = userEvent.setup()
-      const localStorageMock = global.localStorage as any
+      const localStorageMock = global.localStorage as MockStorage
       localStorageMock.getItem.mockImplementation((key: string) => {
         if (key === 'pending_short_id') return 'c001'
         if (key === 'pending_week_number') return '2025-W45'

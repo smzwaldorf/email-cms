@@ -144,7 +144,7 @@ export function UserTable({
     } else if (type === 'status') {
       setStatusFilter(value)
     } else if (type === 'search') {
-      setSearchTerm(value)
+      setSearchTerm(value ?? '')
     }
 
     // Notify parent
@@ -188,23 +188,17 @@ export function UserTable({
 
     // Apply sorting
     filtered.sort((a, b) => {
-      let aVal: any = a[sortField]
-      let bVal: any = b[sortField]
-
-      // Handle string comparison
-      if (typeof aVal === 'string') {
-        aVal = aVal.toLowerCase()
-        bVal = (bVal as string).toLowerCase()
-        return sortOrder === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal)
-      }
-
-      // Handle date comparison
       if (sortField === 'createdAt') {
-        aVal = new Date(aVal).getTime()
-        bVal = new Date(bVal).getTime()
+        const aTime = new Date(a.createdAt).getTime()
+        const bTime = new Date(b.createdAt).getTime()
+        return sortOrder === 'asc' ? aTime - bTime : bTime - aTime
       }
 
-      return sortOrder === 'asc' ? aVal - bVal : bVal - aVal
+      const aRaw = a[sortField]
+      const bRaw = b[sortField]
+      const aStr = String(aRaw).toLowerCase()
+      const bStr = String(bRaw).toLowerCase()
+      return sortOrder === 'asc' ? aStr.localeCompare(bStr) : bStr.localeCompare(aStr)
     })
 
     return filtered

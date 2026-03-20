@@ -7,6 +7,8 @@ import { AuthProvider } from '@/context/AuthContext'
 import { MemoryRouter } from 'react-router-dom'
 import React from 'react'
 
+type TrackingEvent = Parameters<typeof trackingService.logEvent>[0]
+
 // Mock the tracking service methods
 vi.mock('@/services/trackingService', () => ({
   trackingService: {
@@ -48,7 +50,7 @@ describe('E2E: Analytics Tracking Flow', () => {
         newsletter_id: mockNewsletterId,
         metadata: { source: 'email' }
     }
-    await trackingService.logEvent(openEvent as any)
+    await trackingService.logEvent(openEvent as TrackingEvent)
     expect(trackingService.logEvent).toHaveBeenCalledWith(expect.objectContaining({
         event_type: 'email_open'
     }))
@@ -60,7 +62,7 @@ describe('E2E: Analytics Tracking Flow', () => {
         newsletter_id: mockNewsletterId,
         metadata: { target_url: `/article/${mockArticle}` }
     }
-    await trackingService.logEvent(clickEvent as any)
+    await trackingService.logEvent(clickEvent as TrackingEvent)
     
     // 3. User Lands on Article Page (Frontend Hook)
     vi.useFakeTimers()

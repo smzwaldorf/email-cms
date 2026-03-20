@@ -33,6 +33,13 @@ npm test -- tests/components/ --run         # Run component tests once
 npm test -- --ui                            # Open visual test interface
 ```
 
+### Linting Requirements
+- Keep `@typescript-eslint/no-explicit-any` enabled repo-wide. Do not "fix" lint by disabling the rule globally or by adding broad file-level overrides.
+- When lint fails on typing, prefer real domain/database types from `src/types/`, or use `unknown` plus small type guards/helpers instead of `any`.
+- The repo currently uses legacy ESLint config via `.eslintrc.cjs`, so do not upgrade ESLint to v9+ without also migrating to flat config (`eslint.config.js`). Upgrading `@typescript-eslint/*` is fine, but keep ESLint on a compatible v8 release unless you are doing the config migration in the same change.
+- After lint/tooling upgrades, re-run `npm run lint` and watch for newly surfaced rules (for example unused catch variables) rather than suppressing them.
+- For Supabase query typing, prefer existing row types in `src/types/database.ts` and small local query result interfaces over `as any`.
+
 ### Reset Local Development Environment
 When you need to fully reset local Supabase data and recreate development seed data:
 

@@ -10,6 +10,7 @@ import type {
   MediaDeletePreflight,
   MediaFile,
   MediaUsageTargetType,
+  MediaVariant,
 } from '@/types/media'
 
 type RegisterUsageInput = {
@@ -731,7 +732,7 @@ export class MediaGovernanceService {
       usageMap.set(row.media_id, (usageMap.get(row.media_id) || 0) + 1)
     }
 
-    const variantsMap = new Map<string, any[]>()
+    const variantsMap = new Map<string, MediaVariant[]>()
     for (const row of variantsResult.data || []) {
       const existing = variantsMap.get(row.media_id) || []
       existing.push({
@@ -750,7 +751,7 @@ export class MediaGovernanceService {
         lastProcessedAt: row.last_processed_at ?? undefined,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
-      })
+      } satisfies MediaVariant)
       variantsMap.set(row.media_id, existing)
     }
 

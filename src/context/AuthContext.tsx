@@ -10,6 +10,7 @@ import { tokenManager } from '@/services/tokenManager'
 import { getSupabaseClient } from '@/lib/supabase'
 import { clearPermissionCache } from '@/services/PermissionService'
 import type { AuthUser } from '@/types/auth'
+import type { AuthEventRow } from '@/types/database'
 import type { RealtimePostgresInsertPayload } from '@supabase/supabase-js'
 
 export interface AuthContextType {
@@ -78,7 +79,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
 
     let unsubscribe: (() => void) | null = null
-    let realtimeChannel: ReturnType<ReturnType<typeof getSupabaseClient>['channel']> | null = null
 
     initializeAuth().then((fn) => {
       unsubscribe = fn
@@ -90,10 +90,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (unsubscribe) {
         unsubscribe()
       }
-      if (realtimeChannel) {
-        console.log('🔌 Cleaning up Realtime listener')
-        realtimeChannel.unsubscribe()
-      }
     }
   }, [])
 
@@ -102,7 +98,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const KEEP_ALIVE_INTERVAL = 5 * 60 * 1000 // 5 minutes
     let intervalId: NodeJS.Timeout | null = null
-    let isTabVisible = !document.hidden
 
     const pingSupabase = async () => {
       // Allow background pings to keep TCP connection alive
@@ -169,8 +164,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           table: 'auth_events',
           filter: `user_id=eq.${user.id}`,
         },
-        (payload: RealtimePostgresInsertPayload<any>) => {
-          const event = payload.new as { event_type: string }
+        (payload: RealtimePostgresInsertPayload<AuthEventRow>) => {
+          const event = payload.new
           if (event.event_type === 'logout') {
             console.warn('⚠️ Received force logout event from server. Signing out...')
             signOut()

@@ -1,5 +1,6 @@
 import { getSupabaseClient } from '@/lib/supabase';
 import { AnalyticsEvent } from '@/types/analytics';
+import type { TrackingMetadata } from '@/types/tracking';
 
 /**
  * Service for handling analytics events and read status.
@@ -93,7 +94,7 @@ export const trackingService = {
    * @param _sessionId
    * @param _metadata
    */
-  identifySession(_sessionId: string, _metadata?: any): void {
+  identifySession(_sessionId: string, _metadata?: TrackingMetadata): void {
     // Placeholder for potential session metadata updates if we have a sessions table
     // For now, we just pass sessionId with events.
   }

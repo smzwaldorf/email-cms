@@ -9,6 +9,8 @@ import { BrowserRouter } from 'react-router-dom'
 import { LoginPage } from '@/pages/LoginPage'
 import { useAuth } from '@/context/AuthContext'
 
+type AuthResult = ReturnType<typeof useAuth>
+
 // Mock useAuth hook
 vi.mock('@/context/AuthContext', () => ({
   useAuth: vi.fn(),
@@ -32,10 +34,10 @@ describe('LoginPage Component', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
     mockNavigate.mockClear()
-    ;(useAuth as any).mockReturnValue({
+    vi.mocked(useAuth).mockReturnValue({
       signIn: vi.fn().mockResolvedValue(true),
       isLoading: false,
-    })
+    } as AuthResult)
     // Mock WeekService to return a default latest week
     const { WeekService } = await import('@/services/WeekService')
     vi.mocked(WeekService.getLatestPublishedWeek).mockResolvedValue({
@@ -162,10 +164,10 @@ describe('LoginPage Component', () => {
 
   it('should submit form after 1 second delay when quick-fill button is clicked', async () => {
     const mockSignIn = vi.fn().mockResolvedValue(true)
-    ;(useAuth as any).mockReturnValue({
+    vi.mocked(useAuth).mockReturnValue({
       signIn: mockSignIn,
       isLoading: false,
-    })
+    } as AuthResult)
 
     render(
       <BrowserRouter>
@@ -211,10 +213,10 @@ describe('LoginPage Component', () => {
   })
 
   it('should disable quick-fill buttons when sign-in is in progress', () => {
-    ;(useAuth as any).mockReturnValue({
+    vi.mocked(useAuth).mockReturnValue({
       signIn: vi.fn(),
       isLoading: true,
-    })
+    } as AuthResult)
 
     render(
       <BrowserRouter>
@@ -228,10 +230,10 @@ describe('LoginPage Component', () => {
 
   it('should navigate to latest published week on successful login', async () => {
     const mockSignIn = vi.fn().mockResolvedValue(true)
-    ;(useAuth as any).mockReturnValue({
+    vi.mocked(useAuth).mockReturnValue({
       signIn: mockSignIn,
       isLoading: false,
-    })
+    } as AuthResult)
 
     render(
       <BrowserRouter>
@@ -254,10 +256,10 @@ describe('LoginPage Component', () => {
 
   it('should show error message on failed login', async () => {
     const mockSignIn = vi.fn().mockResolvedValue(false)
-    ;(useAuth as any).mockReturnValue({
+    vi.mocked(useAuth).mockReturnValue({
       signIn: mockSignIn,
       isLoading: false,
-    })
+    } as AuthResult)
 
     render(
       <BrowserRouter>

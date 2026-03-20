@@ -9,7 +9,7 @@
  * - SC-006: Support 104+ weeks without performance degradation
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import type { ArticleRow, ClassRow } from '@/types/database'
 
 // Mock Supabase

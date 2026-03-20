@@ -9,6 +9,8 @@ import { BrowserRouter } from 'react-router-dom'
 import { WeekSelector } from '@/components/WeekSelector'
 import { useFetchAllWeeks } from '@/hooks/useFetchAllWeeks'
 
+type FetchAllWeeksResult = ReturnType<typeof useFetchAllWeeks>
+
 // Mock useNavigate
 const mockNavigate = vi.fn()
 vi.mock('react-router-dom', async () => {
@@ -52,12 +54,12 @@ describe('WeekSelector Component', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockNavigate.mockClear()
-    ;(useFetchAllWeeks as any).mockReturnValue({
+    vi.mocked(useFetchAllWeeks).mockReturnValue({
       weeks: mockWeeks,
       isLoading: false,
       error: null,
       refetch: vi.fn(),
-    })
+    } as FetchAllWeeksResult)
   })
 
   it('should render selector button with current week', () => {
@@ -103,12 +105,12 @@ describe('WeekSelector Component', () => {
   })
 
   it('should show loading state when fetching weeks', () => {
-    ;(useFetchAllWeeks as any).mockReturnValue({
+    vi.mocked(useFetchAllWeeks).mockReturnValue({
       weeks: [],
       isLoading: true,
       error: null,
       refetch: vi.fn(),
-    })
+    } as FetchAllWeeksResult)
 
     render(
       <BrowserRouter>
@@ -124,12 +126,12 @@ describe('WeekSelector Component', () => {
 
 
   it('should disable button when no weeks are available', () => {
-    ;(useFetchAllWeeks as any).mockReturnValue({
+    vi.mocked(useFetchAllWeeks).mockReturnValue({
       weeks: [],
       isLoading: false,
       error: null,
       refetch: vi.fn(),
-    })
+    } as FetchAllWeeksResult)
 
     render(
       <BrowserRouter>

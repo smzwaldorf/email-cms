@@ -2,8 +2,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createClient } from '@supabase/supabase-js'
 
+type DenoEnv = { env: { get: (key: string) => string | undefined } }
+type CountResult = { count: number; error: null }
+type VerifyPayload = { user_id: string; newsletter_id: string }
+type RedirectResponse = { status: number; headers: { Location: string } } | { status: number; body: string }
+
 // Mock Deno environment
-globalThis.Deno = {
+;(globalThis as typeof globalThis & { Deno: DenoEnv }).Deno = {
   env: {
     get: vi.fn((key: string) => {
       if (key === 'SUPABASE_URL') return 'https://mock.supabase.co'
@@ -12,7 +17,7 @@ globalThis.Deno = {
       return undefined
     })
   }
-} as any
+}
 
 // Mock dependencies
 vi.mock('@supabase/supabase-js', () => ({
@@ -39,12 +44,12 @@ const mockSupabase = {
 const queryBuilder = {
   eq: mockEq,
   gt: mockGt,
-  then: (resolve: any) => resolve({ count: 0, error: null })
+  then: (resolve: (value: CountResult) => unknown) => resolve({ count: 0, error: null })
 }
 
 // Logic implementations (mirrors Edge Functions)
 // We define them here to unit test the LOGIC, as we can't easily import Deno files into Node Vitest
-const handlePixelLogic = async (req: Request, verifyToken: (t: string) => Promise<any>) => {
+const handlePixelLogic = async (req: Request, verifyToken: (t: string) => Promise<VerifyPayload>) => {
   const url = new URL(req.url)
   const token = url.searchParams.get("t")
 
@@ -64,7 +69,7 @@ const handlePixelLogic = async (req: Request, verifyToken: (t: string) => Promis
         .eq('event_type', 'email_open')
         .eq('user_id', user_id)
         .eq('newsletter_id', newsletter_id)
-        .gt('created_at', new Date(Date.now() - 10000).toISOString()) as any
+        .gt('created_at', new Date(Date.now() - 10000).toISOString())
 
       if (count && count > 0) {
         console.log(`Duplicate email_open skipped for user ${user_id}`)
@@ -86,7 +91,10 @@ const handlePixelLogic = async (req: Request, verifyToken: (t: string) => Promis
   return { type: 'gif', status: 200 }
 }
 
-const handleRedirectLogic = async (req: Request, verifyToken: (t: string) => Promise<any>) => {
+const handleRedirectLogic = async (
+  req: Request,
+  verifyToken: (t: string) => Promise<VerifyPayload>,
+): Promise<RedirectResponse> => {
     const url = new URL(req.url)
     const token = url.searchParams.get("t")
     const targetUrl = url.searchParams.get("url")
@@ -110,7 +118,7 @@ const handleRedirectLogic = async (req: Request, verifyToken: (t: string) => Pro
                 .eq("user_id", user_id)
                 .eq("newsletter_id", newsletter_id)
                 .eq("metadata->>target_url", targetUrl)
-                .gt("created_at", new Date(Date.now() - 10000).toISOString()) as any;
+                .gt("created_at", new Date(Date.now() - 10000).toISOString());
 
              if (count && count > 0) {
                  console.log(`Duplicate link_click skipped for user ${user_id}`)
@@ -138,7 +146,7 @@ const handleRedirectLogic = async (req: Request, verifyToken: (t: string) => Pro
 describe('Analytics API Endpoints (Logic)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    ;(createClient as any).mockReturnValue(mockSupabase)
+    vi.mocked(createClient).mockReturnValue(mockSupabase as ReturnType<typeof createClient>)
     
     mockSelect.mockReturnValue(queryBuilder)
     mockEq.mockReturnValue(queryBuilder)
@@ -168,7 +176,8 @@ describe('Analytics API Endpoints (Logic)', () => {
        const req = new Request('https://api.com/pixel?t=validToken')
        
        // Mock existing event check returning count > 0
-       queryBuilder.then = (resolve: any) => resolve({ count: 1, error: null })
+       queryBuilder.then = (resolve: (value: CountResult) => unknown) =>
+         resolve({ count: 1, error: null })
        
        await handlePixelLogic(req, verifyToken)
        
@@ -195,7 +204,8 @@ describe('Analytics API Endpoints (Logic)', () => {
                headers: { 'user-agent': 'Chrome' }
           })
           
-          queryBuilder.then = (resolve: any) => resolve({ count: 0, error: null })
+          queryBuilder.then = (resolve: (value: CountResult) => unknown) =>
+            resolve({ count: 0, error: null })
 
           const res = await handleRedirectLogic(req, verifyToken)
           

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, fireEvent, waitFor } from '@testing-library/react'
 import { RelationshipMatrix } from '@/components/admin/RelationshipMatrix'
 import type { AdminUser } from '@/types/admin'
 

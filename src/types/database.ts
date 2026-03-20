@@ -152,6 +152,22 @@ export interface UserRoleRow {
 }
 
 // ============================================================================
+// Auth events (稽核 / Realtime)
+// ============================================================================
+
+/** Row from public.auth_events (see migrations/20251128000000_create_auth_events_table.sql) */
+export interface AuthEventRow {
+  id: string;
+  user_id: string | null;
+  event_type: string;
+  auth_method?: string | null;
+  ip_address?: string | null;
+  user_agent?: string | null;
+  metadata?: Record<string, unknown> | null;
+  created_at: string;
+}
+
+// ============================================================================
 // Families (家庭)
 // ============================================================================
 

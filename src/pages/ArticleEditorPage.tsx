@@ -78,8 +78,8 @@ export function ArticleEditorPage() {
 
       setAvailableClasses(classes.map((c) => ({ id: c.id, name: c.name })))
       setAvailableFamilies(families.map((f) => ({ id: f.id, name: f.name })))
-    } catch (err: any) {
-      const message = err.message || '無法載入文章'
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '無法載入文章'
       setError(message)
       console.error('Failed to load article data:', err)
     } finally {
@@ -127,8 +127,8 @@ export function ArticleEditorPage() {
       }), {
         state: { successMessage: '文章已保存' },
       })
-    } catch (err: any) {
-      const message = err.message || '保存失敗'
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '保存失敗'
       setError(message)
       console.error('Failed to save article:', err)
     }

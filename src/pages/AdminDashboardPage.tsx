@@ -97,9 +97,9 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserAdde
       setRole('parent')
       onUserAdded()
       onClose()
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error creating user:', err)
-      setError(err.message)
+      setError(err instanceof Error ? err.message : 'Failed to create user')
     } finally {
       setIsSubmitting(false)
     }
@@ -197,9 +197,9 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, userData
 
       onUserUpdated()
       onClose()
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error updating user:', err)
-      setError(err.message)
+      setError(err instanceof Error ? err.message : 'Failed to update user')
     } finally {
       setIsSubmitting(false)
     }
@@ -487,9 +487,9 @@ export function AdminDashboardPage() {
         }),
       )
       setUserClassScopes(Object.fromEntries(classScopes))
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching users:', err)
-      setUserError(err.message)
+      setUserError(err instanceof Error ? err.message : 'Failed to fetch users')
     } finally {
       setIsUserLoading(false)
     }
@@ -508,9 +508,11 @@ export function AdminDashboardPage() {
       } else {
         setUserError('Failed to force logout user')
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error force logging out user:', err)
-      setUserError(`Failed to force logout: ${err.message}`)
+      setUserError(
+        `Failed to force logout: ${err instanceof Error ? err.message : 'unknown error'}`,
+      )
     } finally {
       setDeletingId(null)
     }
@@ -537,9 +539,11 @@ export function AdminDashboardPage() {
       setUserError(null)
       const preview = await adminService.previewBulkPermissionUpdate(selectedUserIds, [bulkRoleTarget])
       setBulkPreview(preview)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error previewing bulk role update:', err)
-      setUserError(`Failed to preview bulk update: ${err.message}`)
+      setUserError(
+        `Failed to preview bulk update: ${err instanceof Error ? err.message : 'unknown error'}`,
+      )
     } finally {
       setIsBulkPreviewLoading(false)
     }
@@ -562,9 +566,11 @@ export function AdminDashboardPage() {
         setSuccessMessage(`Bulk role update applied to ${results.length} user(s).`)
       }
       await fetchUsers()
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error applying bulk role update:', err)
-      setUserError(`Failed to apply bulk update: ${err.message}`)
+      setUserError(
+        `Failed to apply bulk update: ${err instanceof Error ? err.message : 'unknown error'}`,
+      )
     } finally {
       setIsBulkApplying(false)
     }
@@ -594,9 +600,11 @@ export function AdminDashboardPage() {
       })
       setUserClassScopes((current) => ({ ...current, [userData.id]: classIds }))
       setSuccessMessage('Class restrictions updated')
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error updating class restrictions:', err)
-      setUserError(`Failed to update class restrictions: ${err.message}`)
+      setUserError(
+        `Failed to update class restrictions: ${err instanceof Error ? err.message : 'unknown error'}`,
+      )
     } finally {
       setUpdatingId(null)
     }
@@ -629,9 +637,11 @@ export function AdminDashboardPage() {
         setUserClassScopes((current) => ({ ...current, [userId]: [] }))
       }
       setSuccessMessage('User role updated')
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error updating role:', err)
-      setUserError(`Failed to update role: ${err.message}`)
+      setUserError(
+        `Failed to update role: ${err instanceof Error ? err.message : 'unknown error'}`,
+      )
     } finally {
       setUpdatingId(null)
     }
@@ -653,9 +663,11 @@ export function AdminDashboardPage() {
 
       setUsers(users.filter(u => u.id !== userId))
       setSuccessMessage('User deleted')
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error deleting user:', err)
-      setUserError(`Failed to delete user: ${err.message}`)
+      setUserError(
+        `Failed to delete user: ${err instanceof Error ? err.message : 'unknown error'}`,
+      )
     } finally {
       setDeletingId(null)
     }

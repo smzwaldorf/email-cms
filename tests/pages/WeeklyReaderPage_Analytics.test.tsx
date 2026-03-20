@@ -2,16 +2,48 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, waitFor } from '@testing-library/react'
 import { WeeklyReaderPage } from '@/pages/WeeklyReaderPage'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import React from 'react'
 import * as useFetchWeeklyHook from '@/hooks/useFetchWeekly'
 import * as useFetchArticleHook from '@/hooks/useFetchArticle'
 import * as useAnalyticsTrackingHook from '@/hooks/useAnalyticsTracking'
 import PermissionService from '@/services/PermissionService'
 
-let lastArticleListViewProps: any = null
+type ArticleListViewProps = {
+  readArticleIds?: unknown
+}
+
+type ReaderArticle = {
+  id: string
+  title: string
+  weekNumber: string
+  newsletterId?: string
+  order: number
+  content: string
+  createdAt: string
+  updatedAt: string
+  isPublished: boolean
+  shortId: string
+}
+
+type NewsletterData = {
+  id: string
+  weekNumber: string
+  releaseDate: string
+  articleIds: string[]
+  totalArticles: number
+  isPublished: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+type FetchWeeklyResult = ReturnType<typeof useFetchWeeklyHook.useFetchWeekly>
+type FetchArticleResult = ReturnType<typeof useFetchArticleHook.useFetchArticle>
+
+let lastArticleListViewProps: ArticleListViewProps | null = null
 
 // Mock child components
 vi.mock('@/components/ArticleListView', () => ({
-  ArticleListView: (props: any) => {
+  ArticleListView: (props: ArticleListViewProps) => {
     lastArticleListViewProps = props
     return <div>Article List</div>
   }
@@ -43,7 +75,7 @@ vi.mock('@/services/ArticleService', () => ({
 
 vi.mock('@/context/AuthContext', () => ({
   useAuth: () => ({ user: { id: '00000000-0000-0000-0000-000000000000' }, isAuthenticated: true }),
-  AuthProvider: ({ children }: any) => <div>{children}</div>,
+  AuthProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
 vi.mock('@/context/NavigationContext', () => ({
@@ -60,7 +92,7 @@ vi.mock('@/context/NavigationContext', () => ({
     setArticleList: vi.fn(),
     setNextArticleId: vi.fn(),
   }),
-  NavigationProvider: ({ children }: any) => <div>{children}</div>,
+  NavigationProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
 describe('WeeklyReaderPage Analytics', () => {
@@ -76,7 +108,7 @@ describe('WeeklyReaderPage Analytics', () => {
     })
 
     // Articles now include newsletterId since useFetchArticle returns it
-    const mockArticleW48 = {
+    const mockArticleW48: ReaderArticle = {
         id: 'article-w48',
         title: 'Article W48',
         weekNumber: '2025-W48',
@@ -89,7 +121,7 @@ describe('WeeklyReaderPage Analytics', () => {
         shortId: '123'
     }
 
-    const mockArticleW47 = {
+    const mockArticleW47: ReaderArticle = {
         id: 'article-w47',
         title: 'Article W47',
         weekNumber: '2025-W47',
@@ -107,19 +139,19 @@ describe('WeeklyReaderPage Analytics', () => {
         const articleWithoutNewsletterId = { ...mockArticleW48, newsletterId: undefined }
 
         vi.spyOn(useFetchWeeklyHook, 'useFetchWeekly').mockReturnValue({
-            articles: [mockArticleW47] as any,
+            articles: [mockArticleW47] as FetchWeeklyResult['articles'],
             newsletter: null,
             isLoading: false,
             error: null,
             refetch: vi.fn(),
-        })
+        } as FetchWeeklyResult)
 
         vi.spyOn(useFetchArticleHook, 'useFetchArticle').mockReturnValue({
-            article: articleWithoutNewsletterId as any,
+            article: articleWithoutNewsletterId as FetchArticleResult['article'],
             isLoading: false,
             error: null,
             refetch: vi.fn(),
-        })
+        } as FetchArticleResult)
 
         render(
             <MemoryRouter initialEntries={['/newsletter/11111111-1111-1111-1111-111111111111']}>
@@ -146,7 +178,7 @@ describe('WeeklyReaderPage Analytics', () => {
     it('should ENABLE analytics tracking when article has newsletterId', async () => {
         // Setup: Consistent data scenario with article having newsletterId
         vi.spyOn(useFetchWeeklyHook, 'useFetchWeekly').mockReturnValue({
-            articles: [mockArticleW47] as any,
+            articles: [mockArticleW47] as FetchWeeklyResult['articles'],
             newsletter: {
                 id: mockNewsletterIdW47,
                 weekNumber: '2025-W47',
@@ -156,18 +188,18 @@ describe('WeeklyReaderPage Analytics', () => {
                 isPublished: true,
                 createdAt: '',
                 updatedAt: '',
-            } as any,
+            } as NewsletterData,
             isLoading: false,
             error: null,
             refetch: vi.fn(),
-        })
+        } as FetchWeeklyResult)
 
         vi.spyOn(useFetchArticleHook, 'useFetchArticle').mockReturnValue({
-            article: mockArticleW47 as any, // Article with newsletterId
+            article: mockArticleW47 as FetchArticleResult['article'], // Article with newsletterId
             isLoading: false,
             error: null,
             refetch: vi.fn(),
-        })
+        } as FetchArticleResult)
 
         render(
             <MemoryRouter initialEntries={['/newsletter/11111111-1111-1111-1111-111111111111']}>
@@ -195,19 +227,19 @@ describe('WeeklyReaderPage Analytics', () => {
         vi.mocked(PermissionService.canEditArticle).mockResolvedValue(true)
 
         vi.spyOn(useFetchWeeklyHook, 'useFetchWeekly').mockReturnValue({
-            articles: [draftArticle] as any,
+            articles: [draftArticle] as FetchWeeklyResult['articles'],
             newsletter: null,
             isLoading: false,
             error: null,
             refetch: vi.fn(),
-        })
+        } as FetchWeeklyResult)
 
         vi.spyOn(useFetchArticleHook, 'useFetchArticle').mockReturnValue({
-            article: draftArticle as any,
+            article: draftArticle as FetchArticleResult['article'],
             isLoading: false,
             error: null,
             refetch: vi.fn(),
-        })
+        } as FetchArticleResult)
 
         render(
             <MemoryRouter
@@ -215,7 +247,7 @@ describe('WeeklyReaderPage Analytics', () => {
                     {
                         pathname: '/newsletter/11111111-1111-1111-1111-111111111111',
                         state: { focusArticleId: 'article-w47', startInEditMode: true },
-                    } as any,
+                    },
                 ]}
             >
                 <Routes>
@@ -240,7 +272,7 @@ describe('WeeklyReaderPage Analytics', () => {
 
     it('should DISABLE analytics tracking when newsletter is draft', async () => {
         vi.spyOn(useFetchWeeklyHook, 'useFetchWeekly').mockReturnValue({
-            articles: [mockArticleW47] as any,
+            articles: [mockArticleW47] as FetchWeeklyResult['articles'],
             newsletter: {
                 id: mockNewsletterIdW47,
                 weekNumber: '2025-W47',
@@ -250,18 +282,18 @@ describe('WeeklyReaderPage Analytics', () => {
                 isPublished: false,
                 createdAt: '',
                 updatedAt: '',
-            } as any,
+            } as NewsletterData,
             isLoading: false,
             error: null,
             refetch: vi.fn(),
-        })
+        } as FetchWeeklyResult)
 
         vi.spyOn(useFetchArticleHook, 'useFetchArticle').mockReturnValue({
-            article: mockArticleW47 as any,
+            article: mockArticleW47 as FetchArticleResult['article'],
             isLoading: false,
             error: null,
             refetch: vi.fn(),
-        })
+        } as FetchArticleResult)
 
         render(
             <MemoryRouter initialEntries={['/newsletter/11111111-1111-1111-1111-111111111111']}>

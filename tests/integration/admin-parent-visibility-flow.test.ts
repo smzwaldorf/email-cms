@@ -6,6 +6,8 @@ type MockClass = { id: string; class_name: string; class_grade_year: number }
 type MockEnrollment = { family_id: string; class_id: string; student_id: string; graduated_at: string | null }
 type MockStudent = { id: string; is_active: boolean }
 type MockFamily = { id: string; is_active: boolean }
+type MockRow = Record<string, unknown>
+type QueryResult<T> = { data: T; error: null }
 type MockNewsletterArticle = {
   newsletter_id: string
   article_id: string
@@ -43,7 +45,7 @@ function createMockBuilder(tableName: string) {
     op: 'select',
   }
 
-  const builder: any = {
+  const builder = {
     select: vi.fn().mockImplementation(() => {
       state.op = 'select'
       return builder
@@ -72,8 +74,8 @@ function createMockBuilder(tableName: string) {
     limit: vi.fn().mockReturnThis(),
     single: vi.fn().mockReturnThis(),
     maybeSingle: vi.fn().mockReturnThis(),
-    then: (resolve: (value: { data: any; error: any }) => unknown) => {
-      let dataset: any[] = []
+    then: (resolve: (value: QueryResult<MockRow[]>) => unknown) => {
+      let dataset: MockRow[] = []
       if (tableName === 'classes') {
         dataset = [...mockDb.classes]
       } else if (tableName === 'student_class_enrollment') {
@@ -87,24 +89,24 @@ function createMockBuilder(tableName: string) {
       }
 
       for (const filter of state.eq) {
-        dataset = dataset.filter((row: any) => row[filter.field] === filter.value)
+        dataset = dataset.filter((row) => row[filter.field] === filter.value)
       }
       for (const filter of state.in) {
-        dataset = dataset.filter((row: any) => filter.values.includes(row[filter.field]))
+        dataset = dataset.filter((row) => filter.values.includes(row[filter.field]))
       }
       for (const filter of state.is) {
-        dataset = dataset.filter((row: any) => row[filter.field] === filter.value)
+        dataset = dataset.filter((row) => row[filter.field] === filter.value)
       }
       if (state.order) {
         const { field, ascending } = state.order
-        dataset.sort((a: any, b: any) => {
+        dataset.sort((a, b) => {
           if (a[field] === b[field]) return 0
           return ascending ? (a[field] > b[field] ? 1 : -1) : a[field] > b[field] ? -1 : 1
         })
       }
 
       if (state.op === 'update' && tableName === 'newsletter_articles' && state.updatePayload) {
-        dataset.forEach((row: any) => {
+        dataset.forEach((row) => {
           Object.assign(row, state.updatePayload)
         })
       }

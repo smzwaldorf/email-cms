@@ -75,14 +75,14 @@ export class ClassService {
       )
     }
 
-    const duplicateCode = (codeCheck.data || []).find((row: any) => row.id !== excludeClassId)
+    const duplicateCode = (codeCheck.data || []).find((row: Pick<ClassRow, 'id'>) => row.id !== excludeClassId)
     if (duplicateCode) {
       throw new ClassValidationError('Class code already exists', {
         code: '班級代碼已存在',
       })
     }
 
-    const duplicateName = (nameCheck.data || []).find((row: any) => row.id !== excludeClassId)
+    const duplicateName = (nameCheck.data || []).find((row: Pick<ClassRow, 'id'>) => row.id !== excludeClassId)
     if (duplicateName) {
       throw new ClassValidationError('Class name already exists', {
         name: '班級名稱已存在',
@@ -228,12 +228,12 @@ export class ClassService {
     try {
       const supabase = getSupabaseClient()
       let resolvedActorId = actorId ?? null
-      if (!resolvedActorId && (supabase as any).auth?.getUser) {
-        const authResult = await (supabase as any).auth.getUser()
+      if (!resolvedActorId) {
+        const authResult = await supabase.auth.getUser()
         resolvedActorId = authResult?.data?.user?.id ?? null
       }
 
-      await table('class_audit_log').insert({
+      await getSupabaseClient().from('class_audit_log').insert({
         class_id: classId,
         action,
         actor_id: resolvedActorId,

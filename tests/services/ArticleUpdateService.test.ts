@@ -5,8 +5,6 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { ArticleUpdateService } from '@/services/ArticleUpdateService'
-import { ArticleServiceError } from '@/services/ArticleService'
 import type { ArticleRow } from '@/types/database'
 
 // Mock Supabase client

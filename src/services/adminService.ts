@@ -10,6 +10,8 @@
  * - Relationship management for parent-student connections
  */
 
+import type { PostgrestError } from '@supabase/supabase-js'
+
 import { getSupabaseClient } from '@/lib/supabase'
 import { articleMediaManager } from '@/services/articleMediaManager'
 import {
@@ -36,6 +38,212 @@ import type {
   BulkPermissionApplyResult,
   AccessControlLogEntry,
 } from '@/types/admin'
+import type {
+  ArticleAuditLogRow,
+  ArticleRow,
+  ClassRow,
+  FamilyEnrollmentRow,
+  FamilyRow,
+  NewsletterRow,
+  StudentRow,
+  TeacherClassAssignmentRow,
+  UserRoleRow,
+} from '@/types/database'
+
+/** Student row shapes returned from admin student queries (includes legacy columns) */
+type StudentAdminSelectRow = Pick<StudentRow, 'id' | 'name' | 'created_at' | 'updated_at'> &
+  Partial<Pick<StudentRow, 'student_code' | 'is_active'>>
+
+/** DB row for user_role_assignments SELECT role */
+interface UserRoleAssignmentRoleRow {
+  role: string
+}
+
+/** Minimal { id } from SELECT id */
+interface IdOnlyRow {
+  id: string
+}
+
+interface TeacherClassIdRow {
+  class_id: string
+}
+
+/** article_categories / article_tags table row (snake_case) */
+interface ArticleTaxonomyDbRow {
+  id: string
+  name: string
+  description?: string | null
+  is_active?: boolean | null
+  created_at: string
+  updated_at?: string | null
+  deactivated_at?: string | null
+}
+
+/** Article row including optional denormalized columns used by admin flows */
+type AdminArticleDbRow = ArticleRow & {
+  author?: string | null
+  summary?: string | null
+  week_number?: string | null
+  article_order?: number | null
+  class_ids?: string[] | null
+  family_ids?: string[] | null
+  last_edited_by?: string | null
+  edited_at?: string | null
+  published_at?: string | null
+}
+
+interface NewsletterWithArticleCountRow extends NewsletterRow {
+  newsletter_articles?: Array<{ count?: number }>
+}
+
+/** newsletter_articles row joined with nested articles for copy / list queries */
+interface NewsletterArticleJoinRow {
+  article_order: number
+  targeting_mode?: 'shared' | 'targeted' | null
+  target_class_ids?: string[] | null
+  /** Nested article from `articles!inner` (full row / *) */
+  articles: AdminArticleDbRow
+}
+
+type NewsletterMetaSlice = Pick<NewsletterRow, 'week_number' | 'release_date' | 'status'>
+
+interface ArticleNewsletterPlacementRow {
+  article_order: number
+  newsletters?: NewsletterMetaSlice | NewsletterMetaSlice[] | null
+}
+
+interface NewsletterMembershipNested {
+  id?: string
+  week_number?: string | null
+  title?: string | null
+  is_template?: boolean | null
+}
+
+interface ArticleNewsletterMembershipRow {
+  article_id: string
+  newsletters?: NewsletterMembershipNested | NewsletterMembershipNested[] | null
+}
+
+interface ArticleCategoryAssignmentRow {
+  article_id: string
+  category_id: string
+}
+
+interface ArticleTagAssignmentRow {
+  article_id: string
+  tag_id: string
+}
+
+interface NewsletterArticleIdRow {
+  article_id: string
+}
+
+interface StudentClassPairRow {
+  student_id: string
+  class_id: string
+}
+
+interface TeacherClassPairRow {
+  class_id: string
+  teacher_id: string
+}
+
+interface ClassIdNameRow {
+  id: string
+  class_name: string
+}
+
+type ParentUserMiniRow = Pick<UserRoleRow, 'id' | 'email' | 'role'>
+
+interface StudentFamilyPairRow {
+  student_id: string
+  family_id: string
+}
+
+interface FamilyEnrollmentParentRef {
+  parent_id?: string | null
+}
+
+interface FamilyEnrollmentStudentRef {
+  student_id?: string | null
+}
+
+interface PermissionMutationAuditRow {
+  id: string
+  action: string
+  actor_id?: string | null
+  target_user_id?: string | null
+  metadata?: Record<string, unknown> | null
+  before_state?: Record<string, unknown> | null
+  after_state?: Record<string, unknown> | null
+  changed_at: string
+}
+
+interface AuthorizationDecisionTraceRow {
+  id: string
+  action: string
+  actor_id?: string | null
+  winning_role?: string | null
+  policy_version?: string | null
+  metadata?: Record<string, unknown> | null
+  reason?: string | null
+  created_at: string
+}
+
+/** user_roles row with optional columns present in some admin queries */
+type UserRolesAdminRow = UserRoleRow & {
+  display_name?: string | null
+  name?: string | null
+  status?: AdminUser['status']
+  last_login_at?: string | null
+}
+
+interface TeacherUserWithProfileRow {
+  id: string
+  email: string
+  role: string
+  created_at: string
+  updated_at: string
+  teacher_profiles?: Array<{
+    display_name?: string | null
+    status?: string | null
+    is_active?: boolean
+    deactivated_at?: string | null
+    updated_at?: string | null
+  }>
+}
+
+interface ParentStudentIdRow {
+  student_id: string
+}
+
+interface ParentStudentRelationshipPairRow {
+  parent_id: string
+  student_id: string
+}
+
+interface ArticleMediaReferenceRow {
+  media_id: string
+  reference_type?: string | null
+  position?: number | null
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function isPostgresLikeError(error: unknown): error is { code?: string; message?: string } {
+  return isRecord(error) && ('code' in error || 'message' in error)
+}
+
+function postgresErrorCode(error: unknown): string | undefined {
+  if (!isPostgresLikeError(error)) return undefined
+  return typeof error.code === 'string' ? error.code : undefined
+}
+
+function hasIsActiveField(row: { id: string }): row is { id: string; is_active: boolean } {
+  return 'is_active' in row && typeof (row as { is_active: unknown }).is_active === 'boolean'
+}
 
 /**
  * Admin Service Error
@@ -44,7 +252,7 @@ export class AdminServiceError extends Error {
   constructor(
     message: string,
     public code: string = 'ADMIN_ERROR',
-    public originalError?: Error
+    public originalError?: unknown
   ) {
     super(message)
     this.name = 'AdminServiceError'
@@ -142,8 +350,8 @@ const ARTICLE_RECYCLE_BIN_RETENTION_DAYS = 30
 class AdminService {
   private async getCurrentAuthUserId(): Promise<string | null> {
     const supabase = getSupabaseClient()
-    if (!(supabase as any).auth?.getUser) return null
-    const authResult = await (supabase as any).auth.getUser()
+    if (typeof supabase.auth?.getUser !== 'function') return null
+    const authResult = await supabase.auth.getUser()
     return authResult?.data?.user?.id ?? null
   }
 
@@ -151,9 +359,11 @@ class AdminService {
     return input.trim().toUpperCase()
   }
 
-  private isMissingRelationError(error: any): boolean {
+  private isMissingRelationError(error: unknown): boolean {
     if (!error) return false
-    return error.code === '42P01' || String(error.message || '').includes('does not exist')
+    const code = isPostgresLikeError(error) ? error.code : undefined
+    const message = isPostgresLikeError(error) ? error.message : undefined
+    return code === '42P01' || String(message || '').includes('does not exist')
   }
 
   private dedupeClassIds(classIds: string[]): string[] {
@@ -204,7 +414,7 @@ class AdminService {
       return fallbackRole ? [fallbackRole] : ['student']
     }
 
-    const roles = (data || []).map((row: any) => row.role as AccessControlRole)
+    const roles = (data || []).map((row: UserRoleAssignmentRoleRow) => row.role as AccessControlRole)
     if (roles.length === 0) {
       return fallbackRole ? [fallbackRole] : ['student']
     }
@@ -225,7 +435,7 @@ class AdminService {
       throw new AdminServiceError(
         `Failed to clear role assignments: ${deleteError.message}`,
         'UPDATE_USER_ACCESS_ERROR',
-        deleteError as any
+        deleteError
       )
     }
 
@@ -242,7 +452,7 @@ class AdminService {
       throw new AdminServiceError(
         `Failed to save role assignments: ${insertError.message}`,
         'UPDATE_USER_ACCESS_ERROR',
-        insertError as any
+        insertError
       )
     }
   }
@@ -258,11 +468,11 @@ class AdminService {
       throw new AdminServiceError(
         `Failed to fetch teacher class restrictions: ${error.message}`,
         'FETCH_USER_CLASS_SCOPE_ERROR',
-        error as any
+        error
       )
     }
 
-    return this.dedupeClassIds((data || []).map((row: any) => row.class_id))
+    return this.dedupeClassIds((data || []).map((row: TeacherClassIdRow) => row.class_id))
   }
 
   private async saveTeacherClassIdsInternal(userId: string, classIds: string[]): Promise<void> {
@@ -284,7 +494,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to remove teacher class restrictions: ${removeError.message}`,
           'UPDATE_USER_CLASS_SCOPE_ERROR',
-          removeError as any
+          removeError
         )
       }
     }
@@ -298,7 +508,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to add teacher class restrictions: ${addError.message}`,
           'UPDATE_USER_CLASS_SCOPE_ERROR',
-          addError as any
+          addError
         )
       }
     }
@@ -328,12 +538,12 @@ class AdminService {
       throw new AdminServiceError(
         `Failed to write access-control audit log: ${error.message}`,
         'ACCESS_CONTROL_AUDIT_WRITE_ERROR',
-        error as any
+        error
       )
     }
   }
 
-  private mapArticleCategoryRow(row: any): ArticleCategory {
+  private mapArticleCategoryRow(row: ArticleTaxonomyDbRow): ArticleCategory {
     return {
       id: row.id,
       name: row.name,
@@ -345,7 +555,7 @@ class AdminService {
     }
   }
 
-  private mapArticleTagRow(row: any): ArticleTag {
+  private mapArticleTagRow(row: ArticleTaxonomyDbRow): ArticleTag {
     return {
       id: row.id,
       name: row.name,
@@ -357,26 +567,26 @@ class AdminService {
     }
   }
 
-  private mapAdminArticleRow(row: any, fallbackWeekNumber: string = ''): AdminArticle {
+  private mapAdminArticleRow(row: AdminArticleDbRow, fallbackWeekNumber: string = ''): AdminArticle {
     return {
       id: row.id,
       title: row.title,
       content: row.content,
-      author: row.author_id,
-      summary: row.summary,
-      weekNumber: row.week_number || fallbackWeekNumber,
+      author: row.author_id ?? undefined,
+      summary: row.summary ?? undefined,
+      weekNumber: row.week_number ?? fallbackWeekNumber,
       order: row.article_order || 0,
       classIds: row.class_ids || [],
       familyIds: row.family_ids || [],
-      status: row.status,
+      status: row.status as AdminArticle['status'],
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       deletedAt: row.deleted_at ?? null,
       deletedBy: row.deleted_by ?? null,
       purgeScheduledAt: row.purge_scheduled_at ?? null,
-      publishedAt: row.published_at,
-      lastEditedBy: row.last_edited_by,
-      editedAt: row.edited_at,
+      publishedAt: row.published_at ?? null,
+      lastEditedBy: row.last_edited_by ?? undefined,
+      editedAt: row.edited_at ?? undefined,
     }
   }
 
@@ -468,11 +678,11 @@ class AdminService {
       throw new AdminServiceError(
         `Failed to validate taxonomy IDs: ${error.message}`,
         'ARTICLE_TAXONOMY_VALIDATION_ERROR',
-        error as any
+        error
       )
     }
 
-    const existingIds = new Set((data || []).map((row: any) => row.id))
+    const existingIds = new Set((data || []).map((row: IdOnlyRow) => row.id))
     const unknownIds = ids.filter((id) => !existingIds.has(id))
 
     if (unknownIds.length > 0) {
@@ -516,11 +726,11 @@ class AdminService {
       throw new AdminServiceError(
         `Failed to validate teacher uniqueness: ${error.message}`,
         'TEACHER_VALIDATION_ERROR',
-        error as any
+        error
       )
     }
 
-    const duplicate = (data || []).find((row: any) => row.id !== input.idToExclude)
+    const duplicate = (data || []).find((row: IdOnlyRow) => row.id !== input.idToExclude)
     if (duplicate) {
       throw new AdminServiceError(
         JSON.stringify({ fieldErrors: { email: '教師電子郵件已存在' } }),
@@ -591,11 +801,11 @@ class AdminService {
       throw new AdminServiceError(
         `Failed to validate class identity: ${codeCheck.error?.message || nameCheck.error?.message}`,
         'CLASS_VALIDATION_ERROR',
-        (codeCheck.error || nameCheck.error) as any
+        (codeCheck.error || nameCheck.error)
       )
     }
 
-    const duplicateCode = (codeCheck.data || []).find((row: any) => row.id !== input.idToExclude)
+    const duplicateCode = (codeCheck.data || []).find((row: IdOnlyRow) => row.id !== input.idToExclude)
     if (duplicateCode) {
       throw new AdminServiceError(
         JSON.stringify({ fieldErrors: { code: '班級代碼已存在' } }),
@@ -603,7 +813,7 @@ class AdminService {
       )
     }
 
-    const duplicateName = (nameCheck.data || []).find((row: any) => row.id !== input.idToExclude)
+    const duplicateName = (nameCheck.data || []).find((row: IdOnlyRow) => row.id !== input.idToExclude)
     if (duplicateName) {
       throw new AdminServiceError(
         JSON.stringify({ fieldErrors: { name: '班級名稱已存在' } }),
@@ -622,8 +832,8 @@ class AdminService {
     try {
       const supabase = getSupabaseClient()
       let resolvedActorId = actorId || null
-      if (!resolvedActorId && (supabase as any).auth?.getUser) {
-        const authResult = await (supabase as any).auth.getUser()
+      if (!resolvedActorId && typeof supabase.auth?.getUser === 'function') {
+        const authResult = await supabase.auth.getUser()
         resolvedActorId = authResult?.data?.user?.id ?? null
       }
 
@@ -692,11 +902,11 @@ class AdminService {
       throw new AdminServiceError(
         `Failed to validate family identity: ${codeCheck.error?.message || emailCheck.error?.message}`,
         'FAMILY_VALIDATION_ERROR',
-        (codeCheck.error || emailCheck.error) as any
+        (codeCheck.error || emailCheck.error)
       )
     }
 
-    const duplicateCode = (codeCheck.data || []).find((row: any) => row.id !== input.idToExclude)
+    const duplicateCode = (codeCheck.data || []).find((row: IdOnlyRow) => row.id !== input.idToExclude)
     if (duplicateCode) {
       throw new AdminServiceError(
         JSON.stringify({ fieldErrors: { name: '家族名稱已存在' } }),
@@ -704,7 +914,7 @@ class AdminService {
       )
     }
 
-    const duplicateEmail = (emailCheck.data || []).find((row: any) => row.id !== input.idToExclude)
+    const duplicateEmail = (emailCheck.data || []).find((row: IdOnlyRow) => row.id !== input.idToExclude)
     if (duplicateEmail) {
       throw new AdminServiceError(
         JSON.stringify({ fieldErrors: { guardianEmail: '監護人電子郵件已存在' } }),
@@ -713,7 +923,7 @@ class AdminService {
     }
   }
 
-  private mapFamilyRow(row: any): Family {
+  private mapFamilyRow(row: FamilyRow): Family {
     return {
       id: row.id,
       name: row.family_name || row.family_code || '',
@@ -773,11 +983,11 @@ class AdminService {
       throw new AdminServiceError(
         `Failed to validate target classes: ${error.message}`,
         'VALIDATION_ERROR',
-        error as any
+        error
       )
     }
 
-    const validIds = new Set((data || []).map((row: any) => row.id))
+    const validIds = new Set((data || []).map((row: IdOnlyRow) => row.id))
     const unknownIds = targetClassIds.filter((id) => !validIds.has(id))
     if (unknownIds.length > 0) {
       throw new AdminServiceError(
@@ -787,7 +997,7 @@ class AdminService {
     }
   }
 
-  private mapNewsletterRow(row: any, articleCount: number = 0): AdminNewsletter {
+  private mapNewsletterRow(row: NewsletterRow, articleCount: number = 0): AdminNewsletter {
     return {
       id: row.id,
       weekNumber: row.week_number,
@@ -824,7 +1034,7 @@ class AdminService {
     targetNewsletter: AdminNewsletter
   ): Promise<number> {
     const supabase = getSupabaseClient()
-    const { data: sourceArticles, error: sourceArticlesError } = await supabase
+    const { data: sourceArticlesRaw, error: sourceArticlesError } = await supabase
       .from('newsletter_articles')
       .select(`
         article_order,
@@ -850,15 +1060,17 @@ class AdminService {
       throw new AdminServiceError(
         `Failed to fetch source articles: ${sourceArticlesError.message}`,
         'FETCH_ARTICLES_ERROR',
-        sourceArticlesError as any
+        sourceArticlesError
       )
     }
 
-    if (!sourceArticles?.length) {
+    const sourceArticles = (sourceArticlesRaw ?? []) as unknown as NewsletterArticleJoinRow[]
+
+    if (!sourceArticles.length) {
       return 0
     }
 
-    const copiedArticlePayload = sourceArticles.map((row: any) => ({
+    const copiedArticlePayload = sourceArticles.map((row) => ({
       title: row.articles.title,
       content: row.articles.content,
       author_id: row.articles.author_id ?? null,
@@ -885,11 +1097,11 @@ class AdminService {
       throw new AdminServiceError(
         `Failed to copy source articles: ${copiedArticlesError.message}`,
         'CREATE_ARTICLE_ERROR',
-        copiedArticlesError as any
+        copiedArticlesError
       )
     }
 
-    const copiedLinks = (copiedArticles || []).map((article: any, index: number) => ({
+    const copiedLinks = (copiedArticles || []).map((article: IdOnlyRow, index: number) => ({
       newsletter_id: targetNewsletter.id,
       article_id: article.id,
       article_order: sourceArticles[index].article_order,
@@ -905,7 +1117,7 @@ class AdminService {
       throw new AdminServiceError(
         `Failed to attach copied articles: ${linkError.message}`,
         'ADD_ARTICLE_TO_NEWSLETTER_ERROR',
-        linkError as any
+        linkError
       )
     }
 
@@ -931,11 +1143,11 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to fetch source media references: ${sourceReferencesError.message}`,
           'FETCH_ARTICLE_MEDIA_REFERENCES_ERROR',
-          sourceReferencesError as any
+          sourceReferencesError
         )
       }
 
-      for (const ref of sourceReferences || []) {
+      for (const ref of (sourceReferences || []) as ArticleMediaReferenceRow[]) {
         referenceInserts.push({
           article_id: copiedArticleId,
           media_id: ref.media_id,
@@ -956,7 +1168,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to copy article media references: ${referencesInsertError.message}`,
           'COPY_ARTICLE_MEDIA_REFERENCES_ERROR',
-          referencesInsertError as any
+          referencesInsertError
         )
       }
     }
@@ -1021,11 +1233,11 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to fetch newsletters: ${error.message}`,
           'FETCH_NEWSLETTERS_ERROR',
-          error as any
+          error
         )
       }
 
-      return (data || []).map((row: any) => this.mapNewsletterRow(
+      return (data || []).map((row: NewsletterWithArticleCountRow) => this.mapNewsletterRow(
         row,
         row.newsletter_articles?.[0]?.count || 0
       ))
@@ -1034,7 +1246,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error fetching newsletters: ${err instanceof Error ? err.message : String(err)}`,
         'FETCH_NEWSLETTERS_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -1052,11 +1264,11 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to fetch newsletter templates: ${error.message}`,
           'FETCH_NEWSLETTERS_ERROR',
-          error as any
+          error
         )
       }
 
-      return (data || []).map((row: any) => this.mapNewsletterRow(
+      return (data || []).map((row: NewsletterWithArticleCountRow) => this.mapNewsletterRow(
         row,
         row.newsletter_articles?.[0]?.count || 0
       ))
@@ -1065,7 +1277,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error fetching newsletter templates: ${err instanceof Error ? err.message : String(err)}`,
         'FETCH_NEWSLETTERS_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -1087,7 +1299,7 @@ class AdminService {
         throw new AdminServiceError(
           `Newsletter not found: ${id}`,
           'NEWSLETTER_NOT_FOUND',
-          error as any
+          error
         )
       }
 
@@ -1110,7 +1322,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error fetching newsletter: ${err instanceof Error ? err.message : String(err)}`,
         'FETCH_NEWSLETTER_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -1132,7 +1344,7 @@ class AdminService {
         throw new AdminServiceError(
           `Newsletter not found for week: ${weekNumber}`,
           'NEWSLETTER_NOT_FOUND',
-          error as any
+          error
         )
       }
 
@@ -1155,7 +1367,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error fetching newsletter: ${err instanceof Error ? err.message : String(err)}`,
         'FETCH_NEWSLETTER_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -1191,16 +1403,16 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to create newsletter: ${error.message}`,
           'CREATE_NEWSLETTER_ERROR',
-          error as any
+          error
         )
       }
 
       return this.mapNewsletterRow(data, 0)
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (err instanceof AdminServiceError) throw err
-      
+
       // Handle duplicate key error (Postgres code 23505)
-      if (err?.code === '23505') {
+      if (postgresErrorCode(err) === '23505') {
         throw new AdminServiceError(
           `Newsletter for week ${weekNumber} already exists`,
           'DUPLICATE_NEWSLETTER_ERROR',
@@ -1211,7 +1423,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error creating newsletter: ${err instanceof Error ? err.message : String(err)}`,
         'CREATE_NEWSLETTER_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -1236,7 +1448,9 @@ class AdminService {
         )
       }
 
-      const payload: Record<string, any> = {}
+      const payload: Partial<
+        Pick<NewsletterRow, 'week_number' | 'title' | 'description' | 'release_date'>
+      > = {}
       if (updates.weekNumber !== undefined) payload.week_number = updates.weekNumber || null
       if (updates.title !== undefined) payload.title = updates.title?.trim() || null
       if (updates.description !== undefined) payload.description = updates.description?.trim() || null
@@ -1253,15 +1467,15 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to update newsletter: ${error.message}`,
           'UPDATE_NEWSLETTER_ERROR',
-          error as any
+          error
         )
       }
 
       return this.mapNewsletterRow(data, data.newsletter_articles?.[0]?.count || 0)
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (err instanceof AdminServiceError) throw err
 
-      if (err?.code === '23505') {
+      if (postgresErrorCode(err) === '23505') {
         throw new AdminServiceError(
           `Newsletter for week ${updates.weekNumber} already exists`,
           'DUPLICATE_NEWSLETTER_ERROR',
@@ -1272,7 +1486,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error updating newsletter: ${err instanceof Error ? err.message : String(err)}`,
         'UPDATE_NEWSLETTER_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -1320,7 +1534,7 @@ class AdminService {
         throw new AdminServiceError(
           `Source newsletter not found: ${sourceNewsletterId}`,
           'NEWSLETTER_NOT_FOUND',
-          sourceNewsletterError as any
+          sourceNewsletterError
         )
       }
 
@@ -1342,7 +1556,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to create newsletter template: ${createTemplateError?.message || 'Unknown error'}`,
           'CREATE_NEWSLETTER_ERROR',
-          createTemplateError as any
+          createTemplateError
         )
       }
 
@@ -1358,7 +1572,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error creating template from newsletter: ${err instanceof Error ? err.message : String(err)}`,
         'CREATE_NEWSLETTER_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -1385,7 +1599,7 @@ class AdminService {
         throw new AdminServiceError(
           `Source newsletter not found: ${sourceNewsletterId}`,
           'NEWSLETTER_NOT_FOUND',
-          sourceNewsletterError as any
+          sourceNewsletterError
         )
       }
 
@@ -1415,7 +1629,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error creating newsletter from template: ${err instanceof Error ? err.message : String(err)}`,
         'CREATE_NEWSLETTER_FROM_TEMPLATE_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -1438,7 +1652,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to check articles: ${articleError.message}`,
           'CHECK_ARTICLES_ERROR',
-          articleError as any
+          articleError
         )
       }
 
@@ -1464,7 +1678,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to publish newsletter: ${error.message}`,
           'PUBLISH_NEWSLETTER_ERROR',
-          error as any
+          error
         )
       }
 
@@ -1487,13 +1701,13 @@ class AdminService {
       throw new AdminServiceError(
         `Error publishing newsletter: ${err instanceof Error ? err.message : String(err)}`,
         'PUBLISH_NEWSLETTER_ERROR',
-        err as any
+        err
       )
     }
   }
 
   /**
-   * Archive newsletter (any status → archived)
+   * Archive newsletter (from draft/published/archived → archived)
    */
   async archiveNewsletter(id: string): Promise<AdminNewsletter> {
     try {
@@ -1510,7 +1724,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to archive newsletter: ${error.message}`,
           'ARCHIVE_NEWSLETTER_ERROR',
-          error as any
+          error
         )
       }
 
@@ -1533,7 +1747,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error archiving newsletter: ${err instanceof Error ? err.message : String(err)}`,
         'ARCHIVE_NEWSLETTER_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -1554,7 +1768,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to delete newsletter: ${error.message}`,
           'DELETE_NEWSLETTER_ERROR',
-          error as any
+          error
         )
       }
     } catch (err) {
@@ -1562,7 +1776,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error deleting newsletter: ${err instanceof Error ? err.message : String(err)}`,
         'DELETE_NEWSLETTER_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -1601,34 +1815,35 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to fetch articles: ${error.message}`,
           'FETCH_ARTICLES_ERROR',
-          error as any
+          error
         )
       }
 
-      return (data || []).map((row: any) => ({
+      const rows = (data || []) as unknown as NewsletterArticleJoinRow[]
+      return rows.map((row) => ({
         id: row.articles.id,
         title: row.articles.title,
         content: row.articles.content,
-        author: row.articles.author_id,
-        summary: row.articles.summary,
+        author: row.articles.author_id ?? undefined,
+        summary: row.articles.summary ?? undefined,
         weekNumber: weekNumber,
         order: row.article_order,
         newsletterTargetingMode: row.targeting_mode ?? 'shared',
         newsletterTargetClassIds: row.target_class_ids ?? [],
         classIds: row.articles.class_ids || [],
         familyIds: row.articles.family_ids || [],
-        status: row.articles.status,
+        status: row.articles.status as AdminArticle['status'],
         createdAt: row.articles.created_at,
         updatedAt: row.articles.updated_at,
-        lastEditedBy: row.articles.last_edited_by,
-        editedAt: row.articles.edited_at,
+        lastEditedBy: row.articles.last_edited_by ?? undefined,
+        editedAt: row.articles.edited_at ?? undefined,
       }))
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
       throw new AdminServiceError(
         `Error fetching articles: ${err instanceof Error ? err.message : String(err)}`,
         'FETCH_ARTICLES_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -1657,37 +1872,38 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to fetch articles: ${error.message}`,
           'FETCH_ARTICLES_ERROR',
-          error as any
+          error
         )
       }
 
       // Fetch newsletter to get week_number (may be null)
       const newsletterData = await this.fetchNewsletter(newsletterId)
 
-      return (data || []).map((row: any) => ({
+      const rows = (data || []) as unknown as NewsletterArticleJoinRow[]
+      return rows.map((row) => ({
         id: row.articles.id,
         title: row.articles.title,
         content: row.articles.content,
-        author: row.articles.author_id,
-        summary: row.articles.summary,
+        author: row.articles.author_id ?? undefined,
+        summary: row.articles.summary ?? undefined,
         weekNumber: newsletterData.weekNumber || '',
         order: row.article_order,
         newsletterTargetingMode: row.targeting_mode ?? 'shared',
         newsletterTargetClassIds: row.target_class_ids ?? [],
         classIds: row.articles.class_ids || [],
         familyIds: row.articles.family_ids || [],
-        status: row.articles.status,
+        status: row.articles.status as AdminArticle['status'],
         createdAt: row.articles.created_at,
         updatedAt: row.articles.updated_at,
-        publishedAt: row.articles.published_at,
-        editedAt: row.articles.edited_at,
+        publishedAt: row.articles.published_at ?? null,
+        editedAt: row.articles.edited_at ?? undefined,
       }))
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
       throw new AdminServiceError(
         `Error fetching articles: ${err instanceof Error ? err.message : String(err)}`,
         'FETCH_ARTICLES_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -1707,32 +1923,32 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to fetch all articles: ${error.message}`,
           'FETCH_ARTICLES_ERROR',
-          error as any
+          error
         )
       }
 
-      return (data || []).map((row: any) => ({
+      return (data || []).map((row: AdminArticleDbRow) => ({
         id: row.id,
         title: row.title,
         content: row.content,
-        author: row.author_id,
-        summary: row.summary,
+        author: row.author_id ?? undefined,
+        summary: row.summary ?? undefined,
         weekNumber: row.week_number || '',
         order: row.article_order || 0,
         classIds: row.class_ids || [],
         familyIds: row.family_ids || [],
-        status: row.status,
+        status: row.status as AdminArticle['status'],
         createdAt: row.created_at,
         updatedAt: row.updated_at,
-        publishedAt: row.published_at,
-        editedAt: row.edited_at,
+        publishedAt: row.published_at ?? null,
+        editedAt: row.edited_at ?? undefined,
       }))
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
       throw new AdminServiceError(
         `Error fetching all articles: ${err instanceof Error ? err.message : String(err)}`,
         'FETCH_ARTICLES_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -1752,16 +1968,16 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to fetch recycle bin articles: ${error.message}`,
           'FETCH_RECYCLE_BIN_ARTICLES_ERROR',
-          error as any
+          error
         )
       }
 
-      const deletedRows = (data || []).filter((row: any) => Boolean(row.deleted_at))
+      const deletedRows = (data || []).filter((row: AdminArticleDbRow) => Boolean(row.deleted_at))
       const membershipsByArticleId = await this.fetchArticleNewsletterMemberships(
-        deletedRows.map((row: any) => row.id)
+        deletedRows.map((row: AdminArticleDbRow) => row.id)
       )
 
-      return deletedRows.map((row: any) => {
+      return deletedRows.map((row: AdminArticleDbRow) => {
         const deletedAt = row.deleted_at as string
         const memberships = membershipsByArticleId[row.id] || []
         const purgeScheduledAt = (row.purge_scheduled_at as string | null)
@@ -1783,7 +1999,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error fetching recycle bin articles: ${err instanceof Error ? err.message : String(err)}`,
         'FETCH_RECYCLE_BIN_ARTICLES_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -1805,11 +2021,11 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to fetch article version history: ${error.message}`,
           'FETCH_ARTICLE_VERSION_HISTORY_ERROR',
-          error as any,
+          error,
         )
       }
 
-      return (data || []).map((row: any) => {
+      return (data || []).map((row: ArticleAuditLogRow) => {
         const oldValues = (row.old_values || null) as Record<string, unknown> | null
         const newValues = (row.new_values || null) as Record<string, unknown> | null
         const fieldDiffs = this.buildRevisionDiffs(oldValues, newValues)
@@ -1834,7 +2050,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error fetching article version history: ${err instanceof Error ? err.message : String(err)}`,
         'FETCH_ARTICLE_VERSION_HISTORY_ERROR',
-        err as any,
+        err,
       )
     }
   }
@@ -1856,7 +2072,7 @@ class AdminService {
         throw new AdminServiceError(
           `Article revision not found: ${revisionId}`,
           'ARTICLE_REVISION_NOT_FOUND',
-          auditError as any,
+          auditError,
         )
       }
 
@@ -1919,7 +2135,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to restore article version: ${restoreError?.message || 'Unknown error'}`,
           'ARTICLE_REVISION_RESTORE_ERROR',
-          restoreError as any,
+          restoreError,
         )
       }
 
@@ -1929,7 +2145,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error restoring article version: ${err instanceof Error ? err.message : String(err)}`,
         'ARTICLE_REVISION_RESTORE_ERROR',
-        err as any,
+        err,
       )
     }
   }
@@ -1957,7 +2173,7 @@ class AdminService {
         throw new AdminServiceError(
           `Article not found: ${id}`,
           'ARTICLE_NOT_FOUND',
-          fetchError as any
+          fetchError
         )
       }
 
@@ -1974,7 +2190,7 @@ class AdminService {
       }
 
       const now = new Date().toISOString()
-      const updatePayload: any = {
+      const updatePayload: Record<string, unknown> = {
         last_edited_by: userId,
         edited_at: now,
         updated_at: now,
@@ -2014,7 +2230,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to update article: ${error.message}`,
           'UPDATE_ARTICLE_ERROR',
-          error as any
+          error
         )
       }
 
@@ -2039,7 +2255,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error updating article: ${err instanceof Error ? err.message : String(err)}`,
         'UPDATE_ARTICLE_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -2060,7 +2276,7 @@ class AdminService {
         throw new AdminServiceError(
           `Article not found: ${id}`,
           'ARTICLE_NOT_FOUND',
-          existingError as any
+          existingError
         )
       }
 
@@ -2085,7 +2301,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to delete article: ${error.message}`,
           'DELETE_ARTICLE_ERROR',
-          error as any
+          error
         )
       }
 
@@ -2095,7 +2311,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error deleting article: ${err instanceof Error ? err.message : String(err)}`,
         'DELETE_ARTICLE_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -2118,7 +2334,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to restore deleted article: ${error?.message || 'Unknown error'}`,
           'RESTORE_DELETED_ARTICLE_ERROR',
-          error as any
+          error
         )
       }
 
@@ -2128,7 +2344,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error restoring deleted article: ${err instanceof Error ? err.message : String(err)}`,
         'RESTORE_DELETED_ARTICLE_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -2146,7 +2362,7 @@ class AdminService {
         throw new AdminServiceError(
           `Article not found: ${id}`,
           'ARTICLE_NOT_FOUND',
-          existingError as any
+          existingError
         )
       }
 
@@ -2176,7 +2392,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to permanently delete article: ${purgeError.message}`,
           'PURGE_ARTICLE_ERROR',
-          purgeError as any
+          purgeError
         )
       }
     } catch (err) {
@@ -2184,7 +2400,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error purging deleted article: ${err instanceof Error ? err.message : String(err)}`,
         'PURGE_ARTICLE_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -2269,13 +2485,13 @@ class AdminService {
           throw new AdminServiceError(
             `Article is already in newsletter ${weekNumber}`,
             'DUPLICATE_ARTICLE_ERROR',
-            error as any
+            error
           )
         }
         throw new AdminServiceError(
           `Failed to add article to newsletter: ${error.message}`,
           'ADD_ARTICLE_TO_NEWSLETTER_ERROR',
-          error as any
+          error
         )
       }
 
@@ -2285,7 +2501,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error adding article to newsletter: ${err instanceof Error ? err.message : String(err)}`,
         'ADD_ARTICLE_TO_NEWSLETTER_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -2348,14 +2564,14 @@ class AdminService {
           throw new AdminServiceError(
             `Article is already in newsletter ${newsletterId}`,
             'DUPLICATE_ARTICLE_ERROR',
-            error as any
+            error
           )
         }
 
         throw new AdminServiceError(
           `Failed to add article to newsletter: ${error.message}`,
           'ADD_ARTICLE_TO_NEWSLETTER_ERROR',
-          error as any
+          error
         )
       }
 
@@ -2365,7 +2581,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error adding article to newsletter: ${err instanceof Error ? err.message : String(err)}`,
         'ADD_ARTICLE_TO_NEWSLETTER_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -2398,7 +2614,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to remove article from newsletter: ${error.message}`,
           'REMOVE_ARTICLE_FROM_NEWSLETTER_ERROR',
-          error as any
+          error
         )
       }
     } catch (err) {
@@ -2406,7 +2622,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error removing article from newsletter: ${err instanceof Error ? err.message : String(err)}`,
         'REMOVE_ARTICLE_FROM_NEWSLETTER_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -2425,7 +2641,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to remove article from newsletter: ${error.message}`,
           'REMOVE_ARTICLE_FROM_NEWSLETTER_ERROR',
-          error as any
+          error
         )
       }
     } catch (err) {
@@ -2433,7 +2649,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error removing article from newsletter: ${err instanceof Error ? err.message : String(err)}`,
         'REMOVE_ARTICLE_FROM_NEWSLETTER_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -2468,7 +2684,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to update article targeting: ${error.message}`,
           'UPDATE_ARTICLE_TARGETING_ERROR',
-          error as any
+          error
         )
       }
     } catch (err) {
@@ -2476,7 +2692,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error updating article targeting: ${err instanceof Error ? err.message : String(err)}`,
         'UPDATE_ARTICLE_TARGETING_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -2509,22 +2725,26 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to get newsletters for article: ${error.message}`,
           'GET_NEWSLETTERS_ERROR',
-          error as any
+          error
         )
       }
 
-      return (data || []).map((row: any) => ({
-        weekNumber: row.newsletters?.week_number || '',
-        order: row.article_order,
-        releaseDate: row.newsletters?.release_date,
-        status: row.newsletters?.status,
-      }))
+      const rows = (data || []) as unknown as ArticleNewsletterPlacementRow[]
+      return rows.map((row) => {
+        const n = Array.isArray(row.newsletters) ? row.newsletters[0] : row.newsletters
+        return {
+          weekNumber: n?.week_number || '',
+          order: row.article_order,
+          releaseDate: n?.release_date,
+          status: n?.status,
+        }
+      })
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
       throw new AdminServiceError(
         `Error getting newsletters for article: ${err instanceof Error ? err.message : String(err)}`,
         'GET_NEWSLETTERS_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -2553,13 +2773,17 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to fetch article newsletter memberships: ${error.message}`,
           'GET_NEWSLETTERS_ERROR',
-          error as any
+          error
         )
       }
 
-      return (data || []).reduce((acc: Record<string, Array<{ newsletterId: string; label: string; isTemplate: boolean }>>, row: any) => {
-        const articleId = row.article_id as string
-        const newsletterId = row.newsletters?.id as string | undefined
+      const membershipRows = (data || []) as unknown as ArticleNewsletterMembershipRow[]
+      return membershipRows.reduce(
+        (acc: Record<string, Array<{ newsletterId: string; label: string; isTemplate: boolean }>>, row) => {
+        const articleId = row.article_id
+        const nl = row.newsletters
+        const n = Array.isArray(nl) ? nl[0] : nl
+        const newsletterId = n?.id
         if (!newsletterId) return acc
 
         if (!acc[articleId]) {
@@ -2568,8 +2792,8 @@ class AdminService {
 
         acc[articleId].push({
           newsletterId,
-          label: row.newsletters?.week_number || row.newsletters?.title || newsletterId,
-          isTemplate: row.newsletters?.is_template ?? false,
+          label: n?.week_number || n?.title || newsletterId,
+          isTemplate: n?.is_template ?? false,
         })
 
         return acc
@@ -2579,7 +2803,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error fetching article newsletter memberships: ${err instanceof Error ? err.message : String(err)}`,
         'GET_NEWSLETTERS_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -2603,17 +2827,17 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to fetch article categories: ${error.message}`,
           'FETCH_ARTICLE_CATEGORIES_ERROR',
-          error as any
+          error
         )
       }
 
-      return (data || []).map((row: any) => this.mapArticleCategoryRow(row))
+      return (data || []).map((row: ArticleTaxonomyDbRow) => this.mapArticleCategoryRow(row))
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
       throw new AdminServiceError(
         `Error fetching article categories: ${err instanceof Error ? err.message : String(err)}`,
         'FETCH_ARTICLE_CATEGORIES_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -2639,7 +2863,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to validate category uniqueness: ${duplicateError.message}`,
           'ARTICLE_CATEGORY_VALIDATION_ERROR',
-          duplicateError as any
+          duplicateError
         )
       }
 
@@ -2661,7 +2885,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to create category: ${error.message}`,
           'CREATE_ARTICLE_CATEGORY_ERROR',
-          error as any
+          error
         )
       }
 
@@ -2671,7 +2895,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error creating category: ${err instanceof Error ? err.message : String(err)}`,
         'CREATE_ARTICLE_CATEGORY_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -2692,7 +2916,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to load category: ${existingError?.message || 'Category not found'}`,
           'UPDATE_ARTICLE_CATEGORY_ERROR',
-          existingError as any
+          existingError
         )
       }
 
@@ -2713,11 +2937,11 @@ class AdminService {
           throw new AdminServiceError(
             `Failed to validate category uniqueness: ${duplicateError.message}`,
             'ARTICLE_CATEGORY_VALIDATION_ERROR',
-            duplicateError as any
+            duplicateError
           )
         }
 
-        const duplicate = (duplicates || []).find((row: any) => row.id !== id)
+        const duplicate = (duplicates || []).find((row: IdOnlyRow) => row.id !== id)
         if (duplicate) {
           throw new AdminServiceError('分類名稱已存在', 'ARTICLE_CATEGORY_VALIDATION_ERROR')
         }
@@ -2740,7 +2964,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to update category: ${error?.message || 'Unknown error'}`,
           'UPDATE_ARTICLE_CATEGORY_ERROR',
-          error as any
+          error
         )
       }
 
@@ -2750,7 +2974,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error updating category: ${err instanceof Error ? err.message : String(err)}`,
         'UPDATE_ARTICLE_CATEGORY_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -2769,7 +2993,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to activate category: ${error?.message || 'Unknown error'}`,
           'ACTIVATE_ARTICLE_CATEGORY_ERROR',
-          error as any
+          error
         )
       }
 
@@ -2779,7 +3003,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error activating category: ${err instanceof Error ? err.message : String(err)}`,
         'ACTIVATE_ARTICLE_CATEGORY_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -2798,7 +3022,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to deactivate category: ${error?.message || 'Unknown error'}`,
           'DEACTIVATE_ARTICLE_CATEGORY_ERROR',
-          error as any
+          error
         )
       }
 
@@ -2808,7 +3032,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error deactivating category: ${err instanceof Error ? err.message : String(err)}`,
         'DEACTIVATE_ARTICLE_CATEGORY_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -2832,17 +3056,17 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to fetch article tags: ${error.message}`,
           'FETCH_ARTICLE_TAGS_ERROR',
-          error as any
+          error
         )
       }
 
-      return (data || []).map((row: any) => this.mapArticleTagRow(row))
+      return (data || []).map((row: ArticleTaxonomyDbRow) => this.mapArticleTagRow(row))
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
       throw new AdminServiceError(
         `Error fetching article tags: ${err instanceof Error ? err.message : String(err)}`,
         'FETCH_ARTICLE_TAGS_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -2868,7 +3092,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to validate tag uniqueness: ${duplicateError.message}`,
           'ARTICLE_TAG_VALIDATION_ERROR',
-          duplicateError as any
+          duplicateError
         )
       }
 
@@ -2890,7 +3114,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to create tag: ${error.message}`,
           'CREATE_ARTICLE_TAG_ERROR',
-          error as any
+          error
         )
       }
 
@@ -2900,7 +3124,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error creating tag: ${err instanceof Error ? err.message : String(err)}`,
         'CREATE_ARTICLE_TAG_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -2921,7 +3145,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to load tag: ${existingError?.message || 'Tag not found'}`,
           'UPDATE_ARTICLE_TAG_ERROR',
-          existingError as any
+          existingError
         )
       }
 
@@ -2942,11 +3166,11 @@ class AdminService {
           throw new AdminServiceError(
             `Failed to validate tag uniqueness: ${duplicateError.message}`,
             'ARTICLE_TAG_VALIDATION_ERROR',
-            duplicateError as any
+            duplicateError
           )
         }
 
-        const duplicate = (duplicates || []).find((row: any) => row.id !== id)
+        const duplicate = (duplicates || []).find((row: IdOnlyRow) => row.id !== id)
         if (duplicate) {
           throw new AdminServiceError('標籤名稱已存在', 'ARTICLE_TAG_VALIDATION_ERROR')
         }
@@ -2969,7 +3193,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to update tag: ${error?.message || 'Unknown error'}`,
           'UPDATE_ARTICLE_TAG_ERROR',
-          error as any
+          error
         )
       }
 
@@ -2979,7 +3203,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error updating tag: ${err instanceof Error ? err.message : String(err)}`,
         'UPDATE_ARTICLE_TAG_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -2998,7 +3222,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to activate tag: ${error?.message || 'Unknown error'}`,
           'ACTIVATE_ARTICLE_TAG_ERROR',
-          error as any
+          error
         )
       }
 
@@ -3008,7 +3232,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error activating tag: ${err instanceof Error ? err.message : String(err)}`,
         'ACTIVATE_ARTICLE_TAG_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -3027,7 +3251,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to deactivate tag: ${error?.message || 'Unknown error'}`,
           'DEACTIVATE_ARTICLE_TAG_ERROR',
-          error as any
+          error
         )
       }
 
@@ -3037,7 +3261,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error deactivating tag: ${err instanceof Error ? err.message : String(err)}`,
         'DEACTIVATE_ARTICLE_TAG_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -3064,7 +3288,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to fetch category assignments: ${categoryRows.error.message}`,
           'FETCH_ARTICLE_TAXONOMY_ASSIGNMENTS_ERROR',
-          categoryRows.error as any
+          categoryRows.error
         )
       }
 
@@ -3072,7 +3296,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to fetch tag assignments: ${tagRows.error.message}`,
           'FETCH_ARTICLE_TAXONOMY_ASSIGNMENTS_ERROR',
-          tagRows.error as any
+          tagRows.error
         )
       }
 
@@ -3081,9 +3305,9 @@ class AdminService {
         result[articleId] = { categoryIds: [], tagIds: [] }
       })
 
-      ;(categoryRows.data || []).forEach((row: any) => {
-        const articleId = row.article_id as string
-        const categoryId = row.category_id as string
+      ;(categoryRows.data || []).forEach((row: ArticleCategoryAssignmentRow) => {
+        const articleId = row.article_id
+        const categoryId = row.category_id
         if (!result[articleId]) {
           result[articleId] = { categoryIds: [], tagIds: [] }
         }
@@ -3092,9 +3316,9 @@ class AdminService {
         }
       })
 
-      ;(tagRows.data || []).forEach((row: any) => {
-        const articleId = row.article_id as string
-        const tagId = row.tag_id as string
+      ;(tagRows.data || []).forEach((row: ArticleTagAssignmentRow) => {
+        const articleId = row.article_id
+        const tagId = row.tag_id
         if (!result[articleId]) {
           result[articleId] = { categoryIds: [], tagIds: [] }
         }
@@ -3109,7 +3333,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error fetching taxonomy assignments: ${err instanceof Error ? err.message : String(err)}`,
         'FETCH_ARTICLE_TAXONOMY_ASSIGNMENTS_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -3134,7 +3358,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to clear category assignments: ${deleteCategoryError.message}`,
           'UPDATE_ARTICLE_TAXONOMY_ASSIGNMENTS_ERROR',
-          deleteCategoryError as any
+          deleteCategoryError
         )
       }
 
@@ -3146,7 +3370,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to clear tag assignments: ${deleteTagError.message}`,
           'UPDATE_ARTICLE_TAXONOMY_ASSIGNMENTS_ERROR',
-          deleteTagError as any
+          deleteTagError
         )
       }
 
@@ -3163,7 +3387,7 @@ class AdminService {
           throw new AdminServiceError(
             `Failed to save category assignments: ${insertCategoryError.message}`,
             'UPDATE_ARTICLE_TAXONOMY_ASSIGNMENTS_ERROR',
-            insertCategoryError as any
+            insertCategoryError
           )
         }
       }
@@ -3181,7 +3405,7 @@ class AdminService {
           throw new AdminServiceError(
             `Failed to save tag assignments: ${insertTagError.message}`,
             'UPDATE_ARTICLE_TAXONOMY_ASSIGNMENTS_ERROR',
-            insertTagError as any
+            insertTagError
           )
         }
       }
@@ -3190,7 +3414,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error updating taxonomy assignments: ${err instanceof Error ? err.message : String(err)}`,
         'UPDATE_ARTICLE_TAXONOMY_ASSIGNMENTS_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -3209,7 +3433,7 @@ class AdminService {
       const supabase = getSupabaseClient()
 
       // Get all articles
-      let query = supabase
+      const query = supabase
         .from('articles')
         .select('*')
         .is('deleted_at', null)
@@ -3222,7 +3446,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to fetch available articles: ${error.message}`,
           'FETCH_ARTICLES_ERROR',
-          error as any
+          error
         )
       }
 
@@ -3239,34 +3463,34 @@ class AdminService {
           if (existingError) {
             console.error('Error fetching existing articles:', existingError)
           } else {
-            const existingIds = new Set((existingArticles || []).map((a: any) => a.article_id))
-            articles = articles.filter((a: any) => !existingIds.has(a.id))
+            const existingIds = new Set((existingArticles || []).map((a: NewsletterArticleIdRow) => a.article_id))
+            articles = articles.filter((a: AdminArticleDbRow) => !existingIds.has(a.id))
           }
         }
       }
 
-      return articles.map((row: any) => ({
+      return articles.map((row: AdminArticleDbRow) => ({
         id: row.id,
         title: row.title,
         content: row.content,
-        author: row.author,
-        summary: row.summary,
-        weekNumber: row.week_number,
-        order: row.article_order,
+        author: row.author ?? row.author_id ?? undefined,
+        summary: row.summary ?? undefined,
+        weekNumber: row.week_number ?? '',
+        order: row.article_order ?? 0,
         classIds: row.class_ids || [],
         familyIds: row.family_ids || [],
-        status: row.status,
+        status: row.status as AdminArticle['status'],
         createdAt: row.created_at,
         updatedAt: row.updated_at,
-        lastEditedBy: row.last_edited_by,
-        editedAt: row.edited_at,
+        lastEditedBy: row.last_edited_by ?? undefined,
+        editedAt: row.edited_at ?? undefined,
       }))
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
       throw new AdminServiceError(
         `Error fetching available articles: ${err instanceof Error ? err.message : String(err)}`,
         'FETCH_ARTICLES_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -3289,7 +3513,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to fetch available articles: ${error.message}`,
           'FETCH_ARTICLES_ERROR',
-          error as any
+          error
         )
       }
 
@@ -3304,33 +3528,33 @@ class AdminService {
         if (existingError) {
           console.error('Error fetching existing articles:', existingError)
         } else {
-          const existingIds = new Set((existingArticles || []).map((a: any) => a.article_id))
-          articles = articles.filter((article: any) => !existingIds.has(article.id))
+          const existingIds = new Set((existingArticles || []).map((a: NewsletterArticleIdRow) => a.article_id))
+          articles = articles.filter((article: AdminArticleDbRow) => !existingIds.has(article.id))
         }
       }
 
-      return articles.map((row: any) => ({
+      return articles.map((row: AdminArticleDbRow) => ({
         id: row.id,
         title: row.title,
         content: row.content,
-        author: row.author,
-        summary: row.summary,
-        weekNumber: row.week_number,
-        order: row.article_order,
+        author: row.author ?? row.author_id ?? undefined,
+        summary: row.summary ?? undefined,
+        weekNumber: row.week_number ?? '',
+        order: row.article_order ?? 0,
         classIds: row.class_ids || [],
         familyIds: row.family_ids || [],
-        status: row.status,
+        status: row.status as AdminArticle['status'],
         createdAt: row.created_at,
         updatedAt: row.updated_at,
-        lastEditedBy: row.last_edited_by,
-        editedAt: row.edited_at,
+        lastEditedBy: row.last_edited_by ?? undefined,
+        editedAt: row.edited_at ?? undefined,
       }))
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
       throw new AdminServiceError(
         `Error fetching available articles: ${err instanceof Error ? err.message : String(err)}`,
         'FETCH_ARTICLES_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -3357,7 +3581,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error reordering articles: ${err instanceof Error ? err.message : String(err)}`,
         'REORDER_ARTICLES_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -3379,7 +3603,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to fetch current article order baseline: ${fetchOrderError.message}`,
           'REORDER_ARTICLES_ERROR',
-          fetchOrderError as any
+          fetchOrderError
         )
       }
 
@@ -3399,7 +3623,7 @@ class AdminService {
           throw new AdminServiceError(
             `Failed to stage article order update: ${error.message}`,
             'REORDER_ARTICLES_ERROR',
-            error as any
+            error
           )
         }
       }
@@ -3416,7 +3640,7 @@ class AdminService {
           throw new AdminServiceError(
             `Failed to update article order: ${error.message}`,
             'REORDER_ARTICLES_ERROR',
-            error as any
+            error
           )
         }
       }
@@ -3425,7 +3649,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error reordering articles: ${err instanceof Error ? err.message : String(err)}`,
         'REORDER_ARTICLES_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -3446,7 +3670,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to determine article order: ${orderError.message}`,
           'CREATE_ARTICLE_ERROR',
-          orderError as any
+          orderError
         )
       }
 
@@ -3472,7 +3696,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to create article: ${articleError?.message || 'Unknown error'}`,
           'CREATE_ARTICLE_ERROR',
-          articleError as any
+          articleError
         )
       }
 
@@ -3504,7 +3728,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error creating article: ${err instanceof Error ? err.message : String(err)}`,
         'CREATE_ARTICLE_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -3538,34 +3762,35 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to fetch articles: ${error.message}`,
           'FETCH_ARTICLES_ERROR',
-          error as any
+          error
         )
       }
 
-      return (data || []).map((row: any) => ({
+      const viaJunctionRows = (data || []) as unknown as NewsletterArticleJoinRow[]
+      return viaJunctionRows.map((row) => ({
         id: row.articles.id,
         title: row.articles.title,
         content: row.articles.content,
-        author: row.articles.author,
-        summary: row.articles.summary,
+        author: row.articles.author ?? row.articles.author_id ?? undefined,
+        summary: row.articles.summary ?? undefined,
         weekNumber: weekNumber,
         order: row.article_order,
         newsletterTargetingMode: row.targeting_mode ?? 'shared',
         newsletterTargetClassIds: row.target_class_ids ?? [],
         classIds: row.articles.class_ids || [],
         familyIds: row.articles.family_ids || [],
-        status: row.articles.status,
+        status: row.articles.status as AdminArticle['status'],
         createdAt: row.articles.created_at,
         updatedAt: row.articles.updated_at,
-        lastEditedBy: row.articles.last_edited_by,
-        editedAt: row.articles.edited_at,
+        lastEditedBy: row.articles.last_edited_by ?? undefined,
+        editedAt: row.articles.edited_at ?? undefined,
       }))
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
       throw new AdminServiceError(
         `Error fetching articles: ${err instanceof Error ? err.message : String(err)}`,
         'FETCH_ARTICLES_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -3594,12 +3819,12 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to fetch classes: ${error.message}`,
           'FETCH_CLASSES_ERROR',
-          error as any
+          error
         )
       }
 
       // Fetch student enrollments and teacher assignments for all classes
-      const classIds = (data || []).map((row: any) => row.id)
+      const classIds = (data || []).map((row: ClassRow) => row.id)
 
       const { data: enrollments, error: enrollmentError } = await supabase
         .from('student_class_enrollment')
@@ -3623,7 +3848,7 @@ class AdminService {
 
       // Build a map of class_id -> student_ids array
       const studentsByClass = new Map<string, string[]>()
-      ;(enrollments || []).forEach((enrollment: any) => {
+      ;(enrollments || []).forEach((enrollment: StudentClassPairRow) => {
         if (!studentsByClass.has(enrollment.class_id)) {
           studentsByClass.set(enrollment.class_id, [])
         }
@@ -3632,14 +3857,14 @@ class AdminService {
 
       // Build a map of class_id -> teacher_ids array
       const teachersByClass = new Map<string, string[]>()
-      ;(teacherAssignments || []).forEach((assignment: any) => {
+      ;(teacherAssignments || []).forEach((assignment: TeacherClassPairRow) => {
         if (!teachersByClass.has(assignment.class_id)) {
           teachersByClass.set(assignment.class_id, [])
         }
         teachersByClass.get(assignment.class_id)!.push(assignment.teacher_id)
       })
 
-      return (data || []).map((row: any) => ({
+      return (data || []).map((row: ClassRow) => ({
         id: row.id,
         code: row.class_code || row.id,
         name: row.class_name,
@@ -3657,7 +3882,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error fetching classes: ${err instanceof Error ? err.message : String(err)}`,
         'FETCH_CLASSES_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -3699,7 +3924,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to create class: ${error.message}`,
           'CREATE_CLASS_ERROR',
-          error as any
+          error
         )
       }
 
@@ -3732,7 +3957,7 @@ class AdminService {
 
         // Create a map of student_id -> family_id
         const studentFamilyMap = new Map<string, string>()
-        ;(familyEnrollments || []).forEach((enrollment: any) => {
+        ;(familyEnrollments || []).forEach((enrollment: StudentFamilyPairRow) => {
           studentFamilyMap.set(enrollment.student_id, enrollment.family_id)
         })
 
@@ -3767,7 +3992,7 @@ class AdminService {
           throw new AdminServiceError(
             `Failed to add teachers to new class: ${teacherError.message}`,
             'CREATE_CLASS_ERROR',
-            teacherError as any
+            teacherError
           )
         }
       }
@@ -3790,7 +4015,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error creating class: ${err instanceof Error ? err.message : String(err)}`,
         'CREATE_CLASS_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -3823,7 +4048,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to load class before update: ${existingError?.message || 'Class not found'}`,
           'UPDATE_CLASS_ERROR',
-          existingError as any
+          existingError
         )
       }
 
@@ -3834,7 +4059,7 @@ class AdminService {
         gradeYear: updates.gradeYear ?? existingClass.class_grade_year,
       })
 
-      const updatePayload: any = {}
+      const updatePayload: Record<string, unknown> = {}
       if (updates.name !== undefined) updatePayload.class_name = updates.name
       if (updates.description !== undefined) updatePayload.description = updates.description || null
       if (updates.gradeYear !== undefined) updatePayload.class_grade_year = updates.gradeYear
@@ -3851,7 +4076,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to update class: ${error.message}`,
           'UPDATE_CLASS_ERROR',
-          error as any
+          error
         )
       }
 
@@ -3889,7 +4114,7 @@ class AdminService {
           console.error('Failed to fetch current enrollments:', enrollError)
         }
 
-        const currentStudentIds = (currentEnrollments || []).map((e: any) => e.student_id)
+        const currentStudentIds = (currentEnrollments || []).map((e: StudentFamilyPairRow) => e.student_id)
         const newStudentIds = updates.studentIds
 
         // Remove students that are no longer in the list
@@ -3921,7 +4146,7 @@ class AdminService {
 
           // Create a map of student_id -> family_id
           const studentFamilyMap = new Map<string, string>()
-          ;(familyEnrollments || []).forEach((enrollment: any) => {
+          ;(familyEnrollments || []).forEach((enrollment: StudentFamilyPairRow) => {
             studentFamilyMap.set(enrollment.student_id, enrollment.family_id)
           })
 
@@ -3954,11 +4179,13 @@ class AdminService {
           throw new AdminServiceError(
             `Failed to fetch current teacher assignments: ${assignError.message}`,
             'UPDATE_CLASS_ERROR',
-            assignError as any
+            assignError
           )
         }
 
-        const currentTeacherIds = (currentAssignments || []).map((a: any) => a.teacher_id)
+        const currentTeacherIds = (currentAssignments || []).map(
+          (a: Pick<TeacherClassAssignmentRow, 'teacher_id'>) => a.teacher_id,
+        )
         const newTeacherIds = updates.teacherIds
 
         // Remove teachers that are no longer in the list
@@ -3974,7 +4201,7 @@ class AdminService {
             throw new AdminServiceError(
               `Failed to remove teachers from class: ${deleteError.message}`,
               'UPDATE_CLASS_ERROR',
-              deleteError as any
+              deleteError
             )
           }
         }
@@ -3995,7 +4222,7 @@ class AdminService {
             throw new AdminServiceError(
               `Failed to add teachers to class: ${insertError.message}`,
               'UPDATE_CLASS_ERROR',
-              insertError as any
+              insertError
             )
           }
         }
@@ -4019,7 +4246,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error updating class: ${err instanceof Error ? err.message : String(err)}`,
         'UPDATE_CLASS_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -4045,7 +4272,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to load class: ${existingError?.message || 'Class not found'}`,
           'ACTIVATE_CLASS_ERROR',
-          existingError as any
+          existingError
         )
       }
 
@@ -4060,7 +4287,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to activate class: ${error?.message || 'Unknown error'}`,
           'ACTIVATE_CLASS_ERROR',
-          error as any
+          error
         )
       }
 
@@ -4100,7 +4327,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error activating class: ${err instanceof Error ? err.message : String(err)}`,
         'ACTIVATE_CLASS_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -4119,7 +4346,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to load class: ${existingError?.message || 'Class not found'}`,
           'DEACTIVATE_CLASS_ERROR',
-          existingError as any
+          existingError
         )
       }
 
@@ -4134,7 +4361,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to deactivate class: ${error?.message || 'Unknown error'}`,
           'DEACTIVATE_CLASS_ERROR',
-          error as any
+          error
         )
       }
 
@@ -4174,7 +4401,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error deactivating class: ${err instanceof Error ? err.message : String(err)}`,
         'DEACTIVATE_CLASS_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -4197,7 +4424,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to fetch class: ${fetchError.message}`,
           'FETCH_CLASS_ERROR',
-          fetchError as any
+          fetchError
         )
       }
 
@@ -4216,7 +4443,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to add student to class: ${updateError.message}`,
           'ADD_STUDENT_ERROR',
-          updateError as any
+          updateError
         )
       }
     } catch (err) {
@@ -4224,7 +4451,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error adding student to class: ${err instanceof Error ? err.message : String(err)}`,
         'ADD_STUDENT_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -4247,7 +4474,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to fetch class: ${fetchError.message}`,
           'FETCH_CLASS_ERROR',
-          fetchError as any
+          fetchError
         )
       }
 
@@ -4265,7 +4492,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to remove student from class: ${updateError.message}`,
           'REMOVE_STUDENT_ERROR',
-          updateError as any
+          updateError
         )
       }
     } catch (err) {
@@ -4273,7 +4500,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error removing student from class: ${err instanceof Error ? err.message : String(err)}`,
         'REMOVE_STUDENT_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -4303,17 +4530,17 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to fetch families: ${error.message}`,
           'FETCH_FAMILIES_ERROR',
-          error as any
+          error
         )
       }
 
-      return (data || []).map((row: any) => this.mapFamilyRow(row))
+      return (data || []).map((row: FamilyRow) => this.mapFamilyRow(row))
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
       throw new AdminServiceError(
         `Error fetching families: ${err instanceof Error ? err.message : String(err)}`,
         'FETCH_FAMILIES_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -4352,7 +4579,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to create family: ${error.message}`,
           'CREATE_FAMILY_ERROR',
-          error as any
+          error
         )
       }
 
@@ -4375,7 +4602,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error creating family: ${err instanceof Error ? err.message : String(err)}`,
         'CREATE_FAMILY_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -4405,11 +4632,11 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to load family: ${existingError?.message || 'Family not found'}`,
           'UPDATE_FAMILY_ERROR',
-          existingError as any
+          existingError
         )
       }
 
-      const updatePayload: any = {}
+      const updatePayload: Record<string, unknown> = {}
       const resolvedName = updates.name ?? existing.family_name ?? existing.family_code
       const resolvedGuardianEmail = updates.guardianEmail ?? existing.guardian_email
       await this.validateFamilyWriteInput({
@@ -4444,7 +4671,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to update family: ${error.message}`,
           'UPDATE_FAMILY_ERROR',
-          error as any
+          error
         )
       }
 
@@ -4476,7 +4703,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error updating family: ${err instanceof Error ? err.message : String(err)}`,
         'UPDATE_FAMILY_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -4501,7 +4728,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to load family: ${existingError?.message || 'Family not found'}`,
           'ACTIVATE_FAMILY_ERROR',
-          existingError as any
+          existingError
         )
       }
 
@@ -4516,7 +4743,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to activate family: ${error?.message || 'Unknown error'}`,
           'ACTIVATE_FAMILY_ERROR',
-          error as any
+          error
         )
       }
 
@@ -4534,7 +4761,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error activating family: ${err instanceof Error ? err.message : String(err)}`,
         'ACTIVATE_FAMILY_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -4552,7 +4779,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to load family: ${existingError?.message || 'Family not found'}`,
           'DEACTIVATE_FAMILY_ERROR',
-          existingError as any
+          existingError
         )
       }
 
@@ -4567,7 +4794,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to deactivate family: ${error?.message || 'Unknown error'}`,
           'DEACTIVATE_FAMILY_ERROR',
-          error as any
+          error
         )
       }
 
@@ -4585,7 +4812,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error deactivating family: ${err instanceof Error ? err.message : String(err)}`,
         'DEACTIVATE_FAMILY_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -4607,7 +4834,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to fetch family members: ${enrollError.message}`,
           'FETCH_FAMILY_MEMBERS_ERROR',
-          enrollError as any
+          enrollError
         )
       }
 
@@ -4617,14 +4844,14 @@ class AdminService {
 
       // Separate parent and student IDs
       const parentIds = enrollments
-        .filter((e: any) => e.parent_id)
-        .map((e: any) => e.parent_id)
+        .filter((e: FamilyEnrollmentRow) => e.parent_id)
+        .map((e: FamilyEnrollmentRow) => e.parent_id as string)
       const studentIds = enrollments
-        .filter((e: any) => e.student_id)
-        .map((e: any) => e.student_id)
+        .filter((e: FamilyEnrollmentRow) => e.student_id)
+        .map((e: FamilyEnrollmentRow) => e.student_id as string)
 
       // Fetch parent user data
-      const parents: any[] = []
+      const parents: ParentUserMiniRow[] = []
       if (parentIds.length > 0) {
         const { data: parentUsers, error: parentError } = await supabase
           .from('user_roles')
@@ -4635,7 +4862,7 @@ class AdminService {
           throw new AdminServiceError(
             `Failed to fetch parents: ${parentError.message}`,
             'FETCH_PARENTS_ERROR',
-            parentError as any
+            parentError
           )
         }
 
@@ -4645,7 +4872,7 @@ class AdminService {
       }
 
       // Fetch student user data
-      const students: any[] = []
+      const students: Array<StudentRow & { email?: string | null }> = []
       if (studentIds.length > 0) {
         const { data: studentUsers, error: studentError } = await supabase
           .from('students')
@@ -4656,7 +4883,7 @@ class AdminService {
           throw new AdminServiceError(
             `Failed to fetch students: ${studentError.message}`,
             'FETCH_STUDENTS_ERROR',
-            studentError as any
+            studentError
           )
         }
 
@@ -4679,7 +4906,7 @@ class AdminService {
 
         if (enrollmentData && enrollmentData.length > 0) {
           // Get unique class IDs
-          const classIds = [...new Set(enrollmentData.map((e: any) => e.class_id))]
+          const classIds = [...new Set(enrollmentData.map((e: StudentClassPairRow) => e.class_id))]
 
           // Fetch class data
           const { data: classData, error: classFetchError } = await supabase
@@ -4691,8 +4918,8 @@ class AdminService {
             console.error('Failed to fetch class data:', classFetchError)
           } else if (classData) {
             // Build map of student_id -> classes
-            enrollmentData.forEach((enrollment: any) => {
-              const classInfo = classData.find((c: any) => c.id === enrollment.class_id)
+            enrollmentData.forEach((enrollment: StudentClassPairRow) => {
+              const classInfo = classData.find((c: ClassIdNameRow) => c.id === enrollment.class_id)
               if (classInfo) {
                 if (!studentClassMap.has(enrollment.student_id)) {
                   studentClassMap.set(enrollment.student_id, [])
@@ -4708,27 +4935,37 @@ class AdminService {
       }
 
       // Map enrollment records to family members
-      const members = enrollments.map((enrollment: any) => {
+      type FamilyMemberRow = {
+        id: string
+        name: string
+        email: string
+        type: 'parent' | 'student'
+        relationship?: 'father' | 'mother' | 'guardian'
+        classes?: Array<{ id: string; name: string }>
+      }
+      const members: FamilyMemberRow[] = []
+      for (const enrollment of enrollments) {
         if (enrollment.parent_id) {
-          const parent = parents.find((p: any) => p.id === enrollment.parent_id)
-          return {
+          const parent = parents.find((p: ParentUserMiniRow) => p.id === enrollment.parent_id)
+          members.push({
             id: enrollment.parent_id,
             name: parent?.email || 'Unknown',
             email: parent?.email || 'Unknown',
-            type: 'parent' as const,
+            type: 'parent',
             relationship: enrollment.relationship as 'father' | 'mother' | 'guardian' | undefined,
-          }
-        } else {
-          const student = students.find((s: any) => s.id === enrollment.student_id)
-          return {
-            id: enrollment.student_id,
+          })
+        } else if (enrollment.student_id) {
+          const sid = enrollment.student_id
+          const student = students.find((s: StudentRow) => s.id === sid)
+          members.push({
+            id: sid,
             name: student?.name || 'Unknown',
             email: student?.email || 'Unknown',
-            type: 'student' as const,
-            classes: studentClassMap.get(enrollment.student_id) || [],
-          }
+            type: 'student',
+            classes: studentClassMap.get(sid) || [],
+          })
         }
-      })
+      }
 
       return members
     } catch (err) {
@@ -4736,7 +4973,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error fetching family members: ${err instanceof Error ? err.message : String(err)}`,
         'FETCH_FAMILY_MEMBERS_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -4764,7 +5001,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to add parent to family: ${error.message}`,
           'ADD_PARENT_ERROR',
-          error as any
+          error
         )
       }
     } catch (err) {
@@ -4772,7 +5009,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error adding parent to family: ${err instanceof Error ? err.message : String(err)}`,
         'ADD_PARENT_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -4794,7 +5031,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to remove parent from family: ${error.message}`,
           'REMOVE_PARENT_ERROR',
-          error as any
+          error
         )
       }
     } catch (err) {
@@ -4802,7 +5039,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error removing parent from family: ${err instanceof Error ? err.message : String(err)}`,
         'REMOVE_PARENT_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -4828,7 +5065,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to update parent relationship: ${error.message}`,
           'UPDATE_RELATIONSHIP_ERROR',
-          error as any
+          error
         )
       }
     } catch (err) {
@@ -4836,7 +5073,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error updating parent relationship: ${err instanceof Error ? err.message : String(err)}`,
         'UPDATE_RELATIONSHIP_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -4857,7 +5094,7 @@ class AdminService {
         throw new AdminServiceError(
           `Family ${familyId} not found`,
           'ADD_STUDENT_ERROR',
-          familyError as any
+          familyError
         )
       }
 
@@ -4878,7 +5115,7 @@ class AdminService {
         throw new AdminServiceError(
           `Student ${studentId} not found`,
           'FAMILY_ASSOCIATION_ERROR',
-          studentError as any
+          studentError
         )
       }
 
@@ -4893,7 +5130,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to validate family association: ${linkError.message}`,
           'FAMILY_ASSOCIATION_ERROR',
-          linkError as any
+          linkError
         )
       }
 
@@ -4916,7 +5153,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to add student to family: ${error.message}`,
           'ADD_STUDENT_ERROR',
-          error as any
+          error
         )
       }
 
@@ -4937,7 +5174,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error adding student to family: ${err instanceof Error ? err.message : String(err)}`,
         'ADD_STUDENT_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -4959,7 +5196,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to verify student association: ${existingError.message}`,
           'REMOVE_STUDENT_ERROR',
-          existingError as any
+          existingError
         )
       }
 
@@ -4980,7 +5217,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to remove student from family: ${error.message}`,
           'REMOVE_STUDENT_ERROR',
-          error as any
+          error
         )
       }
 
@@ -5001,7 +5238,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error removing student from family: ${err instanceof Error ? err.message : String(err)}`,
         'REMOVE_STUDENT_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -5041,10 +5278,10 @@ class AdminService {
         throw new AdminServiceError(
           `Unknown student: ${normalizedStudentId}`,
           'ADD_STUDENT_CLASS_ENROLLMENT_ERROR',
-          resolvedStudentError as any
+          resolvedStudentError
         )
       }
-      if ((resolvedStudentData as any).is_active === false) {
+      if (hasIsActiveField(resolvedStudentData) && resolvedStudentData.is_active === false) {
         throw new AdminServiceError('停用學生無法加入班級', 'ADD_STUDENT_CLASS_ENROLLMENT_ERROR')
       }
 
@@ -5052,10 +5289,10 @@ class AdminService {
         throw new AdminServiceError(
           `Unknown class: ${normalizedClassId}`,
           'ADD_STUDENT_CLASS_ENROLLMENT_ERROR',
-          classResult.error as any
+          classResult.error
         )
       }
-      if ((classResult.data as any).is_active === false) {
+      if ((classResult.data).is_active === false) {
         throw new AdminServiceError('停用班級無法新增學生', 'ADD_STUDENT_CLASS_ENROLLMENT_ERROR')
       }
 
@@ -5063,10 +5300,10 @@ class AdminService {
         throw new AdminServiceError(
           `Unknown family: ${normalizedFamilyId}`,
           'ADD_STUDENT_CLASS_ENROLLMENT_ERROR',
-          familyResult.error as any
+          familyResult.error
         )
       }
-      if ((familyResult.data as any).is_active === false) {
+      if ((familyResult.data).is_active === false) {
         throw new AdminServiceError('停用家庭無法分配班級', 'ADD_STUDENT_CLASS_ENROLLMENT_ERROR')
       }
 
@@ -5081,7 +5318,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to validate student-family relationship: ${familyLinkError.message}`,
           'ADD_STUDENT_CLASS_ENROLLMENT_ERROR',
-          familyLinkError as any
+          familyLinkError
         )
       }
       if (!familyLink) {
@@ -5099,7 +5336,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to validate class enrollment: ${existingError.message}`,
           'ADD_STUDENT_CLASS_ENROLLMENT_ERROR',
-          existingError as any
+          existingError
         )
       }
 
@@ -5117,7 +5354,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to assign student to class: ${error.message}`,
           'ADD_STUDENT_CLASS_ENROLLMENT_ERROR',
-          error as any
+          error
         )
       }
 
@@ -5132,7 +5369,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error assigning student to class: ${err instanceof Error ? err.message : String(err)}`,
         'ADD_STUDENT_CLASS_ENROLLMENT_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -5154,7 +5391,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to validate class enrollment: ${existingError.message}`,
           'REMOVE_STUDENT_CLASS_ENROLLMENT_ERROR',
-          existingError as any
+          existingError
         )
       }
       if (!existing) {
@@ -5171,14 +5408,14 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to remove student class enrollment: ${error.message}`,
           'REMOVE_STUDENT_CLASS_ENROLLMENT_ERROR',
-          error as any
+          error
         )
       }
 
       await this.writeStudentAudit(
         normalizedStudentId,
         'remove_class',
-        { class_id: normalizedClassId, family_id: (existing as any).family_id },
+        { class_id: normalizedClassId, family_id: (existing).family_id },
         null
       )
     } catch (err) {
@@ -5186,7 +5423,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error removing student class enrollment: ${err instanceof Error ? err.message : String(err)}`,
         'REMOVE_STUDENT_CLASS_ENROLLMENT_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -5209,7 +5446,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to fetch parents: ${fetchError.message}`,
           'FETCH_PARENTS_ERROR',
-          fetchError as any
+          fetchError
         )
       }
 
@@ -5227,16 +5464,18 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to fetch family enrollments: ${enrollError.message}`,
           'FETCH_ENROLLMENTS_ERROR',
-          enrollError as any
+          enrollError
         )
       }
 
-      const existingParentIds = (enrollments || []).map((e: any) => e.parent_id).filter(Boolean)
+      const existingParentIds = (enrollments || [])
+        .map((e: FamilyEnrollmentParentRef) => e.parent_id)
+        .filter(Boolean) as string[]
 
       // Filter out parents already in family
       return allParents
-        .filter((p: any) => !existingParentIds.includes(p.id))
-        .map((row: any) => ({
+        .filter((p: UserRolesAdminRow) => !existingParentIds.includes(p.id))
+        .map((row: UserRolesAdminRow) => ({
           id: row.id,
           email: row.email,
           name: row.email, // Use email as display name since user_roles table has no name column
@@ -5251,7 +5490,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error fetching available parents: ${err instanceof Error ? err.message : String(err)}`,
         'FETCH_AVAILABLE_PARENTS_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -5270,22 +5509,23 @@ class AdminService {
         .eq('is_active', true)
         .order('name', { ascending: true })
 
-      let studentsData: any[] | null = allStudents as any[] | null
-      let studentsError: any = fetchError
+      let studentsData: StudentAdminSelectRow[] | null =
+        (allStudents as StudentAdminSelectRow[] | null) ?? null
+      let studentsError: PostgrestError | null = fetchError
       if (studentsError && (this.isMissingStudentColumnError(studentsError, 'student_code') || this.isMissingStudentColumnError(studentsError, 'is_active'))) {
         const legacyStudents = await supabase
           .from('students')
           .select('id, name, created_at, updated_at')
           .order('name', { ascending: true })
-        studentsData = legacyStudents.data as any
-        studentsError = legacyStudents.error as any
+        studentsData = (legacyStudents.data as StudentAdminSelectRow[] | null) ?? null
+        studentsError = legacyStudents.error
       }
 
       if (studentsError) {
         throw new AdminServiceError(
           `Failed to fetch students: ${studentsError.message}`,
           'FETCH_STUDENTS_ERROR',
-          studentsError as any
+          studentsError
         )
       }
 
@@ -5303,16 +5543,18 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to fetch family enrollments: ${enrollError.message}`,
           'FETCH_ENROLLMENTS_ERROR',
-          enrollError as any
+          enrollError
         )
       }
 
-      const existingStudentIds = (enrollments || []).map((e: any) => e.student_id).filter(Boolean)
+      const existingStudentIds = (enrollments || [])
+        .map((e: FamilyEnrollmentStudentRef) => e.student_id)
+        .filter(Boolean) as string[]
 
       // Filter out students already in family
       return studentsData
-        .filter((s: any) => !existingStudentIds.includes(s.id))
-        .map((row: any) => ({
+        .filter((s: StudentAdminSelectRow) => !existingStudentIds.includes(s.id))
+        .map((row: StudentAdminSelectRow) => ({
           id: row.id,
           email: row.student_code || row.name || '',
           name: row.name || 'Unknown',
@@ -5327,7 +5569,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error fetching available students: ${err instanceof Error ? err.message : String(err)}`,
         'FETCH_AVAILABLE_STUDENTS_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -5336,12 +5578,13 @@ class AdminService {
     return input.trim().replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-_]/g, '').toUpperCase()
   }
 
-  private isMissingStudentColumnError(error: any, columnName: string): boolean {
-    const message = String(error?.message || '')
-    return error?.code === '42703' || message.includes(`students.${columnName}`) || message.includes('does not exist')
+  private isMissingStudentColumnError(error: unknown, columnName: string): boolean {
+    const message = String(isPostgresLikeError(error) ? error.message || '' : '')
+    const code = postgresErrorCode(error)
+    return code === '42703' || message.includes(`students.${columnName}`) || message.includes('does not exist')
   }
 
-  private mapStudentRow(row: any): AdminUser {
+  private mapStudentRow(row: StudentAdminSelectRow): AdminUser {
     const isActive = row.is_active ?? true
     return {
       id: row.id,
@@ -5366,7 +5609,7 @@ class AdminService {
 
     const normalizedCode = this.normalizeStudentCode(normalizedName)
     const supabase = getSupabaseClient()
-    let duplicateRows: any[] = []
+    let duplicateRows: IdOnlyRow[] = []
     const lifecycleQuery = await supabase
       .from('students')
       .select('id')
@@ -5382,7 +5625,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to validate student identity: ${legacyQuery.error.message}`,
           'STUDENT_VALIDATION_ERROR',
-          legacyQuery.error as any
+          legacyQuery.error
         )
       }
       duplicateRows = legacyQuery.data || []
@@ -5390,12 +5633,12 @@ class AdminService {
       throw new AdminServiceError(
         `Failed to validate student identity: ${lifecycleQuery.error.message}`,
         'STUDENT_VALIDATION_ERROR',
-        lifecycleQuery.error as any
+        lifecycleQuery.error
       )
     } else {
       duplicateRows = lifecycleQuery.data || []
     }
-    const duplicate = duplicateRows.find((row: any) => row.id !== input.idToExclude)
+    const duplicate = duplicateRows.find((row: IdOnlyRow) => row.id !== input.idToExclude)
     if (duplicate) {
       throw new AdminServiceError('學生姓名已存在', 'STUDENT_VALIDATION_ERROR')
     }
@@ -5441,32 +5684,33 @@ class AdminService {
       }
 
       const queryResult = await query
-      let data: any[] | null = queryResult.data as any[] | null
-      let error: any = queryResult.error
+      let data: StudentAdminSelectRow[] | null =
+        (queryResult.data as StudentAdminSelectRow[] | null) ?? null
+      let error = queryResult.error
       if (error && (this.isMissingStudentColumnError(error, 'student_code') || this.isMissingStudentColumnError(error, 'is_active'))) {
         const legacyQuery = await supabase
           .from('students')
           .select('id, name, created_at, updated_at')
           .order('name', { ascending: true })
-        data = legacyQuery.data as any[] | null
-        error = legacyQuery.error as any
+        data = (legacyQuery.data as StudentAdminSelectRow[] | null) ?? null
+        error = legacyQuery.error
       }
 
       if (error) {
         throw new AdminServiceError(
           `Failed to fetch students: ${error.message}`,
           'FETCH_STUDENTS_ERROR',
-          error as any
+          error
         )
       }
 
-      return (data || []).map((row: any) => this.mapStudentRow(row))
+      return (data || []).map((row: StudentAdminSelectRow) => this.mapStudentRow(row))
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
       throw new AdminServiceError(
         `Error fetching students: ${err instanceof Error ? err.message : String(err)}`,
         'FETCH_STUDENTS_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -5492,14 +5736,14 @@ class AdminService {
           .select('*')
           .single()
         data = legacyInsert.data
-        error = legacyInsert.error as any
+        error = legacyInsert.error
       }
 
       if (error || !data) {
         throw new AdminServiceError(
           `Failed to create student: ${error?.message || 'Unknown error'}`,
           'CREATE_STUDENT_ERROR',
-          error as any
+          error
         )
       }
 
@@ -5521,7 +5765,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error creating student: ${err instanceof Error ? err.message : String(err)}`,
         'CREATE_STUDENT_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -5539,7 +5783,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to load student before update: ${existingError?.message || 'Student not found'}`,
           'UPDATE_STUDENT_ERROR',
-          existingError as any
+          existingError
         )
       }
 
@@ -5570,14 +5814,14 @@ class AdminService {
           .select('*')
           .maybeSingle()
         data = legacyUpdate.data
-        error = legacyUpdate.error as any
+        error = legacyUpdate.error
       }
 
       if (error) {
         throw new AdminServiceError(
           `Failed to update student: ${error.message}`,
           'UPDATE_STUDENT_ERROR',
-          error as any
+          error
         )
       }
 
@@ -5610,7 +5854,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error updating student: ${err instanceof Error ? err.message : String(err)}`,
         'UPDATE_STUDENT_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -5624,10 +5868,10 @@ class AdminService {
         .eq('id', id)
         .single()
       if (existingError || !existing) {
-        throw new AdminServiceError(`Student ${id} not found`, 'ACTIVATE_STUDENT_ERROR', existingError as any)
+        throw new AdminServiceError(`Student ${id} not found`, 'ACTIVATE_STUDENT_ERROR', existingError)
       }
 
-      let { data, error } = await supabase
+      const { data, error } = await supabase
         .from('students')
         .update({ is_active: true })
         .eq('id', id)
@@ -5637,14 +5881,14 @@ class AdminService {
         return this.mapStudentRow(existing)
       }
       if (error || !data) {
-        throw new AdminServiceError(`Failed to activate student: ${error?.message || 'Unknown error'}`, 'ACTIVATE_STUDENT_ERROR', error as any)
+        throw new AdminServiceError(`Failed to activate student: ${error?.message || 'Unknown error'}`, 'ACTIVATE_STUDENT_ERROR', error)
       }
 
       await this.writeStudentAudit(id, 'activate', { is_active: existing.is_active ?? true }, { is_active: true }, options.actorId)
       return this.mapStudentRow(data)
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
-      throw new AdminServiceError(`Error activating student: ${err instanceof Error ? err.message : String(err)}`, 'ACTIVATE_STUDENT_ERROR', err as any)
+      throw new AdminServiceError(`Error activating student: ${err instanceof Error ? err.message : String(err)}`, 'ACTIVATE_STUDENT_ERROR', err)
     }
   }
 
@@ -5657,27 +5901,27 @@ class AdminService {
         .eq('id', id)
         .single()
       if (existingError || !existing) {
-        throw new AdminServiceError(`Student ${id} not found`, 'DEACTIVATE_STUDENT_ERROR', existingError as any)
+        throw new AdminServiceError(`Student ${id} not found`, 'DEACTIVATE_STUDENT_ERROR', existingError)
       }
 
-      let { data, error } = await supabase
+      const { data, error } = await supabase
         .from('students')
         .update({ is_active: false })
         .eq('id', id)
         .select('*')
         .single()
       if (error && this.isMissingStudentColumnError(error, 'is_active')) {
-        throw new AdminServiceError('目前資料庫尚未升級學生停用欄位，請先執行 migration up。', 'DEACTIVATE_STUDENT_ERROR', error as any)
+        throw new AdminServiceError('目前資料庫尚未升級學生停用欄位，請先執行 migration up。', 'DEACTIVATE_STUDENT_ERROR', error)
       }
       if (error || !data) {
-        throw new AdminServiceError(`Failed to deactivate student: ${error?.message || 'Unknown error'}`, 'DEACTIVATE_STUDENT_ERROR', error as any)
+        throw new AdminServiceError(`Failed to deactivate student: ${error?.message || 'Unknown error'}`, 'DEACTIVATE_STUDENT_ERROR', error)
       }
 
       await this.writeStudentAudit(id, 'deactivate', { is_active: existing.is_active ?? true }, { is_active: false }, options.actorId)
       return this.mapStudentRow(data)
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
-      throw new AdminServiceError(`Error deactivating student: ${err instanceof Error ? err.message : String(err)}`, 'DEACTIVATE_STUDENT_ERROR', err as any)
+      throw new AdminServiceError(`Error deactivating student: ${err instanceof Error ? err.message : String(err)}`, 'DEACTIVATE_STUDENT_ERROR', err)
     }
   }
 
@@ -5697,7 +5941,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error fetching parents: ${err instanceof Error ? err.message : String(err)}`,
         'FETCH_PARENTS_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -5728,7 +5972,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to update parent/guardian: ${error.message}`,
           'UPDATE_PARENT_ERROR',
-          error as any
+          error
         )
       }
 
@@ -5761,7 +6005,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error updating parent/guardian: ${err instanceof Error ? err.message : String(err)}`,
         'UPDATE_PARENT_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -5808,11 +6052,11 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to fetch teachers: ${error.message}`,
           'FETCH_TEACHERS_ERROR',
-          error as any
+          error
         )
       }
 
-      return (data || []).map((row: any) => {
+      return (data || []).map((row: TeacherUserWithProfileRow) => {
         const profile = row.teacher_profiles?.[0] || {}
         return {
           id: row.id,
@@ -5830,7 +6074,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error fetching teachers: ${err instanceof Error ? err.message : String(err)}`,
         'FETCH_TEACHERS_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -5859,7 +6103,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to create teacher profile: ${profileError.message}`,
           'CREATE_TEACHER_ERROR',
-          profileError as any
+          profileError
         )
       }
 
@@ -5877,7 +6121,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error creating teacher: ${err instanceof Error ? err.message : String(err)}`,
         'CREATE_TEACHER_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -5911,7 +6155,7 @@ class AdminService {
         throw new AdminServiceError(
           `Teacher not found: ${existingError?.message || id}`,
           'UPDATE_TEACHER_ERROR',
-          existingError as any
+          existingError
         )
       }
 
@@ -5938,7 +6182,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to update teacher: ${error.message}`,
           'UPDATE_TEACHER_ERROR',
-          error as any
+          error
         )
       }
 
@@ -5952,7 +6196,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to load updated teacher profile: ${profileError?.message || id}`,
           'UPDATE_TEACHER_ERROR',
-          profileError as any
+          profileError
         )
       }
 
@@ -5983,7 +6227,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error updating teacher: ${err instanceof Error ? err.message : String(err)}`,
         'UPDATE_TEACHER_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -6008,11 +6252,12 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to fetch teacher assignments: ${assignmentError.message}`,
           'FETCH_TEACHER_CLASSES_ERROR',
-          assignmentError as any
+          assignmentError
         )
       }
 
-      const classIds = [...new Set((assignments || []).map((row: any) => row.class_id))]
+      const assignmentRows = (assignments || []) as unknown as TeacherClassPairRow[]
+      const classIds = [...new Set(assignmentRows.map((row) => row.class_id))]
       if (classIds.length === 0) return []
 
       const { data: classes, error: classError } = await supabase
@@ -6025,11 +6270,11 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to fetch teacher classes: ${classError.message}`,
           'FETCH_TEACHER_CLASSES_ERROR',
-          classError as any
+          classError
         )
       }
 
-      return (classes || []).map((row: any) => ({
+      return (classes || []).map((row: Pick<ClassRow, 'id' | 'class_name' | 'is_active'>) => ({
         id: row.id,
         name: row.class_name,
         isActive: row.is_active ?? true,
@@ -6039,7 +6284,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error fetching teacher classes: ${err instanceof Error ? err.message : String(err)}`,
         'FETCH_TEACHER_CLASSES_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -6077,7 +6322,7 @@ class AdminService {
         throw new AdminServiceError(
           `Teacher not found: ${existingError?.message || id}`,
           `${action.toUpperCase()}_TEACHER_ERROR`,
-          existingError as any
+          existingError
         )
       }
 
@@ -6097,7 +6342,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to ${action} teacher: ${error.message}`,
           `${action.toUpperCase()}_TEACHER_ERROR`,
-          error as any
+          error
         )
       }
 
@@ -6111,7 +6356,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to fetch updated teacher profile: ${updatedError?.message || id}`,
           `${action.toUpperCase()}_TEACHER_ERROR`,
-          updatedError as any
+          updatedError
         )
       }
 
@@ -6143,7 +6388,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error updating teacher lifecycle: ${err instanceof Error ? err.message : String(err)}`,
         `${action.toUpperCase()}_TEACHER_ERROR`,
-        err as any
+        err
       )
     }
   }
@@ -6168,7 +6413,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to fetch user role for class restrictions: ${error.message}`,
           'FETCH_USER_CLASS_SCOPE_ERROR',
-          error as any
+          error
         )
       }
 
@@ -6202,7 +6447,7 @@ class AdminService {
       throw new AdminServiceError(
         `User not found for access-control update: ${existingError?.message || userId}`,
         'UPDATE_USER_ACCESS_ERROR',
-        existingError as any
+        existingError
       )
     }
 
@@ -6219,7 +6464,7 @@ class AdminService {
       throw new AdminServiceError(
         `Failed to update primary role: ${updateRoleError.message}`,
         'UPDATE_USER_ACCESS_ERROR',
-        updateRoleError as any
+        updateRoleError
       )
     }
 
@@ -6271,7 +6516,7 @@ class AdminService {
       throw new AdminServiceError(
         `Failed to fetch users for bulk preview: ${error.message}`,
         'BULK_PERMISSION_PREVIEW_ERROR',
-        error as any
+        error
       )
     }
 
@@ -6315,7 +6560,7 @@ class AdminService {
       throw new AdminServiceError(
         `Failed to fetch users for bulk update: ${error.message}`,
         'BULK_PERMISSION_APPLY_ERROR',
-        error as any
+        error
       )
     }
 
@@ -6379,7 +6624,7 @@ class AdminService {
       throw new AdminServiceError(
         `Failed to fetch permission mutation logs: ${mutationError.message}`,
         'FETCH_ACCESS_CONTROL_LOGS_ERROR',
-        mutationError as any
+        mutationError
       )
     }
 
@@ -6398,11 +6643,11 @@ class AdminService {
       throw new AdminServiceError(
         `Failed to fetch authorization decision logs: ${decisionError.message}`,
         'FETCH_ACCESS_CONTROL_LOGS_ERROR',
-        decisionError as any
+        decisionError
       )
     }
 
-    const mutationEntries: AccessControlLogEntry[] = (mutationRows || []).map((row: any) => ({
+    const mutationEntries: AccessControlLogEntry[] = (mutationRows || []).map((row: PermissionMutationAuditRow) => ({
       id: row.id,
       type: 'mutation',
       action: row.action,
@@ -6414,7 +6659,7 @@ class AdminService {
       createdAt: row.changed_at,
     }))
 
-    const decisionEntries: AccessControlLogEntry[] = (decisionRows || []).map((row: any) => ({
+    const decisionEntries: AccessControlLogEntry[] = (decisionRows || []).map((row: AuthorizationDecisionTraceRow) => ({
       id: row.id,
       type: 'decision',
       action: row.action,
@@ -6454,26 +6699,26 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to fetch users: ${error.message}`,
           'FETCH_USERS_ERROR',
-          error as any
+          error
         )
       }
 
-      return (data || []).map((row: any) => ({
+      return (data || []).map((row: UserRolesAdminRow) => ({
         id: row.id,
         email: row.email,
         name: row.display_name || row.name || row.email,
         role: row.role,
-        status: row.status,
+        status: row.status ?? 'active',
         createdAt: row.created_at,
         updatedAt: row.updated_at,
-        lastLoginAt: row.last_login_at,
+        lastLoginAt: row.last_login_at ?? null,
       }))
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
       throw new AdminServiceError(
         `Error fetching users: ${err instanceof Error ? err.message : String(err)}`,
         'FETCH_USERS_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -6501,7 +6746,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to create user: ${error.message}`,
           'CREATE_USER_ERROR',
-          error as any
+          error
         )
       }
 
@@ -6520,7 +6765,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error creating user: ${err instanceof Error ? err.message : String(err)}`,
         'CREATE_USER_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -6544,7 +6789,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to update user: ${error.message}`,
           'UPDATE_USER_ERROR',
-          error as any
+          error
         )
       }
 
@@ -6563,7 +6808,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error updating user: ${err instanceof Error ? err.message : String(err)}`,
         'UPDATE_USER_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -6582,7 +6827,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to delete user: ${error.message}`,
           'DELETE_USER_ERROR',
-          error as any
+          error
         )
       }
 
@@ -6597,7 +6842,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error deleting user: ${err instanceof Error ? err.message : String(err)}`,
         'DELETE_USER_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -6631,7 +6876,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to create relationship: ${error.message}`,
           'CREATE_RELATIONSHIP_ERROR',
-          error as any
+          error
         )
       }
 
@@ -6648,7 +6893,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error creating relationship: ${err instanceof Error ? err.message : String(err)}`,
         'CREATE_RELATIONSHIP_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -6673,7 +6918,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to delete relationship: ${error.message}`,
           'DELETE_RELATIONSHIP_ERROR',
-          error as any
+          error
         )
       }
     } catch (err) {
@@ -6681,7 +6926,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error deleting relationship: ${err instanceof Error ? err.message : String(err)}`,
         'DELETE_RELATIONSHIP_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -6702,7 +6947,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to fetch relationships: ${relError.message}`,
           'FETCH_RELATIONSHIPS_ERROR',
-          relError as any
+          relError
         )
       }
 
@@ -6710,7 +6955,7 @@ class AdminService {
         return []
       }
 
-      const studentIds = relationships.map((r: any) => r.student_id)
+      const studentIds = relationships.map((r: ParentStudentIdRow) => r.student_id)
 
       const { data: students, error: studError } = await supabase
         .from('user_roles')
@@ -6721,26 +6966,26 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to fetch students: ${studError.message}`,
           'FETCH_STUDENTS_ERROR',
-          studError as any
+          studError
         )
       }
 
-      return (students || []).map((row: any) => ({
+      return (students || []).map((row: UserRolesAdminRow) => ({
         id: row.id,
         email: row.email,
-        name: row.name,
+        name: row.name ?? row.email,
         role: row.role,
-        status: row.status,
+        status: row.status ?? 'active',
         createdAt: row.created_at,
         updatedAt: row.updated_at,
-        lastLoginAt: row.last_login_at,
+        lastLoginAt: row.last_login_at ?? null,
       }))
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
       throw new AdminServiceError(
         `Error fetching parent's students: ${err instanceof Error ? err.message : String(err)}`,
         'FETCH_PARENT_STUDENTS_ERROR',
-        err as any
+        err
       )
     }
   }
@@ -6761,7 +7006,7 @@ class AdminService {
         throw new AdminServiceError(
           `Failed to fetch relationships: ${error.message}`,
           'FETCH_RELATIONSHIPS_ERROR',
-          error as any
+          error
         )
       }
 
@@ -6770,7 +7015,7 @@ class AdminService {
         console.warn(`Performance warning: getParentStudentRelationships took ${elapsedTime}ms`)
       }
 
-      return (relationships || []).map((row: any) => ({
+      return (relationships || []).map((row: ParentStudentRelationshipPairRow) => ({
         parentId: row.parent_id,
         studentId: row.student_id,
       }))
@@ -6779,7 +7024,7 @@ class AdminService {
       throw new AdminServiceError(
         `Error fetching relationships: ${err instanceof Error ? err.message : String(err)}`,
         'FETCH_RELATIONSHIPS_ERROR',
-        err as any
+        err
       )
     }
   }

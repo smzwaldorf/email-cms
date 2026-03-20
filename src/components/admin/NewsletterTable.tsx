@@ -13,7 +13,7 @@
 
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import type { AdminNewsletter, NewsletterFilterOptions } from '@/types/admin'
+import type { AdminNewsletter, NewsletterFilterOptions, NewsletterStatus } from '@/types/admin'
 import { getAdminNewsletterPath } from '@/utils/adminNewsletterRoutes'
 
 export interface NewsletterTableProps {
@@ -100,8 +100,10 @@ export function NewsletterTable({
   const handleStatusFilterChange = (status: string | null) => {
     setStatusFilter(status)
     if (onFilterChange) {
+      const typedStatus: NewsletterStatus | undefined =
+        status === 'draft' || status === 'published' || status === 'archived' ? status : undefined
       onFilterChange({
-        status: status as any,
+        status: typedStatus,
       })
     }
   }
@@ -119,13 +121,13 @@ export function NewsletterTable({
 
     // Apply sorting
     result.sort((a, b) => {
-      let aVal: any
-      let bVal: any
+      let aVal: string | number
+      let bVal: string | number
 
       switch (sortField) {
         case 'weekNumber':
-          aVal = a.weekNumber
-          bVal = b.weekNumber
+          aVal = a.weekNumber ?? ''
+          bVal = b.weekNumber ?? ''
           break
         case 'releaseDate':
           aVal = new Date(a.releaseDate).getTime()

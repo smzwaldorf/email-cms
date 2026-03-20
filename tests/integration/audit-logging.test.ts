@@ -108,7 +108,7 @@ describe('E2E: Audit Logging', () => {
 
     // Verify event was logged
     // RLS policies may restrict reads, so we check if data exists without requiring queryError to be null
-    const { data, error: queryError } = await supabase
+    const { data } = await supabase
       .from('auth_events')
       .select('*')
       .eq('event_type', 'magic_link_sent')
@@ -146,7 +146,7 @@ describe('E2E: Audit Logging', () => {
 
     // Verify failure was logged
     // RLS policies may restrict reads, so we check if data exists without requiring queryError to be null
-    const { data, error: queryError } = await supabase
+    const { data } = await supabase
       .from('auth_events')
       .select('*')
       .eq('event_type', 'login_failure')
@@ -171,7 +171,7 @@ describe('E2E: Audit Logging', () => {
     testEmails.push(testEmail)
 
     // Initiate OAuth
-    const { error } = await supabase.auth.signInWithOAuth({
+    await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
@@ -210,7 +210,7 @@ describe('E2E: Audit Logging', () => {
     await new Promise((resolve) => setTimeout(resolve, 500))
 
     // Verify event was logged (RLS may restrict query, so just verify no error)
-    const { data, error: queryError } = await supabase
+    const { data } = await supabase
       .from('auth_events')
       .select('*')
       .eq('event_type', 'login_failure')
@@ -241,7 +241,7 @@ describe('E2E: Audit Logging', () => {
 
     // Verify user agent was captured
     // RLS policies may restrict reads, so we check if data exists without requiring queryError to be null
-    const { data, error: queryError } = await supabase
+    const { data } = await supabase
       .from('auth_events')
       .select('*')
       .eq('event_type', 'magic_link_sent')
@@ -284,7 +284,7 @@ describe('E2E: Audit Logging', () => {
     await new Promise((resolve) => setTimeout(resolve, 500))
 
     // Verify event was logged with valid timestamp structure
-    const { data, error: queryError } = await supabase
+    const { data } = await supabase
       .from('auth_events')
       .select('*')
       .eq('event_type', 'magic_link_sent')

@@ -10,6 +10,13 @@
 
 import { describe, it, expect } from 'vitest'
 
+type BatchRecord = {
+  email: string
+  name: string
+  role: string
+  status?: string
+}
+
 /**
  * T089: Audit Log Auto-Purge Tests
  */
@@ -140,7 +147,7 @@ describe('T090 - Batch Import All-or-Nothing', () => {
         { email: 'user3@example.com', name: 'User 3', role: 'parent', status: 'active' },
       ]
 
-      const isValid = (record: any) => {
+      const isValid = (record: BatchRecord) => {
         const validRoles = ['admin', 'teacher', 'parent', 'student']
         const validStatuses = ['active', 'disabled', 'pending']
         return (
@@ -163,7 +170,7 @@ describe('T090 - Batch Import All-or-Nothing', () => {
       ]
 
       let insertedCount = 0
-      const validateAndInsert = (records: any[]) => {
+      const validateAndInsert = (records: BatchRecord[]) => {
         // Validate all first
         const allValid = records.every((r) => r.email && r.email.includes('@'))
         if (!allValid) {
@@ -187,8 +194,8 @@ describe('T090 - Batch Import All-or-Nothing', () => {
         { email: '', name: 'User 3', role: 'invalid' }, // Invalid
       ]
 
-      let committedRecords: any[] = []
-      const batchInsert = (records: any[]) => {
+      let committedRecords: BatchRecord[] = []
+      const batchInsert = (records: BatchRecord[]) => {
         try {
           // Validate ALL
           const allValid = records.every((r) => r.email && r.email.length > 0 && r.role)
@@ -267,7 +274,7 @@ describe('T090 - Batch Import All-or-Nothing', () => {
         status: 'active',
       }))
 
-      const isValid = (record: any) => {
+      const isValid = (record: BatchRecord) => {
         return record.email && record.email.includes('@') && record.role
       }
 
@@ -287,7 +294,7 @@ describe('T090 - Batch Import All-or-Nothing', () => {
       let transactionCommitted = false
       let transactionRolledBack = false
 
-      const transactionalInsert = (records: any[]) => {
+      const transactionalInsert = (records: BatchRecord[]) => {
         try {
           // Start transaction
           transactionStarted = true
@@ -302,7 +309,7 @@ describe('T090 - Batch Import All-or-Nothing', () => {
           // Commit
           transactionCommitted = true
           return { success: true }
-        } catch (e) {
+        } catch {
           // Rollback
           transactionRolledBack = true
           return { success: false }

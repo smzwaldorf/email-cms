@@ -11,7 +11,13 @@
  */
 
 import { table, getSupabaseClient } from '@/lib/supabase'
-import type { ArticleRow } from '@/types/database'
+import type { ArticleAuditLogRow, ArticleRow } from '@/types/database'
+
+/** Row shape from newsletter_articles join with articles */
+type NewsletterArticleJoinRow = {
+  article_order: number
+  articles: ArticleRow
+}
 
 /**
  * Helper: Get newsletter UUID by week_number
@@ -59,11 +65,11 @@ export async function getPublishedArticlesByWeek(weekNumber: string): Promise<Ar
 
     // Filter for published articles and map the result
     return (data || [])
-      .map((row: any) => ({
+      .map((row: NewsletterArticleJoinRow) => ({
         ...row.articles,
         article_order: row.article_order, // Include order from junction table
       }))
-      .filter((article: any) => article.status === 'published' && !article.deleted_at)
+      .filter((article: ArticleRow) => article.status === 'published' && !article.deleted_at)
   } catch (err) {
     console.error('Query error in getPublishedArticlesByWeek:', err)
     throw err
@@ -99,7 +105,7 @@ export async function getArticlesByWeekUnfiltered(weekNumber: string): Promise<A
       throw new Error(`Failed to fetch articles for week ${weekNumber}: ${error.message}`)
     }
 
-    return (data || []).map((row: any) => ({
+    return (data || []).map((row: NewsletterArticleJoinRow) => ({
       ...row.articles,
       article_order: row.article_order,
     }))
@@ -143,11 +149,11 @@ export async function getArticlesByClass(
 
     // Filter for published articles that are public or include this class
     return (data || [])
-      .map((row: any) => ({
+      .map((row: NewsletterArticleJoinRow) => ({
         ...row.articles,
         article_order: row.article_order,
       }))
-      .filter((article: any) => {
+      .filter((article: ArticleRow) => {
         if (article.deleted_at) return false
         if (article.status !== 'published') return false
         if (article.visibility_type === 'public') return true
@@ -199,11 +205,11 @@ export async function getArticlesByClasses(
 
     // Filter for published articles that are public or include any of the classes
     return (data || [])
-      .map((row: any) => ({
+      .map((row: NewsletterArticleJoinRow) => ({
         ...row.articles,
         article_order: row.article_order,
       }))
-      .filter((article: any) => {
+      .filter((article: ArticleRow) => {
         if (article.deleted_at) return false
         if (article.status !== 'published') return false
         if (article.visibility_type === 'public') return true
@@ -225,7 +231,7 @@ export async function getArticlesByClasses(
  */
 export async function getArticleWithAuditLog(articleId: string): Promise<{
   article: ArticleRow
-  auditLog: any[]
+  auditLog: ArticleAuditLogRow[]
 }> {
   try {
     // Fetch article
@@ -375,11 +381,11 @@ export async function searchArticles(
 
       // Filter results by search query
       return (data || [])
-        .map((row: any) => ({
+        .map((row: NewsletterArticleJoinRow) => ({
           ...row.articles,
           article_order: row.article_order,
         }))
-        .filter((article: any) => {
+        .filter((article: ArticleRow) => {
           if (article.status !== 'published') return false
           if (article.deleted_at) return false
           const lowerQuery = query.toLowerCase()
@@ -442,11 +448,11 @@ export async function getArticlesByCreator(
     }
 
     return (data || [])
-      .map((row: any) => ({
+      .map((row: NewsletterArticleJoinRow) => ({
         ...row.articles,
         article_order: row.article_order,
       }))
-      .filter((article: any) => article.created_by === userId && !article.deleted_at)
+      .filter((article: ArticleRow) => article.created_by === userId && !article.deleted_at)
   } catch (err) {
     console.error('Query error in getArticlesByCreator:', err)
     throw err

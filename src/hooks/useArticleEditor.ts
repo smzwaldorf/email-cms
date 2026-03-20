@@ -96,7 +96,7 @@ export function useArticleEditor(
           title: initialArticle.title,
           content: initialArticle.content,
           author: '', // Now lookup from author_id
-          visibilityType: initialArticle.visibility_type as any,
+          visibilityType: initialArticle.visibility_type,
           restrictedToClasses: initialArticle.restricted_to_classes || [],
           articleOrder: undefined, // Now from junction table
         }
@@ -121,12 +121,16 @@ export function useArticleEditor(
         .single()
 
       if (data) {
+        const row = data as unknown as {
+          article_order: number
+          newsletters: { week_number: string }
+        }
         setState(prev => ({
           ...prev,
           formData: {
             ...prev.formData,
-            weekNumber: (data.newsletters as any)?.week_number || '',
-            articleOrder: data.article_order,
+            weekNumber: row.newsletters?.week_number || '',
+            articleOrder: row.article_order,
           }
         }))
       }
@@ -207,7 +211,7 @@ export function useArticleEditor(
             title: initialArticle.title,
             content: initialArticle.content,
             author: '', // Now lookup from author_id
-            visibilityType: initialArticle.visibility_type as any,
+            visibilityType: initialArticle.visibility_type,
             restrictedToClasses: initialArticle.restricted_to_classes || [],
             articleOrder: undefined, // Now from junction table
           }

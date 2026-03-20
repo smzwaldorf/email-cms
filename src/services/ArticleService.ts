@@ -7,7 +7,35 @@
  */
 
 import { table, getSupabaseClient } from '@/lib/supabase'
-import type { ArticleRow } from '@/types/database'
+import type { ArticleRow, NewsletterRow } from '@/types/database'
+
+/** Row from `newsletter_articles` select with `articles!inner (*)` */
+interface NewsletterArticleJoinRow {
+  article_order: number
+  articles: ArticleRow
+}
+
+/** Row from `newsletter_articles` with `newsletters!inner(...)` for week filter */
+interface NewsletterJunctionWithNewsletterRow {
+  newsletter_id: string
+  newsletters: Pick<NewsletterRow, 'week_number'> | null
+}
+
+/** Row from listing newsletters for an article (Supabase may nest as object or single-element array) */
+interface ArticleNewsletterPlacementRow {
+  article_order: number
+  newsletters?:
+    | Pick<NewsletterRow, 'week_number' | 'release_date' | 'status'>
+    | Pick<NewsletterRow, 'week_number' | 'release_date' | 'status'>[]
+    | null
+}
+
+function pickNewsletterJoin(
+  newsletters: ArticleNewsletterPlacementRow['newsletters'],
+): Pick<NewsletterRow, 'week_number' | 'release_date' | 'status'> | null | undefined {
+  if (newsletters == null) return newsletters
+  return Array.isArray(newsletters) ? newsletters[0] : newsletters
+}
 import PermissionService, { PermissionError } from './PermissionService'
 import { articleMediaManager } from './articleMediaManager'
 
@@ -138,7 +166,8 @@ export class ArticleService {
       }
 
       // Flatten the result and apply filters
-      let articles = (data || []).map((row: any) => ({
+      const junctionRows = (data || []) as unknown as NewsletterArticleJoinRow[]
+      let articles = junctionRows.map((row) => ({
         ...row.articles,
         // Add order from junction for convenience
         _junction_order: row.article_order,
@@ -275,10 +304,11 @@ export class ArticleService {
         const { data: junctionData, error: junctionError } = await junctionQuery.limit(1).maybeSingle()
 
         if (junctionData && !junctionError) {
+          const junction = junctionData as NewsletterJunctionWithNewsletterRow
           return {
             ...article,
-            newsletter_id: junctionData.newsletter_id,
-            week_number: (junctionData.newsletters as any)?.week_number
+            newsletter_id: junction.newsletter_id,
+            week_number: junction.newsletters?.week_number,
           }
         }
       }
@@ -611,7 +641,7 @@ export class ArticleService {
   static async getArticlesForClass(classId: string, weekNumber: string): Promise<ArticleRow[]> {
     try {
       // Get both public and class-restricted articles
-      let query = table('articles')
+      const query = table('articles')
         .select('*')
         .eq('week_number', weekNumber)
         .eq('status', 'published')
@@ -1059,12 +1089,16 @@ export class ArticleService {
       }
 
       // Transform the response to flatten the nested newsletters
-      return (data || []).map((row: any) => ({
-        week_number: row.newsletters?.week_number || '',
-        article_order: row.article_order,
-        release_date: row.newsletters?.release_date,
-        status: row.newsletters?.status,
-      }))
+      const placementRows = (data || []) as ArticleNewsletterPlacementRow[]
+      return placementRows.map((row) => {
+        const n = pickNewsletterJoin(row.newsletters)
+        return {
+          week_number: n?.week_number || '',
+          article_order: row.article_order,
+          release_date: n?.release_date,
+          status: n?.status,
+        }
+      })
     } catch (err) {
       if (err instanceof ArticleServiceError) throw err
       throw new ArticleServiceError(
@@ -1094,7 +1128,7 @@ export class ArticleService {
         return []
       }
 
-      let query = table('newsletter_articles')
+      const query = table('newsletter_articles')
         .select(`
           article_order,
           articles!inner (*)
@@ -1117,7 +1151,8 @@ export class ArticleService {
       }
 
       // Transform and apply filters
-      let articles = data.map((row: any) => ({
+      const junctionRows = data as unknown as NewsletterArticleJoinRow[]
+      let articles = junctionRows.map((row) => ({
         ...row.articles,
         newsletter_article_order: row.article_order,
       }))

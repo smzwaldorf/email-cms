@@ -58,37 +58,43 @@ export const trackingTokenService = {
   /**
    * Validates JWT payload structure at runtime
    */
-  isValidJWTPayload(payload: any): payload is JWTPayload {
+  isValidJWTPayload(payload: unknown): payload is JWTPayload {
     // Required fields for JWT
     if (typeof payload !== 'object' || payload === null) {
       return false;
     }
 
+    const p = payload as Record<string, unknown>;
+
     // Check required fields
-    if (typeof payload.sub !== 'string' || !payload.sub) {
+    if (typeof p.sub !== 'string' || !p.sub) {
       return false;
     }
 
-    if (typeof payload.nwl !== 'string' || !payload.nwl) {
+    if (typeof p.nwl !== 'string' || !p.nwl) {
       return false;
     }
 
     // cls should be an array if present
-    if (payload.cls && !Array.isArray(payload.cls)) {
+    if (p.cls !== undefined && p.cls !== null && !Array.isArray(p.cls)) {
+      return false;
+    }
+
+    if (Array.isArray(p.cls) && !p.cls.every((id) => typeof id === 'string')) {
       return false;
     }
 
     // iat and exp should be numbers
-    if (typeof payload.iat !== 'number' || payload.iat <= 0) {
+    if (typeof p.iat !== 'number' || p.iat <= 0) {
       return false;
     }
 
-    if (typeof payload.exp !== 'number' || payload.exp <= 0) {
+    if (typeof p.exp !== 'number' || p.exp <= 0) {
       return false;
     }
 
     // jti should be a string
-    if (typeof payload.jti !== 'string' || !payload.jti) {
+    if (typeof p.jti !== 'string' || !p.jti) {
       return false;
     }
 
@@ -147,8 +153,9 @@ export const trackingTokenService = {
       }
 
       return { valid: true, payload: validatedPayload };
-    } catch (e: any) {
-      return { valid: false, error: e.message || 'Invalid token' };
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Invalid token';
+      return { valid: false, error: message };
     }
   },
 
@@ -178,7 +185,7 @@ export const trackingTokenService = {
   /**
    * Stores the token in the database.
    */
-  async storeToken(token: string, userId: string, payload: any): Promise<boolean> {
+  async storeToken(token: string, userId: string, payload: Record<string, unknown>): Promise<boolean> {
     const tokenHash = await this.getTokenHash(token);
     // Decode to get exp
     const parts = token.split('.');
@@ -187,7 +194,7 @@ export const trackingTokenService = {
     try {
         const decoded = JSON.parse(base64UrlDecode(parts[1]));
         expiresAt = new Date(decoded.exp * 1000).toISOString();
-    } catch (e) {
+    } catch {
         // Fallback if parsing fails
         expiresAt = new Date(Date.now() + ANALYTICS_CONFIG.tokenExpiryDays * 24 * 60 * 60 * 1000).toISOString();
     }
@@ -236,8 +243,9 @@ export const trackingTokenService = {
       }
 
       return { revokedCount: data?.length || 0 };
-    } catch (e: any) {
-      return { revokedCount: 0, error: e.message || 'Unknown error' };
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Unknown error';
+      return { revokedCount: 0, error: message };
     }
   },
 

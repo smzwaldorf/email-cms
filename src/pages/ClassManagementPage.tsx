@@ -77,7 +77,7 @@ export function ClassManagementPage() {
       setError(null)
       const data = await adminService.fetchClasses({ includeInactive: true })
       setClasses(data)
-    } catch (err: any) {
+    } catch (err: unknown) {
       const message = err instanceof AdminServiceError ? err.message : 'Failed to load classes'
       setError(message)
     } finally {
@@ -132,7 +132,7 @@ export function ClassManagementPage() {
       setNotification({ message: '班級已成功新增', type: 'success' })
       setPageState('list')
       await loadClasses()
-    } catch (err: any) {
+    } catch (err: unknown) {
       const fieldErrors = extractValidationErrors(err)
       if (fieldErrors) {
         setNotification({ message: Object.values(fieldErrors)[0], type: 'error' })
@@ -161,7 +161,7 @@ export function ClassManagementPage() {
       setNotification({ message: '班級已成功更新', type: 'success' })
       setPageState('list')
       await loadClasses()
-    } catch (err: any) {
+    } catch (err: unknown) {
       const fieldErrors = extractValidationErrors(err)
       if (fieldErrors) {
         setNotification({ message: Object.values(fieldErrors)[0], type: 'error' })
@@ -184,7 +184,7 @@ export function ClassManagementPage() {
       setNotification({ message: '班級已停用', type: 'success' })
       setDeleteConfirm({ isOpen: false })
       await loadClasses()
-    } catch (err: any) {
+    } catch (err: unknown) {
       const message = err instanceof AdminServiceError ? err.message : 'Failed to deactivate class'
       setNotification({ message, type: 'error' })
       setDeleteConfirm({ isOpen: false })
@@ -200,7 +200,7 @@ export function ClassManagementPage() {
       setNotification({ message: '班級已啟用', type: 'success' })
       setDeleteConfirm({ isOpen: false })
       await loadClasses()
-    } catch (err: any) {
+    } catch (err: unknown) {
       const message = err instanceof AdminServiceError ? err.message : 'Failed to activate class'
       setNotification({ message, type: 'error' })
       setDeleteConfirm({ isOpen: false })

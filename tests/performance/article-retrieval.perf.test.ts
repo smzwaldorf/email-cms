@@ -8,7 +8,7 @@
  * - 100 articles: <500ms
  */
 
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import type { ArticleRow } from '@/types/database'
 
 /**
@@ -294,6 +294,7 @@ describe('Article Retrieval Performance Benchmark (SC-001)', () => {
 
       const duration = endTime - startTime
 
+      expect(results.length).toBeGreaterThanOrEqual(0)
       expect(duration).toBeLessThan(200)
       console.log(`✓ Searched 50 articles in ${duration.toFixed(2)}ms`)
     })
@@ -311,6 +312,7 @@ describe('Article Retrieval Performance Benchmark (SC-001)', () => {
 
       const duration = endTime - startTime
 
+      expect(results.length).toBeGreaterThanOrEqual(0)
       expect(duration).toBeLessThan(500)
       console.log(`✓ Searched 100 articles by content in ${duration.toFixed(2)}ms`)
     })

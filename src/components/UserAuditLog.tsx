@@ -40,7 +40,7 @@ interface AuditEvent {
   auth_method: AuthMethod | null
   ip_address: string | null
   user_agent: string | null
-  metadata: Record<string, any> | null
+  metadata: Record<string, unknown> | null
   created_at: string
 }
 
@@ -147,9 +147,9 @@ export const AuditLogViewer: React.FC = () => {
 
       setEvents((data as AuditEvent[]) || [])
       setCurrentPage(1) // Reset to first page on filter change
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching audit logs:', err)
-      setError(err.message || 'Failed to load audit logs')
+      setError(err instanceof Error ? err.message : 'Failed to load audit logs')
     } finally {
       setIsLoading(false)
     }

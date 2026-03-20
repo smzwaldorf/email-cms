@@ -87,7 +87,7 @@ export function EditorPage() {
           error: '你沒有權限編輯此週的任何文章',
         }))
       }
-    } catch (err) {
+    } catch {
       setState(prev => ({
         ...prev,
         error: '載入週報資料失敗',
@@ -108,7 +108,7 @@ export function EditorPage() {
         isSaving: false,
         unsavedChanges: false,
       }))
-    } catch (err) {
+    } catch {
       setState(prev => ({
         ...prev,
         error: '保存文章失敗',
@@ -133,7 +133,7 @@ export function EditorPage() {
         isSaving: false,
         unsavedChanges: false,
       }))
-    } catch (err) {
+    } catch {
       setState(prev => ({
         ...prev,
         error: '刪除文章失敗',
@@ -163,7 +163,7 @@ export function EditorPage() {
         isSaving: false,
         unsavedChanges: false,
       }))
-    } catch (err) {
+    } catch {
       setState(prev => ({
         ...prev,
         error: '重新排列文章失敗',
@@ -195,7 +195,7 @@ export function EditorPage() {
         editingArticleId: createdArticle.id,
         isSaving: false,
       }))
-    } catch (err) {
+    } catch {
       setState(prev => ({
         ...prev,
         error: '創建文章失敗',

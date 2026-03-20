@@ -63,7 +63,6 @@ function VideoEmbedComponent({
   src,
   videoId,
   width = '100%',
-  height = '480',
   startTime,
   autoplay = false,
   title = 'YouTube video',
@@ -90,7 +89,6 @@ function VideoEmbedComponent({
 
   // 計算響應式寬度
   const widthValue = typeof width === 'number' ? `${width}px` : width
-  const heightValue = typeof height === 'number' ? `${height}px` : height
 
   return (
     <div

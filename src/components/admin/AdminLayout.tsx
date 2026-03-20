@@ -76,7 +76,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, activeTab, h
       if (data && (data.week_number || data.id)) {
         setLatestNewsletter(data as LatestNewsletter)
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching latest published newsletter:', err)
       // Default fallback: keep latestNewsletter as null, which disables the link
     }

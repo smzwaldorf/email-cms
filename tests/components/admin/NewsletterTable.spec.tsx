@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import NewsletterTable from '@/components/admin/NewsletterTable'
 import { BrowserRouter } from 'react-router-dom'
+import type { AdminNewsletter } from '@/types/admin'
 
 // Mock data
 const mockNewsletters = [
@@ -35,7 +36,7 @@ const mockNewsletters = [
     updatedAt: '2023-01-15',
     isPublished: true,
   },
-] as any[]
+] as AdminNewsletter[]
 
 describe('NewsletterTable', () => {
   it('renders all newsletters initially', () => {

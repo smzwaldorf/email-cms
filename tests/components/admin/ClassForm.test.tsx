@@ -3,7 +3,7 @@
  * T040: Class form unit tests with validation and student selection
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ClassForm from '@/components/admin/ClassForm'
@@ -299,7 +299,7 @@ describe('ClassForm', () => {
   it('should display error message when onError is called', async () => {
     const user = userEvent.setup()
     const onError = vi.fn()
-    const { rerender } = render(
+    render(
       <ClassForm
         isNew={true}
         onError={onError}

@@ -85,7 +85,7 @@ export const contentConverter = {  /**
           const checked = checkedMatch ? checkedMatch[1] : 'false'
 
           // Remove label/checkbox HTML and extract text content from div/p structure
-          let textContent = liContent
+          const textContent = liContent
             .replace(/<label[^>]*>.*?<\/label>/gi, '')  // Remove label with checkbox
             .replace(/<div[^>]*>/gi, '')  // Remove opening div tags
             .replace(/<\/div>/gi, '')  // Remove closing div tags

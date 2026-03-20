@@ -341,8 +341,8 @@ export function ClassForm({
       }
 
       onSave?.(classData)
-    } catch (err: any) {
-      const error = new Error(err.message || 'Failed to save class')
+    } catch (err: unknown) {
+      const error = new Error(err instanceof Error ? err.message : 'Failed to save class')
       setSaveError(error.message)
       onError?.(error)
     } finally {

@@ -5,8 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { render } from '@testing-library/react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { TipTapAudioNode } from '@/adapters/TipTapAudioNode'
@@ -76,13 +75,6 @@ describe('Integration: Audio Upload Flow', () => {
 
   describe('Audio Format Support', () => {
     it('should recognize MP3 audio nodes', () => {
-      const htmlContent = `
-        <p>Here's an audio file:</p>
-        <div data-audio-node data-src="https://example.com/audio.mp3" data-title="Test MP3" data-media-id="123">
-          <audio src="https://example.com/audio.mp3"></audio>
-        </div>
-      `
-
       const { container } = render(
         <EditorWithAudio onContentChange={mockOnContentChange} />
       )
@@ -91,13 +83,6 @@ describe('Integration: Audio Upload Flow', () => {
     })
 
     it('should recognize WAV audio nodes', () => {
-      const htmlContent = `
-        <p>WAV audio:</p>
-        <div data-audio-node data-src="https://example.com/audio.wav" data-title="Test WAV">
-          <audio src="https://example.com/audio.wav"></audio>
-        </div>
-      `
-
       const { container } = render(
         <EditorWithAudio onContentChange={mockOnContentChange} />
       )
@@ -106,13 +91,6 @@ describe('Integration: Audio Upload Flow', () => {
     })
 
     it('should recognize OGG audio nodes', () => {
-      const htmlContent = `
-        <p>OGG audio:</p>
-        <div data-audio-node data-src="https://example.com/audio.ogg" data-title="Test OGG">
-          <audio src="https://example.com/audio.ogg"></audio>
-        </div>
-      `
-
       const { container } = render(
         <EditorWithAudio onContentChange={mockOnContentChange} />
       )
@@ -150,7 +128,6 @@ describe('Integration: Audio Upload Flow', () => {
     })
 
     it('should preserve audio source URL', () => {
-      const audioUrl = 'https://example.com/audio.mp3'
       const { container } = render(
         <EditorWithAudio onContentChange={mockOnContentChange} />
       )

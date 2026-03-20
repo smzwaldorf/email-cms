@@ -5,6 +5,19 @@ import { AnalyticsProvider } from '@/context/AnalyticsContext'
 import { MemoryRouter, Routes, Route, useNavigate } from 'react-router-dom'
 import React from 'react'
 
+type FixedSizeListChildProps = {
+  index: number
+  style: React.CSSProperties
+}
+
+type FixedSizeListProps = {
+  children: (props: FixedSizeListChildProps) => React.ReactNode
+  itemCount: number
+  itemSize: number
+  height: number | string
+  width: number | string
+}
+
 // Dummy Article Page Component
 const ArticlePage = () => {
     const navigate = useNavigate();
@@ -18,7 +31,7 @@ const ArticlePage = () => {
 
 // Mock dependencies
 vi.mock('react-window', () => ({
-  FixedSizeList: ({ children, itemCount, itemSize, height, width }: any) => (
+  FixedSizeList: ({ children, itemCount, itemSize, height, width }: FixedSizeListProps) => (
     <div data-testid="virtual-list" style={{ height, width }}>
       {Array.from({ length: itemCount }).map((_, index) => (
          <div key={index}>{children({ index, style: { height: itemSize } })}</div>
@@ -41,7 +54,7 @@ vi.mock('@/hooks/useAnalyticsQuery', () => ({
 }))
 
 vi.mock('@/components/admin/AdminLayout', () => ({
-  AdminLayout: ({ children }: any) => <div>{children}</div>
+  AdminLayout: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
 }))
 
 describe('Analytics Dashboard with Navigation', () => {

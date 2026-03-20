@@ -1,5 +1,133 @@
 import { getSupabaseClient } from '@/lib/supabase';
-import { AnalyticsSnapshot, AnalyticsMetrics, ArticleHotness } from '@/types/analytics';
+import type {
+  AnalyticsSnapshot,
+  AnalyticsMetrics,
+  ArticleHotness,
+  AnalyticsNewsletterWeekOption,
+  NewsletterTrendPoint,
+  ArticleAnalyticsMetadata,
+  AnalyticsEvent,
+} from '@/types/analytics';
+
+type AppSupabaseClient = ReturnType<typeof getSupabaseClient>;
+
+/** Minimal event row for daily snapshot aggregation */
+type AnalyticsEventSnapshotRow = Pick<
+  AnalyticsEvent,
+  'article_id' | 'newsletter_id' | 'event_type' | 'metadata'
+>;
+
+interface ArticleTitleCreatedRow {
+  title: string | null;
+  created_at: string | null;
+}
+
+interface PageViewWithArticleRow {
+  article_id: string | null;
+  user_id: string | null;
+  session_id: string | null;
+  articles: ArticleTitleCreatedRow | ArticleTitleCreatedRow[] | null;
+}
+
+interface SessionEndArticleRow {
+  article_id: string | null;
+  metadata: Record<string, unknown> | null;
+}
+
+interface StudentEnrollmentCountRow {
+  count: number;
+}
+
+interface ClassRowWithEnrollmentCount {
+  class_name: string;
+  student_class_enrollment: StudentEnrollmentCountRow[] | null;
+}
+
+interface NewsletterJunctionArticleRow {
+  id: string;
+  title: string;
+  created_at: string;
+}
+
+interface NewsletterJunctionRow {
+  article_order: number;
+  articles: NewsletterJunctionArticleRow;
+}
+
+interface ClassNameNestedRow {
+  class_name: string;
+}
+
+interface StudentClassEnrollmentNestedRow {
+  classes: ClassNameNestedRow | null;
+}
+
+interface FamilyNestedForClassRow {
+  student_class_enrollment: StudentClassEnrollmentNestedRow[] | null;
+}
+
+interface FamilyEnrollmentParentClassesRow {
+  parent_id: string;
+  families: FamilyNestedForClassRow | null;
+}
+
+interface AnalyticsEventWithUserRow {
+  user_id: string;
+  event_type: string;
+  metadata: Record<string, unknown> | null;
+}
+
+interface TopicHotnessEventRow {
+  article_id: string | null;
+  user_id: string | null;
+  created_at: string;
+  articles: ArticleTitleCreatedRow | ArticleTitleCreatedRow[] | null;
+}
+
+interface FamilyEnrollmentParentRow {
+  parent_id: string;
+}
+
+/** student_class_enrollment row joined to family_enrollment for parent IDs */
+interface StudentClassEnrollmentParentRow {
+  family_enrollment: FamilyEnrollmentParentRow | FamilyEnrollmentParentRow[] | null;
+}
+
+interface StudentClassEnrollmentReaderRow {
+  classes: ClassNameNestedRow | null;
+  students: { name: string } | null;
+}
+
+interface FamilyNestedForReadersRow {
+  student_class_enrollment: StudentClassEnrollmentReaderRow[] | null;
+}
+
+interface FamilyEnrollmentReadersRow {
+  parent_id: string;
+  families: FamilyNestedForReadersRow | null;
+}
+
+interface PageViewUserRow {
+  user_id: string | null;
+  created_at: string;
+}
+
+interface NewsletterWeekFromJoin {
+  week_number: string | null;
+}
+
+interface ClassRowWithEnrollmentCountSingle {
+  student_class_enrollment: StudentEnrollmentCountRow[] | null;
+}
+
+function unwrapSingle<T>(value: T | T[] | null | undefined): T | null {
+  if (value == null) return null;
+  return Array.isArray(value) ? value[0] ?? null : value;
+}
+
+function articleFromPageViewEvent(event: PageViewWithArticleRow): ArticleTitleCreatedRow | null {
+  return unwrapSingle(event.articles);
+}
 
 export interface ClassEngagement {
     className: string;
@@ -56,8 +184,6 @@ export const analyticsAggregator = {
         .from('analytics_events')
         .select('*')
         .gte('created_at', startOfDay)
-        .select('*')
-        .gte('created_at', startOfDay)
         .lte('created_at', endOfDay);
 
       console.log(`[Analytics] Fetched ${events?.length || 0} events.`);
@@ -68,6 +194,8 @@ export const analyticsAggregator = {
         return;
       }
 
+      const eventRows = events as AnalyticsEventSnapshotRow[];
+
       // 2. Aggregate data in memory
       // Key: `${newsletter_id}:${article_id}` (Class breakdown skipped for MVP)
       const articleStats = new Map<string, { 
@@ -77,7 +205,7 @@ export const analyticsAggregator = {
         sessionCount: number;
       }>();
       
-      for (const event of events) {
+      for (const event of eventRows) {
         if (!event.article_id) continue;
 
         const key = `${event.newsletter_id || 'null'}:${event.article_id}`;
@@ -250,7 +378,7 @@ export const analyticsAggregator = {
       const viewResult = await Promise.race([
         viewEventsQuery,
         createTimeout(QUERY_TIMEOUT_MS)
-      ]) as { data: { metadata: any }[] | null; error: Error | null };
+      ]) as { data: { metadata: Record<string, unknown> | null }[] | null; error: Error | null };
       
       if (viewResult.error) {
         console.error('[Analytics] Error fetching view count:', viewResult.error);
@@ -276,7 +404,7 @@ export const analyticsAggregator = {
       const sessionResult = await Promise.race([
         sessionEventsQuery,
         createTimeout(QUERY_TIMEOUT_MS)
-      ]) as { data: { metadata: any }[] | null; error: Error | null };
+      ]) as { data: { metadata: Record<string, unknown> | null }[] | null; error: Error | null };
 
       if (sessionResult.error) {
         console.error('[Analytics] Error fetching session durations:', sessionResult.error);
@@ -303,8 +431,9 @@ export const analyticsAggregator = {
              .select('student_class_enrollment (count)')
              .eq('class_name', className)
              .single();
-           // @ts-ignore
-           totalSent = classData?.student_class_enrollment?.[0]?.count || 20;
+           const enrollmentRow = classData as ClassRowWithEnrollmentCountSingle | null;
+           const countBucket = enrollmentRow?.student_class_enrollment?.[0]?.count;
+           totalSent = typeof countBucket === 'number' ? countBucket : 20;
       } 
 
       return {
@@ -371,17 +500,17 @@ export const analyticsAggregator = {
       title: string; 
       publishedAt: string; 
       views: number; 
-      uniqueViews: Set<string>;
+      uniqueViews: Set<string | null | undefined>;
       clicks: number;
       totalTimeSpent: number;
       timeSpentCount: number;
     }>();
 
-    viewEvents?.forEach((event: any) => {
+    viewEvents?.forEach((event: PageViewWithArticleRow) => {
         if (!event.article_id) return;
         
         if (!statsMap.has(event.article_id)) {
-            const article = event.articles;
+            const article = articleFromPageViewEvent(event);
             statsMap.set(event.article_id, {
                 id: event.article_id,
                 title: article?.title || 'Unknown Article',
@@ -406,7 +535,7 @@ export const analyticsAggregator = {
     });
 
     // Aggregate time spent from session_end events
-    sessionEndEvents?.forEach((event: any) => {
+    sessionEndEvents?.forEach((event: SessionEndArticleRow) => {
         if (!event.article_id || !statsMap.has(event.article_id)) return;
         const timeSpent = event.metadata?.time_spent_seconds;
         if (typeof timeSpent === 'number' && timeSpent > 0) {
@@ -487,10 +616,22 @@ export const analyticsAggregator = {
            .eq('newsletter_id', newsletterId)
            .order('article_order', { ascending: true });
            
-        const articleLookup = new Map(junctionData?.map((j: any) => [j.articles.id, { ...j.articles, article_order: j.article_order }]));
+        const articleLookup = new Map<
+          string,
+          NewsletterJunctionArticleRow & { article_order: number }
+        >();
+        const junctionRows = junctionData as NewsletterJunctionRow[] | null | undefined;
+        junctionRows?.forEach((j) => {
+          const article = unwrapSingle(
+            j.articles as NewsletterJunctionArticleRow | NewsletterJunctionArticleRow[]
+          );
+          if (article) {
+            articleLookup.set(article.id, { ...article, article_order: j.article_order });
+          }
+        });
 
         return Array.from(map.values()).map(stat => {
-           const article = articleLookup.get(stat.article_id) as any;
+           const article = articleLookup.get(stat.article_id);
            const avgTime = stat.timeCount > 0 ? Math.round(stat.weightedTime / stat.timeCount) : 0;
            
            return {
@@ -532,7 +673,7 @@ export const analyticsAggregator = {
    * Fetches trend data for the last N snapshots.
    * If snapshots are missing, it might return empty or sparse data.
    */
-  async getTrendStats(limit: number = 12, className?: string) {
+  async getTrendStats(limit: number = 12, className?: string): Promise<NewsletterTrendPoint[]> {
       const supabase = getSupabaseClient();
       
       // Query analytics_snapshots for daily metrics
@@ -555,14 +696,14 @@ export const analyticsAggregator = {
       if (!newsletters) return [];
       
       console.log(`[Analytics] Fetching trend stats for ${newsletters.length} weeks...`);
-      const results = [];
+      const results: NewsletterTrendPoint[] = [];
       // Parallel fetch for last N weeks (limit concurrency if needed)
       // Reverse to show oldest first in chart
       for (const nl of newsletters.reverse()) {
           try {
               const metrics = await this.getNewsletterMetrics(nl.id, className);
               results.push({
-                  name: nl.week_number,
+                  name: nl.week_number as string,
                   openRate: parseFloat(metrics.openRate.toFixed(1)),
                   clickRate: parseFloat(metrics.clickRate.toFixed(1)),
                   avgTimeSpent: metrics.avgTimeSpent
@@ -570,7 +711,12 @@ export const analyticsAggregator = {
           } catch (err) {
               console.error(`[Analytics] Failed to process week ${nl.week_number}:`, err);
               // Push placeholder or skip
-              results.push({ name: nl.week_number, openRate: 0, clickRate: 0, avgTimeSpent: 0 });
+              results.push({
+                name: nl.week_number as string,
+                openRate: 0,
+                clickRate: 0,
+                avgTimeSpent: 0
+              });
           }
       }
       console.log('[Analytics] Trend stats completed.');
@@ -580,7 +726,7 @@ export const analyticsAggregator = {
   /**
    * Fetches list of available weeks for the dashboard.
    */
-  async getAvailableWeeks() {
+  async getAvailableWeeks(): Promise<AnalyticsNewsletterWeekOption[]> {
       const supabase = getSupabaseClient();
       const { data, error } = await supabase
           .from('newsletters')
@@ -588,17 +734,14 @@ export const analyticsAggregator = {
           .order('week_number', { ascending: false });
           
       if (error) throw error;
-      return data || [];
-  },
-
-  /**
+      return (data as AnalyticsNewsletterWeekOption[]) || [];
   },
 
   /**
    * aggregated class engagement metrics for a newsletter.
    */
-    async getClassEngagement(newsletterId: string, client?: any): Promise<ClassEngagement[]> {
-        const supabase = client || getSupabaseClient();
+  async getClassEngagement(newsletterId: string, client?: AppSupabaseClient): Promise<ClassEngagement[]> {
+        const supabase = client ?? getSupabaseClient();
         try {
              // 1. Fetch all events for this newsletter (views, clicks, sessions)
              const { data: events } = await supabase
@@ -610,9 +753,8 @@ export const analyticsAggregator = {
              if (!events || events.length === 0) return [];
              
              // 2. Map Users to Classes
-             // Explicitly type event as any or define interface if possible, 
-             // but here we just fix the lint.
-             const userIds = Array.from(new Set(events.map((e: any) => e.user_id)));
+             const typedEvents = events as AnalyticsEventWithUserRow[];
+             const userIds = Array.from(new Set(typedEvents.map((e) => e.user_id)));
              
              // Fetch Family Enrollments for these Parents to identify their classes
              // Note: A parent might belong to multiple classes. We'll credit their activity to ALL their classes for now.
@@ -622,13 +764,15 @@ export const analyticsAggregator = {
                  .in('parent_id', userIds);
              
              const userClasses = new Map<string, string[]>();
-             familyEnrollments?.forEach((fe: any) => {
+             const typedEnrollments = familyEnrollments as FamilyEnrollmentParentClassesRow[] | null;
+             typedEnrollments?.forEach((fe) => {
                  const classes: string[] = [];
-                 if (fe.families && fe.families.student_class_enrollment) {
+                 if (fe.families?.student_class_enrollment) {
                      const enrolls = fe.families.student_class_enrollment;
                      if (Array.isArray(enrolls)) {
-                         enrolls.forEach((enc: any) => {
-                             if (enc.classes) classes.push(enc.classes.class_name);
+                         enrolls.forEach((enc) => {
+                             const className = enc.classes?.class_name;
+                             if (className) classes.push(className);
                          });
                      }
                  }
@@ -657,7 +801,7 @@ export const analyticsAggregator = {
                  return classStats.get(className)!;
              };
  
-             events.forEach((event: any) => {
+             typedEvents.forEach((event) => {
                  const classes = userClasses.get(event.user_id);
                  if (!classes) return; // User has no class (e.g. admin or unassigned)
  
@@ -699,7 +843,8 @@ export const analyticsAggregator = {
                 `);
                 
              const classCensus = new Map<string, number>();
-             allClassData?.forEach((c: any) => {
+             const typedClassData = allClassData as ClassRowWithEnrollmentCount[] | null;
+             typedClassData?.forEach((c) => {
                  // Assuming 1 student approx 1.5 parents? Or just count students as proxies for families?
                  // Let's use student count as the denominator for "Families"
                  const count = c.student_class_enrollment?.[0]?.count || 0;
@@ -768,13 +913,15 @@ export const analyticsAggregator = {
               firstViews: Map<string, Date>; // userId -> first view time
           }>();
 
-          events.forEach((event: any) => {
-              if (!event.article_id || !event.articles?.created_at) return;
+          const hotnessEvents = events as TopicHotnessEventRow[];
+          hotnessEvents.forEach((event) => {
+              const articleMeta = unwrapSingle(event.articles);
+              if (!event.article_id || !articleMeta?.created_at || !event.user_id) return;
               
               if (!articleMap.has(event.article_id)) {
                   articleMap.set(event.article_id, {
-                      title: event.articles.title || 'Unknown',
-                      publishedAt: new Date(event.articles.created_at),
+                      title: articleMeta.title || 'Unknown',
+                      publishedAt: new Date(articleMeta.created_at),
                       firstViews: new Map()
                   });
               }
@@ -844,9 +991,11 @@ export const analyticsAggregator = {
       if (!parents) return [];
       
       const userIds = new Set<string>();
-      parents.forEach((p: any) => {
-          if (p.family_enrollment?.parent_id) {
-              userIds.add(p.family_enrollment.parent_id);
+      const parentRows = parents as StudentClassEnrollmentParentRow[];
+      parentRows.forEach((p) => {
+          const fe = unwrapSingle(p.family_enrollment);
+          if (fe?.parent_id) {
+              userIds.add(fe.parent_id);
           }
       });
       
@@ -857,7 +1006,7 @@ export const analyticsAggregator = {
       return this.getTrendStats(limit, className);
   },
 
-  async getArticleMetadata(articleId: string) {
+  async getArticleMetadata(articleId: string): Promise<ArticleAnalyticsMetadata> {
       const supabase = getSupabaseClient();
       
       // Get article data
@@ -877,13 +1026,16 @@ export const analyticsAggregator = {
         .limit(1)
         .single();
       
-      const weekNumber = (junction?.newsletters as any)?.week_number || null;
+      const newsletterPick = unwrapSingle(
+        junction?.newsletters as NewsletterWeekFromJoin | NewsletterWeekFromJoin[] | null | undefined
+      );
+      const weekNumber = newsletterPick?.week_number ?? null;
       
       return {
           title: article.title,
           publishedAt: article.created_at,
-          newsletterId: junction?.newsletter_id || null,
-          weekNumber: weekNumber
+          newsletterId: junction?.newsletter_id ?? null,
+          weekNumber
       };
   },
 
@@ -900,7 +1052,8 @@ export const analyticsAggregator = {
       
       const userViewerMap = new Map<string, { lastViewed: string; count: number }>();
       
-      events.forEach((e: any) => {
+      const pageViewRows = events as PageViewUserRow[];
+      pageViewRows.forEach((e) => {
           if (!e.user_id) return;
           const current = userViewerMap.get(e.user_id) || { lastViewed: '', count: 0 };
           
@@ -920,18 +1073,18 @@ export const analyticsAggregator = {
         .in('parent_id', userIds);
       
       const results: ArticleReader[] = [];
+      const readerFamilies = families as FamilyEnrollmentReadersRow[] | null | undefined;
       
       userIds.forEach(uid => {
-          const family = families?.find(f => f.parent_id === uid); // @ts-ignore
+          const family = readerFamilies?.find(f => f.parent_id === uid);
           const viewerStats = userViewerMap.get(uid)!;
           
-          let classNames: string[] = [];
-          let studentNames: string[] = [];
+          const classNames: string[] = [];
+          const studentNames: string[] = [];
           
-          // @ts-ignore
-          if (family?.families?.student_class_enrollment) {
-              // @ts-ignore
-              family.families.student_class_enrollment.forEach((enroll: any) => {
+          const enrollments = family?.families?.student_class_enrollment;
+          if (enrollments) {
+              enrollments.forEach((enroll) => {
                   if (enroll.classes?.class_name) classNames.push(enroll.classes.class_name);
                   if (enroll.students?.name) studentNames.push(enroll.students.name);
               });

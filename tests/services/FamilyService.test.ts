@@ -103,7 +103,7 @@ describe('FamilyService', () => {
     })
 
     it('should return empty array when no children enrolled', async () => {
-      const classes: any[] = []
+      const classes: unknown[] = []
       expect(classes).toHaveLength(0)
     })
   })

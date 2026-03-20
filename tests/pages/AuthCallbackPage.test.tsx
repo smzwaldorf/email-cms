@@ -12,13 +12,14 @@ import WeekService from '@/services/WeekService'
 // Mock react-router-dom
 const mockNavigate = vi.fn()
 let mockSearchParams: URLSearchParams = new URLSearchParams()
+type LatestWeekResult = Awaited<ReturnType<typeof WeekService.getLatestPublishedWeek>>
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom')
   return {
     ...actual,
     useNavigate: () => mockNavigate,
-    useSearchParams: () => [mockSearchParams, (newParams: any) => {}],
+    useSearchParams: () => [mockSearchParams, (_newParams: URLSearchParams) => {}],
   }
 })
 
@@ -55,7 +56,7 @@ describe('AuthCallbackPage - Redirect URL Handling', () => {
       is_published: true,
       created_at: '2025-10-27T00:00:00Z',
       updated_at: '2025-10-27T00:00:00Z',
-    } as any)
+    } as LatestWeekResult)
   })
 
   afterEach(() => {

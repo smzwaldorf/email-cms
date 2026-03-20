@@ -80,8 +80,8 @@ export function ClassList({
 
     // Apply sorting
     result.sort((a, b) => {
-      let aVal: any
-      let bVal: any
+      let aVal: string | number
+      let bVal: string | number
 
       switch (sortField) {
         case 'name':

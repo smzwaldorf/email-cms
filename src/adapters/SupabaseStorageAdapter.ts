@@ -12,7 +12,6 @@ import type {
   FileObject,
   FileMetadata,
   ListOptions,
-  StorageError,
   StorageStats,
 } from '@/types/storage'
 
@@ -270,8 +269,6 @@ export class SupabaseStorageAdapter implements StorageProvider {
     destinationPath: string
   ): Promise<StorageOperationResult> {
     try {
-      const supabase = getSupabaseClient()
-
       // 下載來源檔案
       // Download source file
       const sourceBlob = await this.download(bucket, sourcePath)
@@ -336,8 +333,6 @@ export class SupabaseStorageAdapter implements StorageProvider {
    */
   async getStats(): Promise<StorageStats> {
     try {
-      const supabase = getSupabaseClient()
-
       // 此功能需要管理 API，暫時返回預設值
       // This feature requires admin API, return default for now
       return {

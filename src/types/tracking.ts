@@ -7,7 +7,7 @@ export interface TrackingMetadata {
   target_url?: string;
   user_agent?: string;
   device_type?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface SessionData {

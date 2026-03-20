@@ -46,6 +46,12 @@ vi.mock('@/components/admin/NewsletterForm', () => ({
 
 import { adminService } from '@/services/adminService'
 
+type FetchNewsletterResult = Awaited<ReturnType<typeof adminService.fetchNewsletter>>
+type FetchArticlesByNewsletterIdResult = Awaited<ReturnType<typeof adminService.fetchArticlesByNewsletterId>>
+type AvailableArticlesResult = Awaited<ReturnType<typeof adminService.getAvailableArticlesByNewsletterId>>
+type FetchClassesResult = Awaited<ReturnType<typeof adminService.fetchClasses>>
+type ArchiveNewsletterResult = Awaited<ReturnType<typeof adminService.archiveNewsletter>>
+
 const MockInlineEditorRoute = () => {
   const location = useLocation()
 
@@ -141,8 +147,8 @@ describe('Admin newsletter workflow page', () => {
     vi.clearAllMocks()
     currentWeekNewsletter = { ...draftNewsletter }
     vi.mocked(adminService.fetchNewsletterByWeek).mockImplementation(async () => currentWeekNewsletter)
-    vi.mocked(adminService.fetchNewsletter).mockImplementation(async () => specialEditionPublishedNewsletter as any)
-    vi.mocked(adminService.fetchArticlesByNewsletterId).mockResolvedValue(mockArticles as any)
+    vi.mocked(adminService.fetchNewsletter).mockImplementation(async () => specialEditionPublishedNewsletter as FetchNewsletterResult)
+    vi.mocked(adminService.fetchArticlesByNewsletterId).mockResolvedValue(mockArticles as FetchArticlesByNewsletterIdResult)
     vi.mocked(adminService.getAvailableArticlesByNewsletterId).mockResolvedValue([
       {
         id: 'article-3',
@@ -155,14 +161,14 @@ describe('Admin newsletter workflow page', () => {
         createdAt: '2025-11-01',
         updatedAt: '2025-11-01',
       },
-    ] as any)
+    ] as AvailableArticlesResult)
     vi.mocked(adminService.getNewsletterPublishReadiness).mockResolvedValue({
       canPublish: true,
       issues: [],
     })
     vi.mocked(adminService.fetchClasses).mockResolvedValue([
       { id: 'A1', name: 'A1', description: '', studentIds: [], teacherIds: [], createdAt: '', updatedAt: '' },
-    ] as any)
+    ] as FetchClassesResult)
     vi.mocked(adminService.reorderArticlesInNewsletterById).mockResolvedValue()
     vi.mocked(adminService.updateArticleTargetingInNewsletterById).mockResolvedValue()
     vi.mocked(adminService.addArticleToNewsletterById).mockResolvedValue({
@@ -173,11 +179,11 @@ describe('Admin newsletter workflow page', () => {
     })
     vi.mocked(adminService.publishNewsletter).mockImplementation(async () => {
       currentWeekNewsletter = { ...publishedNewsletter }
-      return currentWeekNewsletter as any
+      return currentWeekNewsletter
     })
     vi.mocked(adminService.archiveNewsletter).mockImplementation(async () => {
       currentWeekNewsletter = { ...archivedNewsletter }
-      return currentWeekNewsletter as any
+      return currentWeekNewsletter
     })
   })
 
@@ -267,10 +273,10 @@ describe('Admin newsletter workflow page', () => {
 
   it('loads and manages special-edition newsletters via id routes', async () => {
     let currentSpecialNewsletter: AdminNewsletter = { ...specialEditionPublishedNewsletter }
-    vi.mocked(adminService.fetchNewsletter).mockImplementation(async () => currentSpecialNewsletter as any)
+    vi.mocked(adminService.fetchNewsletter).mockImplementation(async () => currentSpecialNewsletter as FetchNewsletterResult)
     vi.mocked(adminService.archiveNewsletter).mockImplementation(async () => {
       currentSpecialNewsletter = { ...currentSpecialNewsletter, status: 'archived' as const }
-      return currentSpecialNewsletter as any
+      return currentSpecialNewsletter as ArchiveNewsletterResult
     })
 
     renderPage('/admin/newsletters/id/special-newsletter-1')

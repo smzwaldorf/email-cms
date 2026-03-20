@@ -3,7 +3,14 @@
  * Storage Service Factory
  */
 
-import type { StorageProvider, StorageFactoryOptions, StorageProviderType } from '@/types/storage'
+import type {
+  ListOptions,
+  StorageFactoryOptions,
+  StorageProvider,
+  StorageProviderType,
+  UploadOptions,
+  UploadProgressCallback,
+} from '@/types/storage'
 import { SupabaseStorageAdapter } from '@/adapters/SupabaseStorageAdapter'
 import { MockStorageAdapter } from '@/adapters/MockStorageAdapter'
 
@@ -168,8 +175,8 @@ export const storageService = {
     bucket: string,
     path: string,
     file: File | Blob,
-    options?: any,
-    onProgress?: any
+    options?: UploadOptions,
+    onProgress?: UploadProgressCallback
   ) => {
     return getStorageProvider().upload(bucket, path, file, options, onProgress)
   },
@@ -194,7 +201,7 @@ export const storageService = {
    * 列出檔案
    * List files
    */
-  list: (bucket: string, path: string, options?: any) => {
+  list: (bucket: string, path: string, options?: ListOptions) => {
     return getStorageProvider().list(bucket, path, options)
   },
 

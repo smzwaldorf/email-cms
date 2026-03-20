@@ -8,6 +8,11 @@ import { adminSessionService } from '@/services/adminSessionService'
 import { auditLogger } from '@/services/auditLogger'
 import { getSupabaseClient } from '@/lib/supabase'
 
+type SupabaseClientMock = {
+  rpc: ReturnType<typeof vi.fn>
+  from?: ReturnType<typeof vi.fn>
+}
+
 // Mock the dependencies
 vi.mock('@/lib/supabase', () => ({
   getSupabaseClient: vi.fn(),
@@ -20,7 +25,7 @@ vi.mock('@/services/auditLogger', () => ({
 }))
 
 describe('AdminSessionService', () => {
-  let mockSupabaseAdmin: any
+  let mockSupabaseAdmin: SupabaseClientMock
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -29,7 +34,9 @@ describe('AdminSessionService', () => {
       rpc: vi.fn(),
     }
 
-    ;(getSupabaseClient as any).mockReturnValue(mockSupabaseAdmin)
+    vi.mocked(getSupabaseClient).mockReturnValue(
+      mockSupabaseAdmin as ReturnType<typeof getSupabaseClient>
+    )
   })
 
   describe('forceLogoutUser', () => {

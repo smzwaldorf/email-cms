@@ -1,13 +1,26 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import { AnalyticsDashboardPage } from '../../src/pages/AnalyticsDashboardPage'
 import { AnalyticsProvider } from '@/context/AnalyticsContext'
 import { BrowserRouter } from 'react-router-dom'
 import React from 'react'
 
+type FixedSizeListChildProps = {
+  index: number
+  style: React.CSSProperties
+}
+
+type FixedSizeListProps = {
+  children: (props: FixedSizeListChildProps) => React.ReactNode
+  itemCount: number
+  itemSize: number
+  height: number | string
+  width: number | string
+}
+
 // Mock react-window
 vi.mock('react-window', () => ({
-  FixedSizeList: ({ children, itemCount, itemSize, height, width }: any) => (
+  FixedSizeList: ({ children, itemCount, itemSize, height, width }: FixedSizeListProps) => (
     <div data-testid="virtual-list" style={{ height, width }}>
       {Array.from({ length: itemCount }).map((_, index) => (
          <div key={index}>{children({ index, style: { height: itemSize } })}</div>
@@ -38,7 +51,7 @@ vi.mock('@/hooks/useAnalyticsQuery', () => ({
 
 // Mock Layout
 vi.mock('@/components/admin/AdminLayout', () => ({
-  AdminLayout: ({ children }: any) => <div>{children}</div>
+  AdminLayout: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
 }))
 
 describe('Analytics Dashboard Refresh', () => {

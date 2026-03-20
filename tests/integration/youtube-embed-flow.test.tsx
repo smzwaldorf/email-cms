@@ -14,13 +14,6 @@ import {
 } from '@/adapters/TipTapYoutubeNode'
 
 describe('Integration: YouTube Embed Flow (T070)', () => {
-  const validVideoIds = [
-    'dQw4w9WgXcQ',
-    '9bZkp7q19f0',
-    'Ks-_Mh1QhMc',
-    'jNQXAC9IVRw',
-  ]
-
   const youtubeUrls = [
     'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
     'https://youtu.be/dQw4w9WgXcQ',
@@ -99,7 +92,6 @@ describe('Integration: YouTube Embed Flow (T070)', () => {
       render(<VideoEmbed videoId="dQw4w9WgXcQ" />)
 
       const iframe = screen.getByTestId('video-iframe')
-      const src = iframe.getAttribute('src') || ''
 
       // Verify standard YouTube iframe controls are available
       expect(iframe.getAttribute('allow')).toContain('accelerometer')

@@ -4,13 +4,12 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import ArticleService, { CreateArticleDTO } from '@/services/ArticleService'
-import type { ArticleRow } from '@/types/database'
+import type { CreateArticleDTO } from '@/services/ArticleService'
 
 // Mock Supabase client
 vi.mock('@/lib/supabase', () => ({
   getSupabaseClient: vi.fn(() => ({
-    from: vi.fn((table: string) => ({
+    from: vi.fn((_table: string) => ({
       select: vi.fn().mockReturnThis(),
       insert: vi.fn().mockReturnThis(),
       update: vi.fn().mockReturnThis(),
@@ -28,22 +27,6 @@ vi.mock('@/lib/supabase', () => ({
 }))
 
 describe('ArticleService', () => {
-  const mockArticle: ArticleRow = {
-    id: 'test-uuid-1',
-    week_number: '2025-W47',
-    title: 'Test Article',
-    content: '# Test Content',
-    author: 'Test Author',
-    article_order: 1,
-    is_published: false,
-    visibility_type: 'public',
-    restricted_to_classes: null,
-    created_by: 'user-1',
-    created_at: '2025-11-17T10:00:00Z',
-    updated_at: '2025-11-17T10:00:00Z',
-    deleted_at: null,
-  }
-
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -65,7 +48,6 @@ describe('ArticleService', () => {
     })
 
     it('should apply filters when provided', async () => {
-      const weekNumber = '2025-W47'
       const filters = {
         isPublished: true,
         excludeDeleted: true,
@@ -147,7 +129,6 @@ describe('ArticleService', () => {
     })
 
     it('should preserve unchanged fields', async () => {
-      const articleId = 'test-uuid-1'
       const updates = { title: 'New Title' }
 
       expect(updates.title).toBe('New Title')

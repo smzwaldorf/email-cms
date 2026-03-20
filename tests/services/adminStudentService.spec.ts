@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { adminService } from '@/services/adminService'
 
+type QueryResolver<T> = (value: { data: T; error: null | { message?: string } }) => unknown
+
 const mockBuilder = {
   select: vi.fn().mockReturnThis(),
   insert: vi.fn().mockReturnThis(),
@@ -12,7 +14,7 @@ const mockBuilder = {
   order: vi.fn().mockReturnThis(),
   maybeSingle: vi.fn().mockReturnThis(),
   single: vi.fn().mockReturnThis(),
-  then: vi.fn((resolve: any) => resolve({ data: [], error: null })),
+  then: vi.fn((resolve: QueryResolver<unknown[]>) => resolve({ data: [], error: null })),
 }
 
 const mockSupabase = {
@@ -26,14 +28,14 @@ vi.mock('@/lib/supabase', () => ({
 describe('AdminService student lifecycle', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    Object.values(mockBuilder).forEach((mock: any) => {
+    Object.values(mockBuilder).forEach((mock) => {
       if (mock.mockReturnThis) mock.mockReturnThis()
     })
-    mockBuilder.then.mockImplementation((resolve: any) => resolve({ data: [], error: null }))
+    mockBuilder.then.mockImplementation((resolve: QueryResolver<unknown[]>) => resolve({ data: [], error: null }))
   })
 
   it('fetchStudents defaults to active students', async () => {
-    mockBuilder.then.mockImplementation((resolve: any) =>
+    mockBuilder.then.mockImplementation((resolve: QueryResolver<Array<Record<string, unknown>>>) =>
       resolve({
         data: [
           {
@@ -55,7 +57,7 @@ describe('AdminService student lifecycle', () => {
   })
 
   it('fetchStudents includeInactive returns mixed lifecycle statuses', async () => {
-    mockBuilder.then.mockImplementation((resolve: any) =>
+    mockBuilder.then.mockImplementation((resolve: QueryResolver<Array<Record<string, unknown>>>) =>
       resolve({
         data: [
           {
@@ -86,10 +88,10 @@ describe('AdminService student lifecycle', () => {
 
   it('deactivateStudent sets inactive and returns disabled status', async () => {
     mockBuilder.then
-      .mockImplementationOnce((resolve: any) =>
+      .mockImplementationOnce((resolve: QueryResolver<{ id: string; is_active: boolean }>) =>
         resolve({ data: { id: 'student-1', is_active: true }, error: null })
       )
-      .mockImplementationOnce((resolve: any) =>
+      .mockImplementationOnce((resolve: QueryResolver<Record<string, unknown>>) =>
         resolve({
           data: {
             id: 'student-1',
@@ -102,7 +104,7 @@ describe('AdminService student lifecycle', () => {
           error: null,
         })
       )
-      .mockImplementationOnce((resolve: any) => resolve({ data: null, error: null }))
+      .mockImplementationOnce((resolve: QueryResolver<null>) => resolve({ data: null, error: null }))
 
     const result = await adminService.deactivateStudent('student-1')
     expect(mockBuilder.update).toHaveBeenCalledWith({ is_active: false })
@@ -111,10 +113,10 @@ describe('AdminService student lifecycle', () => {
 
   it('activateStudent sets active and returns active status', async () => {
     mockBuilder.then
-      .mockImplementationOnce((resolve: any) =>
+      .mockImplementationOnce((resolve: QueryResolver<{ id: string; is_active: boolean }>) =>
         resolve({ data: { id: 'student-1', is_active: false }, error: null })
       )
-      .mockImplementationOnce((resolve: any) =>
+      .mockImplementationOnce((resolve: QueryResolver<Record<string, unknown>>) =>
         resolve({
           data: {
             id: 'student-1',
@@ -127,7 +129,7 @@ describe('AdminService student lifecycle', () => {
           error: null,
         })
       )
-      .mockImplementationOnce((resolve: any) => resolve({ data: null, error: null }))
+      .mockImplementationOnce((resolve: QueryResolver<null>) => resolve({ data: null, error: null }))
 
     const result = await adminService.activateStudent('student-1')
     expect(mockBuilder.update).toHaveBeenCalledWith({ is_active: true })
@@ -136,10 +138,10 @@ describe('AdminService student lifecycle', () => {
 
   it('validates class enrollment requires student-family relationship', async () => {
     mockBuilder.then
-      .mockImplementationOnce((resolve: any) => resolve({ data: { id: 'student-1', is_active: true }, error: null }))
-      .mockImplementationOnce((resolve: any) => resolve({ data: { id: 'class-1', is_active: true }, error: null }))
-      .mockImplementationOnce((resolve: any) => resolve({ data: { id: 'family-1', is_active: true }, error: null }))
-      .mockImplementationOnce((resolve: any) => resolve({ data: null, error: null }))
+      .mockImplementationOnce((resolve: QueryResolver<{ id: string; is_active: boolean }>) => resolve({ data: { id: 'student-1', is_active: true }, error: null }))
+      .mockImplementationOnce((resolve: QueryResolver<{ id: string; is_active: boolean }>) => resolve({ data: { id: 'class-1', is_active: true }, error: null }))
+      .mockImplementationOnce((resolve: QueryResolver<{ id: string; is_active: boolean }>) => resolve({ data: { id: 'family-1', is_active: true }, error: null }))
+      .mockImplementationOnce((resolve: QueryResolver<null>) => resolve({ data: null, error: null }))
 
     await expect(
       adminService.addStudentToClassEnrollment('class-1', 'student-1', 'family-1')

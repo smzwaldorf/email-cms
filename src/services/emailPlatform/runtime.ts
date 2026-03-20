@@ -1,3 +1,7 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
+
+import type { EmailPlatformSyncJobRow, EmailPlatformWebhookEventRow, FamilyRow } from '@/types/database'
+
 import { KitAdapter } from './kitAdapter.ts'
 import { mapRecipientToKitPayload } from './kitMapping.ts'
 import {
@@ -19,14 +23,41 @@ import {
   EmailPlatformWebhookStatus,
 } from '../../types/emailPlatform.ts'
 
+type JoinedStudent = { name?: string | null; is_active?: boolean }
+type JoinedClass = {
+  class_name?: string | null
+  class_code?: string | null
+  is_active?: boolean
+}
+
+/** Nested shape from `student_class_enrollment` with student/class joins (object or array from PostgREST) */
+interface StudentClassEnrollmentJoinRow {
+  student_id: string
+  class_id: string
+  students?: JoinedStudent | JoinedStudent[] | null
+  classes?: JoinedClass | JoinedClass[] | null
+}
+
+function pickJoin<T>(value: T | T[] | null | undefined): T | undefined {
+  if (value == null) return undefined
+  return Array.isArray(value) ? value[0] : value
+}
+
 export const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':
     'authorization, x-client-info, apikey, content-type, x-kit-webhook-secret, x-kit-event-id',
 }
 
-export interface AdminClientLike {
-  from(table: string): any
+/** Supabase service client shape used by this module (tests may use a structural mock). */
+export type AdminClientLike = Pick<SupabaseClient, 'from'>
+
+/** PostgREST `select` overload used for head+count after update (typings vary by version). */
+interface PostgrestBuilderWithCountSelect {
+  select(
+    columns: string,
+    options: { count: 'exact'; head: boolean },
+  ): Promise<{ error: { message: string } | null; count: number | null }>
 }
 
 export interface EmailPlatformRuntimeDependencies {
@@ -130,15 +161,23 @@ export async function loadRecipientRecord(adminClient: AdminClientLike, familyId
     isActive: family.is_active ?? true,
     subscriptionStatus: family.newsletter_subscription_status ?? 'pending',
     parentRelationships: (parentEnrollments ?? []).map((row: { relationship: string }) => row.relationship),
-    children: (childEnrollments ?? [])
-      .filter((row: any) => row.students?.is_active !== false && row.classes?.is_active !== false)
-      .map((row: any) => ({
-        studentId: row.student_id,
-        name: row.students?.name ?? 'Unknown Student',
-        classId: row.class_id,
-        classCode: row.classes?.class_code ?? row.class_id,
-        className: row.classes?.class_name ?? row.class_id,
-      })),
+    children: ((childEnrollments ?? []) as StudentClassEnrollmentJoinRow[])
+      .filter((row) => {
+        const student = pickJoin(row.students)
+        const klass = pickJoin(row.classes)
+        return student?.is_active !== false && klass?.is_active !== false
+      })
+      .map((row) => {
+        const student = pickJoin(row.students)
+        const klass = pickJoin(row.classes)
+        return {
+          studentId: row.student_id,
+          name: student?.name ?? 'Unknown Student',
+          classId: row.class_id,
+          classCode: klass?.class_code ?? row.class_id,
+          className: klass?.class_name ?? row.class_id,
+        }
+      }),
   }
 }
 
@@ -363,7 +402,7 @@ async function markWebhookProcessing(adminClient: AdminClientLike, eventId: stri
 
 async function handleSyncJobFailure(
   adminClient: AdminClientLike,
-  job: any,
+  job: EmailPlatformSyncJobRow,
   error: unknown,
   config: EmailPlatformConfig,
 ): Promise<EmailPlatformSyncJobStatus> {
@@ -388,12 +427,12 @@ async function handleSyncJobFailure(
     last_error_message: error instanceof Error ? error.message : String(error),
   })
 
-  return status
+  return status as EmailPlatformSyncJobStatus
 }
 
 async function handleWebhookFailure(
   adminClient: AdminClientLike,
-  event: any,
+  event: EmailPlatformWebhookEventRow,
   error: unknown,
   config: EmailPlatformConfig,
 ): Promise<EmailPlatformWebhookStatus> {
@@ -418,12 +457,12 @@ async function handleWebhookFailure(
     last_error_message: error instanceof Error ? error.message : String(error),
   })
 
-  return status
+  return status as EmailPlatformWebhookStatus
 }
 
 export async function processSyncJob(
   adminClient: AdminClientLike,
-  job: any,
+  job: EmailPlatformSyncJobRow,
   config: EmailPlatformConfig,
   dependencies: EmailPlatformRuntimeDependencies = {},
 ): Promise<EmailPlatformSyncJobStatus> {
@@ -443,10 +482,18 @@ export async function processSyncJob(
       return await processReconciliationJob(adminClient, job, adapter, config)
     }
 
-    const recipient = await loadRecipientRecord(adminClient, job.family_id)
+    const familyId = job.family_id
+    if (!familyId) {
+      throw new EmailPlatformError('Sync job is missing family_id.', {
+        code: 'missing_family_id',
+        retryable: false,
+      })
+    }
+
+    const recipient = await loadRecipientRecord(adminClient, familyId)
 
     if (!recipient) {
-      throw new EmailPlatformError(`Family ${job.family_id} was not found.`, {
+      throw new EmailPlatformError(`Family ${familyId} was not found.`, {
         code: 'family_not_found',
         retryable: false,
       })
@@ -454,7 +501,7 @@ export async function processSyncJob(
 
     if (!recipient.isActive || !recipient.guardianEmail || recipient.children.length === 0) {
       throw new EmailPlatformError(
-        `Family ${job.family_id} is not eligible for outbound Kit sync.`,
+        `Family ${familyId} is not eligible for outbound Kit sync.`,
         {
           code: 'ineligible_recipient',
           retryable: false,
@@ -507,14 +554,16 @@ export async function processSyncJob(
 
 async function processReconciliationJob(
   adminClient: AdminClientLike,
-  job: any,
+  job: EmailPlatformSyncJobRow,
   adapter: KitAdapter,
   config: EmailPlatformConfig,
-) {
-  let familyId = job.family_id as string | null
+): Promise<EmailPlatformSyncJobStatus> {
+  let familyId = job.family_id ?? null
 
-  if (!familyId && job.payload?.email_address) {
-    const family = await resolveFamilyByEmail(adminClient, job.payload.email_address)
+  const payloadEmail =
+    typeof job.payload.email_address === 'string' ? job.payload.email_address : null
+  if (!familyId && payloadEmail) {
+    const family = await resolveFamilyByEmail(adminClient, payloadEmail)
     familyId = family?.id ?? null
   }
 
@@ -743,7 +792,7 @@ export async function persistWebhookEvent(
 
 export async function processWebhookEvent(
   adminClient: AdminClientLike,
-  event: any,
+  event: EmailPlatformWebhookEventRow,
   config: EmailPlatformConfig,
 ): Promise<EmailPlatformWebhookStatus> {
   await markWebhookProcessing(adminClient, event.id)
@@ -757,24 +806,27 @@ export async function processWebhookEvent(
       adminClient,
       envelope.subscriber.externalSubscriberId,
     )
-    let family = mapping
+    let family: FamilyRow | null = (mapping
       ? await resolveFamilyByEmail(adminClient, mapping.external_email_address ?? null)
-      : await resolveFamilyByEmail(adminClient, envelope.subscriber.emailAddress ?? null)
+      : await resolveFamilyByEmail(adminClient, envelope.subscriber.emailAddress ?? null)) as FamilyRow | null
 
     if (!family && mapping?.family_id) {
       const recipient = await loadRecipientRecord(adminClient, mapping.family_id)
       family = recipient
-        ? {
+        ? ({
             id: recipient.familyId,
             guardian_email: recipient.guardianEmail,
             newsletter_subscription_status: recipient.subscriptionStatus,
             newsletter_subscription_updated_at: null,
-          }
+          } as FamilyRow)
         : null
     }
 
     if (!family && envelope.subscriber.emailAddress) {
-      family = await resolveFamilyByEmail(adminClient, envelope.subscriber.emailAddress)
+      family = (await resolveFamilyByEmail(
+        adminClient,
+        envelope.subscriber.emailAddress,
+      )) as FamilyRow | null
     }
 
     if (family && !mapping) {
@@ -962,7 +1014,10 @@ export async function replayFailedEmailPlatformWork(
       jobQuery = jobQuery.in('id', body.jobIds)
     }
 
-    const { error, count } = await jobQuery.select('*', { count: 'exact', head: true })
+    const { error, count } = await (jobQuery as unknown as PostgrestBuilderWithCountSelect).select('*', {
+      count: 'exact',
+      head: true,
+    })
 
     if (error) {
       throw new Error(error.message)
@@ -989,7 +1044,10 @@ export async function replayFailedEmailPlatformWork(
       eventQuery = eventQuery.in('id', body.webhookEventIds)
     }
 
-    const { error, count } = await eventQuery.select('*', { count: 'exact', head: true })
+    const { error, count } = await (eventQuery as unknown as PostgrestBuilderWithCountSelect).select('*', {
+      count: 'exact',
+      head: true,
+    })
 
     if (error) {
       throw new Error(error.message)

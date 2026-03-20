@@ -14,7 +14,8 @@ import { useState, useEffect } from 'react'
 import MDEditor from '@uiw/react-md-editor'
 import '@uiw/react-md-editor/markdown-editor.css'
 import '@uiw/react-markdown-preview/markdown.css'
-import type { ArticleRow } from '@/types/database'
+import type { ArticleAuditLogRow, ArticleRow } from '@/types/database'
+import { useAuth } from '@/context/AuthContext'
 import { ArticleUpdateService } from '@/services/ArticleUpdateService'
 import { ArticleServiceError } from '@/services/ArticleService'
 
@@ -48,6 +49,7 @@ export function ArticleEditForm({
   onCancel,
   onError,
 }: ArticleEditFormProps) {
+  const { user } = useAuth()
   const [article, setArticle] = useState<ArticleRow | null>(null)
   const [formData, setFormData] = useState<FormState>({
     title: '',
@@ -65,7 +67,7 @@ export function ArticleEditForm({
     remoteVersion: null,
   })
   const [showHistory, setShowHistory] = useState(false)
-  const [auditHistory, setAuditHistory] = useState<any[]>([])
+  const [auditHistory, setAuditHistory] = useState<ArticleAuditLogRow[]>([])
 
   /**
    * Load article on mount
@@ -88,7 +90,7 @@ export function ArticleEditForm({
       setFormData({
         title: artData.title,
         content: artData.content,
-        author: artData.author || null,
+        author: null,
         visibilityType: artData.visibility_type,
         restrictedToClasses: artData.restricted_to_classes || null,
       })
@@ -188,8 +190,14 @@ export function ArticleEditForm({
         return
       }
 
+      if (!user?.id) {
+        setSaveError('You must be signed in to save')
+        return
+      }
+
       // Update article
       const updated = await ArticleUpdateService.updateArticleContent(
+        user.id,
         articleId,
         formData.title,
         formData.content,
@@ -223,7 +231,7 @@ export function ArticleEditForm({
       setFormData({
         title: reverted.title,
         content: reverted.content,
-        author: reverted.author || null,
+        author: null,
         visibilityType: reverted.visibility_type,
         restrictedToClasses: reverted.restricted_to_classes || null,
       })
@@ -245,7 +253,13 @@ export function ArticleEditForm({
       setSaveError(null)
       setConflict({ detected: false, localVersion: null, remoteVersion: null })
 
+      if (!user?.id) {
+        setSaveError('You must be signed in to save')
+        return
+      }
+
       const updated = await ArticleUpdateService.updateArticleContent(
+        user.id,
         articleId,
         formData.title,
         formData.content,
@@ -306,7 +320,7 @@ export function ArticleEditForm({
         <div className="flex items-center gap-4 text-sm text-waldorf-clay-600">
           <span>ID: {article.id}</span>
           <span>|</span>
-          <span>Week: {article.week_number}</span>
+          <span>Week: —</span>
           <span>|</span>
           <span>Last updated: {new Date(article.updated_at).toLocaleString()}</span>
           <button
@@ -363,7 +377,7 @@ export function ArticleEditForm({
             <p className="text-sm text-waldorf-clay-500">No history available</p>
           ) : (
             <div className="space-y-2">
-              {auditHistory.map((entry: any) => (
+              {auditHistory.map((entry) => (
                 <div key={entry.id} className="text-sm p-2 bg-white rounded border border-waldorf-cream-200">
                   <div className="flex items-center justify-between gap-2 mb-1">
                     <span className="font-medium text-waldorf-clay-700">{entry.action}</span>

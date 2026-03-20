@@ -48,9 +48,9 @@ class MockAudio {
   }
 }
 
-;(global as any).Image = MockImage
-;(global as any).Audio = MockAudio
-;(global as any).URL = {
+;(globalThis as unknown as { Image: typeof MockImage }).Image = MockImage
+;(globalThis as unknown as { Audio: typeof MockAudio }).Audio = MockAudio
+;(globalThis as unknown as { URL: { createObjectURL: ReturnType<typeof vi.fn> } }).URL = {
   createObjectURL: vi.fn(() => 'blob:mock-url'),
 }
 
@@ -63,17 +63,18 @@ describe('MediaService', () => {
 
     // Mock File.prototype.arrayBuffer
     if (!File.prototype.arrayBuffer) {
-      File.prototype.arrayBuffer = vi.fn(async function (this: any) {
+      File.prototype.arrayBuffer = vi.fn(async function () {
+        const fileWithBuffer = this as File & { _buffer?: ArrayBuffer }
         // Return a buffer from the file content
-        if (this._buffer) {
-          return this._buffer
+        if (fileWithBuffer._buffer) {
+          return fileWithBuffer._buffer
         }
         const text = await new Promise<string>((resolve) => {
           const reader = new FileReader()
           reader.onload = () => {
             resolve(reader.result as string)
           }
-          reader.readAsText(this)
+          reader.readAsText(fileWithBuffer)
         })
         return new TextEncoder().encode(text).buffer
       })
@@ -318,7 +319,7 @@ describe('MediaService', () => {
       const props: ImageProperties = {
         mediaId: 'img-123',
         alt: 'Text',
-        align: 'justify' as any,
+        align: 'justify' as ImageProperties['align'],
       }
 
       const result = service.validateImageProperties(props)
@@ -367,9 +368,9 @@ describe('MediaService', () => {
     })
 
     it('should require mediaId', () => {
-      const props = { title: 'Title' } as any
+      const props = { title: 'Title' } as Partial<AudioProperties>
 
-      const result = service.validateAudioProperties(props)
+      const result = service.validateAudioProperties(props as AudioProperties)
 
       expect(result.valid).toBe(false)
       expect(result.errors.some((e) => e.includes('mediaId'))).toBe(true)

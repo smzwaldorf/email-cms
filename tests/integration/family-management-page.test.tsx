@@ -4,6 +4,16 @@ import userEvent from '@testing-library/user-event'
 import { FamilyManagementPage } from '@/pages/FamilyManagementPage'
 import { AdminServiceError } from '@/services/adminService'
 
+type FamilyFormPayload = {
+  id: string
+  name: string
+  guardianEmail: string
+  description: string
+  relatedTopics: string[]
+  createdAt: string
+  updatedAt: string
+}
+
 const {
   fetchFamiliesMock,
   createFamilyMock,
@@ -84,7 +94,7 @@ vi.mock('@/components/admin/FamilyRelationshipEditor', () => ({
 }))
 
 vi.mock('@/components/admin/FamilyForm', () => ({
-  default: ({ onSave }: { onSave: (payload: any) => void }) => (
+  default: ({ onSave }: { onSave: (payload: FamilyFormPayload) => void }) => (
     <button
       data-testid="mock-family-save"
       onClick={() =>

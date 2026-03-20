@@ -432,7 +432,6 @@ export const imageOptimizer = {
       return { width: originalWidth, height: originalHeight }
     }
 
-    const max = Math.max(maxWidth || originalWidth, maxHeight || originalHeight)
     const ratio = Math.min(
       (maxWidth || originalWidth) / originalWidth,
       (maxHeight || originalHeight) / originalHeight

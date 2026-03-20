@@ -190,7 +190,9 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
 
     if (files.length > 0) {
       e.preventDefault()
-      handleFileSelect(new DataTransfer([...files]).items as any)
+      const dt = new DataTransfer()
+      files.forEach((f) => dt.items.add(f))
+      handleFileSelect(dt.files)
     }
   }
 

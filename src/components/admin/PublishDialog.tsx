@@ -1,5 +1,4 @@
 import React, { useState } from 'react'
-import { ConfirmDialog } from './ConfirmDialog'
 
 export interface PublishDialogProps {
   isOpen: boolean

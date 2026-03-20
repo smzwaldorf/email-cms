@@ -218,8 +218,16 @@ describe('analyticsExportService', () => {
     });
 
     it('should handle missing article fields', () => {
-      const articles = [{ id: 'article-1' }];
-      const formatted = analyticsExportService.formatArticlesForExport(articles as any);
+      const articles: Parameters<typeof analyticsExportService.formatArticlesForExport>[0] = [
+        {
+          id: 'article-1',
+          title: '',
+          clicks: 0,
+          clickRate: 0,
+          avgTimeSpent: 0,
+        },
+      ];
+      const formatted = analyticsExportService.formatArticlesForExport(articles);
 
       expect(formatted?.[0]?.title).toBe('Untitled');
       expect(formatted?.[0]?.clicks).toBe(0);
@@ -242,8 +250,19 @@ describe('analyticsExportService', () => {
     });
 
     it('should handle missing class fields', () => {
-      const classes = [{ id: 'class-1', name: 'Class X' }];
-      const formatted = analyticsExportService.formatClassesForExport(classes as any);
+      const classes: Parameters<typeof analyticsExportService.formatClassesForExport>[0] = [
+        {
+          id: 'class-1',
+          name: 'Class X',
+          sent: 0,
+          opens: 0,
+          clicks: 0,
+          openRate: 0,
+          clickRate: 0,
+          avgStayTime: 0,
+        },
+      ];
+      const formatted = analyticsExportService.formatClassesForExport(classes);
 
       expect(formatted?.[0]?.sent).toBe(0);
       expect(formatted?.[0]?.opens).toBe(0);

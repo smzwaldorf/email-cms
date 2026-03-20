@@ -13,8 +13,22 @@
  */
 
 import { table, getSupabaseClient } from '@/lib/supabase'
-import type { ArticleRow, ClassRow } from '@/types/database'
+import type { ArticleAuditLogRow, ArticleRow, ClassRow } from '@/types/database'
 import { ArticleServiceError } from '../ArticleService'
+
+type StudentClassEnrollmentPick = {
+  student_id: string
+  class_id: string
+}
+
+type ActiveStudentIdRow = { id: string }
+
+type NewsletterArticleTargetingRow = {
+  article_order: number
+  targeting_mode?: string | null
+  target_class_ids?: string[] | null
+  articles: ArticleRow
+}
 
 /**
  * Query result with metadata
@@ -103,7 +117,11 @@ export async function getArticlesForFamily(
     }
 
     const enrolledStudentIds = Array.from(
-      new Set((childEnrollments || []).map((e: any) => e.student_id).filter(Boolean))
+      new Set(
+        (childEnrollments || [])
+          .map((e: StudentClassEnrollmentPick) => e.student_id)
+          .filter(Boolean),
+      ),
     )
     const { data: activeStudents, error: activeStudentError } = enrolledStudentIds.length
       ? await table('students')
@@ -120,13 +138,15 @@ export async function getArticlesForFamily(
       )
     }
 
-    const activeStudentSet = new Set((activeStudents || []).map((row: any) => row.id))
+    const activeStudentSet = new Set(
+      (activeStudents || []).map((row: ActiveStudentIdRow) => row.id),
+    )
     const enrolledClassIds = Array.from(
       new Set(
         (childEnrollments || [])
-          .filter((e: any) => activeStudentSet.has(e.student_id))
-          .map((e: any) => e.class_id)
-      )
+          .filter((e: StudentClassEnrollmentPick) => activeStudentSet.has(e.student_id))
+          .map((e: StudentClassEnrollmentPick) => e.class_id),
+      ),
     )
 
     // Step 2: Get class details (for sorting by grade year)
@@ -172,17 +192,17 @@ export async function getArticlesForFamily(
     // Step 4: Filter articles based on visibility
     const allArticles: ArticleRow[] = []
 
-    for (const row of newsletterArticles || []) {
-      const article = {
-        ...(row.articles as any),
+    for (const row of (newsletterArticles || []) as NewsletterArticleTargetingRow[]) {
+      const article: ArticleRow = {
+        ...row.articles,
         article_order: row.article_order,
-      } as ArticleRow & { article_order: number }
+      }
 
       // Skip deleted or unpublished articles
       if (article.deleted_at || article.status !== 'published') continue
 
-      const targetingMode = (row as any).targeting_mode ?? 'shared'
-      const targetClassIds = ((row as any).target_class_ids ?? []) as string[]
+      const targetingMode = row.targeting_mode ?? 'shared'
+      const targetClassIds = row.target_class_ids ?? []
 
       // Include shared articles for every eligible guardian.
       if (targetingMode === 'shared') {
@@ -257,17 +277,17 @@ export async function getArticlesForClass(
     // Filter articles visible to this class
     const visibleArticles: ArticleRow[] = []
 
-    for (const row of newsletterArticles || []) {
-      const article = {
-        ...(row.articles as any),
+    for (const row of (newsletterArticles || []) as NewsletterArticleTargetingRow[]) {
+      const article: ArticleRow = {
+        ...row.articles,
         article_order: row.article_order,
-      } as ArticleRow & { article_order: number }
+      }
 
       // Skip deleted or unpublished
       if (article.deleted_at || article.status !== 'published') continue
 
-      const targetingMode = (row as any).targeting_mode ?? 'shared'
-      const targetClassIds = ((row as any).target_class_ids ?? []) as string[]
+      const targetingMode = row.targeting_mode ?? 'shared'
+      const targetClassIds = row.target_class_ids ?? []
       if (targetingMode === 'shared') {
         visibleArticles.push(article)
         continue
@@ -302,7 +322,7 @@ export async function getArticleWithAuditLogForClass(
   articleId: string,
 ): Promise<{
   article: ArticleRow
-  auditLog: any[]
+  auditLog: ArticleAuditLogRow[]
 }> {
   try {
     // Get the article

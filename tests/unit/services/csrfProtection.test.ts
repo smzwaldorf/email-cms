@@ -7,7 +7,6 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import {
   csrfProtection,
   CSRF_CONFIG,
-  type CSRFToken,
   extractCSRFToken,
   createCSRFHeaders,
 } from '@/services/csrfProtection'
@@ -51,9 +50,7 @@ describe('CSRF Protection Service', () => {
     })
 
     it('should store token with correct expiration', () => {
-      const before = Date.now()
       const token = csrfProtection.generateToken()
-      const after = Date.now()
 
       const result = csrfProtection.validateToken(token)
       expect(result.valid).toBe(true)
@@ -152,7 +149,7 @@ describe('CSRF Protection Service', () => {
     it('should return accurate stats', () => {
       csrfProtection.resetAllTokens() // Start fresh
       const token1 = csrfProtection.generateToken()
-      const token2 = csrfProtection.generateToken()
+      csrfProtection.generateToken()
       csrfProtection.generateToken()
 
       // Use one token
@@ -168,7 +165,7 @@ describe('CSRF Protection Service', () => {
 
     it('should include stats after expiration', () => {
       csrfProtection.resetAllTokens()
-      const token = csrfProtection.generateToken()
+      csrfProtection.generateToken()
       const initialStats = csrfProtection.getTokenStats()
       expect(initialStats.valid).toBe(1)
 
@@ -180,8 +177,8 @@ describe('CSRF Protection Service', () => {
   describe('resetAllTokens', () => {
     it('should clear all tokens', () => {
       csrfProtection.resetAllTokens() // Clear any previous tokens
-      const token1 = csrfProtection.generateToken()
-      const token2 = csrfProtection.generateToken()
+      csrfProtection.generateToken()
+      csrfProtection.generateToken()
 
       const countBefore = csrfProtection.getActiveTokenCount()
       expect(countBefore).toBeGreaterThanOrEqual(1) // At least 1 token exists

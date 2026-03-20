@@ -347,10 +347,18 @@ export class MediaService {
    * Check if file name is valid
    */
   _isValidFileName(fileName: string): boolean {
-    // 檢查無效字元
-    // Check invalid characters
-    const invalidChars = /[<>:"|?*\x00-\x1f]/g
-    return !invalidChars.test(fileName)
+    // 檢查無效字元（含控制字元，避免 no-control-regex）
+    // Check invalid characters including controls without control-char regex
+    if (/[<>:"|?*]/.test(fileName)) {
+      return false
+    }
+    for (let i = 0; i < fileName.length; i++) {
+      const code = fileName.charCodeAt(i)
+      if (code <= 0x1f) {
+        return false
+      }
+    }
+    return true
   }
 
   /**

@@ -10,6 +10,10 @@ import type { AuthUser } from '@/types/auth'
 import { auditLogger } from './auditLogger'
 import { tokenManager } from './tokenManager'
 
+function errorMessageFromUnknown(err: unknown): string {
+  return err instanceof Error ? err.message : String(err)
+}
+
 export interface AuthServiceInterface {
   signIn(email: string, password: string): Promise<AuthUser | null>
   signInWithGoogle(): Promise<AuthUser | null>
@@ -138,14 +142,14 @@ class SupabaseAuthService implements AuthServiceInterface {
       console.error('❌ Sign in exception caught')
       console.error('  Error:', err)
       console.error('  Type:', typeof err)
-      console.error('  Message:', (err as any).message)
+      console.error('  Message:', errorMessageFromUnknown(err))
 
       // Log failed login
       await auditLogger.logAuthEvent({
         userId: null,
         eventType: 'login_failure',
         authMethod: 'email_password',
-        metadata: { email, error: (err as any).message },
+        metadata: { email, error: errorMessageFromUnknown(err) },
       })
 
       return null
@@ -198,7 +202,7 @@ class SupabaseAuthService implements AuthServiceInterface {
         userId: null,
         eventType: 'oauth_google_failure',
         authMethod: 'google_oauth',
-        metadata: { error: (err as any).message },
+        metadata: { error: errorMessageFromUnknown(err) },
       })
 
       return null
@@ -299,7 +303,7 @@ class SupabaseAuthService implements AuthServiceInterface {
         userId: null,
         eventType: 'magic_link_expired',
         authMethod: 'magic_link',
-        metadata: { error: (err as any).message },
+        metadata: { error: errorMessageFromUnknown(err) },
       })
 
       return null
@@ -380,7 +384,7 @@ class SupabaseAuthService implements AuthServiceInterface {
       this.currentUser = {
         id: userId,
         email: email,
-        role: (data?.role as any) || 'viewer',  // Default to 'viewer' if not in table
+        role: (data?.role ?? 'viewer') as AuthUser['role'], // Default to 'viewer' if not in table
         displayName: data?.display_name || email.split('@')[0],
       }
 

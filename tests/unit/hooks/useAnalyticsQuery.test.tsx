@@ -41,7 +41,7 @@ describe('useNewsletterMetrics', () => {
     });
 
     it('should fetch metrics on mount', async () => {
-        (analyticsAggregator.getNewsletterMetrics as any).mockResolvedValueOnce(mockMetrics);
+        vi.mocked(analyticsAggregator.getNewsletterMetrics).mockResolvedValueOnce(mockMetrics);
 
         const { result } = renderHook(() => useNewsletterMetrics(mockNewsletterId), {
             wrapper: createWrapper()
@@ -59,7 +59,7 @@ describe('useNewsletterMetrics', () => {
     });
 
     it('should handle refetch success with loading state', async () => {
-        (analyticsAggregator.getNewsletterMetrics as any).mockResolvedValue(mockMetrics);
+        vi.mocked(analyticsAggregator.getNewsletterMetrics).mockResolvedValue(mockMetrics);
 
         const { result } = renderHook(() => useNewsletterMetrics(mockNewsletterId), {
             wrapper: createWrapper()
@@ -127,7 +127,7 @@ import { useAllClasses } from '@/hooks/useAnalyticsQuery'
 describe('useAllClasses', () => {
     it('should fetch classes on mount', async () => {
         const mockClasses = ['Class A', 'Class B'];
-        (analyticsAggregator.getAllClasses as any) = vi.fn().mockResolvedValue(mockClasses);
+        vi.mocked(analyticsAggregator.getAllClasses).mockResolvedValueOnce(mockClasses);
 
         const { result } = renderHook(() => useAllClasses(), {
             wrapper: createWrapper()

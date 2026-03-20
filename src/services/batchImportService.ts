@@ -93,7 +93,7 @@ class BatchImportService {
    * @param rowNumber - Row number in CSV (1-based, for error reporting)
    * @returns Validation result for the row
    */
-  private validateRow(row: any, rowNumber: number): RowValidationResult {
+  private validateRow(row: Record<string, unknown>, rowNumber: number): RowValidationResult {
     const errors: string[] = []
 
     // Validate email field
@@ -113,7 +113,7 @@ class BatchImportService {
     // Validate role field
     if (!row.role || typeof row.role !== 'string') {
       errors.push('Role is required and must be a string')
-    } else if (!ALLOWED_ROLES.includes(row.role)) {
+    } else if (!ALLOWED_ROLES.includes(row.role as CSVUserRow['role'])) {
       errors.push(
         `Role must be one of: ${ALLOWED_ROLES.join(', ')}. Got: ${row.role}`
       )
@@ -121,10 +121,10 @@ class BatchImportService {
 
     // Validate status field (optional, but if present must be valid)
     if (row.status) {
-      const validStatuses = ['active', 'disabled', 'pending_approval']
-      if (!validStatuses.includes(row.status)) {
+      const validStatuses = ['active', 'disabled', 'pending_approval'] as const
+      if (typeof row.status !== 'string' || !validStatuses.includes(row.status as (typeof validStatuses)[number])) {
         errors.push(
-          `Status must be one of: ${validStatuses.join(', ')}. Got: ${row.status}`
+          `Status must be one of: ${validStatuses.join(', ')}. Got: ${String(row.status)}`
         )
       }
     }
@@ -155,7 +155,7 @@ class BatchImportService {
    * @param row - Raw row data
    * @returns Normalized row
    */
-  private normalizeRow(row: any): CSVUserRow {
+  private normalizeRow(row: Record<string, unknown>): CSVUserRow {
     return {
       email: (row.email as string).toLowerCase().trim(),
       name: (row.name as string).trim(),
@@ -174,7 +174,7 @@ class BatchImportService {
    * - Checks for duplicate emails within the import
    * - Does NOT check against existing database (done in validateAgainstDatabase)
    */
-  validateCSVFormat(rows: any[]): BatchValidationResult {
+  validateCSVFormat(rows: Record<string, unknown>[]): BatchValidationResult {
     const rowResults: RowValidationResult[] = []
     const seenEmails = new Set<string>()
     const errors: string[] = []
@@ -403,7 +403,7 @@ class BatchImportService {
    * - Then checks against database (slower)
    * - Only executes import if all validations pass
    */
-  async importBatch(rows: any[]): Promise<BatchImportResult> {
+  async importBatch(rows: Record<string, unknown>[]): Promise<BatchImportResult> {
     // Step 1: Validate CSV format
     let validation = this.validateCSVFormat(rows)
 

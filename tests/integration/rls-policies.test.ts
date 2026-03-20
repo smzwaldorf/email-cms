@@ -6,7 +6,7 @@
  * Verifies Row Level Security policies for media_files and article_media_references
  */
 
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 
 /**
  * RLS 政策測試套件

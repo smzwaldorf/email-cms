@@ -8,7 +8,7 @@ interface AuditLogProps {
   error: string | null
 }
 
-export const AuditLog: React.FC<AuditLogProps> = ({ logs, isLoading, error }) => {
+export const AuditLog: React.FC<AuditLogProps> = ({ logs: _logs, isLoading, error }) => {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center py-12">

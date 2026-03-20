@@ -48,7 +48,7 @@ export interface AuditLogOptions {
   authMethod?: AuthMethod | null
 
   /** Additional event context (email, error details, etc.) */
-  metadata?: Record<string, any> | null
+  metadata?: Record<string, unknown> | null
 }
 
 /**

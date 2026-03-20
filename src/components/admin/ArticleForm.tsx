@@ -151,9 +151,9 @@ export function ArticleForm({
       }
 
       onSave?.(updated)
-    } catch (err: any) {
+    } catch (err: unknown) {
       const error = new Error(
-        err.message || 'Failed to save article'
+        err instanceof Error ? err.message : 'Failed to save article'
       )
       setSaveError(error.message)
       onError?.(error)

@@ -5,6 +5,27 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
+import type {
+  ArticleAuditLogRow,
+  ArticleRow,
+  ChildClassEnrollmentRow,
+  ClassRow,
+  EmailPlatformSubscriberMappingRow,
+  EmailPlatformSubscriptionAuditRow,
+  EmailPlatformSyncJobRow,
+  EmailPlatformWebhookEventRow,
+  FamilyEnrollmentRow,
+  FamilyRow,
+  NewsletterArticleRow,
+  NewsletterRow,
+  StudentRow,
+  TeacherClassAssignmentRow,
+  UserRoleRow,
+} from '@/types/database'
+
+/** Row shape for tables not yet modeled in database.ts (admin-only / audit). */
+type UntypedTableRow = Record<string, unknown>
+
 /**
  * Validate that required environment variables are set
  */
@@ -157,25 +178,26 @@ export function resetSupabaseClient(): void {
  * Provides autocomplete for available tables
  */
 export interface DatabaseTables {
-  newsletters: any
-  articles: any
-  newsletter_articles: any  // Junction table for article-newsletter relationship
-  classes: any
-  user_roles: any
-  families: any
-  family_enrollment: any
-  students: any
-  student_class_enrollment: any
-  child_class_enrollment: any
-  teacher_class_assignment: any
-  article_audit_log: any
-  user_role_assignments: any
-  permission_mutation_audit_log: any
-  authorization_decision_trace: any
-  email_platform_subscriber_mappings: any
-  email_platform_sync_jobs: any
-  email_platform_webhook_events: any
-  email_platform_subscription_audit: any
+  newsletters: NewsletterRow
+  articles: ArticleRow
+  newsletter_articles: NewsletterArticleRow
+  classes: ClassRow
+  user_roles: UserRoleRow
+  families: FamilyRow
+  family_enrollment: FamilyEnrollmentRow
+  students: StudentRow
+  /** Renamed from child_class_enrollment; same row shape as ChildClassEnrollmentRow */
+  student_class_enrollment: ChildClassEnrollmentRow
+  child_class_enrollment: ChildClassEnrollmentRow
+  teacher_class_assignment: TeacherClassAssignmentRow
+  article_audit_log: ArticleAuditLogRow
+  user_role_assignments: UntypedTableRow
+  permission_mutation_audit_log: UntypedTableRow
+  authorization_decision_trace: UntypedTableRow
+  email_platform_subscriber_mappings: EmailPlatformSubscriberMappingRow
+  email_platform_sync_jobs: EmailPlatformSyncJobRow
+  email_platform_webhook_events: EmailPlatformWebhookEventRow
+  email_platform_subscription_audit: EmailPlatformSubscriptionAuditRow
 }
 
 /**

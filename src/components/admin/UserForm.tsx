@@ -30,6 +30,8 @@ export interface UserFormData {
   status: 'active' | 'disabled' | 'pending_approval'
 }
 
+type UserFormFieldValue = string | UserRole | UserFormData['status']
+
 /**
  * Validate email format
  * 驗證電子郵件格式
@@ -100,24 +102,25 @@ export function UserForm({
    * Handle field change
    * 處理欄位變更
    */
-  const handleFieldChange = (field: string, value: any) => {
+  const handleFieldChange = (field: string, value: UserFormFieldValue) => {
     if (field === 'email') {
-      setEmail(value)
+      setEmail(value as string)
     } else if (field === 'name') {
-      setName(value)
+      setName(value as string)
     } else if (field === 'role') {
-      setRole(value)
+      setRole(value as UserRole)
     } else if (field === 'status') {
-      setStatus(value)
+      setStatus(value as UserFormData['status'])
     }
 
     // Mark field as touched
     setTouched(new Set([...touched, field]))
 
     // Clear error for this field
-    setErrors({
-      ...errors,
-      [field]: undefined,
+    setErrors((prev) => {
+      const next = { ...prev }
+      delete next[field]
+      return next
     })
   }
 

@@ -113,11 +113,12 @@ describe('E2E: Authentication Flow with Session Persistence', () => {
       expect(junctionError).toBeNull()
       
       // Extract articles from junction data
-      const articles = junctionData?.map((j: any) => j.articles) || []
+      const articles =
+        junctionData?.map((j: { articles: { visibility_type: string } }) => j.articles) || []
       expect(articles.length).toBeGreaterThanOrEqual(2) // At least public articles
 
       // Verify article types
-      const publicArticles = articles.filter((a: any) => a.visibility_type === 'public')
+      const publicArticles = articles.filter((a: { visibility_type: string }) => a.visibility_type === 'public')
       expect(publicArticles.length).toBeGreaterThanOrEqual(2)
 
       await client.auth.signOut()

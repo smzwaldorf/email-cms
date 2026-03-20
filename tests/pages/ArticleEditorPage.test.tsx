@@ -4,6 +4,21 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { ArticleEditorPage } from '@/pages/ArticleEditorPage'
 
 const mockNavigate = vi.fn()
+type MockArticleFormArticle = {
+  id: string
+  title: string
+  newsletterTargetingMode?: string
+  newsletterTargetClassIds?: string[]
+}
+type ArticleFormProps = {
+  article: MockArticleFormArticle
+  onSave?: (article: MockArticleFormArticle) => void
+}
+type FetchArticlesResult = Awaited<ReturnType<typeof adminService.fetchArticlesByNewsletter>>
+type FetchClassesResult = Awaited<ReturnType<typeof adminService.fetchClasses>>
+type FetchFamiliesResult = Awaited<ReturnType<typeof adminService.fetchFamilies>>
+type FetchNewsletterByWeekResult = Awaited<ReturnType<typeof adminService.fetchNewsletterByWeek>>
+type UpdateArticleResult = Awaited<ReturnType<typeof adminService.updateArticle>>
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom')
@@ -22,10 +37,7 @@ vi.mock('@/components/admin/ArticleForm', () => ({
   default: ({
     article,
     onSave,
-  }: {
-    article: any
-    onSave?: (article: any) => void
-  }) => (
+  }: ArticleFormProps) => (
     <div>
       <button
         type="button"
@@ -77,9 +89,9 @@ describe('ArticleEditorPage', () => {
         updatedAt: '2025-01-01T00:00:00Z',
         editedAt: '2025-01-01T00:00:00Z',
       },
-    ] as any)
-    vi.mocked(adminService.fetchClasses).mockResolvedValue([] as any)
-    vi.mocked(adminService.fetchFamilies).mockResolvedValue([] as any)
+    ] as FetchArticlesResult)
+    vi.mocked(adminService.fetchClasses).mockResolvedValue([] as FetchClassesResult)
+    vi.mocked(adminService.fetchFamilies).mockResolvedValue([] as FetchFamiliesResult)
     vi.mocked(adminService.fetchNewsletterByWeek).mockResolvedValue({
       id: 'newsletter-1',
       weekNumber: '2025-W49',
@@ -93,10 +105,10 @@ describe('ArticleEditorPage', () => {
       publishedAt: null,
       isPublished: false,
       isTemplate: false,
-    } as any)
+    } as FetchNewsletterByWeekResult)
     vi.mocked(adminService.updateArticle).mockResolvedValue({
       id: 'article-1',
-    } as any)
+    } as UpdateArticleResult)
     vi.mocked(adminService.updateArticleTargetingInNewsletterById).mockResolvedValue()
   })
 

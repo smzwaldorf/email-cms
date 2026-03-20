@@ -7,6 +7,19 @@ import { getSupabaseClient } from '@/lib/supabase'
 import type { MediaFile } from '@/types/media'
 import { mediaGovernanceService } from '@/services/mediaGovernanceService'
 
+interface ArticleMediaReferenceNestedRow {
+  /** PostgREST may return a single joined row or an array */
+  media_files?: MediaFile | MediaFile[] | null
+}
+
+interface ArticleMediaReferenceIdRow {
+  media_id: string
+}
+
+interface MediaFileIdOnlyRow {
+  id: string
+}
+
 /**
  * 文章媒體管理服務類
  * Article Media Manager Service class
@@ -75,9 +88,11 @@ export class ArticleMediaManager {
 
       // 平坦化結果
       // Flatten results
-      return (data || [])
-        .map((ref: any) => ref.media_files)
-        .filter(Boolean) as MediaFile[]
+      return (data || []).flatMap((ref: ArticleMediaReferenceNestedRow) => {
+        const mf = ref.media_files
+        if (!mf) return []
+        return Array.isArray(mf) ? mf : [mf]
+      }) as MediaFile[]
     } catch (error) {
       console.error('Failed to get article media:', error)
       return []
@@ -100,6 +115,7 @@ export class ArticleMediaManager {
     }
   ): Promise<{ success: boolean; error?: string }> {
     try {
+      void properties
       const canonicalArticleId = await this.resolveArticleId(articleId)
       if (!canonicalArticleId) {
         throw new Error(`Article not found: ${articleId}`)
@@ -216,7 +232,7 @@ export class ArticleMediaManager {
 
       // 檢查每個媒體檔案是否存在
       // Check if each media file exists
-      const mediaIds = references.map((ref: any) => ref.media_id)
+      const mediaIds = references.map((ref: ArticleMediaReferenceIdRow) => ref.media_id)
       const supabase2 = getSupabaseClient()
       const { data: existingMedia, error: mediaError } = await supabase2
         .from('media_files')
@@ -225,7 +241,7 @@ export class ArticleMediaManager {
 
       if (mediaError) throw mediaError
 
-      const existingIds = (existingMedia || []).map((m: any) => m.id)
+      const existingIds = (existingMedia || []).map((m: MediaFileIdOnlyRow) => m.id)
       const orphanedIds = mediaIds.filter((id: string) => !existingIds.includes(id))
 
       // 刪除孤立的參考

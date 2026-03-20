@@ -3,13 +3,25 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { ArticleAnalyticsTable } from '@/components/analytics/ArticleAnalyticsTable';
 
+type FixedSizeListChildProps = {
+  index: number
+  style: React.CSSProperties
+}
+
+type FixedSizeListProps = {
+  children: (props: FixedSizeListChildProps) => React.ReactNode
+  itemCount: number
+  itemSize: number
+  height: number | string
+  width: number | string
+}
+
 // Mock react-window to render all items without virtualization for testing
 vi.mock('react-window', () => ({
-  FixedSizeList: ({ children, itemCount, itemSize, height, width }: any) => (
+  FixedSizeList: ({ children, itemCount, itemSize, height, width }: FixedSizeListProps) => (
     <div data-testid="virtual-list" style={{ height, width, position: 'relative' }}>
       {Array.from({ length: itemCount }).map((_, index) => (
         <React.Fragment key={index}>
-          {/* @ts-ignore */}
           {children({ index, style: { height: itemSize, top: index * itemSize, position: 'absolute', width: '100%' } })}
         </React.Fragment>
       ))}

@@ -13,7 +13,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import type { NewsletterWeekRow, ClassRow, FamilyRow } from '@/types/database'
+import type { NewsletterWeekRow, ClassRow } from '@/types/database'
 import { ArticleService } from '@/services/ArticleService'
 import { WeekService } from '@/services/WeekService'
 import { FamilyService } from '@/services/FamilyService'
@@ -124,12 +124,6 @@ describe('E2E: Complete CMS Workflow', () => {
       updated_at: '2025-11-17T11:00:00Z',
       deleted_at: null,
     },
-  }
-
-  const mockFamilyData: FamilyRow = {
-    id: 'family-001',
-    family_code: 'FAM-2025-001',
-    created_at: '2025-11-01T08:00:00Z',
   }
 
   beforeEach(() => {
@@ -282,7 +276,7 @@ describe('E2E: Complete CMS Workflow', () => {
 
     it('should handle class restriction changes and visibility updates', async () => {
       // Start with public article
-      let article = mockArticles.public
+      const article = mockArticles.public
 
       // Change to class-restricted
       const restrictedArticle = {
@@ -581,8 +575,6 @@ describe('E2E: Complete CMS Workflow', () => {
     })
 
     it('should preserve audit trail across all operations', async () => {
-      const operations = ['CREATE', 'UPDATE', 'DELETE']
-
       // Each operation should be logged
       vi.mocked(ArticleService.createArticle).mockResolvedValue(mockArticles.public)
       vi.mocked(ArticleService.updateArticle).mockResolvedValue({

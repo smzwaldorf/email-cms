@@ -1,4 +1,5 @@
 import React from 'react';
+import type { DotItemDotProps } from 'recharts';
 import { 
   LineChart, 
   Line, 
@@ -22,12 +23,18 @@ interface TrendChartProps {
   height?: number;
 }
 
-const CustomDot = (props: any) => {
-    const { cx, cy, value, data, dataKey, color } = props;
-    
-    if (!data || data.length === 0) return null;
+type TrendDotProps = DotItemDotProps & {
+  data?: TrendData[];
+  dataKey?: keyof TrendData;
+  color?: string;
+};
 
-    const values = data.map((d: any) => d[dataKey]);
+const CustomDot = (props: TrendDotProps) => {
+    const { cx, cy, value, data = [], dataKey, color } = props;
+    
+    if (!data.length || dataKey === undefined || color === undefined) return null;
+
+    const values = data.map((d) => d[dataKey as keyof TrendData] as number);
     const min = Math.min(...values);
     const max = Math.max(...values);
     

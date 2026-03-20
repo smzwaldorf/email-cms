@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'; // keeping useState for generateSnapshots
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { analyticsAggregator } from '@/services/analyticsAggregator';
+import { analyticsAggregator, type ArticleReader } from '@/services/analyticsAggregator';
+import type { NewsletterTrendPoint, ArticleAnalyticsMetadata } from '@/types/analytics';
 
 /**
  * Hook to fetch analytics metrics for a newsletter.
@@ -146,7 +147,7 @@ export function formatReadLatency(minutes: number): string {
 }
 
 export const useClassHistory = (className: string) => {
-    const [history, setHistory] = useState<any[]>([]);
+    const [history, setHistory] = useState<NewsletterTrendPoint[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -193,7 +194,7 @@ export const useAllClasses = () => {
 };
 
 export const useArticleReaders = (articleId: string) => {
-    const [readers, setReaders] = useState<any[]>([]); 
+    const [readers, setReaders] = useState<ArticleReader[]>([]); 
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -216,7 +217,7 @@ export const useArticleReaders = (articleId: string) => {
 };
 
 export const useArticleMetadata = (articleId: string) => {
-    const [metadata, setMetadata] = useState<any>(null);
+    const [metadata, setMetadata] = useState<ArticleAnalyticsMetadata | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {

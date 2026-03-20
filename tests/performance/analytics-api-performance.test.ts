@@ -171,7 +171,7 @@ describe('Analytics API Performance', () => {
       }
 
       // Simulate redirect lookup
-      const redirect = await supabase
+      await supabase
         .from('tracking_links')
         .select('original_url')
         .eq('id', 'link-1')

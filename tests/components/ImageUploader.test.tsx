@@ -3,7 +3,7 @@
  * Tests for image upload component with drag-drop, file picker, and clipboard support
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ImageUploader from '@/components/ImageUploader'
@@ -176,7 +176,6 @@ describe('ImageUploader Component (T055)', () => {
 
   describe('Error Handling', () => {
     it('should validate file type', async () => {
-      const user = userEvent.setup()
       render(
         <ImageUploader
           onFilesSelected={mockOnFilesSelected}

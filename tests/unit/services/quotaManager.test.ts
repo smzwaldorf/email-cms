@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { quotaManager, STORAGE_QUOTA_CONFIG, type UserStorageStats } from '@/services/quotaManager'
+import { quotaManager, STORAGE_QUOTA_CONFIG } from '@/services/quotaManager'
 import { getSupabaseClient } from '@/lib/supabase'
 
 // Mock Supabase client
@@ -20,7 +20,7 @@ describe('Storage Quota Manager', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    ;(getSupabaseClient as any).mockReturnValue(mockSupabaseClient)
+    vi.mocked(getSupabaseClient).mockReturnValue(mockSupabaseClient as ReturnType<typeof getSupabaseClient>)
   })
 
   describe('getUserStorageStats', () => {

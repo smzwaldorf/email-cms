@@ -1,3 +1,5 @@
+import type { NewsletterRow } from '@/types/database';
+
 export type AnalyticsEventType = 
   | 'page_view' 
   | 'scroll_50' 
@@ -14,7 +16,7 @@ export interface AnalyticsEvent {
   article_id: string | null;
   session_id: string | null;
   event_type: AnalyticsEventType;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   created_at: string;
 }
 
@@ -33,7 +35,7 @@ export interface TrackingToken {
   id: string;
   user_id: string;
   token_hash: string;
-  token_payload: any;
+  token_payload: unknown;
   is_revoked: boolean;
   expires_at: string;
   created_at: string;
@@ -53,5 +55,27 @@ export interface ArticleHotness {
   avgReadLatencyMinutes: number; // Average minutes from publish to first read
   hotnessScore: number; // 0-100 score (higher = read faster = hotter)
   totalReaders: number;
+}
+
+/** Newsletter rows returned for the analytics week selector (subset of columns). */
+export type AnalyticsNewsletterWeekOption = Pick<NewsletterRow, 'id' | 'release_date'> & {
+  week_number?: NewsletterRow['week_number'];
+  title?: NewsletterRow['title'];
+};
+
+/** One point in the engagement trend series (per newsletter week). */
+export interface NewsletterTrendPoint {
+  name: string;
+  openRate: number;
+  clickRate: number;
+  avgTimeSpent: number;
+}
+
+/** Article + newsletter context for reader-facing article metadata. */
+export interface ArticleAnalyticsMetadata {
+  title: string;
+  publishedAt: string;
+  newsletterId: string | null;
+  weekNumber: string | null;
 }
 

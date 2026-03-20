@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, waitFor } from '@testing-library/react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { TipTapYoutubeNode } from '@/adapters/TipTapYoutubeNode'

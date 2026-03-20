@@ -11,6 +11,8 @@
  * for user roles and teacher class assignments during a single page load.
  */
 
+import type { PostgrestError } from '@supabase/supabase-js'
+
 import { table } from '@/lib/supabase'
 import type { ArticleRow, UserRoleRow, TeacherClassAssignmentRow } from '@/types/database'
 import { type AccessControlRole, resolveAccessControl, resolveWinningRole } from '@/services/accessControlResolver'
@@ -84,7 +86,10 @@ export class PermissionService {
     try {
       const { data: assignments, error: assignmentError } = (await table('user_role_assignments')
         .select('role')
-        .eq('user_id', userId)) as { data: Array<{ role: AccessControlRole }> | null; error: any }
+        .eq('user_id', userId)) as {
+        data: Array<{ role: AccessControlRole }> | null
+        error: PostgrestError | null
+      }
 
       if (!assignmentError && assignments && assignments.length > 0) {
         const roles = Array.from(new Set(assignments.map((row) => row.role)))
@@ -95,7 +100,7 @@ export class PermissionService {
       const { data, error } = (await table('user_roles')
         .select('role')
         .eq('id', userId)
-        .single()) as { data: UserRoleRow | null; error: any }
+        .single()) as { data: UserRoleRow | null; error: PostgrestError | null }
 
       if (error) {
         console.error(`Failed to fetch user role for ${userId}:`, error)
@@ -131,7 +136,10 @@ export class PermissionService {
     try {
       const { data, error } = (await table('teacher_class_assignment')
         .select('class_id')
-        .eq('teacher_id', teacherId)) as { data: TeacherClassAssignmentRow[] | null; error: any }
+        .eq('teacher_id', teacherId)) as {
+        data: TeacherClassAssignmentRow[] | null
+        error: PostgrestError | null
+      }
 
       if (error) {
         console.error(`Failed to fetch teacher classes for ${teacherId}:`, error)

@@ -59,7 +59,7 @@ describe('E2E: Admin Dashboard Workflows', () => {
 
       // Step 2: Navigate to admin dashboard
       const dashboardUrl = `${context.baseUrl}/admin`
-      let currentUrl = dashboardUrl
+      const currentUrl = dashboardUrl
       expect(currentUrl).toBe(dashboardUrl)
 
       // Step 3: View newsletter list
@@ -152,7 +152,7 @@ describe('E2E: Admin Dashboard Workflows', () => {
       }
 
       // Step 1: Open article for editing
-      let editingArticle = { ...article }
+      const editingArticle = { ...article }
       expect(editingArticle.title).toBe('Original Title')
 
       // Step 2: Make edit

@@ -103,9 +103,10 @@ const ArticleForm = ({
       }
 
       onSave?.(updated)
-    } catch (err: any) {
-      setSaveError(err.message)
-      onError?.(err)
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error('Unknown save error')
+      setSaveError(error.message)
+      onError?.(error)
     } finally {
       setIsSaving(false)
     }
@@ -375,7 +376,6 @@ describe('ArticleForm', () => {
 
     it('should have save button available for clicks', async () => {
       const onSave = vi.fn()
-      const user = userEvent.setup()
 
       render(<ArticleForm article={mockArticle} onSave={onSave} />)
 
@@ -390,7 +390,7 @@ describe('ArticleForm', () => {
       const onSave = vi.fn()
       const user = userEvent.setup()
 
-      const { rerender } = render(<ArticleForm article={mockArticle} onSave={onSave} />)
+      render(<ArticleForm article={mockArticle} onSave={onSave} />)
 
       await user.click(screen.getByTestId('save-btn'))
 
@@ -409,7 +409,7 @@ describe('ArticleForm', () => {
       const user = userEvent.setup()
 
       // Mock a conflict scenario
-      const { rerender } = render(<ArticleForm article={mockArticle} onError={onError} />)
+      render(<ArticleForm article={mockArticle} onError={onError} />)
 
       // Simulate click that triggers conflict (10% chance, but we can test the UI)
       const saveButton = screen.getByTestId('save-btn')
@@ -436,7 +436,7 @@ describe('ArticleForm', () => {
       const onSave = vi.fn()
       const user = userEvent.setup()
 
-      const { rerender } = render(<ArticleForm article={mockArticle} onSave={onSave} />)
+      render(<ArticleForm article={mockArticle} onSave={onSave} />)
 
       // First, trigger a save that might result in conflict
       await user.click(screen.getByTestId('save-btn'))
@@ -456,7 +456,7 @@ describe('ArticleForm', () => {
       const onSave = vi.fn()
       const user = userEvent.setup()
 
-      const { rerender } = render(<ArticleForm article={mockArticle} onSave={onSave} />)
+      render(<ArticleForm article={mockArticle} onSave={onSave} />)
 
       // First, trigger a save
       await user.click(screen.getByTestId('save-btn'))

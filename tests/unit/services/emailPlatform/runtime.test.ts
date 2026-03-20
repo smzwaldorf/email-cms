@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 
+import type { EmailPlatformSyncJobRow, EmailPlatformWebhookEventRow } from '@/types/database'
+
+import type { AdminClientLike } from '@/services/emailPlatform/runtime.ts'
 import {
   persistWebhookEvent,
   processSyncJob,
@@ -310,7 +313,7 @@ describe('email platform runtime', () => {
         },
       ],
     })
-    const adminClient = new MockAdminClient(state)
+    const adminClient = new MockAdminClient(state) as unknown as AdminClientLike
     const adapter = {
       upsertSubscriber: vi.fn().mockResolvedValue({
         externalSubscriberId: 'sub-1',
@@ -325,9 +328,14 @@ describe('email platform runtime', () => {
       getSubscriberSnapshot: vi.fn(),
     }
 
-    const status = await processSyncJob(adminClient, state.email_platform_sync_jobs[0], createConfig(), {
-      createAdapter: () => adapter as unknown as never,
-    })
+    const status = await processSyncJob(
+      adminClient,
+      state.email_platform_sync_jobs[0] as unknown as EmailPlatformSyncJobRow,
+      createConfig(),
+      {
+        createAdapter: () => adapter as unknown as never,
+      },
+    )
 
     expect(status).toBe('succeeded')
     expect(adapter.upsertSubscriber).toHaveBeenCalledTimes(1)
@@ -386,7 +394,7 @@ describe('email platform runtime', () => {
         },
       ],
     })
-    const adminClient = new MockAdminClient(state)
+    const adminClient = new MockAdminClient(state) as unknown as AdminClientLike
     const adapter = {
       upsertSubscriber: vi.fn().mockRejectedValue(
         new EmailPlatformError('network timeout', {
@@ -397,9 +405,14 @@ describe('email platform runtime', () => {
       getSubscriberSnapshot: vi.fn(),
     }
 
-    const status = await processSyncJob(adminClient, state.email_platform_sync_jobs[0], createConfig(), {
-      createAdapter: () => adapter as unknown as never,
-    })
+    const status = await processSyncJob(
+      adminClient,
+      state.email_platform_sync_jobs[0] as unknown as EmailPlatformSyncJobRow,
+      createConfig(),
+      {
+        createAdapter: () => adapter as unknown as never,
+      },
+    )
 
     expect(status).toBe('retryable')
     expect(state.email_platform_sync_jobs[0].status).toBe('retryable')
@@ -423,7 +436,7 @@ describe('email platform runtime', () => {
         },
       ],
     })
-    const adminClient = new MockAdminClient(state)
+    const adminClient = new MockAdminClient(state) as unknown as AdminClientLike
     const request = new Request('https://example.com/webhook', {
       method: 'POST',
       headers: {
@@ -471,11 +484,11 @@ describe('email platform runtime', () => {
         },
       ],
     })
-    const adminClient = new MockAdminClient(state)
+    const adminClient = new MockAdminClient(state) as unknown as AdminClientLike
 
     const status = await processWebhookEvent(
       adminClient,
-      state.email_platform_webhook_events[0],
+      state.email_platform_webhook_events[0] as unknown as EmailPlatformWebhookEventRow,
       createConfig(),
     )
 
@@ -530,11 +543,11 @@ describe('email platform runtime', () => {
         },
       ],
     })
-    const adminClient = new MockAdminClient(state)
+    const adminClient = new MockAdminClient(state) as unknown as AdminClientLike
 
     const status = await processWebhookEvent(
       adminClient,
-      state.email_platform_webhook_events[0],
+      state.email_platform_webhook_events[0] as unknown as EmailPlatformWebhookEventRow,
       createConfig(),
     )
 

@@ -321,7 +321,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
               <button
                 key={value}
                 onClick={() => {
-                  setSelectedMediaType(value as any)
+                  setSelectedMediaType(value as MediaFileType | 'all')
                   setCurrentPage(1)
                 }}
                 disabled={disabled}

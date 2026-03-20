@@ -25,7 +25,7 @@ export const ArticleReadersPage: React.FC = () => {
                 try {
                     const article = await ArticleService.getArticleById(articleId);
                     setArticleTitle(article?.title || 'Unknown Article');
-                } catch (e) {
+                } catch {
                     setArticleTitle('Unknown Article');
                 }
 

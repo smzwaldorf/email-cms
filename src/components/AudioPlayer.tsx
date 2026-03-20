@@ -132,8 +132,6 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
     setIsMuted(!isMuted)
   }
 
-  const progress = duration > 0 ? (currentTime / duration) * 100 : 0
-
   return (
     <div
       className={`

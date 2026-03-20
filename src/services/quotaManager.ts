@@ -39,6 +39,8 @@ export interface QuotaCheckResult {
   stats: UserStorageStats
 }
 
+type MediaFileSizeRow = { file_size: number | null }
+
 /**
  * 儲存配額管理器類
  * Storage Quota Manager class
@@ -73,7 +75,7 @@ class StorageQuotaManager {
     }
 
     const totalUsedBytes = (data || []).reduce(
-      (sum: number, file: any) => sum + (file.file_size || 0),
+      (sum: number, file: MediaFileSizeRow) => sum + (file.file_size || 0),
       0
     )
 

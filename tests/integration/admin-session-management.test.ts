@@ -18,11 +18,15 @@ const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || ''
 
 // Skip entire suite if service key is not available
 const hasServiceKey = !!supabaseServiceKey && supabaseServiceKey.length > 0
+type FallbackSupabaseClient = {
+  auth: { admin: Record<string, never> }
+  from: () => Record<string, never>
+}
 
 // Only create the admin client if we have a service key; otherwise use dummy client
 const _supabaseAdminGlobal = hasServiceKey
   ? createClient(supabaseUrl, supabaseServiceKey)
-  : { auth: { admin: {} }, from: () => ({}) } as any
+  : ({ auth: { admin: {} }, from: () => ({}) } as FallbackSupabaseClient)
 
 describe.skipIf(!hasServiceKey)('E2E: Admin Session Management', () => {
   // Ensure keys are present before creating clients

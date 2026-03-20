@@ -44,7 +44,7 @@ describe('E2E: Session Management & Multi-Device Support', () => {
     if (client) {
       try {
         await client.auth.signOut()
-      } catch (err) {
+      } catch {
         // Ignore errors during cleanup
       }
     }

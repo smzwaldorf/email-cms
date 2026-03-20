@@ -19,7 +19,7 @@ export enum StorageProviderType {
  */
 export interface StorageOperationResult {
   success: boolean;
-  data?: any;
+  data?: unknown;
   error?: Error;
   message?: string;
 }
@@ -33,7 +33,7 @@ export interface StorageConfig {
   bucket?: string;
   region?: string;
   publicUrl?: string;
-  credentials?: Record<string, any>;
+  credentials?: Record<string, unknown>;
 }
 
 /**
@@ -42,7 +42,7 @@ export interface StorageConfig {
  */
 export interface UploadOptions {
   public?: boolean; // 公開存取權限 Public access
-  metadata?: Record<string, any>; // 自訂元資料 Custom metadata
+  metadata?: Record<string, unknown>; // 自訂元資料 Custom metadata
   upsert?: boolean; // 覆蓋現有檔案 Overwrite existing
   cacheControl?: string; // 快取控制 Cache control header
   contentType?: string; // MIME 類型 MIME type
@@ -170,7 +170,7 @@ export interface FileObject {
   updated_at: string; // 最後更新時間 ISO 8601
   created_at: string; // 建立時間 ISO 8601
   last_accessed_at: string; // 最後存取時間 ISO 8601
-  metadata?: Record<string, any>; // 元資料 Metadata
+  metadata?: Record<string, unknown>; // 元資料 Metadata
   buckets?: {
     id: string;
     name: string;
@@ -188,7 +188,7 @@ export interface FileMetadata {
   uploadedAt: string; // ISO 8601
   updatedAt: string; // ISO 8601
   contentHash?: string;
-  customMetadata?: Record<string, any>;
+  customMetadata?: Record<string, unknown>;
 }
 
 /**
@@ -226,7 +226,7 @@ export class StorageError extends Error {
     public code: string,
     public message: string,
     public statusCode?: number,
-    public details?: any
+    public details?: unknown
   ) {
     super(message);
     this.name = 'StorageError';
