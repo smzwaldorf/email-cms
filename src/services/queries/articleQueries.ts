@@ -16,7 +16,7 @@ import type { ArticleAuditLogRow, ArticleRow } from '@/types/database'
 /** Row shape from newsletter_articles join with articles */
 type NewsletterArticleJoinRow = {
   article_order: number
-  articles: ArticleRow
+  articles: ArticleRow | ArticleRow[]
 }
 
 /**
@@ -64,11 +64,10 @@ export async function getPublishedArticlesByWeek(weekNumber: string): Promise<Ar
     }
 
     // Filter for published articles and map the result
-    return (data || [])
-      .map((row: NewsletterArticleJoinRow) => ({
-        ...row.articles,
-        article_order: row.article_order, // Include order from junction table
-      }))
+    const rows = (data || []) as unknown as NewsletterArticleJoinRow[]
+    return rows
+      .map((row) => (Array.isArray(row.articles) ? row.articles[0] : row.articles))
+      .filter((article): article is ArticleRow => Boolean(article))
       .filter((article: ArticleRow) => article.status === 'published' && !article.deleted_at)
   } catch (err) {
     console.error('Query error in getPublishedArticlesByWeek:', err)
@@ -105,10 +104,10 @@ export async function getArticlesByWeekUnfiltered(weekNumber: string): Promise<A
       throw new Error(`Failed to fetch articles for week ${weekNumber}: ${error.message}`)
     }
 
-    return (data || []).map((row: NewsletterArticleJoinRow) => ({
-      ...row.articles,
-      article_order: row.article_order,
-    }))
+    const rows = (data || []) as unknown as NewsletterArticleJoinRow[]
+    return rows
+      .map((row) => (Array.isArray(row.articles) ? row.articles[0] : row.articles))
+      .filter((article): article is ArticleRow => Boolean(article))
   } catch (err) {
     console.error('Query error in getArticlesByWeekUnfiltered:', err)
     throw err
@@ -148,11 +147,10 @@ export async function getArticlesByClass(
     }
 
     // Filter for published articles that are public or include this class
-    return (data || [])
-      .map((row: NewsletterArticleJoinRow) => ({
-        ...row.articles,
-        article_order: row.article_order,
-      }))
+    const rows = (data || []) as unknown as NewsletterArticleJoinRow[]
+    return rows
+      .map((row) => (Array.isArray(row.articles) ? row.articles[0] : row.articles))
+      .filter((article): article is ArticleRow => Boolean(article))
       .filter((article: ArticleRow) => {
         if (article.deleted_at) return false
         if (article.status !== 'published') return false
@@ -204,11 +202,10 @@ export async function getArticlesByClasses(
     }
 
     // Filter for published articles that are public or include any of the classes
-    return (data || [])
-      .map((row: NewsletterArticleJoinRow) => ({
-        ...row.articles,
-        article_order: row.article_order,
-      }))
+    const rows = (data || []) as unknown as NewsletterArticleJoinRow[]
+    return rows
+      .map((row) => (Array.isArray(row.articles) ? row.articles[0] : row.articles))
+      .filter((article): article is ArticleRow => Boolean(article))
       .filter((article: ArticleRow) => {
         if (article.deleted_at) return false
         if (article.status !== 'published') return false
@@ -335,10 +332,8 @@ export async function getArticleByOrder(
 
     if (!data) return null
 
-    return {
-      ...data.articles,
-      article_order: data.article_order,
-    } as ArticleRow
+    const joined = data as unknown as NewsletterArticleJoinRow
+    return Array.isArray(joined.articles) ? joined.articles[0] || null : joined.articles || null
   } catch (err) {
     console.error('Query error in getArticleByOrder:', err)
     throw err
@@ -380,11 +375,10 @@ export async function searchArticles(
       }
 
       // Filter results by search query
-      return (data || [])
-        .map((row: NewsletterArticleJoinRow) => ({
-          ...row.articles,
-          article_order: row.article_order,
-        }))
+      const rows = (data || []) as unknown as NewsletterArticleJoinRow[]
+      return rows
+        .map((row) => (Array.isArray(row.articles) ? row.articles[0] : row.articles))
+        .filter((article): article is ArticleRow => Boolean(article))
         .filter((article: ArticleRow) => {
           if (article.status !== 'published') return false
           if (article.deleted_at) return false
@@ -447,11 +441,10 @@ export async function getArticlesByCreator(
       throw new Error(`Failed to fetch articles by creator: ${error.message}`)
     }
 
-    return (data || [])
-      .map((row: NewsletterArticleJoinRow) => ({
-        ...row.articles,
-        article_order: row.article_order,
-      }))
+    const rows = (data || []) as unknown as NewsletterArticleJoinRow[]
+    return rows
+      .map((row) => (Array.isArray(row.articles) ? row.articles[0] : row.articles))
+      .filter((article): article is ArticleRow => Boolean(article))
       .filter((article: ArticleRow) => article.created_by === userId && !article.deleted_at)
   } catch (err) {
     console.error('Query error in getArticlesByCreator:', err)

@@ -76,7 +76,7 @@ describe('Tracking API Integration Tests', () => {
   describe('Email Open Tracking Flow', () => {
     it('should complete full email open tracking: generate token → verify → log event', async () => {
       // Step 1: Generate tracking token
-      await trackingTokenService.generateToken(userId, payload);
+      const token = await trackingTokenService.generateToken(userId, payload);
       expect(token).toBeDefined();
       expect(token.split('.').length).toBe(3);
 
@@ -117,7 +117,7 @@ describe('Tracking API Integration Tests', () => {
     });
 
     it('should handle duplicate email open within 10 seconds', async () => {
-      await trackingTokenService.generateToken(userId, payload);
+      const token = await trackingTokenService.generateToken(userId, payload);
 
       // First request
       const firstVerify = await trackingTokenService.verifyToken(token);

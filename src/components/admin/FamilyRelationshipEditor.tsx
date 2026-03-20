@@ -359,7 +359,7 @@ export function FamilyRelationshipEditor({
                               type="button"
                               onClick={() => {
                                 setEditingParentId(parent.id)
-                                setEditingRelationship(parent.relationship)
+                                setEditingRelationship(parent.relationship ?? null)
                               }}
                               className="px-3 py-1.5 text-xs text-waldorf-lavender-700 bg-waldorf-lavender-100 border border-waldorf-lavender-200 rounded-lg hover:bg-waldorf-lavender-200 transition-colors duration-200 disabled:opacity-50 font-medium"
                               disabled={isLoading}

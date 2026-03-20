@@ -16,13 +16,7 @@ import type {
 } from '@/types/storage'
 
 export class SupabaseStorageAdapter implements StorageProvider {
-  private supabaseUrl: string
-  private supabaseKey: string
-
-  constructor(supabaseUrl: string, supabaseKey: string) {
-    this.supabaseUrl = supabaseUrl
-    this.supabaseKey = supabaseKey
-  }
+  constructor(_supabaseUrl: string, _supabaseKey: string) {}
 
   /**
    * 上傳檔案到 Supabase Storage

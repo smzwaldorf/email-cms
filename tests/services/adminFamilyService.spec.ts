@@ -3,7 +3,7 @@ import { adminService, AdminServiceError } from '@/services/adminService'
 
 type QueryResolver<T> = (value: { data: T; error: null | { message?: string } }) => unknown
 
-const mockBuilder = {
+const mockBuilder: Record<string, ReturnType<typeof vi.fn>> = {
   select: vi.fn().mockReturnThis(),
   insert: vi.fn().mockReturnThis(),
   update: vi.fn().mockReturnThis(),
@@ -13,7 +13,7 @@ const mockBuilder = {
   ilike: vi.fn().mockReturnThis(),
   single: vi.fn().mockReturnThis(),
   maybeSingle: vi.fn().mockReturnThis(),
-  then: vi.fn((resolve: QueryResolver<unknown[]>) => resolve({ data: [], error: null })),
+  then: vi.fn((resolve: QueryResolver<unknown>) => resolve({ data: [], error: null })),
 }
 
 const mockSupabase = {
@@ -30,7 +30,7 @@ describe('AdminService family management', () => {
     Object.values(mockBuilder).forEach((mock) => {
       if (mock.mockReturnThis) mock.mockReturnThis()
     })
-    mockBuilder.then.mockImplementation((resolve: QueryResolver<unknown[]>) =>
+    mockBuilder.then.mockImplementation((resolve: QueryResolver<unknown>) =>
       resolve({ data: [], error: null })
     )
   })
@@ -94,7 +94,7 @@ describe('AdminService family management', () => {
 
   it('createFamily rejects duplicate guardian email', async () => {
     mockBuilder.then
-      .mockImplementationOnce((resolve: QueryResolver<unknown[]>) => resolve({ data: [], error: null })) // code check
+      .mockImplementationOnce((resolve: QueryResolver<unknown>) => resolve({ data: [], error: null })) // code check
       .mockImplementationOnce((resolve: QueryResolver<Array<{ id: string }>>) =>
         resolve({ data: [{ id: 'existing-family' }], error: null }) // email check
       )
@@ -122,8 +122,8 @@ describe('AdminService family management', () => {
           error: null,
         })
       )
-      .mockImplementationOnce((resolve: QueryResolver<unknown[]>) => resolve({ data: [], error: null })) // code check
-      .mockImplementationOnce((resolve: QueryResolver<unknown[]>) => resolve({ data: [], error: null })) // email check
+      .mockImplementationOnce((resolve: QueryResolver<unknown>) => resolve({ data: [], error: null })) // code check
+      .mockImplementationOnce((resolve: QueryResolver<unknown>) => resolve({ data: [], error: null })) // email check
       .mockImplementationOnce((resolve: QueryResolver<Record<string, unknown>>) =>
         resolve({
           data: {

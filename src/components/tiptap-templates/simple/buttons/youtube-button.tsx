@@ -47,12 +47,13 @@ export function YouTubeButton({ editor }: YouTubeButtonProps) {
       }
 
       // Parse start time
-      const startTimeSeconds = startTime ? parseInt(startTime, 10) : undefined
-      if (startTime && (isNaN(startTimeSeconds) || startTimeSeconds < 0)) {
+      const parsedStartTime = startTime ? parseInt(startTime, 10) : null
+      if (startTime && (parsedStartTime === null || isNaN(parsedStartTime) || parsedStartTime < 0)) {
         setError('開始時間必須是正整數 / Start time must be a positive integer')
         setIsProcessing(false)
         return
       }
+      const startTimeSeconds = parsedStartTime ?? undefined
 
       // Generate embed URL
       const embedUrl = generateYouTubeEmbedUrl(videoId, {

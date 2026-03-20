@@ -175,7 +175,7 @@ export const ArticleClassRestrictionEditor: React.FC<
       {/* Current Article Info */}
       <div className="mb-6 p-4 bg-gray-50 rounded">
         <p className="font-semibold text-gray-800 mb-1">{article.title}</p>
-        <p className="text-sm text-gray-600">Week: {article.week_number}</p>
+        <p className="text-sm text-gray-600">Article ID: {article.id}</p>
       </div>
 
       {/* Visibility Type Toggle */}

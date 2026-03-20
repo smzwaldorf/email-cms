@@ -27,7 +27,7 @@ type NewsletterArticleTargetingRow = {
   article_order: number
   targeting_mode?: string | null
   target_class_ids?: string[] | null
-  articles: ArticleRow
+  articles: ArticleRow | ArticleRow[]
 }
 
 /**
@@ -193,10 +193,8 @@ export async function getArticlesForFamily(
     const allArticles: ArticleRow[] = []
 
     for (const row of (newsletterArticles || []) as NewsletterArticleTargetingRow[]) {
-      const article: ArticleRow = {
-        ...row.articles,
-        article_order: row.article_order,
-      }
+      const article = Array.isArray(row.articles) ? row.articles[0] : row.articles
+      if (!article) continue
 
       // Skip deleted or unpublished articles
       if (article.deleted_at || article.status !== 'published') continue
@@ -278,10 +276,8 @@ export async function getArticlesForClass(
     const visibleArticles: ArticleRow[] = []
 
     for (const row of (newsletterArticles || []) as NewsletterArticleTargetingRow[]) {
-      const article: ArticleRow = {
-        ...row.articles,
-        article_order: row.article_order,
-      }
+      const article = Array.isArray(row.articles) ? row.articles[0] : row.articles
+      if (!article) continue
 
       // Skip deleted or unpublished
       if (article.deleted_at || article.status !== 'published') continue

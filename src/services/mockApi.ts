@@ -306,7 +306,7 @@ export async function createArticle(article: Article): Promise<Article> {
       mockArticles[newArticle.id] = newArticle
 
       // 添加到週報
-      const newsletter = mockNewsletters[article.weekNumber]
+      const newsletter = article.weekNumber ? mockNewsletters[article.weekNumber] : undefined
       if (newsletter) {
         newsletter.articleIds.push(newArticle.id)
         newsletter.totalArticles = newsletter.articleIds.length

@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Article, NewsletterWeek } from '@/types'
+import type { ArticleRow } from '@/types/database'
 import { fetchWeeklyNewsletter, updateArticle, reorderArticles, deleteArticle, createArticle } from '@/services/mockApi'
 import { ArticleEditor } from '@/components/ArticleEditor'
 import { ArticleOrderManager } from '@/components/ArticleOrderManager'
@@ -29,6 +30,23 @@ export interface EditorPageState {
 }
 
 export function EditorPage() {
+  const toArticleRow = (article: Article): ArticleRow => ({
+    id: article.id,
+    title: article.title,
+    content: article.content,
+    author_id: article.authorId ?? null,
+    status: article.isPublished ? 'published' : 'draft',
+    visibility_type: 'public',
+    restricted_to_classes: null,
+    created_by: article.authorId ?? null,
+    created_at: article.createdAt,
+    updated_at: article.updatedAt,
+    deleted_at: null,
+    deleted_by: null,
+    purge_scheduled_at: null,
+    short_id: article.shortId || article.id,
+  })
+
   const { weekNumber } = useParams<{ weekNumber: string }>()
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -63,9 +81,9 @@ export function EditorPage() {
       const allArticles = weekData.articles || []
 
       // Filter articles by permission
-      const editableArticles = []
+      const editableArticles: Article[] = []
       for (const article of allArticles) {
-        const canEdit = await PermissionService.canEditArticle(userId, article)
+        const canEdit = await PermissionService.canEditArticle(userId, toArticleRow(article))
         if (canEdit) {
           editableArticles.push(article)
         }

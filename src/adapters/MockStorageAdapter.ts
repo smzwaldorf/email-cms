@@ -202,7 +202,15 @@ export class MockStorageAdapter implements StorageProvider {
         updated_at: f.metadata.updatedAt,
         created_at: f.metadata.uploadedAt,
         last_accessed_at: f.uploadedAt.toISOString(),
-        metadata: f.metadata,
+        metadata: {
+          name: f.metadata.name,
+          size: f.metadata.size,
+          mimeType: f.metadata.mimeType,
+          uploadedAt: f.metadata.uploadedAt,
+          updatedAt: f.metadata.updatedAt,
+          ...(f.metadata.contentHash ? { contentHash: f.metadata.contentHash } : {}),
+          ...(f.metadata.customMetadata ? { customMetadata: f.metadata.customMetadata } : {}),
+        },
       }))
 
     // 排序

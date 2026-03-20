@@ -20,6 +20,8 @@ const base64UrlDecode = (str: string): string => {
 };
 
 const strToUint8Array = (str: string): Uint8Array => new TextEncoder().encode(str);
+const uint8ToArrayBuffer = (bytes: Uint8Array): ArrayBuffer =>
+  bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 
 export const trackingTokenService = {
   
@@ -47,7 +49,7 @@ export const trackingTokenService = {
     const signature = await window.crypto.subtle.sign(
       'HMAC',
       key,
-      strToUint8Array(dataToSign)
+      uint8ToArrayBuffer(strToUint8Array(dataToSign))
     );
 
     const encodedSignature = base64UrlEncode(new Uint8Array(signature));
@@ -123,7 +125,7 @@ export const trackingTokenService = {
         'HMAC',
         key,
         signature,
-        strToUint8Array(checkData)
+        uint8ToArrayBuffer(strToUint8Array(checkData))
       );
 
       if (!isValid) {

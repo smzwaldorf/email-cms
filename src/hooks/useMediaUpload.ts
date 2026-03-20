@@ -199,7 +199,14 @@ export function useMediaUpload() {
           }
 
           // Construct storage URL
-          const finalPath = uploadData?.path || storagePath
+          const finalPath = (
+            uploadData &&
+            typeof uploadData === 'object' &&
+            'path' in uploadData &&
+            typeof uploadData.path === 'string'
+          )
+            ? uploadData.path
+            : storagePath
           const storageUrl = `storage://media/${finalPath}`
 
           // 將元資料保存到資料庫
