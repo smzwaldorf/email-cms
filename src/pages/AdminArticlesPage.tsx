@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from 'react'
 import { adminService, AdminServiceError } from '@/services/adminService'
 import type {
   AdminArticle,
+  AdminRecycleBinArticle,
   AdminNewsletter,
   ArticleCategory,
   ArticleRevision,
@@ -15,6 +16,7 @@ import { useSearchParams } from 'react-router-dom'
 
 type ArticleStatusFilter = 'all' | 'draft' | 'published'
 type ArticleSortOption = 'updated_desc' | 'updated_asc' | 'title_asc' | 'title_desc'
+const ARTICLE_RETENTION_LABEL = '30 天'
 
 export function AdminArticlesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -69,11 +71,17 @@ export function AdminArticlesPage() {
   const [openVersionHistoryArticleId, setOpenVersionHistoryArticleId] = useState<string | null>(null)
   const [loadingVersionHistoryArticleId, setLoadingVersionHistoryArticleId] = useState<string | null>(null)
   const [restoringRevisionId, setRestoringRevisionId] = useState<string | null>(null)
+  const [recycleBinArticles, setRecycleBinArticles] = useState<AdminRecycleBinArticle[]>([])
+  const [isRecycleBinLoading, setIsRecycleBinLoading] = useState(false)
+  const [deletingArticleId, setDeletingArticleId] = useState<string | null>(null)
+  const [restoringDeletedArticleId, setRestoringDeletedArticleId] = useState<string | null>(null)
+  const [purgingArticleId, setPurgingArticleId] = useState<string | null>(null)
 
   useEffect(() => {
     void loadNewsletters()
     void loadTaxonomyDefinitions()
     void loadClasses()
+    void loadRecycleBin()
   }, [])
 
   useEffect(() => {
@@ -133,6 +141,20 @@ export function AdminArticlesPage() {
     } catch (err) {
       const message = err instanceof AdminServiceError ? err.message : '無法載入分類與標籤'
       setTaxonomyError(message)
+    }
+  }
+
+  const loadRecycleBin = async () => {
+    try {
+      setIsRecycleBinLoading(true)
+      setTaxonomyError(null)
+      const deletedRows = await adminService.fetchDeletedArticles()
+      setRecycleBinArticles(deletedRows)
+    } catch (err) {
+      const message = err instanceof AdminServiceError ? err.message : '無法載入回收站資料'
+      setTaxonomyError(message)
+    } finally {
+      setIsRecycleBinLoading(false)
     }
   }
 
@@ -287,6 +309,11 @@ export function AdminArticlesPage() {
 
   const getTagNameById = (id: string) =>
     tags.find((tag) => tag.id === id)?.name || id
+
+  const formatDateTime = (value?: string | null) => {
+    if (!value) return '—'
+    return new Date(value).toLocaleString('zh-TW')
+  }
 
   const openAssignmentEditor = (articleId: string) => {
     const current = getArticleAssignment(articleId)
@@ -507,6 +534,59 @@ export function AdminArticlesPage() {
       setTaxonomyError(message)
     } finally {
       setRestoringRevisionId(null)
+    }
+  }
+
+  const handleMoveToRecycleBin = async (article: AdminArticle) => {
+    const confirmed = window.confirm(`確定要將「${article.title}」移至回收站嗎？`)
+    if (!confirmed) return
+
+    try {
+      setTaxonomyError(null)
+      setDeletingArticleId(article.id)
+      await adminService.deleteArticle(article.id)
+      await Promise.all([loadArticles(), loadRecycleBin()])
+    } catch (err) {
+      const message = err instanceof AdminServiceError ? err.message : '移至回收站失敗'
+      setTaxonomyError(message)
+    } finally {
+      setDeletingArticleId(null)
+    }
+  }
+
+  const handleRestoreDeletedArticle = async (article: AdminRecycleBinArticle) => {
+    const confirmed = window.confirm(`確定要還原「${article.title}」嗎？`)
+    if (!confirmed) return
+
+    try {
+      setTaxonomyError(null)
+      setRestoringDeletedArticleId(article.id)
+      await adminService.restoreDeletedArticle(article.id)
+      await Promise.all([loadArticles(), loadRecycleBin()])
+    } catch (err) {
+      const message = err instanceof AdminServiceError ? err.message : '還原文章失敗'
+      setTaxonomyError(message)
+    } finally {
+      setRestoringDeletedArticleId(null)
+    }
+  }
+
+  const handlePurgeDeletedArticle = async (article: AdminRecycleBinArticle) => {
+    const confirmed = window.confirm(
+      `確定要永久刪除「${article.title}」嗎？此操作不可復原。`
+    )
+    if (!confirmed) return
+
+    try {
+      setTaxonomyError(null)
+      setPurgingArticleId(article.id)
+      await adminService.purgeDeletedArticle(article.id)
+      await loadRecycleBin()
+    } catch (err) {
+      const message = err instanceof AdminServiceError ? err.message : '永久刪除失敗'
+      setTaxonomyError(message)
+    } finally {
+      setPurgingArticleId(null)
     }
   }
 
@@ -912,6 +992,16 @@ export function AdminArticlesPage() {
                             <div className="flex justify-end gap-2">
                               <button
                                 type="button"
+                                onClick={() => {
+                                  void handleMoveToRecycleBin(article)
+                                }}
+                                disabled={deletingArticleId === article.id}
+                                className="rounded-lg border border-waldorf-rose-300 bg-waldorf-rose-50 px-3 py-1.5 text-xs font-medium text-waldorf-rose-700 hover:bg-waldorf-rose-100 disabled:opacity-60"
+                              >
+                                {deletingArticleId === article.id ? '移除中...' : '移至回收站'}
+                              </button>
+                              <button
+                                type="button"
                                 onClick={() =>
                                   editingArticleId === article.id
                                     ? closeAssignmentEditor()
@@ -1074,6 +1164,88 @@ export function AdminArticlesPage() {
                       </Fragment>
                     )
                   })}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          <div className="overflow-hidden rounded-xl border border-waldorf-cream-200 bg-white shadow-sm">
+            <div className="border-b border-waldorf-cream-200 px-6 py-4">
+              <h2 className="font-display text-2xl font-semibold text-waldorf-clay-800">內容回收站</h2>
+              <p className="mt-1 text-sm text-waldorf-clay-500">
+                已刪除 {recycleBinArticles.length} 篇文章（預設保留 {ARTICLE_RETENTION_LABEL}）
+              </p>
+            </div>
+
+            {isRecycleBinLoading ? (
+              <div className="p-8">
+                <LoadingSpinner />
+              </div>
+            ) : recycleBinArticles.length === 0 ? (
+              <div className="p-8 text-center text-waldorf-clay-500">目前回收站沒有文章。</div>
+            ) : (
+              <table className="min-w-full divide-y divide-waldorf-cream-200">
+                <thead className="bg-waldorf-cream-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-waldorf-clay-500">標題</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-waldorf-clay-500">刪除時間</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-waldorf-clay-500">預計清除</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-waldorf-clay-500">參照電子報</th>
+                    <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-waldorf-clay-500">操作</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-waldorf-cream-100 bg-white">
+                  {recycleBinArticles.map((article) => (
+                    <tr key={`recycle-${article.id}`}>
+                      <td className="px-6 py-4 text-sm font-medium text-waldorf-clay-800">{article.title}</td>
+                      <td className="px-6 py-4 text-sm text-waldorf-clay-600">
+                        {formatDateTime(article.deletedAt)}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-waldorf-clay-600">
+                        {formatDateTime(article.purgeScheduledAt)}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-waldorf-clay-600">
+                        {article.memberships.length === 0 ? (
+                          <span className="text-waldorf-sage-700">無，可永久刪除</span>
+                        ) : (
+                          <div className="flex flex-wrap gap-2">
+                            {article.memberships.map((membership) => (
+                              <span
+                                key={`${article.id}-${membership.newsletterId}`}
+                                className="rounded-full border border-waldorf-peach-200 bg-waldorf-peach-50 px-2.5 py-1 text-xs font-medium text-waldorf-peach-700"
+                              >
+                                {membership.label}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-right text-sm">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void handleRestoreDeletedArticle(article)
+                            }}
+                            disabled={restoringDeletedArticleId === article.id}
+                            className="rounded-lg border border-waldorf-sage-300 bg-waldorf-sage-50 px-3 py-1.5 text-xs font-medium text-waldorf-sage-700 hover:bg-waldorf-sage-100 disabled:opacity-60"
+                          >
+                            {restoringDeletedArticleId === article.id ? '還原中...' : '還原'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void handlePurgeDeletedArticle(article)
+                            }}
+                            disabled={!article.canPurge || purgingArticleId === article.id}
+                            className="rounded-lg border border-waldorf-rose-300 bg-waldorf-rose-50 px-3 py-1.5 text-xs font-medium text-waldorf-rose-700 hover:bg-waldorf-rose-100 disabled:opacity-60"
+                          >
+                            {purgingArticleId === article.id ? '刪除中...' : '永久刪除'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             )}

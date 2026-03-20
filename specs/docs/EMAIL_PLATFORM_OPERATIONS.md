@@ -1,5 +1,35 @@
 # Email Platform Operations
 
+## Delivery Mental Model
+
+```mermaid
+flowchart TD
+    A[Publish newsletter] --> B[Create delivery batch]
+    B --> C{Audience}
+    C -->|Default| D[All eligible families]
+    C -->|Override| E[Selected classes]
+    C -->|Override| F[Selected families]
+    C -->|Override| G[One family]
+    D --> H[Pin newsletter, template, and recipient snapshot]
+    E --> H
+    F --> H
+    G --> H
+    H --> I[Sync subscribers to Kit]
+    I --> J[Prepare personalized content]
+    J --> K[Validate per recipient]
+    K --> L[Send ready recipients]
+    K --> M[Keep invalid recipients as failed records]
+    L --> N[Track batch and recipient outcomes]
+    M --> N
+    N --> O[Resend requested]
+    O --> P[Create new linked batch]
+    P --> Q[Start from previously valid recipients]
+    Q --> R[Re-check current eligibility]
+    R --> H
+```
+
+This document currently covers the implemented Kit sync and webhook foundation. As newsletter-delivery orchestration is added, the delivery batch should become the operator's main unit of work, with Kit subscriber sync and webhook reconciliation remaining supporting mechanics underneath it.
+
 ## Goal: Send The 1st Email
 
 Use this as the working checklist for the first successful Kit send.

@@ -74,7 +74,6 @@ export interface EmailPlatformRecipientPayload {
 
 export interface EmailPlatformSyncRequest {
   payload: EmailPlatformRecipientPayload
-  previousExternalSubscriberId?: string | null
 }
 
 export interface EmailPlatformSyncOutcome {

@@ -76,6 +76,7 @@ export function mapRecipientToKitPayload(
     childClasses,
     childNames,
     customFields: {
+      external_identity_key: `family:${recipient.familyId}`,
       child_classes: childClasses.join(', '),
       child_names: childNames.join(', '),
       parent_type: parentType,

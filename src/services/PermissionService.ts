@@ -13,6 +13,7 @@
 
 import { table } from '@/lib/supabase'
 import type { ArticleRow, UserRoleRow, TeacherClassAssignmentRow } from '@/types/database'
+import { type AccessControlRole, resolveAccessControl, resolveWinningRole } from '@/services/accessControlResolver'
 
 /**
  * Permission error for authorization failures
@@ -43,6 +44,7 @@ export class PermissionError extends Error {
  * between sessions or when user context changes.
  */
 const roleCache = new Map<string, string | null>()
+const rolesCache = new Map<string, AccessControlRole[]>()
 const teacherClassesCache = new Map<string, string[]>()
 
 /**
@@ -50,6 +52,7 @@ const teacherClassesCache = new Map<string, string[]>()
  */
 export function clearPermissionCache(): void {
   roleCache.clear()
+  rolesCache.clear()
   teacherClassesCache.clear()
 }
 
@@ -63,12 +66,32 @@ export class PermissionService {
    * @returns User role or null if not found
    */
   static async getUserRole(userId: string): Promise<string | null> {
-    // Check cache first
-    if (roleCache.has(userId)) {
-      return roleCache.get(userId) || null
+    const roles = await this.getUserRoles(userId)
+    const winner = resolveWinningRole(roles)
+    const role = winner || null
+    roleCache.set(userId, role)
+    return role
+  }
+
+  /**
+   * Get full user role set (supports multi-role assignment table with fallback).
+   */
+  static async getUserRoles(userId: string): Promise<AccessControlRole[]> {
+    if (rolesCache.has(userId)) {
+      return rolesCache.get(userId) || []
     }
 
     try {
+      const { data: assignments, error: assignmentError } = (await table('user_role_assignments')
+        .select('role')
+        .eq('user_id', userId)) as { data: Array<{ role: AccessControlRole }> | null; error: any }
+
+      if (!assignmentError && assignments && assignments.length > 0) {
+        const roles = Array.from(new Set(assignments.map((row) => row.role)))
+        rolesCache.set(userId, roles)
+        return roles
+      }
+
       const { data, error } = (await table('user_roles')
         .select('role')
         .eq('id', userId)
@@ -76,17 +99,21 @@ export class PermissionService {
 
       if (error) {
         console.error(`Failed to fetch user role for ${userId}:`, error)
+        rolesCache.set(userId, [])
         roleCache.set(userId, null)
-        return null
+        return []
       }
 
-      const role = data?.role || null
+      const role = (data?.role || null) as AccessControlRole | null
+      const roles = role ? [role] : []
+      rolesCache.set(userId, roles)
       roleCache.set(userId, role)
-      return role
+      return roles
     } catch (err) {
-      console.error('Error fetching user role:', err)
+      console.error('Error fetching user roles:', err)
+      rolesCache.set(userId, [])
       roleCache.set(userId, null)
-      return null
+      return []
     }
   }
 
@@ -130,33 +157,30 @@ export class PermissionService {
    */
   static async canEditArticle(userId: string, article: ArticleRow): Promise<boolean> {
     try {
-      // Get user role
-      const role = await this.getUserRole(userId)
+      const roles = await this.getUserRoles(userId)
+      const teacherClasses = roles.includes('teacher') ? await this.getTeacherClasses(userId) : []
 
-      // Admin can edit any article
-      if (role === 'admin') {
-        return true
+      // Public content remains non-editable for non-admins.
+      if (article.visibility_type === 'public') {
+        const resolution = resolveAccessControl({
+          roles,
+          action: 'article:edit',
+          teacherClassIds: teacherClasses,
+          targetClassId: null,
+        })
+        return resolution.granted
       }
 
-      // Teachers can edit articles for their classes
-      if (role === 'teacher') {
-        // If article is public, teachers cannot edit it
-        if (article.visibility_type === 'public') {
-          return false
-        }
-
-        // If article is class-restricted, check if teacher teaches one of the classes
-        if (article.visibility_type === 'class_restricted') {
-          const restrictedClasses = article.restricted_to_classes as string[] || []
-          const teacherClasses = await this.getTeacherClasses(userId)
-
-          // Teacher can edit if they teach any of the restricted classes
-          return restrictedClasses.some(classId => teacherClasses.includes(classId))
-        }
-      }
-
-      // Parent and Student cannot edit
-      return false
+      const restrictedClasses = article.restricted_to_classes as string[] || []
+      return restrictedClasses.some((classId) => {
+        const resolution = resolveAccessControl({
+          roles,
+          action: 'article:edit',
+          teacherClassIds: teacherClasses,
+          targetClassId: classId,
+        })
+        return resolution.granted
+      })
     } catch (err) {
       console.error('Error checking edit permission:', err)
       return false
@@ -171,9 +195,12 @@ export class PermissionService {
    */
   static async canDeleteArticle(userId: string, _article: ArticleRow): Promise<boolean> {
     try {
-      // Only admin can delete articles
-      const role = await this.getUserRole(userId)
-      return role === 'admin'
+      const roles = await this.getUserRoles(userId)
+      const resolution = resolveAccessControl({
+        roles,
+        action: 'article:delete',
+      })
+      return resolution.granted
     } catch (err) {
       console.error('Error checking delete permission:', err)
       return false
@@ -188,12 +215,11 @@ export class PermissionService {
    */
   static async canViewArticle(userId: string, article: ArticleRow): Promise<boolean> {
     try {
-      const role = await this.getUserRole(userId)
+      const roles = await this.getUserRoles(userId)
+      const teacherClasses = roles.includes('teacher') ? await this.getTeacherClasses(userId) : []
+      const winner = resolveWinningRole(roles)
 
-      // Admin can view all articles
-      if (role === 'admin') {
-        return true
-      }
+      if (winner === 'admin') return true
 
       // Only published articles are visible
       if (article.status !== 'published') {
@@ -202,13 +228,23 @@ export class PermissionService {
 
       // Public articles are visible to everyone
       if (article.visibility_type === 'public') {
-        return true
+        return roles.length > 0
       }
 
       // Class-restricted articles need class access
-      // For now, allow viewing for any authenticated user (full check needs class enrollment)
       if (article.visibility_type === 'class_restricted') {
-        return role !== null // Allow if user has a role
+        const restrictedClasses = article.restricted_to_classes as string[] || []
+        if (restrictedClasses.length === 0) return roles.length > 0
+
+        return restrictedClasses.some((classId) => {
+          const resolution = resolveAccessControl({
+            roles,
+            action: 'article:view',
+            teacherClassIds: teacherClasses,
+            targetClassId: classId,
+          })
+          return resolution.granted
+        })
       }
 
       return false

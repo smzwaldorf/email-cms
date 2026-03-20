@@ -36,6 +36,7 @@ describe('mapRecipientToKitPayload', () => {
     expect(payload.emailAddress).toBe('parent@one.com')
     expect(payload.state).toBe('active')
     expect(payload.customFields).toEqual({
+      external_identity_key: 'family:family-1',
       child_classes: 'Grade 1A, Grade 2B',
       child_names: 'Alice, Ben',
       parent_type: 'mother',

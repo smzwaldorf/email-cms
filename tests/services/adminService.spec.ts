@@ -15,6 +15,7 @@ const mockBuilder = {
   lte: vi.fn().mockReturnThis(),
   or: vi.fn().mockReturnThis(),
   is: vi.fn().mockReturnThis(),
+  not: vi.fn().mockReturnThis(),
   in: vi.fn().mockReturnThis(),
   ilike: vi.fn().mockReturnThis(),
   then: vi.fn((resolve) => resolve({ data: [], error: null })),
@@ -27,6 +28,12 @@ const mockSupabase = {
 
 vi.mock('@/lib/supabase', () => ({
   getSupabaseClient: () => mockSupabase,
+}))
+
+vi.mock('@/services/articleMediaManager', () => ({
+  articleMediaManager: {
+    deactivateArticleMediaUsage: vi.fn().mockResolvedValue(undefined),
+  },
 }))
 
 describe('AdminService', () => {
@@ -444,6 +451,147 @@ describe('AdminService', () => {
       expect(result).toHaveLength(1)
       expect(result[0].id).toBe('article-1')
       expect(result[0].weekNumber).toBe('2025-W01')
+    })
+  })
+
+  describe('article recycle bin management', () => {
+    it('deleteArticle performs soft-delete with retention metadata', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({
+          data: { id: 'article-1', deleted_at: null },
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({ error: null }))
+
+      await adminService.deleteArticle('article-1')
+
+      expect(mockBuilder.update).toHaveBeenCalledWith(expect.objectContaining({
+        status: 'draft',
+        deleted_by: null,
+      }))
+      expect(mockBuilder.update).toHaveBeenCalledWith(expect.objectContaining({
+        deleted_at: expect.any(String),
+        purge_scheduled_at: expect.any(String),
+      }))
+      expect(mockBuilder.delete).not.toHaveBeenCalled()
+    })
+
+    it('fetchDeletedArticles returns retention and membership metadata', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({
+          data: [
+            {
+              id: 'article-1',
+              title: 'Archived article',
+              content: '<p>Body</p>',
+              summary: null,
+              status: 'draft',
+              week_number: '2025-W01',
+              article_order: 1,
+              class_ids: [],
+              family_ids: [],
+              author_id: null,
+              created_at: '2025-01-01',
+              updated_at: '2025-01-02',
+              deleted_at: '2025-01-03T00:00:00.000Z',
+              deleted_by: 'admin-1',
+              purge_scheduled_at: '2025-02-02T00:00:00.000Z',
+              published_at: null,
+              edited_at: null,
+              last_edited_by: null,
+            },
+          ],
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({
+          data: [
+            {
+              article_id: 'article-1',
+              newsletters: {
+                id: 'newsletter-1',
+                week_number: '2025-W48',
+                title: 'Week 48',
+                is_template: false,
+              },
+            },
+          ],
+          error: null,
+        }))
+
+      const result = await adminService.fetchDeletedArticles()
+
+      expect(mockBuilder.not).toHaveBeenCalledWith('deleted_at', 'is', null)
+      expect(result).toHaveLength(1)
+      expect(result[0]).toMatchObject({
+        id: 'article-1',
+        deletedAt: '2025-01-03T00:00:00.000Z',
+        purgeScheduledAt: '2025-02-02T00:00:00.000Z',
+        retentionDays: 30,
+        canPurge: false,
+        referenceCount: 1,
+      })
+    })
+
+    it('restoreDeletedArticle clears recycle-bin metadata', async () => {
+      mockBuilder.then.mockImplementationOnce((resolve) => resolve({
+        data: {
+          id: 'article-1',
+          title: 'Restored',
+          content: '<p>Body</p>',
+          summary: null,
+          status: 'draft',
+          week_number: '2025-W01',
+          article_order: 1,
+          class_ids: [],
+          family_ids: [],
+          author_id: null,
+          created_at: '2025-01-01',
+          updated_at: '2025-01-02',
+          deleted_at: null,
+          deleted_by: null,
+          purge_scheduled_at: null,
+          published_at: null,
+          edited_at: null,
+          last_edited_by: null,
+        },
+        error: null,
+      }))
+
+      const result = await adminService.restoreDeletedArticle('article-1')
+
+      expect(mockBuilder.update).toHaveBeenCalledWith({
+        deleted_at: null,
+        deleted_by: null,
+        purge_scheduled_at: null,
+      })
+      expect(result.deletedAt).toBeNull()
+    })
+
+    it('purgeDeletedArticle blocks irreversible delete when still referenced', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({
+          data: { id: 'article-1', title: 'Blocked', deleted_at: '2025-01-03T00:00:00.000Z' },
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({
+          data: [
+            {
+              article_id: 'article-1',
+              newsletters: {
+                id: 'newsletter-1',
+                week_number: '2025-W48',
+                title: 'Week 48',
+                is_template: false,
+              },
+            },
+          ],
+          error: null,
+        }))
+
+      await expect(adminService.purgeDeletedArticle('article-1'))
+        .rejects.toMatchObject({ code: 'PURGE_ARTICLE_GUARD_ERROR' })
+
+      expect(mockBuilder.delete).not.toHaveBeenCalled()
     })
   })
 
@@ -1440,6 +1588,77 @@ describe('AdminService', () => {
       await expect(
         adminService.updateTeacher('teacher-5', { name: '趙老師(更新)' }),
       ).rejects.toMatchObject({ code: 'TEACHER_VALIDATION_ERROR' })
+    })
+  })
+
+  describe('access-control workflows', () => {
+    it('previewBulkPermissionUpdate returns before/after summaries', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({
+          data: [
+            { id: 'user-1', email: 'teacher@example.com', role: 'teacher' },
+          ],
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({
+          data: [{ role: 'teacher' }, { role: 'parent' }],
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({
+          data: [{ class_id: 'A1' }, { class_id: 'B1' }],
+          error: null,
+        }))
+
+      const preview = await adminService.previewBulkPermissionUpdate(['user-1'], ['parent'])
+
+      expect(mockSupabase.from).toHaveBeenCalledWith('user_roles')
+      expect(mockSupabase.from).toHaveBeenCalledWith('user_role_assignments')
+      expect(mockSupabase.from).toHaveBeenCalledWith('teacher_class_assignment')
+      expect(preview).toHaveLength(1)
+      expect(preview[0].before.winningRole).toBe('teacher')
+      expect(preview[0].after.winningRole).toBe('parent')
+    })
+
+    it('fetchAccessControlLogs merges mutation and decision traces', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({
+          data: [
+            {
+              id: 'mutation-1',
+              action: 'single_update',
+              actor_id: 'admin-1',
+              target_user_id: 'user-1',
+              before_state: { roles: ['parent'] },
+              after_state: { roles: ['teacher'] },
+              metadata: {},
+              changed_at: '2026-03-20T10:00:00Z',
+            },
+          ],
+          error: null,
+        }))
+        .mockImplementationOnce((resolve) => resolve({
+          data: [
+            {
+              id: 'decision-1',
+              action: 'article:edit',
+              actor_id: 'teacher-1',
+              winning_role: 'teacher',
+              policy_version: 'access-policy-2026-03-20.1',
+              reason: 'Teacher write scope allows editing this class content.',
+              metadata: { targetUserId: 'user-1' },
+              created_at: '2026-03-20T10:05:00Z',
+            },
+          ],
+          error: null,
+        }))
+
+      const logs = await adminService.fetchAccessControlLogs({ limit: 10 })
+
+      expect(mockSupabase.from).toHaveBeenCalledWith('permission_mutation_audit_log')
+      expect(mockSupabase.from).toHaveBeenCalledWith('authorization_decision_trace')
+      expect(logs).toHaveLength(2)
+      expect(logs[0].type).toBe('decision')
+      expect(logs[1].type).toBe('mutation')
     })
   })
 })

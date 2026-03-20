@@ -169,6 +169,9 @@ export interface DatabaseTables {
   child_class_enrollment: any
   teacher_class_assignment: any
   article_audit_log: any
+  user_role_assignments: any
+  permission_mutation_audit_log: any
+  authorization_decision_trace: any
   email_platform_subscriber_mappings: any
   email_platform_sync_jobs: any
   email_platform_webhook_events: any

@@ -12,9 +12,15 @@
 
 import { getSupabaseClient } from '@/lib/supabase'
 import { articleMediaManager } from '@/services/articleMediaManager'
+import {
+  type AccessControlRole as ResolverRole,
+  resolveAccessControl,
+  resolveWinningRole,
+} from '@/services/accessControlResolver'
 import type {
   AdminNewsletter,
   AdminArticle,
+  AdminRecycleBinArticle,
   Class,
   Family,
   AdminUser,
@@ -24,6 +30,11 @@ import type {
   ArticleCategory,
   ArticleTag,
   ArticleRevision,
+  AccessControlRole,
+  AccessControlSummary,
+  BulkPermissionPreviewEntry,
+  BulkPermissionApplyResult,
+  AccessControlLogEntry,
 } from '@/types/admin'
 
 /**
@@ -84,6 +95,22 @@ interface TeacherWriteOptions {
   actorId?: string
 }
 
+interface AccessControlWriteOptions {
+  actorId?: string
+  auditAction?: 'single_update' | 'bulk_update' | 'class_scope_update'
+  metadata?: Record<string, unknown>
+}
+
+interface FetchAccessControlLogOptions {
+  targetUserId?: string
+  action?: string
+  from?: string
+  to?: string
+  limit?: number
+}
+
+const ACCESS_CONTROL_ROLES: AccessControlRole[] = ['admin', 'teacher', 'parent', 'student']
+
 const REVISION_TRACKED_FIELDS = [
   'title',
   'summary',
@@ -106,6 +133,8 @@ const REVISION_FIELD_LABELS: Record<(typeof REVISION_TRACKED_FIELDS)[number], st
   deleted_at: '刪除狀態',
 }
 
+const ARTICLE_RECYCLE_BIN_RETENTION_DAYS = 30
+
 /**
  * Admin Service
  * Provides methods for admin dashboard operations
@@ -120,6 +149,188 @@ class AdminService {
 
   private normalizeClassCode(input: string): string {
     return input.trim().toUpperCase()
+  }
+
+  private isMissingRelationError(error: any): boolean {
+    if (!error) return false
+    return error.code === '42P01' || String(error.message || '').includes('does not exist')
+  }
+
+  private dedupeClassIds(classIds: string[]): string[] {
+    return Array.from(new Set((classIds || []).map((id) => id.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b))
+  }
+
+  private normalizeAccessRoles(roles: AccessControlRole[]): AccessControlRole[] {
+    const uniqueRoles = Array.from(new Set((roles || []).filter((role) => ACCESS_CONTROL_ROLES.includes(role))))
+    const winner = resolveWinningRole(uniqueRoles as ResolverRole[])
+    if (!winner) return ['student']
+
+    const precedence = ['admin', 'teacher', 'parent', 'student']
+    return precedence.filter((role) => uniqueRoles.includes(role as AccessControlRole)) as AccessControlRole[]
+  }
+
+  private buildAccessControlSummary(
+    roles: AccessControlRole[],
+    classIds: string[],
+  ): AccessControlSummary {
+    const normalizedRoles = this.normalizeAccessRoles(roles)
+    const teacherClassIds = normalizedRoles.includes('teacher') ? this.dedupeClassIds(classIds) : []
+    const resolution = resolveAccessControl({
+      roles: normalizedRoles as ResolverRole[],
+      action: 'article:view',
+      teacherClassIds,
+    })
+
+    return {
+      roles: resolution.evaluatedRoles as AccessControlRole[],
+      winningRole: (resolution.winningRole || 'student') as AccessControlRole,
+      readClassIds: resolution.scope.readClassIds,
+      writeClassIds: resolution.scope.writeClassIds,
+      policyVersion: resolution.policyVersion,
+    }
+  }
+
+  private async loadRoleAssignments(userId: string, fallbackRole?: AccessControlRole): Promise<AccessControlRole[]> {
+    const supabase = getSupabaseClient()
+    const { data, error } = await supabase
+      .from('user_role_assignments')
+      .select('role')
+      .eq('user_id', userId)
+
+    if (error) {
+      if (!this.isMissingRelationError(error)) {
+        console.warn(`Failed to load user_role_assignments for ${userId}:`, error)
+      }
+      return fallbackRole ? [fallbackRole] : ['student']
+    }
+
+    const roles = (data || []).map((row: any) => row.role as AccessControlRole)
+    if (roles.length === 0) {
+      return fallbackRole ? [fallbackRole] : ['student']
+    }
+
+    return this.normalizeAccessRoles(roles)
+  }
+
+  private async saveRoleAssignments(userId: string, roles: AccessControlRole[]): Promise<void> {
+    const supabase = getSupabaseClient()
+    const normalizedRoles = this.normalizeAccessRoles(roles)
+
+    const { error: deleteError } = await supabase
+      .from('user_role_assignments')
+      .delete()
+      .eq('user_id', userId)
+
+    if (deleteError && !this.isMissingRelationError(deleteError)) {
+      throw new AdminServiceError(
+        `Failed to clear role assignments: ${deleteError.message}`,
+        'UPDATE_USER_ACCESS_ERROR',
+        deleteError as any
+      )
+    }
+
+    if (deleteError && this.isMissingRelationError(deleteError)) {
+      return
+    }
+
+    const { error: insertError } = await supabase
+      .from('user_role_assignments')
+      .insert(normalizedRoles.map((role) => ({ user_id: userId, role })))
+
+    if (insertError) {
+      if (this.isMissingRelationError(insertError)) return
+      throw new AdminServiceError(
+        `Failed to save role assignments: ${insertError.message}`,
+        'UPDATE_USER_ACCESS_ERROR',
+        insertError as any
+      )
+    }
+  }
+
+  private async fetchTeacherClassIdsInternal(userId: string): Promise<string[]> {
+    const supabase = getSupabaseClient()
+    const { data, error } = await supabase
+      .from('teacher_class_assignment')
+      .select('class_id')
+      .eq('teacher_id', userId)
+
+    if (error) {
+      throw new AdminServiceError(
+        `Failed to fetch teacher class restrictions: ${error.message}`,
+        'FETCH_USER_CLASS_SCOPE_ERROR',
+        error as any
+      )
+    }
+
+    return this.dedupeClassIds((data || []).map((row: any) => row.class_id))
+  }
+
+  private async saveTeacherClassIdsInternal(userId: string, classIds: string[]): Promise<void> {
+    const supabase = getSupabaseClient()
+    const nextClassIds = this.dedupeClassIds(classIds)
+    const currentClassIds = await this.fetchTeacherClassIdsInternal(userId)
+
+    const toRemove = currentClassIds.filter((id) => !nextClassIds.includes(id))
+    const toAdd = nextClassIds.filter((id) => !currentClassIds.includes(id))
+
+    if (toRemove.length > 0) {
+      const { error: removeError } = await supabase
+        .from('teacher_class_assignment')
+        .delete()
+        .eq('teacher_id', userId)
+        .in('class_id', toRemove)
+
+      if (removeError) {
+        throw new AdminServiceError(
+          `Failed to remove teacher class restrictions: ${removeError.message}`,
+          'UPDATE_USER_CLASS_SCOPE_ERROR',
+          removeError as any
+        )
+      }
+    }
+
+    if (toAdd.length > 0) {
+      const { error: addError } = await supabase
+        .from('teacher_class_assignment')
+        .insert(toAdd.map((classId) => ({ teacher_id: userId, class_id: classId })))
+
+      if (addError) {
+        throw new AdminServiceError(
+          `Failed to add teacher class restrictions: ${addError.message}`,
+          'UPDATE_USER_CLASS_SCOPE_ERROR',
+          addError as any
+        )
+      }
+    }
+  }
+
+  private async writePermissionMutationAudit(
+    targetUserId: string,
+    action: 'single_update' | 'bulk_update' | 'class_scope_update',
+    beforeState: Record<string, unknown>,
+    afterState: Record<string, unknown>,
+    metadata: Record<string, unknown> = {},
+    actorId?: string,
+  ): Promise<void> {
+    const supabase = getSupabaseClient()
+    const { error } = await supabase
+      .from('permission_mutation_audit_log')
+      .insert({
+        actor_id: actorId || null,
+        target_user_id: targetUserId,
+        action,
+        before_state: beforeState,
+        after_state: afterState,
+        metadata,
+      })
+
+    if (error && !this.isMissingRelationError(error)) {
+      throw new AdminServiceError(
+        `Failed to write access-control audit log: ${error.message}`,
+        'ACCESS_CONTROL_AUDIT_WRITE_ERROR',
+        error as any
+      )
+    }
   }
 
   private mapArticleCategoryRow(row: any): ArticleCategory {
@@ -160,10 +371,22 @@ class AdminService {
       status: row.status,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
+      deletedAt: row.deleted_at ?? null,
+      deletedBy: row.deleted_by ?? null,
+      purgeScheduledAt: row.purge_scheduled_at ?? null,
       publishedAt: row.published_at,
       lastEditedBy: row.last_edited_by,
       editedAt: row.edited_at,
     }
+  }
+
+  private computeArticlePurgeScheduledAt(deletedAt: string): string {
+    const deletedAtMillis = new Date(deletedAt).getTime()
+    if (Number.isNaN(deletedAtMillis)) {
+      return new Date().toISOString()
+    }
+    const retentionWindowMillis = ARTICLE_RECYCLE_BIN_RETENTION_DAYS * 24 * 60 * 60 * 1000
+    return new Date(deletedAtMillis + retentionWindowMillis).toISOString()
   }
 
   private formatRevisionValue(value: unknown, field: string): string {
@@ -1514,6 +1737,57 @@ class AdminService {
     }
   }
 
+  async fetchDeletedArticles(limit: number = 100): Promise<AdminRecycleBinArticle[]> {
+    try {
+      const supabase = getSupabaseClient()
+
+      const { data, error } = await supabase
+        .from('articles')
+        .select('*')
+        .not('deleted_at', 'is', null)
+        .order('deleted_at', { ascending: false })
+        .limit(limit)
+
+      if (error) {
+        throw new AdminServiceError(
+          `Failed to fetch recycle bin articles: ${error.message}`,
+          'FETCH_RECYCLE_BIN_ARTICLES_ERROR',
+          error as any
+        )
+      }
+
+      const deletedRows = (data || []).filter((row: any) => Boolean(row.deleted_at))
+      const membershipsByArticleId = await this.fetchArticleNewsletterMemberships(
+        deletedRows.map((row: any) => row.id)
+      )
+
+      return deletedRows.map((row: any) => {
+        const deletedAt = row.deleted_at as string
+        const memberships = membershipsByArticleId[row.id] || []
+        const purgeScheduledAt = (row.purge_scheduled_at as string | null)
+          || this.computeArticlePurgeScheduledAt(deletedAt)
+
+        return {
+          ...this.mapAdminArticleRow(row),
+          deletedAt,
+          deletedBy: row.deleted_by ?? null,
+          purgeScheduledAt,
+          retentionDays: ARTICLE_RECYCLE_BIN_RETENTION_DAYS,
+          canPurge: memberships.length === 0,
+          referenceCount: memberships.length,
+          memberships,
+        }
+      })
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error fetching recycle bin articles: ${err instanceof Error ? err.message : String(err)}`,
+        'FETCH_RECYCLE_BIN_ARTICLES_ERROR',
+        err as any
+      )
+    }
+  }
+
   async fetchArticleVersionHistory(
     articleId: string,
     limit: number = 20,
@@ -1776,10 +2050,35 @@ class AdminService {
   async deleteArticle(id: string): Promise<void> {
     try {
       const supabase = getSupabaseClient()
+      const { data: existing, error: existingError } = await supabase
+        .from('articles')
+        .select('id, deleted_at')
+        .eq('id', id)
+        .single()
+
+      if (existingError || !existing) {
+        throw new AdminServiceError(
+          `Article not found: ${id}`,
+          'ARTICLE_NOT_FOUND',
+          existingError as any
+        )
+      }
+
+      if (existing.deleted_at) {
+        return
+      }
+
+      const actorId = await this.getCurrentAuthUserId()
+      const deletedAt = new Date().toISOString()
 
       const { error } = await supabase
         .from('articles')
-        .delete()
+        .update({
+          deleted_at: deletedAt,
+          deleted_by: actorId,
+          purge_scheduled_at: this.computeArticlePurgeScheduledAt(deletedAt),
+          status: 'draft',
+        })
         .eq('id', id)
 
       if (error) {
@@ -1789,11 +2088,102 @@ class AdminService {
           error as any
         )
       }
+
+      await articleMediaManager.deactivateArticleMediaUsage(id)
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
       throw new AdminServiceError(
         `Error deleting article: ${err instanceof Error ? err.message : String(err)}`,
         'DELETE_ARTICLE_ERROR',
+        err as any
+      )
+    }
+  }
+
+  async restoreDeletedArticle(id: string): Promise<AdminArticle> {
+    try {
+      const supabase = getSupabaseClient()
+      const { data, error } = await supabase
+        .from('articles')
+        .update({
+          deleted_at: null,
+          deleted_by: null,
+          purge_scheduled_at: null,
+        })
+        .eq('id', id)
+        .select('*')
+        .single()
+
+      if (error || !data) {
+        throw new AdminServiceError(
+          `Failed to restore deleted article: ${error?.message || 'Unknown error'}`,
+          'RESTORE_DELETED_ARTICLE_ERROR',
+          error as any
+        )
+      }
+
+      return this.mapAdminArticleRow(data)
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error restoring deleted article: ${err instanceof Error ? err.message : String(err)}`,
+        'RESTORE_DELETED_ARTICLE_ERROR',
+        err as any
+      )
+    }
+  }
+
+  async purgeDeletedArticle(id: string): Promise<void> {
+    try {
+      const supabase = getSupabaseClient()
+      const { data: existing, error: existingError } = await supabase
+        .from('articles')
+        .select('id, title, deleted_at')
+        .eq('id', id)
+        .single()
+
+      if (existingError || !existing) {
+        throw new AdminServiceError(
+          `Article not found: ${id}`,
+          'ARTICLE_NOT_FOUND',
+          existingError as any
+        )
+      }
+
+      if (!existing.deleted_at) {
+        throw new AdminServiceError(
+          'Article must be moved to recycle bin before permanent purge',
+          'PURGE_ARTICLE_GUARD_ERROR'
+        )
+      }
+
+      const membershipsByArticleId = await this.fetchArticleNewsletterMemberships([id])
+      const memberships = membershipsByArticleId[id] || []
+      if (memberships.length > 0) {
+        const labels = memberships.map((item) => item.label).join(', ')
+        throw new AdminServiceError(
+          `Cannot permanently delete article while referenced by newsletters: ${labels}`,
+          'PURGE_ARTICLE_GUARD_ERROR'
+        )
+      }
+
+      const { error: purgeError } = await supabase
+        .from('articles')
+        .delete()
+        .eq('id', id)
+
+      if (purgeError) {
+        throw new AdminServiceError(
+          `Failed to permanently delete article: ${purgeError.message}`,
+          'PURGE_ARTICLE_ERROR',
+          purgeError as any
+        )
+      }
+    } catch (err) {
+      if (err instanceof AdminServiceError) throw err
+      throw new AdminServiceError(
+        `Error purging deleted article: ${err instanceof Error ? err.message : String(err)}`,
+        'PURGE_ARTICLE_ERROR',
         err as any
       )
     }
@@ -5756,6 +6146,290 @@ class AdminService {
         err as any
       )
     }
+  }
+
+  /**
+   * Fetch teacher class restrictions for a user.
+   * Non-teacher users return an empty array.
+   */
+  async fetchUserClassRestrictions(userId: string, role?: AccessControlRole): Promise<string[]> {
+    if (role && role !== 'teacher') return []
+
+    const supabase = getSupabaseClient()
+    let resolvedRole = role
+    if (!resolvedRole) {
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('id', userId)
+        .single()
+
+      if (error) {
+        throw new AdminServiceError(
+          `Failed to fetch user role for class restrictions: ${error.message}`,
+          'FETCH_USER_CLASS_SCOPE_ERROR',
+          error as any
+        )
+      }
+
+      resolvedRole = data.role
+    }
+
+    if (resolvedRole !== 'teacher') return []
+    return this.fetchTeacherClassIdsInternal(userId)
+  }
+
+  /**
+   * Update user role set and class restrictions in one operation.
+   */
+  async updateUserAccessControl(
+    userId: string,
+    roles: AccessControlRole[],
+    classIds: string[] = [],
+    options: AccessControlWriteOptions = {},
+  ): Promise<AccessControlSummary> {
+    const supabase = getSupabaseClient()
+    const normalizedRoles = this.normalizeAccessRoles(roles)
+    const winner = (resolveWinningRole(normalizedRoles as ResolverRole[]) || 'student') as AccessControlRole
+
+    const { data: existingUser, error: existingError } = await supabase
+      .from('user_roles')
+      .select('id, email, role')
+      .eq('id', userId)
+      .single()
+
+    if (existingError || !existingUser) {
+      throw new AdminServiceError(
+        `User not found for access-control update: ${existingError?.message || userId}`,
+        'UPDATE_USER_ACCESS_ERROR',
+        existingError as any
+      )
+    }
+
+    const beforeRoles = await this.loadRoleAssignments(userId, existingUser.role as AccessControlRole)
+    const beforeClassIds = await this.fetchTeacherClassIdsInternal(userId)
+    const beforeSummary = this.buildAccessControlSummary(beforeRoles, beforeClassIds)
+
+    const { error: updateRoleError } = await supabase
+      .from('user_roles')
+      .update({ role: winner })
+      .eq('id', userId)
+
+    if (updateRoleError) {
+      throw new AdminServiceError(
+        `Failed to update primary role: ${updateRoleError.message}`,
+        'UPDATE_USER_ACCESS_ERROR',
+        updateRoleError as any
+      )
+    }
+
+    await this.saveRoleAssignments(userId, normalizedRoles)
+
+    const nextClassIds = normalizedRoles.includes('teacher') ? this.dedupeClassIds(classIds) : []
+    await this.saveTeacherClassIdsInternal(userId, nextClassIds)
+
+    const afterSummary = this.buildAccessControlSummary(normalizedRoles, nextClassIds)
+    const actorId = options.actorId || (await this.getCurrentAuthUserId()) || undefined
+
+    await this.writePermissionMutationAudit(
+      userId,
+      options.auditAction || 'single_update',
+      {
+        roles: beforeSummary.roles,
+        winningRole: beforeSummary.winningRole,
+        classIds: beforeSummary.readClassIds,
+      },
+      {
+        roles: afterSummary.roles,
+        winningRole: afterSummary.winningRole,
+        classIds: afterSummary.readClassIds,
+      },
+      options.metadata || {},
+      actorId,
+    )
+
+    return afterSummary
+  }
+
+  /**
+   * Preview impact for a bulk permission update.
+   */
+  async previewBulkPermissionUpdate(
+    userIds: string[],
+    roles: AccessControlRole[],
+  ): Promise<BulkPermissionPreviewEntry[]> {
+    const normalizedRoles = this.normalizeAccessRoles(roles)
+    if (userIds.length === 0) return []
+
+    const supabase = getSupabaseClient()
+    const { data: users, error } = await supabase
+      .from('user_roles')
+      .select('id, email, role')
+      .in('id', userIds)
+
+    if (error) {
+      throw new AdminServiceError(
+        `Failed to fetch users for bulk preview: ${error.message}`,
+        'BULK_PERMISSION_PREVIEW_ERROR',
+        error as any
+      )
+    }
+
+    const entries: BulkPermissionPreviewEntry[] = []
+    for (const row of users || []) {
+      const beforeRoles = await this.loadRoleAssignments(row.id, row.role as AccessControlRole)
+      const beforeClassIds = await this.fetchTeacherClassIdsInternal(row.id)
+      const beforeSummary = this.buildAccessControlSummary(beforeRoles, beforeClassIds)
+      const afterClassIds = normalizedRoles.includes('teacher') ? beforeClassIds : []
+      const afterSummary = this.buildAccessControlSummary(normalizedRoles, afterClassIds)
+
+      entries.push({
+        userId: row.id,
+        email: row.email,
+        before: beforeSummary,
+        after: afterSummary,
+      })
+    }
+
+    return entries.sort((a, b) => a.email.localeCompare(b.email))
+  }
+
+  /**
+   * Apply the same role set to a list of users.
+   */
+  async applyBulkPermissionUpdate(
+    userIds: string[],
+    roles: AccessControlRole[],
+    options: AccessControlWriteOptions = {},
+  ): Promise<BulkPermissionApplyResult[]> {
+    const normalizedRoles = this.normalizeAccessRoles(roles)
+    if (userIds.length === 0) return []
+
+    const supabase = getSupabaseClient()
+    const { data: users, error } = await supabase
+      .from('user_roles')
+      .select('id, email, role')
+      .in('id', userIds)
+
+    if (error) {
+      throw new AdminServiceError(
+        `Failed to fetch users for bulk update: ${error.message}`,
+        'BULK_PERMISSION_APPLY_ERROR',
+        error as any
+      )
+    }
+
+    const results: BulkPermissionApplyResult[] = []
+    for (const row of users || []) {
+      try {
+        const existingClassIds = await this.fetchTeacherClassIdsInternal(row.id)
+        const nextClassIds = normalizedRoles.includes('teacher') ? existingClassIds : []
+        await this.updateUserAccessControl(
+          row.id,
+          normalizedRoles,
+          nextClassIds,
+          {
+            actorId: options.actorId,
+            auditAction: 'bulk_update',
+            metadata: {
+              ...options.metadata,
+              bulkSize: userIds.length,
+            },
+          },
+        )
+
+        results.push({
+          userId: row.id,
+          email: row.email,
+          success: true,
+        })
+      } catch (err) {
+        results.push({
+          userId: row.id,
+          email: row.email,
+          success: false,
+          message: err instanceof Error ? err.message : String(err),
+        })
+      }
+    }
+
+    return results
+  }
+
+  /**
+   * Fetch permission mutation and authorization decision logs.
+   */
+  async fetchAccessControlLogs(options: FetchAccessControlLogOptions = {}): Promise<AccessControlLogEntry[]> {
+    const supabase = getSupabaseClient()
+    const limit = options.limit || 50
+
+    let mutationQuery = supabase
+      .from('permission_mutation_audit_log')
+      .select('*')
+      .order('changed_at', { ascending: false })
+      .limit(limit)
+
+    if (options.targetUserId) mutationQuery = mutationQuery.eq('target_user_id', options.targetUserId)
+    if (options.action) mutationQuery = mutationQuery.eq('action', options.action)
+    if (options.from) mutationQuery = mutationQuery.gte('changed_at', options.from)
+    if (options.to) mutationQuery = mutationQuery.lte('changed_at', options.to)
+
+    const { data: mutationRows, error: mutationError } = await mutationQuery
+    if (mutationError && !this.isMissingRelationError(mutationError)) {
+      throw new AdminServiceError(
+        `Failed to fetch permission mutation logs: ${mutationError.message}`,
+        'FETCH_ACCESS_CONTROL_LOGS_ERROR',
+        mutationError as any
+      )
+    }
+
+    let decisionQuery = supabase
+      .from('authorization_decision_trace')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit)
+
+    if (options.action) decisionQuery = decisionQuery.eq('action', options.action)
+    if (options.from) decisionQuery = decisionQuery.gte('created_at', options.from)
+    if (options.to) decisionQuery = decisionQuery.lte('created_at', options.to)
+
+    const { data: decisionRows, error: decisionError } = await decisionQuery
+    if (decisionError && !this.isMissingRelationError(decisionError)) {
+      throw new AdminServiceError(
+        `Failed to fetch authorization decision logs: ${decisionError.message}`,
+        'FETCH_ACCESS_CONTROL_LOGS_ERROR',
+        decisionError as any
+      )
+    }
+
+    const mutationEntries: AccessControlLogEntry[] = (mutationRows || []).map((row: any) => ({
+      id: row.id,
+      type: 'mutation',
+      action: row.action,
+      actorId: row.actor_id || null,
+      targetUserId: row.target_user_id || null,
+      metadata: (row.metadata || {}) as Record<string, unknown>,
+      beforeState: (row.before_state || {}) as Record<string, unknown>,
+      afterState: (row.after_state || {}) as Record<string, unknown>,
+      createdAt: row.changed_at,
+    }))
+
+    const decisionEntries: AccessControlLogEntry[] = (decisionRows || []).map((row: any) => ({
+      id: row.id,
+      type: 'decision',
+      action: row.action,
+      actorId: row.actor_id || null,
+      targetUserId: ((row.metadata || {}) as Record<string, unknown>).targetUserId as string || null,
+      winningRole: (row.winning_role || null) as AccessControlRole | null,
+      policyVersion: row.policy_version || null,
+      metadata: (row.metadata || {}) as Record<string, unknown>,
+      reason: row.reason || null,
+      createdAt: row.created_at,
+    }))
+
+    return [...mutationEntries, ...decisionEntries]
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+      .slice(0, limit)
   }
 
   /**

@@ -11,7 +11,13 @@
 
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import type { AdminNewsletter, NewsletterFilterOptions } from '@/types/admin'
+import type {
+  AdminNewsletter,
+  NewsletterFilterOptions,
+  AccessControlRole,
+  BulkPermissionPreviewEntry,
+  AccessControlLogEntry,
+} from '@/types/admin'
 import { adminService, AdminServiceError } from '@/services/adminService'
 import NewsletterTable from '@/components/admin/NewsletterTable'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
@@ -19,8 +25,6 @@ import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { getSupabaseClient } from '@/lib/supabase'
 import { getAdminNewsletterPath } from '@/utils/adminNewsletterRoutes'
 import { useAuth } from '@/context/AuthContext'
-import { UserRole } from '@/types/auth'
-import { ROLES } from '@/lib/rbac'
 import { AuditLogViewer as UserAuditLog } from '@/components/UserAuditLog'
 import { AuditLog } from '@/components/admin/AuditLog'
 import { adminSessionService } from '@/services/adminSessionService'
@@ -32,7 +36,7 @@ import { BatchImportForm } from '@/components/admin/BatchImportForm'
 interface UserData {
   id: string
   email: string
-  role: UserRole
+  role: AccessControlRole
   display_name?: string
   last_seen?: string
   hasActiveSessions?: boolean
@@ -55,7 +59,7 @@ interface EditUserModalProps {
 
 const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserAdded }) => {
   const [email, setEmail] = useState('')
-  const [role, setRole] = useState<UserRole>('parent')
+  const [role, setRole] = useState<AccessControlRole>('parent')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -131,10 +135,10 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserAdde
             <label className="block text-sm font-medium text-waldorf-clay-600 mb-2">Role</label>
             <select
               value={role}
-              onChange={(e) => setRole(e.target.value as UserRole)}
+              onChange={(e) => setRole(e.target.value as AccessControlRole)}
               className="w-full px-4 py-3 border border-waldorf-cream-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-waldorf-peach-300 focus:border-waldorf-peach-400 transition-all duration-200 bg-waldorf-cream-50/50"
             >
-              {Object.values(ROLES).map((r) => (
+              {(['admin', 'teacher', 'parent', 'student'] as AccessControlRole[]).map((r) => (
                 <option key={r} value={r}>{r}</option>
               ))}
             </select>
@@ -263,7 +267,10 @@ const ROLE_COLORS: Record<string, string> = {
   admin: 'bg-waldorf-lavender-100 text-waldorf-lavender-700 border-waldorf-lavender-200',
   teacher: 'bg-waldorf-sage-100 text-waldorf-sage-700 border-waldorf-sage-200',
   parent: 'bg-waldorf-peach-100 text-waldorf-peach-700 border-waldorf-peach-200',
+  student: 'bg-waldorf-cream-100 text-waldorf-clay-600 border-waldorf-cream-200',
 }
+
+const ACCESS_CONTROL_ROLE_OPTIONS: AccessControlRole[] = ['admin', 'teacher', 'parent', 'student']
 
 /**
  * Admin Dashboard Page Component
@@ -294,9 +301,17 @@ export function AdminDashboardPage() {
   const [editingUser, setEditingUser] = useState<UserData | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [userManagementMode, setUserManagementMode] = useState<'table' | 'batch-import'>('table')
+  const [userClassScopes, setUserClassScopes] = useState<Record<string, string[]>>({})
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([])
+  const [bulkRoleTarget, setBulkRoleTarget] = useState<AccessControlRole>('teacher')
+  const [bulkPreview, setBulkPreview] = useState<BulkPermissionPreviewEntry[]>([])
+  const [isBulkPreviewLoading, setIsBulkPreviewLoading] = useState(false)
+  const [isBulkApplying, setIsBulkApplying] = useState(false)
 
   // Audit log sub-tab state
-  const [auditLogSubTab, setAuditLogSubTab] = useState<'auth' | 'operations'>('auth')
+  const [auditLogSubTab, setAuditLogSubTab] = useState<'auth' | 'operations' | 'access-control'>('auth')
+  const [accessControlLogs, setAccessControlLogs] = useState<AccessControlLogEntry[]>([])
+  const [isAccessControlLogLoading, setIsAccessControlLogLoading] = useState(false)
 
   // Shared state
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
@@ -334,6 +349,12 @@ export function AdminDashboardPage() {
       return () => clearTimeout(timer)
     }
   }, [successMessage])
+
+  useEffect(() => {
+    if (activeTab === 'audit' && auditLogSubTab === 'access-control') {
+      loadAccessControlLogs()
+    }
+  }, [activeTab, auditLogSubTab])
 
   // --- Newsletter Functions ---
 
@@ -450,6 +471,22 @@ export function AdminDashboardPage() {
       )
 
       setUsers(usersWithSessions)
+      setSelectedUserIds([])
+      setBulkPreview([])
+
+      const teacherUsers = usersWithSessions.filter((userData) => userData.role === 'teacher')
+      const classScopes = await Promise.all(
+        teacherUsers.map(async (teacher) => {
+          try {
+            const classIds = await adminService.fetchUserClassRestrictions(teacher.id, teacher.role)
+            return [teacher.id, classIds] as const
+          } catch (err) {
+            console.error(`Error fetching class scope for user ${teacher.id}:`, err)
+            return [teacher.id, []] as const
+          }
+        }),
+      )
+      setUserClassScopes(Object.fromEntries(classScopes))
     } catch (err: any) {
       console.error('Error fetching users:', err)
       setUserError(err.message)
@@ -479,19 +516,118 @@ export function AdminDashboardPage() {
     }
   }
 
-  const updateUserRole = async (userId: string, newRole: UserRole) => {
+  const toggleUserSelection = (userId: string) => {
+    setSelectedUserIds((current) =>
+      current.includes(userId)
+        ? current.filter((id) => id !== userId)
+        : [...current, userId],
+    )
+  }
+
+  const toggleSelectAllUsers = () => {
+    setSelectedUserIds((current) =>
+      current.length === users.length ? [] : users.map((userData) => userData.id),
+    )
+  }
+
+  const handlePreviewBulkRoleUpdate = async () => {
+    if (selectedUserIds.length === 0) return
+    try {
+      setIsBulkPreviewLoading(true)
+      setUserError(null)
+      const preview = await adminService.previewBulkPermissionUpdate(selectedUserIds, [bulkRoleTarget])
+      setBulkPreview(preview)
+    } catch (err: any) {
+      console.error('Error previewing bulk role update:', err)
+      setUserError(`Failed to preview bulk update: ${err.message}`)
+    } finally {
+      setIsBulkPreviewLoading(false)
+    }
+  }
+
+  const handleApplyBulkRoleUpdate = async () => {
+    if (selectedUserIds.length === 0) return
+    if (!window.confirm(`Apply role "${bulkRoleTarget}" to ${selectedUserIds.length} selected users?`)) return
+
+    try {
+      setIsBulkApplying(true)
+      setUserError(null)
+      const results = await adminService.applyBulkPermissionUpdate(selectedUserIds, [bulkRoleTarget], {
+        actorId: user?.id,
+      })
+      const failed = results.filter((result) => !result.success)
+      if (failed.length > 0) {
+        setUserError(`Bulk update finished with ${failed.length} failure(s).`)
+      } else {
+        setSuccessMessage(`Bulk role update applied to ${results.length} user(s).`)
+      }
+      await fetchUsers()
+    } catch (err: any) {
+      console.error('Error applying bulk role update:', err)
+      setUserError(`Failed to apply bulk update: ${err.message}`)
+    } finally {
+      setIsBulkApplying(false)
+    }
+  }
+
+  const handleEditClassRestrictions = async (userData: UserData) => {
+    if (userData.role !== 'teacher') return
+
+    const currentClassIds = userClassScopes[userData.id] || []
+    const input = window.prompt(
+      'Enter comma-separated class IDs for this teacher (leave empty to clear):',
+      currentClassIds.join(', ')
+    )
+    if (input === null) return
+
+    const classIds = input
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean)
+
+    try {
+      setUpdatingId(userData.id)
+      setUserError(null)
+      await adminService.updateUserAccessControl(userData.id, ['teacher'], classIds, {
+        actorId: user?.id,
+        auditAction: 'class_scope_update',
+      })
+      setUserClassScopes((current) => ({ ...current, [userData.id]: classIds }))
+      setSuccessMessage('Class restrictions updated')
+    } catch (err: any) {
+      console.error('Error updating class restrictions:', err)
+      setUserError(`Failed to update class restrictions: ${err.message}`)
+    } finally {
+      setUpdatingId(null)
+    }
+  }
+
+  const loadAccessControlLogs = async () => {
+    try {
+      setIsAccessControlLogLoading(true)
+      const logs = await adminService.fetchAccessControlLogs({ limit: 50 })
+      setAccessControlLogs(logs)
+    } catch (err) {
+      console.error('Error loading access-control logs:', err)
+    } finally {
+      setIsAccessControlLogLoading(false)
+    }
+  }
+
+  const updateUserRole = async (userId: string, newRole: AccessControlRole) => {
     try {
       setUpdatingId(userId)
-      const supabaseAdmin = getSupabaseClient()
+      const currentClassIds = userClassScopes[userId] || []
+      const nextClassIds = newRole === 'teacher' ? currentClassIds : []
 
-      const { error } = await supabaseAdmin
-        .from('user_roles')
-        .update({ role: newRole })
-        .eq('id', userId)
-
-      if (error) throw error
+      await adminService.updateUserAccessControl(userId, [newRole], nextClassIds, {
+        actorId: user?.id,
+      })
 
       setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u))
+      if (newRole !== 'teacher') {
+        setUserClassScopes((current) => ({ ...current, [userId]: [] }))
+      }
       setSuccessMessage('User role updated')
     } catch (err: any) {
       console.error('Error updating role:', err)
@@ -668,14 +804,60 @@ export function AdminDashboardPage() {
                       <LoadingSpinner />
                     </div>
                   ) : (
-                    <div className="overflow-hidden rounded-xl border border-waldorf-cream-200 shadow-sm">
+                    <div>
+                      <div className="mb-4 p-4 rounded-xl border border-waldorf-cream-200 bg-waldorf-cream-50">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <span className="text-sm font-medium text-waldorf-clay-700">
+                            {selectedUserIds.length} selected
+                          </span>
+                          <select
+                            value={bulkRoleTarget}
+                            onChange={(e) => setBulkRoleTarget(e.target.value as AccessControlRole)}
+                            className="px-3 py-2 text-sm border border-waldorf-cream-300 rounded-lg bg-white"
+                          >
+                            {ACCESS_CONTROL_ROLE_OPTIONS.map((role) => (
+                              <option key={role} value={role}>{role}</option>
+                            ))}
+                          </select>
+                          <button
+                            onClick={handlePreviewBulkRoleUpdate}
+                            disabled={selectedUserIds.length === 0 || isBulkPreviewLoading}
+                            className="px-3 py-2 text-sm border border-waldorf-peach-300 text-waldorf-peach-700 rounded-lg disabled:opacity-50"
+                          >
+                            {isBulkPreviewLoading ? 'Previewing...' : 'Preview Bulk Update'}
+                          </button>
+                          <button
+                            onClick={handleApplyBulkRoleUpdate}
+                            disabled={selectedUserIds.length === 0 || isBulkApplying}
+                            className="px-3 py-2 text-sm bg-waldorf-peach-600 text-white rounded-lg disabled:opacity-50"
+                          >
+                            {isBulkApplying ? 'Applying...' : 'Apply Bulk Update'}
+                          </button>
+                        </div>
+                        {bulkPreview.length > 0 && (
+                          <p className="mt-2 text-xs text-waldorf-clay-500">
+                            Preview ready for {bulkPreview.length} user(s): role will change to "{bulkRoleTarget}".
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="overflow-hidden rounded-xl border border-waldorf-cream-200 shadow-sm">
                       <table className="min-w-full">
                         <thead className="bg-gradient-to-r from-waldorf-cream-100 to-waldorf-cream-50">
                           <tr>
+                            <th scope="col" className="px-4 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">
+                              <input
+                                type="checkbox"
+                                checked={users.length > 0 && selectedUserIds.length === users.length}
+                                onChange={toggleSelectAllUsers}
+                                aria-label="Select all users"
+                              />
+                            </th>
                             <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">User</th>
                             <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">Role</th>
                             <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">Status</th>
                             <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">Change Role</th>
+                            <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">Class Scope</th>
                             <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">Actions</th>
                           </tr>
                         </thead>
@@ -686,6 +868,14 @@ export function AdminDashboardPage() {
                               className="hover:bg-waldorf-cream-50/50 transition-colors duration-200"
                               style={{ animationDelay: `${index * 50}ms` }}
                             >
+                              <td className="px-4 py-4 whitespace-nowrap text-sm">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedUserIds.includes(userData.id)}
+                                  onChange={() => toggleUserSelection(userData.id)}
+                                  aria-label={`Select ${userData.email}`}
+                                />
+                              </td>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <div className="flex items-center">
                                   <div className="flex-shrink-0 h-11 w-11">
@@ -724,14 +914,34 @@ export function AdminDashboardPage() {
                               <td className="px-6 py-4 whitespace-nowrap text-sm">
                                 <select
                                   value={userData.role}
-                                  onChange={(e) => updateUserRole(userData.id, e.target.value as UserRole)}
+                                  onChange={(e) => updateUserRole(userData.id, e.target.value as AccessControlRole)}
                                   disabled={updatingId === userData.id || userData.id === user?.id}
                                   className="block w-full px-3 py-2 text-sm border border-waldorf-cream-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-waldorf-peach-300 focus:border-waldorf-peach-400 disabled:bg-waldorf-cream-100 disabled:cursor-not-allowed transition-all duration-200"
                                 >
-                                  {Object.values(ROLES).map((role) => (
+                                  {ACCESS_CONTROL_ROLE_OPTIONS.map((role) => (
                                     <option key={role} value={role}>{role}</option>
                                   ))}
                                 </select>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-waldorf-clay-600">
+                                {userData.role === 'teacher' ? (
+                                  <div className="flex items-center gap-2">
+                                    <span>
+                                      {(userClassScopes[userData.id] || []).length > 0
+                                        ? userClassScopes[userData.id].join(', ')
+                                        : 'No class restrictions'}
+                                    </span>
+                                    <button
+                                      onClick={() => handleEditClassRestrictions(userData)}
+                                      disabled={updatingId === userData.id}
+                                      className="text-waldorf-peach-600 hover:text-waldorf-peach-700 disabled:opacity-50"
+                                    >
+                                      Edit
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <span className="text-waldorf-clay-400">N/A</span>
+                                )}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
                                 <button
@@ -765,6 +975,7 @@ export function AdminDashboardPage() {
                           ))}
                         </tbody>
                       </table>
+                    </div>
                     </div>
                   )
                 ) : (
@@ -807,6 +1018,16 @@ export function AdminDashboardPage() {
                     >
                       Operation Logs
                     </button>
+                    <button
+                      onClick={() => setAuditLogSubTab('access-control')}
+                      className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                        auditLogSubTab === 'access-control'
+                          ? 'border-waldorf-peach-500 text-waldorf-peach-600'
+                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      }`}
+                    >
+                      Access Control Logs
+                    </button>
                   </nav>
                 </div>
 
@@ -836,6 +1057,44 @@ export function AdminDashboardPage() {
                         isLoading={false}
                         error={null}
                       />
+                    </div>
+                  </div>
+                )}
+
+                {auditLogSubTab === 'access-control' && (
+                  <div className="bg-white shadow rounded-lg overflow-hidden">
+                    <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                      <h3 className="text-lg font-medium text-gray-900">Access Control Logs</h3>
+                      <p className="text-sm text-gray-500 mt-1">Permission mutations and authorization decision traces</p>
+                    </div>
+                    <div className="p-6">
+                      {isAccessControlLogLoading ? (
+                        <LoadingSpinner />
+                      ) : accessControlLogs.length === 0 ? (
+                        <p className="text-sm text-gray-500">No access-control logs found.</p>
+                      ) : (
+                        <div className="space-y-3">
+                          {accessControlLogs.map((entry) => (
+                            <div key={entry.id} className="rounded-lg border border-gray-200 p-3">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-semibold text-gray-800">
+                                  {entry.type === 'mutation' ? 'Permission Mutation' : 'Authorization Decision'} - {entry.action}
+                                </span>
+                                <span className="text-xs text-gray-500">{new Date(entry.createdAt).toLocaleString()}</span>
+                              </div>
+                              <p className="text-xs text-gray-600 mt-1">
+                                actor: {entry.actorId || 'system'} | target: {entry.targetUserId || 'n/a'}
+                              </p>
+                              {entry.reason && (
+                                <p className="text-xs text-gray-600 mt-1">{entry.reason}</p>
+                              )}
+                              {entry.winningRole && (
+                                <p className="text-xs text-gray-600 mt-1">winning role: {entry.winningRole}</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

@@ -118,6 +118,45 @@ export interface ParentStudentRelationship {
   updatedAt: string
 }
 
+export type AccessControlRole = 'admin' | 'teacher' | 'parent' | 'student'
+
+export interface AccessControlSummary {
+  roles: AccessControlRole[]
+  winningRole: AccessControlRole
+  readClassIds: string[]
+  writeClassIds: string[]
+  policyVersion: string
+}
+
+export interface BulkPermissionPreviewEntry {
+  userId: string
+  email: string
+  before: AccessControlSummary
+  after: AccessControlSummary
+}
+
+export interface BulkPermissionApplyResult {
+  userId: string
+  email: string
+  success: boolean
+  message?: string
+}
+
+export interface AccessControlLogEntry {
+  id: string
+  type: 'mutation' | 'decision'
+  action: string
+  actorId: string | null
+  targetUserId: string | null
+  winningRole?: AccessControlRole | null
+  policyVersion?: string | null
+  metadata?: Record<string, unknown>
+  beforeState?: Record<string, unknown>
+  afterState?: Record<string, unknown>
+  reason?: string | null
+  createdAt: string
+}
+
 /**
  * Audit Log Entry (審計日誌)
  * 記錄所有管理操作以進行安全審計
@@ -184,8 +223,27 @@ export interface AdminArticle {
   status: 'draft' | 'published'
   createdAt: string
   updatedAt: string
+  publishedAt?: string | null
+  deletedAt?: string | null
+  deletedBy?: string | null
+  purgeScheduledAt?: string | null
   lastEditedBy?: string // 最後編輯者 ID
   editedAt?: string // 最後編輯時間（用於 LWW 衝突解決）
+}
+
+export interface ArticleRecycleBinMembership {
+  newsletterId: string
+  label: string
+  isTemplate: boolean
+}
+
+export interface AdminRecycleBinArticle extends AdminArticle {
+  deletedAt: string
+  purgeScheduledAt: string
+  retentionDays: number
+  canPurge: boolean
+  referenceCount: number
+  memberships: ArticleRecycleBinMembership[]
 }
 
 /**

@@ -61,6 +61,10 @@ export interface ArticleRow {
   updated_at: string; // TIMESTAMP WITH TIME ZONE
   /** Soft-delete marker (null = active, timestamp = deleted) */
   deleted_at?: string | null; // TIMESTAMP WITH TIME ZONE
+  /** User id that moved the article to recycle bin */
+  deleted_by?: string | null;
+  /** Scheduled purge timestamp based on retention policy */
+  purge_scheduled_at?: string | null; // TIMESTAMP WITH TIME ZONE
   /** Unique short ID for URL sharing */
   short_id: string; // VARCHAR(10)
 }

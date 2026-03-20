@@ -27,7 +27,7 @@ describe('KitAdapter', () => {
     classTagPrefix: 'class:',
   }
 
-  const fetchMock = vi.fn<typeof fetch>()
+  const fetchMock = vi.fn<[RequestInfo | URL, RequestInit?], Promise<Response>>()
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -38,17 +38,27 @@ describe('KitAdapter', () => {
       .mockResolvedValueOnce(jsonResponse({ custom_fields: [] }))
       .mockResolvedValueOnce(
         jsonResponse({
-          custom_field: { id: 1, name: 'ck_child_classes', key: 'child_classes', label: 'child_classes' },
+          custom_field: {
+            id: 1,
+            name: 'ck_external_identity_key',
+            key: 'external_identity_key',
+            label: 'external_identity_key',
+          },
         }, 201),
       )
       .mockResolvedValueOnce(
         jsonResponse({
-          custom_field: { id: 2, name: 'ck_child_names', key: 'child_names', label: 'child_names' },
+          custom_field: { id: 2, name: 'ck_child_classes', key: 'child_classes', label: 'child_classes' },
         }, 201),
       )
       .mockResolvedValueOnce(
         jsonResponse({
-          custom_field: { id: 3, name: 'ck_parent_type', key: 'parent_type', label: 'parent_type' },
+          custom_field: { id: 3, name: 'ck_child_names', key: 'child_names', label: 'child_names' },
+        }, 201),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          custom_field: { id: 4, name: 'ck_parent_type', key: 'parent_type', label: 'parent_type' },
         }, 201),
       )
       .mockResolvedValueOnce(
@@ -58,6 +68,7 @@ describe('KitAdapter', () => {
             email_address: 'parent@example.com',
             state: 'active',
             fields: {
+              external_identity_key: 'family:family-1',
               child_classes: 'Grade 1A',
               child_names: 'Alice',
               parent_type: 'mother',
@@ -89,6 +100,7 @@ describe('KitAdapter', () => {
             email_address: 'parent@example.com',
             state: 'active',
             fields: {
+              external_identity_key: 'family:family-1',
               child_classes: 'Grade 1A',
               child_names: 'Alice',
               parent_type: 'mother',
@@ -98,7 +110,7 @@ describe('KitAdapter', () => {
       )
       .mockResolvedValueOnce(jsonResponse({ tags: [{ id: 11, name: 'class:A1' }] }))
 
-    const adapter = new KitAdapter(config, fetchMock)
+    const adapter = new KitAdapter(config, fetchMock as unknown as typeof fetch)
     const outcome = await adapter.upsertSubscriber({
       payload: {
         externalIdentityKey: 'family:family-1',
@@ -109,6 +121,7 @@ describe('KitAdapter', () => {
         childClasses: ['Grade 1A'],
         childNames: ['Alice'],
         customFields: {
+          external_identity_key: 'family:family-1',
           child_classes: 'Grade 1A',
           child_names: 'Alice',
           parent_type: 'mother',
@@ -136,6 +149,11 @@ describe('KitAdapter', () => {
     )
     expect(outcome.externalSubscriberId).toBe('101')
     expect(outcome.syncedTagNames).toEqual(['class:A1'])
-    expect(outcome.syncedFieldKeys).toEqual(['child_classes', 'child_names', 'parent_type'])
+    expect(outcome.syncedFieldKeys).toEqual([
+      'external_identity_key',
+      'child_classes',
+      'child_names',
+      'parent_type',
+    ])
   })
 })
