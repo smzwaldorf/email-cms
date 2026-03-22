@@ -389,17 +389,22 @@ describe('ArticleForm', () => {
     it('should update version number after successful save', async () => {
       const onSave = vi.fn()
       const user = userEvent.setup()
+      const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
 
-      render(<ArticleForm article={mockArticle} onSave={onSave} />)
+      try {
+        render(<ArticleForm article={mockArticle} onSave={onSave} />)
 
-      await user.click(screen.getByTestId('save-btn'))
+        await user.click(screen.getByTestId('save-btn'))
 
-      await waitFor(() => {
-        expect(onSave).toHaveBeenCalled()
-      })
+        await waitFor(() => {
+          expect(onSave).toHaveBeenCalled()
+        })
 
-      const updatedArticle = onSave.mock.calls[0][0]
-      expect(updatedArticle.version).toBe(mockArticle.version + 1)
+        const updatedArticle = onSave.mock.calls[0][0]
+        expect(updatedArticle.version).toBe(mockArticle.version + 1)
+      } finally {
+        randomSpy.mockRestore()
+      }
     })
   })
 

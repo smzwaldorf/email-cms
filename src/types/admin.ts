@@ -201,6 +201,36 @@ export interface AdminNewsletter {
 export interface NewsletterPublishReadiness {
   canPublish: boolean
   issues: string[]
+  audienceSummary?: {
+    mode: 'all' | 'classes' | 'families' | 'family'
+    totalCandidates: number
+    eligibleCount: number
+    ineligibleCount: number
+    selectedClassIds: string[]
+    selectedFamilyIds: string[]
+  }
+}
+
+export interface NewsletterPublishAudienceSelection {
+  mode: 'all' | 'classes' | 'families' | 'family'
+  classIds?: string[]
+  familyIds?: string[]
+  familyId?: string
+}
+
+export interface NewsletterDeliveryBatchSummary {
+  id: string
+  trigger: 'publish' | 'resend'
+  audienceMode: 'all' | 'classes' | 'families' | 'family'
+  state: 'queued' | 'preparing' | 'sending' | 'completed' | 'completed_with_failures' | 'failed'
+  parentBatchId: string | null
+  totalRecipients: number
+  eligibleRecipients: number
+  readyRecipients: number
+  sentRecipients: number
+  failedRecipients: number
+  invalidRecipients: number
+  createdAt: string
 }
 
 /**

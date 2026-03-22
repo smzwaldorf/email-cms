@@ -391,6 +391,57 @@ export interface EmailPlatformSubscriptionAuditRow {
 }
 
 // ============================================================================
+// Newsletter Delivery
+// ============================================================================
+
+export interface NewsletterDeliveryBatchRow {
+  id: string;
+  newsletter_id: string;
+  trigger: 'publish' | 'resend';
+  audience_mode: 'all' | 'classes' | 'families' | 'family';
+  selected_class_ids: string[];
+  selected_family_ids: string[];
+  parent_batch_id?: string | null;
+  state: 'queued' | 'preparing' | 'sending' | 'completed' | 'completed_with_failures' | 'failed';
+  pinned_newsletter_revision_id: string;
+  pinned_template_id?: string | null;
+  pinned_template_revision_id?: string | null;
+  recipient_snapshot_captured_at: string;
+  rules_version: string;
+  preparation_job_id?: string | null;
+  total_recipients: number;
+  eligible_recipients: number;
+  ready_recipients: number;
+  sent_recipients: number;
+  failed_recipients: number;
+  invalid_recipients: number;
+  metadata: Record<string, unknown>;
+  created_by?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NewsletterDeliveryBatchRecipientRow {
+  id: string;
+  batch_id: string;
+  family_id: string;
+  parent_id?: string | null;
+  parent_email?: string | null;
+  guardian_email?: string | null;
+  eligibility_status: 'eligible' | 'ineligible';
+  preparation_status: 'pending' | 'ready' | 'warning' | 'failed' | 'skipped';
+  send_status: 'pending' | 'handoff_pending' | 'sent' | 'failed' | 'skipped';
+  failure_reason?: string | null;
+  prepared_payload?: Record<string, unknown> | null;
+  provider_message_id?: string | null;
+  provider_error?: string | null;
+  last_attempted_at?: string | null;
+  sent_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// ============================================================================
 // Article Audit Log (文章審計日誌)
 // Complete audit trail of article modifications
 // ============================================================================
@@ -432,6 +483,8 @@ export type DatabaseRow =
   | EmailPlatformSyncJobRow
   | EmailPlatformWebhookEventRow
   | EmailPlatformSubscriptionAuditRow
+  | NewsletterDeliveryBatchRow
+  | NewsletterDeliveryBatchRecipientRow
   | ArticleAuditLogRow;
 
 // ============================================================================

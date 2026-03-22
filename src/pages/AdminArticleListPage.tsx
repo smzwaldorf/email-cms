@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { adminService, AdminServiceError } from '@/services/adminService'
-import type { AdminNewsletter, AdminArticle, NewsletterPublishReadiness } from '@/types/admin'
+import type {
+  AdminNewsletter,
+  AdminArticle,
+  NewsletterPublishAudienceSelection,
+  NewsletterPublishReadiness,
+  NewsletterDeliveryBatchSummary,
+} from '@/types/admin'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { AdminLayout } from '@/components/admin/AdminLayout'
@@ -26,6 +32,9 @@ export function AdminArticleListPage() {
     canPublish: false,
     issues: [],
   })
+  const [publishAudience, setPublishAudience] = useState<NewsletterPublishAudienceSelection>({ mode: 'all' })
+  const [availableFamilies, setAvailableFamilies] = useState<Array<{ id: string; name: string }>>([])
+  const [deliveryBatches, setDeliveryBatches] = useState<NewsletterDeliveryBatchSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isMutating, setIsMutating] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -33,7 +42,14 @@ export function AdminArticleListPage() {
 
   useEffect(() => {
     void loadData()
-  }, [weekNumber, id])
+  }, [
+    weekNumber,
+    id,
+    publishAudience.mode,
+    (publishAudience.classIds ?? []).join(','),
+    (publishAudience.familyIds ?? []).join(','),
+    publishAudience.familyId ?? '',
+  ])
 
   useEffect(() => {
     const state = location.state as { successMessage?: string } | null
@@ -56,11 +72,15 @@ export function AdminArticleListPage() {
         throw new Error('缺少電子報參數')
       }
 
-      const [articlesData, availableArticlesData, readiness, classes] = await Promise.all([
+      const [articlesData, availableArticlesData, classes, families] = await Promise.all([
         adminService.fetchArticlesByNewsletterId(newsletterData.id),
         adminService.getAvailableArticlesByNewsletterId(newsletterData.id),
-        adminService.getNewsletterPublishReadiness(newsletterData.id),
         adminService.fetchClasses(),
+        adminService.fetchFamilies(),
+      ])
+      const [readiness, batches] = await Promise.all([
+        adminService.getNewsletterPublishReadiness(newsletterData.id, publishAudience),
+        adminService.fetchNewsletterDeliveryBatches(newsletterData.id),
       ])
 
       setNewsletter(newsletterData)
@@ -68,6 +88,8 @@ export function AdminArticleListPage() {
       setAvailableArticles(availableArticlesData)
       setPublishReadiness(readiness)
       setAvailableClasses(classes.map((classItem) => ({ id: classItem.id, name: classItem.name })))
+      setAvailableFamilies(families.map((family) => ({ id: family.id, name: family.name })))
+      setDeliveryBatches(batches)
       setTargetingDrafts(
         articlesData.reduce(
           (acc, article) => {
@@ -290,12 +312,29 @@ export function AdminArticleListPage() {
     try {
       setIsMutating(true)
       setError(null)
-      const updated = await adminService.publishNewsletter(newsletter.id)
+      const updated = await adminService.publishNewsletterWithDelivery(newsletter.id, publishAudience)
       setNewsletter(updated)
-      setSuccessMessage('電子報已發布')
+      setSuccessMessage('電子報已發布並啟動投遞批次')
       await loadData()
     } catch (err) {
       const message = err instanceof AdminServiceError ? err.message : '發布失敗'
+      setError(message)
+    } finally {
+      setIsMutating(false)
+    }
+  }
+
+  const handleResendBatch = async (batchId: string) => {
+    if (!newsletter) return
+
+    try {
+      setIsMutating(true)
+      setError(null)
+      await adminService.createNewsletterResendBatch(batchId, publishAudience)
+      setSuccessMessage('已建立補發批次')
+      await loadData()
+    } catch (err) {
+      const message = err instanceof AdminServiceError ? err.message : '建立補發批次失敗'
       setError(message)
     } finally {
       setIsMutating(false)
@@ -488,6 +527,145 @@ export function AdminArticleListPage() {
                   <li key={issue}>{issue}</li>
                 ))}
               </ul>
+            )}
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <label className="text-sm text-waldorf-clay-700">
+                <span className="mb-1 block font-semibold">投遞對象</span>
+                <select
+                  value={publishAudience.mode}
+                  onChange={(event) =>
+                    setPublishAudience({
+                      mode: event.target.value as NewsletterPublishAudienceSelection['mode'],
+                      classIds: [],
+                      familyIds: [],
+                      familyId: undefined,
+                    })
+                  }
+                  className="w-full rounded-lg border border-waldorf-cream-300 bg-white px-3 py-2"
+                >
+                  <option value="all">全部符合資格家庭</option>
+                  <option value="classes">指定班級</option>
+                  <option value="families">指定家庭</option>
+                  <option value="family">單一家庭</option>
+                </select>
+              </label>
+              {publishReadiness.audienceSummary && (
+                <div className="rounded-lg border border-waldorf-cream-200 bg-waldorf-cream-50 p-3 text-sm text-waldorf-clay-700">
+                  <p>候選：{publishReadiness.audienceSummary.totalCandidates}</p>
+                  <p>可投遞：{publishReadiness.audienceSummary.eligibleCount}</p>
+                  <p>排除：{publishReadiness.audienceSummary.ineligibleCount}</p>
+                </div>
+              )}
+            </div>
+            {publishAudience.mode === 'classes' && (
+              <div className="mt-3 flex max-h-36 flex-wrap gap-2 overflow-y-auto rounded border border-waldorf-cream-200 p-2">
+                {availableClasses.map((classItem) => {
+                  const selected = (publishAudience.classIds ?? []).includes(classItem.id)
+                  return (
+                    <button
+                      key={classItem.id}
+                      type="button"
+                      onClick={() =>
+                        setPublishAudience((prev) => {
+                          const current = prev.classIds ?? []
+                          const next = selected
+                            ? current.filter((id) => id !== classItem.id)
+                            : [...current, classItem.id]
+                          return { ...prev, classIds: next }
+                        })
+                      }
+                      className={`rounded-full border px-3 py-1 text-xs ${
+                        selected
+                          ? 'border-waldorf-sage-300 bg-waldorf-sage-100 text-waldorf-sage-700'
+                          : 'border-waldorf-cream-300 bg-white text-waldorf-clay-600'
+                      }`}
+                    >
+                      {classItem.name}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+            {publishAudience.mode === 'families' && (
+              <div className="mt-3 flex max-h-36 flex-wrap gap-2 overflow-y-auto rounded border border-waldorf-cream-200 p-2">
+                {availableFamilies.map((family) => {
+                  const selected = (publishAudience.familyIds ?? []).includes(family.id)
+                  return (
+                    <button
+                      key={family.id}
+                      type="button"
+                      onClick={() =>
+                        setPublishAudience((prev) => {
+                          const current = prev.familyIds ?? []
+                          const next = selected
+                            ? current.filter((id) => id !== family.id)
+                            : [...current, family.id]
+                          return { ...prev, familyIds: next }
+                        })
+                      }
+                      className={`rounded-full border px-3 py-1 text-xs ${
+                        selected
+                          ? 'border-waldorf-sage-300 bg-waldorf-sage-100 text-waldorf-sage-700'
+                          : 'border-waldorf-cream-300 bg-white text-waldorf-clay-600'
+                      }`}
+                    >
+                      {family.name}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+            {publishAudience.mode === 'family' && (
+              <div className="mt-3">
+                <select
+                  value={publishAudience.familyId ?? ''}
+                  onChange={(event) =>
+                    setPublishAudience((prev) => ({
+                      ...prev,
+                      familyId: event.target.value || undefined,
+                    }))
+                  }
+                  className="w-full rounded-lg border border-waldorf-cream-300 bg-white px-3 py-2"
+                >
+                  <option value="">選擇家庭</option>
+                  {availableFamilies.map((family) => (
+                    <option key={family.id} value={family.id}>
+                      {family.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-waldorf-cream-200 bg-white p-6 shadow-sm">
+            <h2 className="font-display text-2xl font-semibold text-waldorf-clay-800">投遞批次紀錄</h2>
+            {deliveryBatches.length === 0 ? (
+              <p className="mt-3 text-sm text-waldorf-clay-500">尚無投遞批次。</p>
+            ) : (
+              <div className="mt-4 space-y-3">
+                {deliveryBatches.map((batch) => (
+                  <div key={batch.id} className="rounded-lg border border-waldorf-cream-200 p-3 text-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-medium text-waldorf-clay-700">
+                        {batch.trigger === 'publish' ? '發布批次' : '補發批次'} · {new Date(batch.createdAt).toLocaleString('zh-TW')}
+                      </p>
+                      <p className="text-waldorf-clay-500">{batch.state}</p>
+                    </div>
+                    <p className="mt-1 text-waldorf-clay-600">
+                      送達 {batch.sentRecipients} / 可投遞 {batch.eligibleRecipients}，失敗 {batch.failedRecipients}，排除 {batch.invalidRecipients}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => handleResendBatch(batch.id)}
+                      disabled={isMutating}
+                      className="mt-2 rounded border border-waldorf-peach-300 px-3 py-1 text-xs text-waldorf-peach-700 hover:bg-waldorf-peach-50 disabled:opacity-50"
+                    >
+                      補發此批次（同一份電子報）
+                    </button>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 

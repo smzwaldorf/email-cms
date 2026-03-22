@@ -1,0 +1,798 @@
+import { getSupabaseClient } from '@/lib/supabase'
+import { emailContentPreparationService } from '@/services/emailContentPreparationService'
+import { enqueueSyncJob } from '@/services/emailPlatform/runtime'
+import type {
+  DeliveryAudienceRecipient,
+  DeliveryAudienceSelection,
+  DeliveryAudienceSummary,
+  NewsletterDeliveryBatch,
+  NewsletterDeliveryRecipient,
+  PublishDeliveryRequest,
+  ResendDeliveryRequest,
+} from '@/types/emailDelivery'
+import type {
+  NewsletterDeliveryBatchRecipientRow,
+  NewsletterDeliveryBatchRow,
+  NewsletterRow,
+} from '@/types/database'
+import type {
+  PersonalizationInputClass,
+  PersonalizationInputGuardian,
+  PersonalizationInputNewsletter,
+  PersonalizationInputTemplate,
+} from '@/types/personalization'
+
+interface FamilyWithEnrollments {
+  id: string
+  is_active: boolean
+  newsletter_subscription_status: 'pending' | 'subscribed' | 'unsubscribed' | 'bounced' | 'complained'
+  classIds: string[]
+}
+
+export interface RecipientEligibilityInput {
+  is_active: boolean
+  newsletter_subscription_status: 'pending' | 'subscribed' | 'unsubscribed' | 'bounced' | 'complained' | undefined
+  classIds: string[]
+}
+
+interface NewsletterArticleJoinRow {
+  article_order: number
+  targeting_mode?: 'shared' | 'targeted' | null
+  target_class_ids?: string[] | null
+  articles?: Array<{
+    id: string
+    title?: string | null
+    content: string
+  }> | null
+}
+
+interface FamilyEnrollmentJoinRow {
+  family_id: string
+  student_id: string
+  class_id: string
+  students?: { name?: string | null; is_active?: boolean } | Array<{ name?: string | null; is_active?: boolean }> | null
+  classes?: { class_name?: string | null; class_code?: string | null; is_active?: boolean } | Array<{ class_name?: string | null; class_code?: string | null; is_active?: boolean }> | null
+}
+
+interface FamilyParentEnrollmentRow {
+  family_id: string
+  parent_id: string
+}
+
+interface ParentUserEmailRow {
+  id: string
+  email: string
+}
+
+const ACTIVE_SUBSCRIPTION_STATES = new Set(['pending', 'subscribed'])
+
+function asArrayValue<T>(value: T | T[] | null | undefined): T[] {
+  if (value == null) return []
+  return Array.isArray(value) ? value : [value]
+}
+
+export interface AudienceCandidateShape {
+  familyId: string
+  classIds: string[]
+}
+
+export function defaultAudienceSelection(input?: DeliveryAudienceSelection): DeliveryAudienceSelection {
+  if (!input) {
+    return { mode: 'all' }
+  }
+  if (input.mode === 'classes') {
+    return { mode: 'classes', classIds: [...(input.classIds ?? [])] }
+  }
+  if (input.mode === 'families') {
+    return { mode: 'families', familyIds: [...(input.familyIds ?? [])] }
+  }
+  if (input.mode === 'family') {
+    return { mode: 'family', familyId: input.familyId ?? '' }
+  }
+  return { mode: 'all' }
+}
+
+export function validateRecipientEligibility(family: RecipientEligibilityInput): { eligible: boolean; reason: string | null } {
+  if (!family.is_active) {
+    return { eligible: false, reason: 'family_inactive' }
+  }
+  if (!ACTIVE_SUBSCRIPTION_STATES.has(family.newsletter_subscription_status ?? 'pending')) {
+    return { eligible: false, reason: 'subscription_blocked' }
+  }
+  if (family.classIds.length === 0) {
+    return { eligible: false, reason: 'no_active_enrollment' }
+  }
+  return { eligible: true, reason: null }
+}
+
+export function filterAudienceCandidateFamilyIds(
+  candidates: AudienceCandidateShape[],
+  selectionInput?: DeliveryAudienceSelection,
+): string[] {
+  const selection = defaultAudienceSelection(selectionInput)
+  if (selection.mode === 'classes') {
+    const selectedClassIds = new Set(selection.classIds ?? [])
+    return candidates
+      .filter((candidate) => candidate.classIds.some((classId) => selectedClassIds.has(classId)))
+      .map((candidate) => candidate.familyId)
+  }
+  if (selection.mode === 'families') {
+    const selectedFamilyIds = new Set(selection.familyIds ?? [])
+    return candidates
+      .filter((candidate) => selectedFamilyIds.has(candidate.familyId))
+      .map((candidate) => candidate.familyId)
+  }
+  if (selection.mode === 'family') {
+    return selection.familyId ? [selection.familyId] : []
+  }
+  return candidates.map((candidate) => candidate.familyId)
+}
+
+function mapBatchRow(row: NewsletterDeliveryBatchRow): NewsletterDeliveryBatch {
+  return {
+    id: row.id,
+    newsletterId: row.newsletter_id,
+    trigger: row.trigger,
+    audienceMode: row.audience_mode,
+    selectedClassIds: row.selected_class_ids ?? [],
+    selectedFamilyIds: row.selected_family_ids ?? [],
+    parentBatchId: row.parent_batch_id ?? null,
+    state: row.state,
+    pinnedNewsletterRevisionId: row.pinned_newsletter_revision_id,
+    pinnedTemplateId: row.pinned_template_id ?? null,
+    pinnedTemplateRevisionId: row.pinned_template_revision_id ?? null,
+    recipientSnapshotCapturedAt: row.recipient_snapshot_captured_at,
+    rulesVersion: row.rules_version,
+    preparationJobId: row.preparation_job_id ?? null,
+    totalRecipients: row.total_recipients,
+    eligibleRecipients: row.eligible_recipients,
+    readyRecipients: row.ready_recipients,
+    sentRecipients: row.sent_recipients,
+    failedRecipients: row.failed_recipients,
+    invalidRecipients: row.invalid_recipients,
+    metadata: row.metadata ?? {},
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+function mapRecipientRow(row: NewsletterDeliveryBatchRecipientRow): NewsletterDeliveryRecipient {
+  return {
+    id: row.id,
+    batchId: row.batch_id,
+    familyId: row.family_id,
+    parentId: row.parent_id ?? null,
+    parentEmail: row.parent_email ?? row.guardian_email ?? null,
+    eligibilityStatus: row.eligibility_status,
+    preparationStatus: row.preparation_status,
+    sendStatus: row.send_status,
+    failureReason: row.failure_reason ?? null,
+    preparedPayload: (row.prepared_payload ?? null) as NewsletterDeliveryRecipient['preparedPayload'],
+    providerMessageId: row.provider_message_id ?? null,
+    providerError: row.provider_error ?? null,
+    lastAttemptedAt: row.last_attempted_at ?? null,
+    sentAt: row.sent_at ?? null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+class NewsletterDeliveryService {
+  private async loadFamiliesWithEnrollments(candidateFamilyIds?: string[]): Promise<FamilyWithEnrollments[]> {
+    const supabase = getSupabaseClient()
+
+    let familyQuery = supabase
+      .from('families')
+      .select('id, is_active, newsletter_subscription_status')
+    if (candidateFamilyIds && candidateFamilyIds.length > 0) {
+      familyQuery = familyQuery.in('id', candidateFamilyIds)
+    }
+    const { data: families, error: familyError } = await familyQuery
+    if (familyError) {
+      throw new Error(`Failed to load families for delivery: ${familyError.message}`)
+    }
+
+    const familyIds = (families ?? []).map((family) => family.id)
+    if (familyIds.length === 0) {
+      return []
+    }
+
+    const { data: enrollments, error: enrollmentError } = await supabase
+      .from('student_class_enrollment')
+      .select('family_id, class_id')
+      .in('family_id', familyIds)
+      .is('graduated_at', null)
+    if (enrollmentError) {
+      throw new Error(`Failed to load family enrollments for delivery: ${enrollmentError.message}`)
+    }
+
+    const classIdsByFamily = new Map<string, Set<string>>()
+    for (const enrollment of enrollments ?? []) {
+      const existing = classIdsByFamily.get(enrollment.family_id) ?? new Set<string>()
+      existing.add(enrollment.class_id)
+      classIdsByFamily.set(enrollment.family_id, existing)
+    }
+
+    return (families ?? []).map((family) => ({
+      id: family.id,
+      is_active: family.is_active ?? true,
+      newsletter_subscription_status: family.newsletter_subscription_status ?? 'pending',
+      classIds: Array.from(classIdsByFamily.get(family.id) ?? []),
+    }))
+  }
+
+  async resolveAudience(
+    selectionInput?: DeliveryAudienceSelection,
+    options?: { constrainedFamilyIds?: string[] },
+  ): Promise<DeliveryAudienceSummary & { recipients: DeliveryAudienceRecipient[] }> {
+    const selection = defaultAudienceSelection(selectionInput)
+    const constrainedFamilyIds = options?.constrainedFamilyIds ?? []
+    const families = await this.loadFamiliesWithEnrollments(
+      constrainedFamilyIds.length > 0 ? constrainedFamilyIds : undefined,
+    )
+
+    const candidateFamilyIds = new Set(
+      filterAudienceCandidateFamilyIds(
+        families.map((family) => ({ familyId: family.id, classIds: family.classIds })),
+        selection,
+      ),
+    )
+    const candidates = families.filter((family) => candidateFamilyIds.has(family.id))
+
+    const candidateFamilyIdList = candidates.map((family) => family.id)
+    const { data: parentEnrollments, error: parentEnrollmentError } = candidateFamilyIdList.length > 0
+      ? await getSupabaseClient()
+        .from('family_enrollment')
+        .select('family_id, parent_id')
+        .in('family_id', candidateFamilyIdList)
+        .not('parent_id', 'is', null)
+      : { data: [], error: null }
+    if (parentEnrollmentError) {
+      throw new Error(`Failed to load parent enrollments for delivery: ${parentEnrollmentError.message}`)
+    }
+
+    const parentIds = Array.from(
+      new Set((parentEnrollments ?? []).map((row) => (row as FamilyParentEnrollmentRow).parent_id)),
+    )
+    const { data: parentUsers, error: parentUserError } = parentIds.length > 0
+      ? await getSupabaseClient()
+        .from('user_roles')
+        .select('id, email')
+        .in('id', parentIds)
+      : { data: [], error: null }
+    if (parentUserError) {
+      throw new Error(`Failed to load parent emails for delivery: ${parentUserError.message}`)
+    }
+
+    const parentEmailById = new Map(
+      (parentUsers ?? []).map((row) => [(row as ParentUserEmailRow).id, (row as ParentUserEmailRow).email]),
+    )
+    const parentIdsByFamily = new Map<string, string[]>()
+    for (const enrollment of (parentEnrollments ?? []) as FamilyParentEnrollmentRow[]) {
+      const existing = parentIdsByFamily.get(enrollment.family_id) ?? []
+      existing.push(enrollment.parent_id)
+      parentIdsByFamily.set(enrollment.family_id, existing)
+    }
+
+    const recipients = candidates.flatMap<DeliveryAudienceRecipient>((family) => {
+      const eligibility = validateRecipientEligibility(family)
+      const base = {
+        familyId: family.id,
+        classIds: family.classIds,
+        isActive: family.is_active,
+        subscriptionStatus: family.newsletter_subscription_status ?? 'pending',
+        hasEnrollment: family.classIds.length > 0,
+      }
+
+      if (!eligibility.eligible) {
+        return [{
+          ...base,
+          parentId: null,
+          parentEmail: null,
+          eligibilityStatus: 'ineligible',
+          eligibilityReason: eligibility.reason,
+        }]
+      }
+
+      const parentIdsForFamily = Array.from(new Set(parentIdsByFamily.get(family.id) ?? []))
+      const parents = parentIdsForFamily
+        .map((parentId) => ({ parentId, parentEmail: parentEmailById.get(parentId) ?? null }))
+        .filter((parent) => !!parent.parentEmail)
+
+      if (parents.length === 0) {
+        return [{
+          ...base,
+          parentId: null,
+          parentEmail: null,
+          eligibilityStatus: 'ineligible',
+          eligibilityReason: 'missing_parent_guardian_email',
+        }]
+      }
+
+      return parents.map((parent) => ({
+        ...base,
+        parentId: parent.parentId,
+        parentEmail: parent.parentEmail,
+        eligibilityStatus: 'eligible' as const,
+        eligibilityReason: null,
+      }))
+    })
+
+    const eligibleFamilyIds = Array.from(new Set(recipients
+      .filter((recipient) => recipient.eligibilityStatus === 'eligible')
+      .map((recipient) => recipient.familyId)))
+    const ineligibleFamilyIds = Array.from(new Set(recipients
+      .filter((recipient) => recipient.eligibilityStatus === 'ineligible')
+      .map((recipient) => recipient.familyId)))
+
+    return {
+      selection,
+      recipients,
+      totalCandidates: recipients.length,
+      eligibleCount: eligibleFamilyIds.length,
+      ineligibleCount: ineligibleFamilyIds.length,
+      candidateFamilyIds: recipients.map((recipient) => recipient.familyId),
+      eligibleFamilyIds,
+      ineligibleFamilyIds,
+    }
+  }
+
+  private async resolveActiveTemplate(): Promise<PersonalizationInputTemplate | undefined> {
+    const supabase = getSupabaseClient()
+
+    const { data: activeTemplate, error: activeTemplateError } = await supabase
+      .from('email_templates')
+      .select('id, current_revision_id')
+      .eq('state', 'active')
+      .not('current_revision_id', 'is', null)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (activeTemplateError) {
+      throw new Error(`Failed to resolve active email template: ${activeTemplateError.message}`)
+    }
+    if (!activeTemplate || !activeTemplate.current_revision_id) {
+      return undefined
+    }
+
+    const { data: revision, error: revisionError } = await supabase
+      .from('email_template_revisions')
+      .select('*')
+      .eq('id', activeTemplate.current_revision_id)
+      .single()
+    if (revisionError) {
+      throw new Error(`Failed to load active template revision: ${revisionError.message}`)
+    }
+
+    return {
+      templateId: revision.template_id,
+      templateRevisionId: revision.id,
+      subjectTemplate: revision.subject_template,
+      bodyTemplate: revision.body_template,
+    }
+  }
+
+  private async buildNewsletterPersonalizationInput(
+    newsletter: NewsletterRow,
+  ): Promise<PersonalizationInputNewsletter> {
+    const supabase = getSupabaseClient()
+    const { data, error } = await supabase
+      .from('newsletter_articles')
+      .select('article_order, targeting_mode, target_class_ids, articles!inner(id, title, content)')
+      .eq('newsletter_id', newsletter.id)
+      .order('article_order', { ascending: true })
+
+    if (error) {
+      throw new Error(`Failed to load newsletter composition for delivery: ${error.message}`)
+    }
+
+    const sharedBlocks: PersonalizationInputNewsletter['sharedBlocks'] = []
+    const classBlocks: PersonalizationInputNewsletter['classBlocks'] = []
+    for (const row of (data ?? []) as unknown as NewsletterArticleJoinRow[]) {
+      const article = row.articles?.[0]
+      if (!article) continue
+      const block = {
+        blockId: article.id,
+        title: article.title ?? null,
+        content: article.content,
+        editorialOrder: row.article_order,
+        personalizationKey: `article:${article.id}`,
+      }
+      const targetClassIds = row.targeting_mode === 'targeted' ? row.target_class_ids ?? [] : []
+      if (targetClassIds.length === 0) {
+        sharedBlocks.push(block)
+        continue
+      }
+      for (const classId of targetClassIds) {
+        classBlocks.push({ ...block, classId })
+      }
+    }
+
+    return {
+      newsletterId: newsletter.id,
+      newsletterRevisionId: newsletter.updated_at,
+      sharedBlocks,
+      classBlocks,
+    }
+  }
+
+  private async loadGuardianInputs(recipientRows: NewsletterDeliveryBatchRecipientRow[]): Promise<{
+    guardians: PersonalizationInputGuardian[]
+    classes: PersonalizationInputClass[]
+  }> {
+    const supabase = getSupabaseClient()
+    if (recipientRows.length === 0) {
+      return { guardians: [], classes: [] }
+    }
+    const familyIds = Array.from(new Set(recipientRows.map((row) => row.family_id)))
+
+    const [{ data: enrollments, error: enrollmentError }, { data: classes, error: classesError }] = await Promise.all([
+      supabase
+        .from('student_class_enrollment')
+        .select('family_id, student_id, class_id, students(name, is_active), classes(class_name, class_code, is_active)')
+        .in('family_id', familyIds)
+        .is('graduated_at', null),
+      supabase
+        .from('classes')
+        .select('id, class_code, class_name')
+        .eq('is_active', true),
+    ])
+
+    if (enrollmentError) {
+      throw new Error(`Failed to load batch enrollments: ${enrollmentError.message}`)
+    }
+    if (classesError) {
+      throw new Error(`Failed to load class catalog for batch: ${classesError.message}`)
+    }
+
+    const enrollmentByFamily = new Map<string, FamilyEnrollmentJoinRow[]>()
+    for (const enrollment of (enrollments ?? []) as FamilyEnrollmentJoinRow[]) {
+      const student = asArrayValue(enrollment.students)[0]
+      const klass = asArrayValue(enrollment.classes)[0]
+      if (student?.is_active === false || klass?.is_active === false) {
+        continue
+      }
+      const existing = enrollmentByFamily.get(enrollment.family_id) ?? []
+      existing.push(enrollment)
+      enrollmentByFamily.set(enrollment.family_id, existing)
+    }
+
+    const guardians: PersonalizationInputGuardian[] = recipientRows
+      .filter((row) => !!row.parent_email)
+      .map((row) => {
+        const familyEnrollments = enrollmentByFamily.get(row.family_id) ?? []
+        return {
+          guardianId: row.id,
+          guardianEmail: row.parent_email as string,
+          familyId: row.family_id,
+          children: familyEnrollments.map((enrollment) => ({
+            studentId: enrollment.student_id,
+            studentName: asArrayValue(enrollment.students)[0]?.name ?? null,
+            classId: enrollment.class_id,
+          })),
+        }
+      })
+
+    const inputClasses: PersonalizationInputClass[] = (classes ?? []).map((klass) => ({
+      id: klass.id,
+      classCode: klass.class_code,
+      className: klass.class_name,
+      canonicalSortKey: klass.class_code,
+    }))
+
+    return { guardians, classes: inputClasses }
+  }
+
+  private async updateBatchAggregateState(batchId: string): Promise<void> {
+    const supabase = getSupabaseClient()
+    const { data: recipients, error: recipientError } = await supabase
+      .from('newsletter_delivery_batch_recipients')
+      .select('eligibility_status, preparation_status, send_status')
+      .eq('batch_id', batchId)
+    if (recipientError) {
+      throw new Error(`Failed to summarize delivery recipient state: ${recipientError.message}`)
+    }
+
+    const totalRecipients = recipients?.length ?? 0
+    const eligibleRecipients = (recipients ?? []).filter((recipient) => recipient.eligibility_status === 'eligible').length
+    const invalidRecipients = (recipients ?? []).filter((recipient) => recipient.eligibility_status === 'ineligible').length
+    const readyRecipients = (recipients ?? []).filter((recipient) =>
+      recipient.preparation_status === 'ready' || recipient.preparation_status === 'warning',
+    ).length
+    const sentRecipients = (recipients ?? []).filter((recipient) => recipient.send_status === 'sent').length
+    const failedRecipients = (recipients ?? []).filter((recipient) =>
+      recipient.preparation_status === 'failed' || recipient.send_status === 'failed',
+    ).length
+
+    const state = failedRecipients > 0
+      ? (sentRecipients > 0 ? 'completed_with_failures' : 'failed')
+      : 'completed'
+
+    const { error: updateError } = await supabase
+      .from('newsletter_delivery_batches')
+      .update({
+        state,
+        total_recipients: totalRecipients,
+        eligible_recipients: eligibleRecipients,
+        ready_recipients: readyRecipients,
+        sent_recipients: sentRecipients,
+        failed_recipients: failedRecipients,
+        invalid_recipients: invalidRecipients,
+      })
+      .eq('id', batchId)
+    if (updateError) {
+      throw new Error(`Failed to persist delivery batch aggregates: ${updateError.message}`)
+    }
+  }
+
+  private async processBatch(batch: NewsletterDeliveryBatch, newsletter: NewsletterRow): Promise<void> {
+    const supabase = getSupabaseClient()
+    await supabase
+      .from('newsletter_delivery_batches')
+      .update({ state: 'preparing' })
+      .eq('id', batch.id)
+
+    try {
+      const { data: recipients, error: recipientError } = await supabase
+        .from('newsletter_delivery_batch_recipients')
+        .select('*')
+        .eq('batch_id', batch.id)
+        .eq('eligibility_status', 'eligible')
+      if (recipientError) {
+        throw new Error(`Failed to load eligible recipients for batch: ${recipientError.message}`)
+      }
+
+      const eligibleRecipientRows = (recipients ?? []) as NewsletterDeliveryBatchRecipientRow[]
+      const familyIds = Array.from(new Set(eligibleRecipientRows.map((recipient) => recipient.family_id)))
+      for (const familyId of familyIds) {
+        await enqueueSyncJob(supabase, {
+          familyId,
+          mappingId: null,
+          jobType: 'upsert_subscriber',
+          enqueueReason: 'newsletter_delivery_batch',
+          payload: {
+            source: 'newsletter_delivery_batch',
+            batch_id: batch.id,
+            family_id: familyId,
+          },
+        })
+      }
+
+      const { guardians, classes } = await this.loadGuardianInputs(eligibleRecipientRows)
+      const template = await this.resolveActiveTemplate()
+      const personalizationNewsletter = await this.buildNewsletterPersonalizationInput(newsletter)
+
+      const preparationJob = emailContentPreparationService.prepare({
+        rulesVersion: 'v1',
+        newsletter: personalizationNewsletter,
+        template,
+        classes,
+        guardians,
+        startedAt: new Date().toISOString(),
+        preparationJobId: `delivery-${batch.id}`,
+      })
+
+      await supabase
+        .from('newsletter_delivery_batches')
+        .update({
+          state: 'sending',
+          preparation_job_id: preparationJob.jobId,
+        })
+        .eq('id', batch.id)
+
+      const recipientsByGuardian = new Map(eligibleRecipientRows.map((recipient) => [recipient.id, recipient]))
+      for (const prepared of preparationJob.recipients) {
+        const row = recipientsByGuardian.get(prepared.guardianId)
+        if (!row) {
+          continue
+        }
+        const isDeliverable = prepared.status === 'ready' || prepared.status === 'warning'
+        const updates: Partial<NewsletterDeliveryBatchRecipientRow> = {
+          preparation_status: prepared.status,
+          send_status: isDeliverable ? 'sent' : 'failed',
+          prepared_payload: prepared.payload as unknown as Record<string, unknown>,
+          failure_reason: isDeliverable ? null : prepared.findings.find((finding) => finding.severity === 'error')?.message ?? 'preparation_failed',
+          provider_message_id: isDeliverable ? `local-${batch.id}-${row.family_id}-${row.parent_id ?? row.id}` : null,
+          provider_error: isDeliverable ? null : 'preparation_failed',
+          sent_at: isDeliverable ? new Date().toISOString() : null,
+          last_attempted_at: new Date().toISOString(),
+        }
+        await supabase
+          .from('newsletter_delivery_batch_recipients')
+          .update(updates)
+          .eq('id', row.id)
+      }
+
+      await this.updateBatchAggregateState(batch.id)
+    } catch (error) {
+      await supabase
+        .from('newsletter_delivery_batches')
+        .update({
+          state: 'failed',
+          metadata: {
+            last_error: error instanceof Error ? error.message : String(error),
+          },
+        })
+        .eq('id', batch.id)
+      throw error
+    }
+  }
+
+  private async createBatch(
+    newsletter: NewsletterRow,
+    trigger: 'publish' | 'resend',
+    audience: DeliveryAudienceSelection,
+    audienceSummary: DeliveryAudienceSummary & { recipients: DeliveryAudienceRecipient[] },
+    parentBatchId: string | null,
+  ): Promise<NewsletterDeliveryBatch> {
+    const supabase = getSupabaseClient()
+    const template = await this.resolveActiveTemplate()
+
+    const { data: batchRow, error: batchError } = await supabase
+      .from('newsletter_delivery_batches')
+      .insert({
+        newsletter_id: newsletter.id,
+        trigger,
+        audience_mode: audience.mode,
+        selected_class_ids: audience.classIds ?? [],
+        selected_family_ids: audience.mode === 'family'
+          ? (audience.familyId ? [audience.familyId] : [])
+          : (audience.familyIds ?? []),
+        parent_batch_id: parentBatchId,
+        state: 'queued',
+        pinned_newsletter_revision_id: newsletter.updated_at,
+        pinned_template_id: template?.templateId ?? null,
+        pinned_template_revision_id: template?.templateRevisionId ?? null,
+        recipient_snapshot_captured_at: new Date().toISOString(),
+        rules_version: 'v1',
+        total_recipients: audienceSummary.totalCandidates,
+        eligible_recipients: audienceSummary.eligibleCount,
+        invalid_recipients: audienceSummary.ineligibleCount,
+      })
+      .select('*')
+      .single()
+    if (batchError || !batchRow) {
+      throw new Error(`Failed to create delivery batch: ${batchError?.message ?? 'unknown error'}`)
+    }
+
+    const recipientRows = audienceSummary.recipients.map((recipient) => ({
+      batch_id: batchRow.id,
+      family_id: recipient.familyId,
+      parent_id: recipient.parentId,
+      parent_email: recipient.parentEmail,
+      guardian_email: null,
+      eligibility_status: recipient.eligibilityStatus,
+      preparation_status: recipient.eligibilityStatus === 'eligible' ? 'pending' : 'skipped',
+      send_status: recipient.eligibilityStatus === 'eligible' ? 'pending' : 'skipped',
+      failure_reason: recipient.eligibilityStatus === 'eligible' ? null : recipient.eligibilityReason,
+    }))
+
+    if (recipientRows.length > 0) {
+      const { error: recipientInsertError } = await supabase
+        .from('newsletter_delivery_batch_recipients')
+        .insert(recipientRows)
+      if (recipientInsertError) {
+        throw new Error(`Failed to create batch recipients: ${recipientInsertError.message}`)
+      }
+    }
+
+    return mapBatchRow(batchRow)
+  }
+
+  async previewAudience(selection?: DeliveryAudienceSelection): Promise<DeliveryAudienceSummary> {
+    const resolved = await this.resolveAudience(selection)
+    return {
+      selection: resolved.selection,
+      totalCandidates: resolved.totalCandidates,
+      eligibleCount: resolved.eligibleCount,
+      ineligibleCount: resolved.ineligibleCount,
+      candidateFamilyIds: resolved.candidateFamilyIds,
+      eligibleFamilyIds: resolved.eligibleFamilyIds,
+      ineligibleFamilyIds: resolved.ineligibleFamilyIds,
+    }
+  }
+
+  async createPublishBatch(request: PublishDeliveryRequest): Promise<NewsletterDeliveryBatch> {
+    const supabase = getSupabaseClient()
+    const { data: newsletter, error: newsletterError } = await supabase
+      .from('newsletters')
+      .select('*')
+      .eq('id', request.newsletterId)
+      .single()
+    if (newsletterError || !newsletter) {
+      throw new Error(`Failed to resolve newsletter for delivery: ${newsletterError?.message ?? 'not found'}`)
+    }
+
+    const audience = defaultAudienceSelection(request.audience)
+    const resolvedAudience = await this.resolveAudience(audience)
+    const batch = await this.createBatch(newsletter, 'publish', audience, resolvedAudience, null)
+    await this.processBatch(batch, newsletter)
+    return this.fetchBatch(batch.id)
+  }
+
+  async createResendBatch(request: ResendDeliveryRequest): Promise<NewsletterDeliveryBatch> {
+    const supabase = getSupabaseClient()
+    const { data: parentBatch, error: parentError } = await supabase
+      .from('newsletter_delivery_batches')
+      .select('*')
+      .eq('id', request.parentBatchId)
+      .single()
+    if (parentError || !parentBatch) {
+      throw new Error(`Failed to load parent delivery batch: ${parentError?.message ?? 'not found'}`)
+    }
+
+    const { data: priorRecipients, error: priorRecipientError } = await supabase
+      .from('newsletter_delivery_batch_recipients')
+      .select('family_id')
+      .eq('batch_id', request.parentBatchId)
+      .eq('eligibility_status', 'eligible')
+    if (priorRecipientError) {
+      throw new Error(`Failed to load resend candidate recipients: ${priorRecipientError.message}`)
+    }
+    const priorCandidateFamilyIds = (priorRecipients ?? []).map((recipient) => recipient.family_id)
+    const resolvedAudience = await this.resolveAudience(request.audience, {
+      constrainedFamilyIds: priorCandidateFamilyIds,
+    })
+
+    const { data: newsletter, error: newsletterError } = await supabase
+      .from('newsletters')
+      .select('*')
+      .eq('id', parentBatch.newsletter_id)
+      .single()
+    if (newsletterError || !newsletter) {
+      throw new Error(`Failed to load newsletter for resend batch: ${newsletterError?.message ?? 'not found'}`)
+    }
+
+    const batch = await this.createBatch(
+      newsletter,
+      'resend',
+      resolvedAudience.selection,
+      resolvedAudience,
+      parentBatch.id,
+    )
+    await this.processBatch(batch, newsletter)
+    return this.fetchBatch(batch.id)
+  }
+
+  async listBatchesForNewsletter(newsletterId: string): Promise<NewsletterDeliveryBatch[]> {
+    const supabase = getSupabaseClient()
+    const { data, error } = await supabase
+      .from('newsletter_delivery_batches')
+      .select('*')
+      .eq('newsletter_id', newsletterId)
+      .order('created_at', { ascending: false })
+    if (error) {
+      throw new Error(`Failed to load delivery batches: ${error.message}`)
+    }
+    return (data ?? []).map((row) => mapBatchRow(row as NewsletterDeliveryBatchRow))
+  }
+
+  async listBatchRecipients(batchId: string): Promise<NewsletterDeliveryRecipient[]> {
+    const supabase = getSupabaseClient()
+    const { data, error } = await supabase
+      .from('newsletter_delivery_batch_recipients')
+      .select('*')
+      .eq('batch_id', batchId)
+      .order('created_at', { ascending: true })
+    if (error) {
+      throw new Error(`Failed to load delivery batch recipients: ${error.message}`)
+    }
+    return (data ?? []).map((row) => mapRecipientRow(row as NewsletterDeliveryBatchRecipientRow))
+  }
+
+  async fetchBatch(batchId: string): Promise<NewsletterDeliveryBatch> {
+    const supabase = getSupabaseClient()
+    const { data, error } = await supabase
+      .from('newsletter_delivery_batches')
+      .select('*')
+      .eq('id', batchId)
+      .single()
+    if (error || !data) {
+      throw new Error(`Failed to load delivery batch: ${error?.message ?? 'not found'}`)
+    }
+    return mapBatchRow(data)
+  }
+}
+
+export const newsletterDeliveryService = new NewsletterDeliveryService()

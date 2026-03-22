@@ -1,6 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { adminService } from '@/services/adminService'
 
+const {
+  mockCreatePublishBatch,
+  mockCreateResendBatch,
+  mockListDeliveryBatches,
+  mockPreviewAudience,
+} = vi.hoisted(() => ({
+  mockCreatePublishBatch: vi.fn(),
+  mockCreateResendBatch: vi.fn(),
+  mockListDeliveryBatches: vi.fn(),
+  mockPreviewAudience: vi.fn(),
+}))
+
 // Mock Supabase client
 const mockBuilder = {
   select: vi.fn().mockReturnThis(),
@@ -36,6 +48,15 @@ vi.mock('@/services/articleMediaManager', () => ({
   },
 }))
 
+vi.mock('@/services/newsletterDeliveryService', () => ({
+  newsletterDeliveryService: {
+    createPublishBatch: mockCreatePublishBatch,
+    createResendBatch: mockCreateResendBatch,
+    listBatchesForNewsletter: mockListDeliveryBatches,
+    previewAudience: mockPreviewAudience,
+  },
+}))
+
 describe('AdminService', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -48,6 +69,44 @@ describe('AdminService', () => {
     // Reset default response
     mockBuilder.then.mockImplementation((resolve) => resolve({ data: [], error: null }))
     mockSupabase.rpc.mockResolvedValue({ data: null, error: null })
+    mockCreatePublishBatch.mockResolvedValue({
+      id: 'batch-1',
+      trigger: 'publish',
+      audienceMode: 'all',
+      state: 'completed',
+      parentBatchId: null,
+      totalRecipients: 1,
+      eligibleRecipients: 1,
+      readyRecipients: 1,
+      sentRecipients: 1,
+      failedRecipients: 0,
+      invalidRecipients: 0,
+      createdAt: '2026-01-01T00:00:00Z',
+    })
+    mockCreateResendBatch.mockResolvedValue({
+      id: 'batch-2',
+      trigger: 'resend',
+      audienceMode: 'all',
+      state: 'completed',
+      parentBatchId: 'batch-1',
+      totalRecipients: 1,
+      eligibleRecipients: 1,
+      readyRecipients: 1,
+      sentRecipients: 1,
+      failedRecipients: 0,
+      invalidRecipients: 0,
+      createdAt: '2026-01-02T00:00:00Z',
+    })
+    mockListDeliveryBatches.mockResolvedValue([])
+    mockPreviewAudience.mockResolvedValue({
+      selection: { mode: 'all' },
+      totalCandidates: 1,
+      eligibleCount: 1,
+      ineligibleCount: 0,
+      candidateFamilyIds: ['family-1'],
+      eligibleFamilyIds: ['family-1'],
+      ineligibleFamilyIds: [],
+    })
   })
 
   describe('fetchNewsletters', () => {
@@ -212,6 +271,33 @@ describe('AdminService', () => {
       expect(mockBuilder.update).toHaveBeenCalledWith(expect.objectContaining({
         status: 'published',
       }))
+    })
+
+    it('publishNewsletterWithDelivery creates publish-triggered delivery batch', async () => {
+      const mockArticleResponse = { data: [{ article_id: 'article-1' }], error: null }
+      const mockUpdateResponse = {
+        data: {
+          id: 'newsletter-1',
+          week_number: '2025-W01',
+          title: 'Week 1 Newsletter',
+          release_date: '2025-01-01',
+          status: 'published',
+          published_at: '2025-01-01T12:00:00Z',
+          created_at: '2025-01-01',
+          updated_at: '2025-01-01',
+        },
+        error: null,
+      }
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve(mockArticleResponse))
+        .mockImplementationOnce((resolve) => resolve(mockUpdateResponse))
+
+      await adminService.publishNewsletterWithDelivery('newsletter-1', { mode: 'classes', classIds: ['A1'] })
+
+      expect(mockCreatePublishBatch).toHaveBeenCalledWith({
+        newsletterId: 'newsletter-1',
+        audience: { mode: 'classes', classIds: ['A1'] },
+      })
     })
   })
 

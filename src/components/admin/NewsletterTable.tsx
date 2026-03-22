@@ -404,7 +404,7 @@ export function NewsletterTable({
                       >
                         編輯模板
                       </button>
-                    ) : newsletter.status === 'draft' && (
+                    ) : (
                       <>
                         <button
                           onClick={() => onEdit?.(newsletter.id)}
@@ -412,24 +412,28 @@ export function NewsletterTable({
                           data-testid={`edit-btn-${newsletter.id}`}
                           disabled={!onEdit}
                         >
-                          編輯
+                          {newsletter.status === 'draft' ? '編輯' : '查看'}
                         </button>
-                        <button
-                          onClick={() => onPublish?.(newsletter.id)}
-                          className="px-3 py-1.5 bg-waldorf-sage-100 text-waldorf-sage-700 text-xs font-medium rounded-lg hover:bg-waldorf-sage-200 transition-all duration-200 disabled:opacity-50"
-                          data-testid={`publish-btn-${newsletter.id}`}
-                          disabled={!onPublish}
-                        >
-                          發布
-                        </button>
-                        <button
-                          onClick={() => onCreateTemplate?.(newsletter.id)}
-                          className="px-3 py-1.5 bg-white border border-waldorf-peach-200 text-waldorf-peach-700 text-xs font-medium rounded-lg hover:bg-waldorf-peach-50 transition-all duration-200 disabled:opacity-50"
-                          data-testid={`template-btn-${newsletter.id}`}
-                          disabled={!onCreateTemplate}
-                        >
-                          建立模板
-                        </button>
+                        {newsletter.status === 'draft' && (
+                          <>
+                            <button
+                              onClick={() => onPublish?.(newsletter.id)}
+                              className="px-3 py-1.5 bg-waldorf-sage-100 text-waldorf-sage-700 text-xs font-medium rounded-lg hover:bg-waldorf-sage-200 transition-all duration-200 disabled:opacity-50"
+                              data-testid={`publish-btn-${newsletter.id}`}
+                              disabled={!onPublish}
+                            >
+                              發布
+                            </button>
+                            <button
+                              onClick={() => onCreateTemplate?.(newsletter.id)}
+                              className="px-3 py-1.5 bg-white border border-waldorf-peach-200 text-waldorf-peach-700 text-xs font-medium rounded-lg hover:bg-waldorf-peach-50 transition-all duration-200 disabled:opacity-50"
+                              data-testid={`template-btn-${newsletter.id}`}
+                              disabled={!onCreateTemplate}
+                            >
+                              建立模板
+                            </button>
+                          </>
+                        )}
                       </>
                     )}
                     {!newsletter.isTemplate && newsletter.status !== 'draft' && (

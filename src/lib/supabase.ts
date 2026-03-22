@@ -16,6 +16,8 @@ import type {
   EmailPlatformWebhookEventRow,
   FamilyEnrollmentRow,
   FamilyRow,
+  NewsletterDeliveryBatchRecipientRow,
+  NewsletterDeliveryBatchRow,
   NewsletterArticleRow,
   NewsletterRow,
   StudentRow,
@@ -198,6 +200,8 @@ export interface DatabaseTables {
   email_platform_sync_jobs: EmailPlatformSyncJobRow
   email_platform_webhook_events: EmailPlatformWebhookEventRow
   email_platform_subscription_audit: EmailPlatformSubscriptionAuditRow
+  newsletter_delivery_batches: NewsletterDeliveryBatchRow
+  newsletter_delivery_batch_recipients: NewsletterDeliveryBatchRecipientRow
 }
 
 /**

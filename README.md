@@ -866,6 +866,14 @@ HAVING COUNT(*) > 5;
 #### Q: Can I export audit logs?
 **A**: Yes! CSV export in Admin Dashboard → Audit Logs tab.
 
+### Newsletter Delivery Operations
+
+- **Publish default behavior**: Publishing a valid draft now starts a delivery batch with default audience mode `all` (all currently eligible families).
+- **Audience override before publish**: In the admin publish panel, operators can switch audience mode to `classes`, `families`, or `family` and review the resolved candidate/eligible counts before confirming publish.
+- **Partial success handling**: Recipient preparation and send are tracked per family. Invalid recipients are marked with explicit reasons and do not block eligible recipients from sending.
+- **Resend procedure**: From a prior batch with failures, create a resend batch. Resend candidates are constrained to prior eligible recipients and re-validated against current family activity/subscription/enrollment status before handoff.
+- **Operator review surface**: Admin workflow shows delivery batch history (state and aggregate counts) so teams can identify partial failures and trigger targeted resend actions.
+
 ### Complete Documentation
 
 Comprehensive documentation is available:

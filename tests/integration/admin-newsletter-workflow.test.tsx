@@ -12,12 +12,15 @@ vi.mock('@/services/adminService', () => ({
     getAvailableArticlesByNewsletterId: vi.fn(),
     getNewsletterPublishReadiness: vi.fn(),
     fetchClasses: vi.fn(),
+    fetchFamilies: vi.fn(),
+    fetchNewsletterDeliveryBatches: vi.fn(),
     reorderArticlesInNewsletterById: vi.fn(),
     updateArticleTargetingInNewsletterById: vi.fn(),
     addArticleToNewsletterById: vi.fn(),
     removeArticleFromNewsletterById: vi.fn(),
     createArticleForNewsletter: vi.fn(),
-    publishNewsletter: vi.fn(),
+    publishNewsletterWithDelivery: vi.fn(),
+    createNewsletterResendBatch: vi.fn(),
     archiveNewsletter: vi.fn(),
   },
   AdminServiceError: class extends Error {},
@@ -50,6 +53,9 @@ type FetchNewsletterResult = Awaited<ReturnType<typeof adminService.fetchNewslet
 type FetchArticlesByNewsletterIdResult = Awaited<ReturnType<typeof adminService.fetchArticlesByNewsletterId>>
 type AvailableArticlesResult = Awaited<ReturnType<typeof adminService.getAvailableArticlesByNewsletterId>>
 type FetchClassesResult = Awaited<ReturnType<typeof adminService.fetchClasses>>
+type FetchFamiliesResult = Awaited<ReturnType<typeof adminService.fetchFamilies>>
+type FetchNewsletterDeliveryBatchesResult = Awaited<ReturnType<typeof adminService.fetchNewsletterDeliveryBatches>>
+type CreateNewsletterResendBatchResult = Awaited<ReturnType<typeof adminService.createNewsletterResendBatch>>
 type ArchiveNewsletterResult = Awaited<ReturnType<typeof adminService.archiveNewsletter>>
 
 const MockInlineEditorRoute = () => {
@@ -169,6 +175,18 @@ describe('Admin newsletter workflow page', () => {
     vi.mocked(adminService.fetchClasses).mockResolvedValue([
       { id: 'A1', name: 'A1', description: '', studentIds: [], teacherIds: [], createdAt: '', updatedAt: '' },
     ] as FetchClassesResult)
+    vi.mocked(adminService.fetchFamilies).mockResolvedValue([
+      {
+        id: 'family-1',
+        familyName: 'Family One',
+        parentIds: [],
+        childIds: [],
+        status: 'active',
+        createdAt: '',
+        updatedAt: '',
+      },
+    ] as FetchFamiliesResult)
+    vi.mocked(adminService.fetchNewsletterDeliveryBatches).mockResolvedValue([] as FetchNewsletterDeliveryBatchesResult)
     vi.mocked(adminService.reorderArticlesInNewsletterById).mockResolvedValue()
     vi.mocked(adminService.updateArticleTargetingInNewsletterById).mockResolvedValue()
     vi.mocked(adminService.addArticleToNewsletterById).mockResolvedValue({
@@ -177,10 +195,24 @@ describe('Admin newsletter workflow page', () => {
       article_id: 'article-3',
       article_order: 3,
     })
-    vi.mocked(adminService.publishNewsletter).mockImplementation(async () => {
+    vi.mocked(adminService.publishNewsletterWithDelivery).mockImplementation(async () => {
       currentWeekNewsletter = { ...publishedNewsletter }
       return currentWeekNewsletter
     })
+    vi.mocked(adminService.createNewsletterResendBatch).mockResolvedValue({
+      id: 'batch-2',
+      trigger: 'resend',
+      audienceMode: 'all',
+      state: 'completed',
+      parentBatchId: 'batch-1',
+      totalRecipients: 1,
+      eligibleRecipients: 1,
+      readyRecipients: 1,
+      sentRecipients: 1,
+      failedRecipients: 0,
+      invalidRecipients: 0,
+      createdAt: '2025-11-30T10:00:00Z',
+    } as CreateNewsletterResendBatchResult)
     vi.mocked(adminService.archiveNewsletter).mockImplementation(async () => {
       currentWeekNewsletter = { ...archivedNewsletter }
       return currentWeekNewsletter
@@ -256,7 +288,7 @@ describe('Admin newsletter workflow page', () => {
     fireEvent.click(await screen.findByRole('button', { name: '發布電子報' }))
 
     await waitFor(() => {
-      expect(adminService.publishNewsletter).toHaveBeenCalledWith('newsletter-1')
+      expect(adminService.publishNewsletterWithDelivery).toHaveBeenCalledWith('newsletter-1', { mode: 'all' })
       expect(screen.getByRole('button', { name: '封存電子報' })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: '發布電子報' })).not.toBeInTheDocument()
     })

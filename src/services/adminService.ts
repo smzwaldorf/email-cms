@@ -14,6 +14,7 @@ import type { PostgrestError } from '@supabase/supabase-js'
 
 import { getSupabaseClient } from '@/lib/supabase'
 import { articleMediaManager } from '@/services/articleMediaManager'
+import { newsletterDeliveryService } from '@/services/newsletterDeliveryService'
 import {
   type AccessControlRole as ResolverRole,
   resolveAccessControl,
@@ -28,7 +29,9 @@ import type {
   AdminUser,
   ParentStudentRelationship,
   NewsletterFilterOptions,
+  NewsletterPublishAudienceSelection,
   NewsletterPublishReadiness,
+  NewsletterDeliveryBatchSummary,
   ArticleCategory,
   ArticleTag,
   ArticleRevision,
@@ -38,6 +41,7 @@ import type {
   BulkPermissionApplyResult,
   AccessControlLogEntry,
 } from '@/types/admin'
+import type { DeliveryAudienceSelection } from '@/types/emailDelivery'
 import type {
   ArticleAuditLogRow,
   ArticleRow,
@@ -1491,7 +1495,10 @@ class AdminService {
     }
   }
 
-  async getNewsletterPublishReadiness(id: string): Promise<NewsletterPublishReadiness> {
+  async getNewsletterPublishReadiness(
+    id: string,
+    audienceSelection?: NewsletterPublishAudienceSelection,
+  ): Promise<NewsletterPublishReadiness> {
     const newsletter = await this.fetchNewsletter(id)
     const articles = await this.fetchArticlesByNewsletterId(id)
     const issues: string[] = []
@@ -1508,9 +1515,30 @@ class AdminService {
       issues.push('已封存的電子報無法直接發布')
     }
 
+    let audienceSummary: NewsletterPublishReadiness['audienceSummary'] | undefined
+    try {
+      const preview = await newsletterDeliveryService.previewAudience(
+        (audienceSelection ?? { mode: 'all' }) as DeliveryAudienceSelection,
+      )
+      audienceSummary = {
+        mode: preview.selection.mode,
+        totalCandidates: preview.totalCandidates,
+        eligibleCount: preview.eligibleCount,
+        ineligibleCount: preview.ineligibleCount,
+        selectedClassIds: preview.selection.classIds ?? [],
+        selectedFamilyIds: preview.selection.mode === 'family'
+          ? (preview.selection.familyId ? [preview.selection.familyId] : [])
+          : (preview.selection.familyIds ?? []),
+      }
+    } catch (err) {
+      // Keep readiness checks non-blocking if delivery preview fails.
+      console.warn('Failed to resolve publish audience preview:', err)
+    }
+
     return {
       canPublish: issues.length === 0,
       issues,
+      audienceSummary,
     }
   }
 
@@ -1703,6 +1731,81 @@ class AdminService {
         'PUBLISH_NEWSLETTER_ERROR',
         err
       )
+    }
+  }
+
+  async publishNewsletterWithDelivery(
+    id: string,
+    audienceSelection?: NewsletterPublishAudienceSelection,
+  ): Promise<AdminNewsletter> {
+    const updatedNewsletter = await this.publishNewsletter(id)
+
+    const selection: DeliveryAudienceSelection = (audienceSelection ?? { mode: 'all' }) as DeliveryAudienceSelection
+    await newsletterDeliveryService.createPublishBatch({
+      newsletterId: id,
+      audience: selection,
+    })
+
+    return updatedNewsletter
+  }
+
+  async previewNewsletterPublishAudience(
+    audienceSelection?: NewsletterPublishAudienceSelection,
+  ): Promise<NewsletterPublishReadiness['audienceSummary']> {
+    const preview = await newsletterDeliveryService.previewAudience(
+      (audienceSelection ?? { mode: 'all' }) as DeliveryAudienceSelection,
+    )
+    return {
+      mode: preview.selection.mode,
+      totalCandidates: preview.totalCandidates,
+      eligibleCount: preview.eligibleCount,
+      ineligibleCount: preview.ineligibleCount,
+      selectedClassIds: preview.selection.classIds ?? [],
+      selectedFamilyIds: preview.selection.mode === 'family'
+        ? (preview.selection.familyId ? [preview.selection.familyId] : [])
+        : (preview.selection.familyIds ?? []),
+    }
+  }
+
+  async fetchNewsletterDeliveryBatches(newsletterId: string): Promise<NewsletterDeliveryBatchSummary[]> {
+    const batches = await newsletterDeliveryService.listBatchesForNewsletter(newsletterId)
+    return batches.map((batch) => ({
+      id: batch.id,
+      trigger: batch.trigger,
+      audienceMode: batch.audienceMode,
+      state: batch.state,
+      parentBatchId: batch.parentBatchId,
+      totalRecipients: batch.totalRecipients,
+      eligibleRecipients: batch.eligibleRecipients,
+      readyRecipients: batch.readyRecipients,
+      sentRecipients: batch.sentRecipients,
+      failedRecipients: batch.failedRecipients,
+      invalidRecipients: batch.invalidRecipients,
+      createdAt: batch.createdAt,
+    }))
+  }
+
+  async createNewsletterResendBatch(
+    parentBatchId: string,
+    audienceSelection?: NewsletterPublishAudienceSelection,
+  ): Promise<NewsletterDeliveryBatchSummary> {
+    const batch = await newsletterDeliveryService.createResendBatch({
+      parentBatchId,
+      audience: audienceSelection ? (audienceSelection as DeliveryAudienceSelection) : undefined,
+    })
+    return {
+      id: batch.id,
+      trigger: batch.trigger,
+      audienceMode: batch.audienceMode,
+      state: batch.state,
+      parentBatchId: batch.parentBatchId,
+      totalRecipients: batch.totalRecipients,
+      eligibleRecipients: batch.eligibleRecipients,
+      readyRecipients: batch.readyRecipients,
+      sentRecipients: batch.sentRecipients,
+      failedRecipients: batch.failedRecipients,
+      invalidRecipients: batch.invalidRecipients,
+      createdAt: batch.createdAt,
     }
   }
 
