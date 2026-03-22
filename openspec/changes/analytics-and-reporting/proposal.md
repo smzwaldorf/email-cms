@@ -5,7 +5,7 @@ The CMS can send newsletter content, but it does not yet provide a trusted, firs
 ## What Changes
 
 - Add engagement event tracking contracts for opens (tracking pixel) and clicks (redirect links) with reliable event attribution to newsletter send context.
-- Add analytics aggregation workflows that compute dashboard-ready metrics for campaign, class, and period-level performance.
+- Add analytics aggregation workflows that compute dashboard-ready metrics for campaign, class, article, and period-level performance.
 - Add report export capability (CSV/Excel-compatible) with filtering and privacy-safe field handling for operational review.
 - Define data sync expectations for importing provider-side engagement events and reconciling gaps in local analytics records.
 - Define retention and governance rules so analytics data remains useful while respecting data minimization and audit needs.
@@ -24,4 +24,4 @@ The CMS can send newsletter content, but it does not yet provide a trusted, firs
 - Affected systems: send tracking links/pixels, analytics storage, reporting services, and admin-facing analytics UI/export workflows.
 - Affected interfaces: tracking endpoint contracts, metric aggregation interfaces, export generation interfaces, and third-party sync adapters.
 - Operational impact: additional monitoring for event ingestion lag, reconciliation failures, and export job runtime/errors.
-- Data impact: new engagement event records, aggregate snapshots/materialized views, and export audit metadata with defined retention windows.
+- Data impact: new open/click event records, attribution/index metadata, article-level aggregate snapshots/materialized views, and export audit metadata with defined retention windows.

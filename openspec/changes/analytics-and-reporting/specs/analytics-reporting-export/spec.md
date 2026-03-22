@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
-### Requirement: System SHALL provide dashboard-ready engagement metrics by campaign, class, and period
-The system SHALL compute and expose aggregated analytics metrics (send count, unique opens, open rate, unique clicks, click-through rate, unsubscribe rate) with filtering by newsletter campaign, class segment, and date range.
+### Requirement: System SHALL provide dashboard-ready engagement metrics by campaign, class, article, and period
+The system SHALL compute and expose aggregated analytics metrics (send count, unique opens, open rate, unique clicks, click-through rate, unsubscribe rate) with filtering by newsletter campaign, class segment, article segment, and date range.
 
 #### Scenario: Operator views campaign analytics
 - **WHEN** an operator requests metrics for a selected campaign/date range

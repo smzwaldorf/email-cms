@@ -1,7 +1,7 @@
 # Email Newsletter CMS - 未來開發計畫（進度追蹤）
 
 **狀態**: 🔄 進行中（Phase 2-4 並行開發）
-**最後更新**: 2026-03-19
+**最後更新**: 2026-03-20
 
 > 📖 **詳細說明與 User Stories**：請參閱 [`FUTURE-PLANS-DETAILS.md`](./FUTURE-PLANS-DETAILS.md)
 > 📝 **原始需求**：請參閱 [`requirements.md`](./requirements.md)
@@ -15,12 +15,12 @@
 - [x] **002-database-structure** - 資料庫架構（44 個任務完成，100%）
 - [x] **003-passwordless-auth** - 無密碼認證系統（64 個任務完成，100%）
 
-### SpecKit 規劃進度（2/6 完成）
+### SpecKit / OpenSpec 規劃進度（5/6 完成）
 - [x] 富文本內容編輯器 (P1)
-- [ ] 個人化郵件系統 (P1)
-- [ ] 第三方郵件平台 API 整合 (P2)
+- [x] 個人化郵件系統 (P1)
+- [x] 第三方郵件平台 API 整合 (P2)
 - [x] 分析與報表 (P2)
-- [ ] 模板管理 (P2)
+- [x] 模板管理 (P2)
 - [ ] 進階權限管理 (P2)
 
 ### 實作階段進度（5/7 進行中）
@@ -35,7 +35,7 @@
   - 進行中：內容管理介面、權限控制 UI 完善、細部營運流程打磨
   - 分支：`005-admin-dashboard`
 - [x] 階段 4：分析與報表（核心功能已落地）
-- [ ] 階段 5：郵件整合 + 個人化（優先順序 3）
+- 🔄 階段 5：郵件整合 + 個人化（核心能力已落地，平台整合持續中）
 - [x] 階段 6A：媒體管理（已整合進編輯器與管理後台）
 - [ ] 階段 6B：優化與潤飾（持續進行）
 
@@ -214,19 +214,20 @@
 
 ---
 
-## 5️⃣ 郵件整合 + 個人化 (優先順序 3) - 計劃中
+## 5️⃣ 郵件整合 + 個人化 (優先順序 3) - 進行中
 
 ### SpecKit 工作流
-- [ ] 已使用 `/speckit.specify` 創建功能規格
-- [ ] 已使用 `/speckit.plan` 完成技術設計
-- [ ] 已使用 `/speckit.tasks` 生成實作任務
+- [x] 已使用 OpenSpec/Speckit 流程創建個人化能力規格
+- [x] 已完成個人化組合邏輯與模板版本 pinning 實作
+- [x] 已補上整合測試覆蓋（版本穩定性、模板欄位）
 
 ### 核心功能
-- [ ] 班級內容區塊系統
-- [ ] 多子女郵件合併邏輯
-- [ ] 郵件模板引擎
+- [x] 班級內容區塊系統
+- [x] 多子女郵件合併邏輯
+- [x] CMS 郵件模板引擎（管理主旨/內文模板與變數）
+- [x] 模板版本管理（版本建立、選擇與 pinning）
 - [ ] 唯一追蹤 URL 生成
-- [ ] Kit Email Platform（ConvertKit）API 整合
+- [x] Kit Email Platform（ConvertKit）API 整合
 - [ ] Webhook 接收（訂閱/退訂事件處理）
 
 ---
@@ -246,18 +247,18 @@
 
 ---
 
-## 7️⃣ 模板管理 (P2)
+## ✅ 7️⃣ 模板管理 (P2) - 核心能力已實作
 
 ### SpecKit 工作流
-- [ ] 已使用 `/speckit.specify` 創建功能規格
-- [ ] 已使用 `/speckit.plan` 完成技術設計
-- [ ] 已使用 `/speckit.tasks` 生成實作任務
+- [x] 已使用 OpenSpec/Speckit 工作流完成規格與任務拆解
+- [x] 已完成技術設計與資料模型落地
+- [x] 已完成主要任務、驗證與修訂（含 save-time token validation）
 
 ### 核心功能
-- [ ] 週報模板系統
-- [ ] 模板複製工作流
-- [ ] 固定內容區域（每週一句善話）
-- [ ] 模板版本管理
+- [x] 郵件模板清單與編輯流程（建立/編輯/複製/刪除）
+- [x] 模板變數白名單與 save-time 驗證
+- [x] 模板預覽（deterministic preview + missing-value warnings）
+- [x] 模板版本管理與發送流程 pinning
 
 ---
 
@@ -341,7 +342,8 @@
 
 ### 階段 3：郵件整合 + 個人化（4-6 週）
 - [ ] 郵件服務整合（SendGrid API）
-- [ ] Kit Email Platform API 整合（ConvertKit）
+- [x] Kit Email Platform API 整合（ConvertKit）
+- [ ] 以 CMS 模板版本執行發送（publish 時 pin template revision）
 - [ ] 用戶自定義欄位同步（班級關聯資料）
 - [ ] 個人化內容生成邏輯
 - [ ] 多子女郵件合併演算法

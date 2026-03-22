@@ -165,3 +165,4 @@ export * from './database';
 // Re-export all admin types from admin.ts
 export * from './admin';
 export * from './personalization';
+export * from './emailTemplate';

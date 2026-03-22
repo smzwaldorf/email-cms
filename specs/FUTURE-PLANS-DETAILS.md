@@ -1,6 +1,6 @@
 # Email Newsletter CMS - 未來開發計畫詳細說明
 
-**最後更新**: 2026-03-19
+**最後更新**: 2026-03-20
 **版本**: 2.2
 
 > 📋 **進度追蹤**：請參閱 [`FUTURE-PLANS.md`](./FUTURE-PLANS.md)
@@ -307,13 +307,15 @@ Email Newsletter CMS 系統是一個整合的內容管理與電子報發送平�
 - **多子女合併**：一個家長有多個孩子時，只收到一封郵件
 - **動態內容生成**：根據家長的孩子班級動態組合郵件內容
 - **唯一追蹤 URL**：每封郵件包含唯一 token 用於追蹤和身份識別
-- **模板系統**：可重複使用的郵件模板（HTML + 動態變數）
+- **模板系統（改為 CMS 內部管理）**：
+  - CMS：管理主旨/內文模板、Token 驗證、預覽、版本與啟用狀態
+  - 發送時：固定使用被 pin 的 template revision，避免後續修改影響既有批次
 - **Kit Email Platform（ConvertKit）API 整合**：訂閱者管理與自定義欄位同步
 - **Webhook 處理**：接收訂閱、退訂、自定義欄位更新等事件
 
 **技術考量**：
 - 郵件服務商：SendGrid（推薦）、Mailchimp、AWS SES
-- 模板引擎：Handlebars、EJS
+- 模板渲染：由 CMS 依 template revision 完成渲染，再交由平台送出
 - 批量發送邏輯：避免重複查詢，優化資料庫效能
 - 追蹤機制：開信追蹤（Tracking Pixel）、點擊追蹤（Redirect URL）
 - **API 選擇與自定義欄位設計**：
@@ -436,17 +438,17 @@ Email Newsletter CMS 系統是一個整合的內容管理與電子報發送平�
 
 ---
 
-### 郵件服務：SendGrid / Mailchimp
+### 郵件平台：Kit（ConvertKit）
 
 **理由**：
-- 內建追蹤功能（開信率、點擊率）
-- 提供模板管理與 WYSIWYG 編輯器
-- 高送達率（Deliverability）與信譽管理
-- 豐富的 API 與 Webhook 支援
+- 已有訂閱者同步與 Webhook 基礎能力
+- 可承接 CMS 已渲染完成的郵件內容，專注在名單與發送營運
+- 發送與名單運營能力成熟，適合營運側日常操作
+- 與 CMS 內部模板管理並行，降低模板資料分散風險
 
 **替代方案**：
-- AWS SES：成本更低，但需自建追蹤系統
-- Postmark：適合交易型郵件，行銷功能較弱
+- SendGrid：彈性高但需額外整合既有流程
+- AWS SES：成本更低，但需自建追蹤與營運工具
 
 ---
 
@@ -665,7 +667,7 @@ interface Analytics {
 /speckit.specify 郵件整合與個人化
 ```
 - 預估：4-6 週
-- 關鍵功能：班級內容區塊、多子女合併、模板系統、API 整合
+- 關鍵功能：班級內容區塊、多子女合併、CMS 模板版本管理、API 整合
 
 **優先順序 3️⃣：模板管理**
 ```bash

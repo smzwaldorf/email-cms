@@ -4,6 +4,7 @@ export type PersonalizationWarningCode =
   | 'missing_class_mapping'
   | 'inconsistent_membership'
   | 'unknown_target_class'
+  | 'missing_template_value'
 
 export interface PersonalizationInputClass {
   id: string
@@ -44,6 +45,13 @@ export interface PersonalizationInputNewsletter {
   classBlocks: PersonalizationClassBlock[]
 }
 
+export interface PersonalizationInputTemplate {
+  templateId: string
+  templateRevisionId: string
+  subjectTemplate: string
+  bodyTemplate: string
+}
+
 export interface PersonalizationSnapshot {
   capturedAt: string
   guardians: PersonalizationInputGuardian[]
@@ -70,6 +78,10 @@ export interface PersonalizedEmailPayload {
   classBlocks: PersonalizedEmailResolvedBlock[]
   resolvedClassIds: string[]
   classFallback: 'none' | 'no_eligible_class_blocks'
+  templateId?: string
+  templateRevisionId?: string
+  renderedSubject?: string
+  renderedBody?: string
 }
 
 export interface PersonalizationWarning {
@@ -82,6 +94,7 @@ export interface PersonalizationWarning {
 export interface ComposePersonalizedEmailInput {
   rulesVersion: PersonalizationRuleVersion
   newsletter: PersonalizationInputNewsletter
+  template?: PersonalizationInputTemplate
   classes: PersonalizationInputClass[]
   guardians: PersonalizationInputGuardian[]
   snapshotCapturedAt?: string

@@ -31,6 +31,7 @@ interface SimpleEditorProps {
   content?: string // Can be TipTap JSON string or HTML
   contentType?: 'html' | 'json' // Specify content format
   onChange?: (content: string, format: 'html') => void // Always output HTML
+  onEditorReady?: (editor: ReturnType<typeof useEditor>) => void
   placeholder?: string
   className?: string
   articleId?: string // Optional article ID for media associations
@@ -85,6 +86,7 @@ export function SimpleEditor({
   content = '',
   contentType = 'html',
   onChange,
+  onEditorReady,
   placeholder = '輸入文章內容...',
   className = '',
   articleId,
@@ -173,6 +175,12 @@ export function SimpleEditor({
       onChange?.(editor.getHTML(), 'html')
     },
   })
+
+  useEffect(() => {
+    if (editor) {
+      onEditorReady?.(editor)
+    }
+  }, [editor, onEditorReady])
 
   // Update editor editable state when readOnly prop changes
   useEffect(() => {

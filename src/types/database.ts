@@ -31,6 +31,31 @@ export interface NewsletterRow {
   updated_at: string; // TIMESTAMP WITH TIME ZONE
 }
 
+// ============================================================================
+// Email templates (郵件模板)
+// ============================================================================
+
+export interface EmailTemplateRow {
+  id: string;
+  name: string;
+  description?: string | null;
+  state: 'draft' | 'active' | 'inactive';
+  current_revision_id?: string | null;
+  created_at: string;
+  updated_at: string;
+  deactivated_at?: string | null;
+}
+
+export interface EmailTemplateRevisionRow {
+  id: string;
+  template_id: string;
+  revision_number: number;
+  subject_template: string;
+  body_template: string;
+  created_at: string;
+  created_by?: string | null;
+}
+
 /** @deprecated Use NewsletterRow instead */
 export type NewsletterWeekRow = NewsletterRow;
 

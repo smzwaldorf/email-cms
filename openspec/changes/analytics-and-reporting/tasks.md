@@ -1,8 +1,9 @@
 ## 1. Tracking and Data Foundations
 
-- [ ] 1.1 Add database schema and TypeScript types for engagement event ledger, quality classification metadata, export jobs, and reconciliation discrepancies.
+- [ ] 1.1 Add database schema and TypeScript types for engagement event ledger (open/click + attribution fields), article-level daily rollups, quality classification metadata, export jobs, and reconciliation discrepancies.
 - [ ] 1.2 Implement tracking token contracts and validation utilities for open pixel and tracked click endpoints.
 - [ ] 1.3 Add persistence/repository layer methods for idempotent event writes and duplicate detection using deterministic idempotency keys.
+- [ ] 1.4 Define and apply index/retention strategy for raw events and rollups (ingestion, reporting, and cleanup jobs).
 
 ## 2. Engagement Ingestion and Qualification
 
@@ -12,7 +13,7 @@
 
 ## 3. Aggregation, Dashboard Query, and Freshness
 
-- [ ] 3.1 Implement asynchronous rollup jobs for campaign/class/date aggregates (send count, unique opens/clicks, rates, unsubscribe rate).
+- [ ] 3.1 Implement asynchronous rollup jobs for campaign/class/article/date aggregates (send count, unique opens/clicks, rates, unsubscribe rate).
 - [ ] 3.2 Implement analytics query services/APIs that return aggregated metrics plus freshness metadata (`last_ingested_at`, `last_rollup_at`, lag status).
 - [ ] 3.3 Implement stale-data signaling when freshness thresholds are exceeded.
 

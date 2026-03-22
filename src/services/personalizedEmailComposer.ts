@@ -9,6 +9,7 @@ import type {
   PersonalizationWarning,
   PersonalizedEmailResolvedBlock,
 } from '@/types/personalization'
+import { renderEmailTemplatePreview } from '@/services/emailTemplateTokens'
 
 const DEFAULT_RULES_VERSION = 'v1'
 
@@ -259,6 +260,51 @@ export function composePersonalizedEmails(
     const resolvedSharedBlocks = sharedBlocks.map((block) =>
       toResolvedBlock(block, resolveBlockKey(block)),
     )
+    let renderedSubject: string | undefined
+    let renderedBody: string | undefined
+    let templateId: string | undefined
+    let templateRevisionId: string | undefined
+
+    if (input.template) {
+      const preview = renderEmailTemplatePreview(
+        input.template.subjectTemplate,
+        input.template.bodyTemplate,
+        {
+          guardian: {
+            id: guardian.guardianId,
+            email: guardian.guardianEmail,
+          },
+          family: {
+            id: guardian.familyId ?? null,
+          },
+          newsletter: {
+            id: input.newsletter.newsletterId,
+            revisionId: input.newsletter.newsletterRevisionId,
+          },
+          classes: {
+            ids: eligibleClassIds,
+          },
+        },
+      )
+      renderedSubject = preview.subject
+      renderedBody = preview.body
+      templateId = input.template.templateId
+      templateRevisionId = input.template.templateRevisionId
+
+      for (const warning of preview.warnings) {
+        warnings.push({
+          code: 'missing_template_value',
+          guardianId: guardian.guardianId,
+          message: warning.message,
+          details: {
+            token: warning.token,
+            field: warning.field,
+            templateId,
+            templateRevisionId,
+          },
+        })
+      }
+    }
 
     payloads.push({
       guardianId: guardian.guardianId,
@@ -278,6 +324,10 @@ export function composePersonalizedEmails(
       classBlocks: resolvedClassBlocks,
       resolvedClassIds: eligibleClassIds,
       classFallback: fallback,
+      templateId,
+      templateRevisionId,
+      renderedSubject,
+      renderedBody,
     })
   }
 

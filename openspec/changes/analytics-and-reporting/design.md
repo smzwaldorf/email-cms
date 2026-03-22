@@ -18,7 +18,7 @@ Stakeholders:
 
 **Goals:**
 - Define deterministic tracking for opens and clicks with idempotent attribution to newsletter send context.
-- Define metric aggregation contracts for dashboard views (campaign/class/date breakdowns).
+- Define metric aggregation contracts for dashboard views (campaign/class/article/date breakdowns).
 - Define export behavior (CSV/Excel-compatible) with filterability, auditability, and privacy controls.
 - Define provider-sync/reconciliation behavior so local analytics remains consistent when external event streams lag or fail.
 - Make requirements testable for tracking correctness, data integrity, and operational recovery.
@@ -81,6 +81,59 @@ Rationale:
 Alternative considered:
 - No reconciliation, trust local events only. Rejected because provider/platform gaps can silently skew metrics.
 
+### 6) Use explicit engagement and aggregate entities compatible with existing newsletter/auth models
+Analytics persistence is split into append-only event entities and rollup entities that reference existing newsletter/send/recipient identity tables.
+
+Rationale:
+- Makes attribution fields explicit and queryable without denormalizing core newsletter/auth tables.
+- Allows article-level aggregates without expanding raw event payload size.
+
+Alternative considered:
+- Embedding analytics JSON blobs directly on existing newsletter send rows. Rejected due to weak indexing, expensive filtering, and poor auditability.
+
+## Schema and Model Blueprint
+
+The analytics data model introduces the following entities:
+
+1. `engagement_events`
+   - Purpose: append-only ledger for raw open/click observations.
+   - Core fields:
+     - `id`, `event_type` (`open` | `click`)
+     - `occurred_at`, `received_at`
+     - `newsletter_id`, `newsletter_send_id`, `recipient_id`, `family_id`, `class_id`
+     - `article_id` (nullable for open events; set when click/open can be mapped to a specific article block)
+     - `campaign_id`, `tracking_token_hash`, `idempotency_key`
+     - `destination_url` (click only), `user_agent`, `ip_hash`
+     - `quality_state` (`raw`, `qualified`, `excluded`) and `quality_rule_version`
+   - Notes: immutable rows; duplicates are marked via idempotency handling, not destructive updates.
+
+2. `engagement_rollups_daily`
+   - Purpose: query-optimized aggregates for dashboard/report views.
+   - Grain: daily (`day`) x `newsletter_id` x `class_id` x `article_id` (nullable for non-article scope).
+   - Metrics: `send_count`, `unique_open_count`, `unique_click_count`, `open_rate`, `click_through_rate`, `unsubscribe_count`, plus raw/qualified split fields.
+
+3. `report_export_jobs`
+   - Purpose: asynchronous export lifecycle and audit trail.
+   - Core fields: requester identity, requested filters, output format, status, error details, artifact metadata, retention expiry.
+
+4. `analytics_reconciliation_discrepancies`
+   - Purpose: track local-vs-provider drift and backfill actions.
+   - Core fields: mismatch dimensions, detected values, tolerance threshold, reconciliation status, resolution timestamps.
+
+### Index and Retention Strategy
+
+- Primary ingestion indexes:
+  - `engagement_events(idempotency_key unique)`
+  - `engagement_events(newsletter_send_id, event_type, occurred_at desc)`
+  - `engagement_events(class_id, article_id, occurred_at desc)`
+- Reporting indexes:
+  - `engagement_rollups_daily(day, newsletter_id, class_id, article_id)`
+  - Partial indexes for qualified metrics where `quality_state = 'qualified'`
+- Retention:
+  - Raw events retained for configurable policy window (default TBD) then archived/pruned.
+  - Daily rollups retained longer than raw events for trend reporting.
+  - Export artifacts and reconciliation records follow auditable expiry windows.
+
 ## Risks / Trade-offs
 
 - [High-volume campaigns produce ingestion spikes] -> Use lightweight ingest path, queue buffering, and bounded worker concurrency.
@@ -88,12 +141,15 @@ Alternative considered:
 - [Under-filtering keeps bot traffic] -> Iterate heuristics with validation samples; flag anomalous bursts for manual review.
 - [Large exports expose sensitive data] -> Enforce scoped fields, role-based filters, and export audit logs with retention expiry.
 - [Reconciliation increases operational complexity] -> Add runbooks, health metrics, and clear retry/dead-letter flows.
+- [Schema rollout can disrupt existing newsletter/auth write paths] -> Add additive migrations first, backfill asynchronously, and keep dual-read fallback during rollout.
 
 ## Migration Plan
 
 1. Add schema for engagement ledger, aggregate metric snapshots, export job records, and reconciliation discrepancy records.
+   - Keep all migrations additive and reference existing newsletter/auth IDs (no destructive rewrite of current tables).
 2. Implement tracking ingestion endpoints (pixel + click redirect capture) behind feature flags.
 3. Implement rollup jobs for campaign/class/period metrics; validate with fixture datasets.
+   - Include article-level rollups keyed by `article_id` for article performance reporting.
 4. Implement reporting query interfaces and export job pipeline with RBAC + auditing.
 5. Implement provider sync/reconciliation job and backfill procedure for historical sends where feasible.
 6. Staging rollout: shadow-mode metric validation against manual/provider references, then enable operator dashboard.

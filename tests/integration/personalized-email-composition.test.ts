@@ -54,4 +54,51 @@ describe('personalized email composition integration', () => {
     expect(singlePayload?.classBlocks.map((block) => block.blockId)).toEqual(['A-1'])
     expect(multiPayload?.classBlocks.map((block) => block.blockId)).toEqual(['A-1', 'B-1'])
   })
+
+  it('pins template revision id into payload and keeps older jobs stable', () => {
+    const baseInput: ComposePersonalizedEmailInput = {
+      rulesVersion: 'v1',
+      snapshotCapturedAt: '2026-03-20T09:00:00.000Z',
+      classes: [{ id: 'A', className: 'Grade 1A', canonicalSortKey: '01' }],
+      newsletter: {
+        newsletterId: 'newsletter-1',
+        newsletterRevisionId: 'rev-100',
+        sharedBlocks: [{ blockId: 'shared-1', content: 'Shared', editorialOrder: 1 }],
+        classBlocks: [{ blockId: 'A-1', classId: 'A', content: 'A content', editorialOrder: 1 }],
+      },
+      guardians: [
+        {
+          guardianId: 'guardian-single',
+          guardianEmail: 'single@example.com',
+          familyId: 'family-1',
+          children: [{ studentId: 'student-1', classId: 'A' }],
+        },
+      ],
+    }
+
+    const firstJob = composePersonalizedEmails({
+      ...baseInput,
+      template: {
+        templateId: 'template-1',
+        templateRevisionId: 'tmpl-rev-1',
+        subjectTemplate: 'Hello {{guardian.email}}',
+        bodyTemplate: 'Newsletter {{newsletter.revisionId}}',
+      },
+    })
+
+    const secondJob = composePersonalizedEmails({
+      ...baseInput,
+      template: {
+        templateId: 'template-1',
+        templateRevisionId: 'tmpl-rev-2',
+        subjectTemplate: 'Hi {{guardian.email}}',
+        bodyTemplate: 'Newsletter {{newsletter.revisionId}} updated',
+      },
+    })
+
+    expect(firstJob.payloads[0].templateRevisionId).toBe('tmpl-rev-1')
+    expect(secondJob.payloads[0].templateRevisionId).toBe('tmpl-rev-2')
+    expect(firstJob.payloads[0].renderedSubject).toBe('Hello single@example.com')
+    expect(secondJob.payloads[0].renderedSubject).toBe('Hi single@example.com')
+  })
 })

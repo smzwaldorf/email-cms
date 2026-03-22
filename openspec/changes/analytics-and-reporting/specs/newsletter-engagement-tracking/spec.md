@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: System SHALL capture newsletter open events via tracking pixel with deterministic attribution
-The system SHALL expose a tracking pixel endpoint that records open events with newsletter-send attribution fields (newsletter id, recipient mapping id, campaign/send id, timestamp, user-agent context) before returning the pixel response.
+The system SHALL expose a tracking pixel endpoint that records open events with newsletter-send attribution fields (newsletter id, recipient mapping id, class/family context, campaign/send id, timestamp, user-agent context) before returning the pixel response.
 
 #### Scenario: Valid pixel request records open event
 - **WHEN** a tracking pixel request contains a valid tracking token for a sent newsletter recipient
@@ -12,11 +12,11 @@ The system SHALL expose a tracking pixel endpoint that records open events with 
 - **THEN** the system SHALL reject attribution, avoid mutating engagement metrics, and return a non-success tracking response consistent with security policy
 
 ### Requirement: System SHALL capture newsletter click events through tracked redirect links
-The system SHALL route tracked links through a click endpoint that records click engagement data and then redirects to the destination URL.
+The system SHALL route tracked links through a click endpoint that records click engagement data (including article attribution when present) and then redirects to the destination URL.
 
 #### Scenario: Valid tracked link records click and redirects
 - **WHEN** a recipient follows a valid tracked redirect link
-- **THEN** the system SHALL persist a click engagement event with link/newsletter/recipient attribution and redirect the user to the resolved target URL
+- **THEN** the system SHALL persist a click engagement event with link/newsletter/recipient attribution (plus `article_id` when available) and redirect the user to the resolved target URL
 
 #### Scenario: Redirect target fails validation
 - **WHEN** a tracked link resolves to a disallowed destination based on URL safety policy

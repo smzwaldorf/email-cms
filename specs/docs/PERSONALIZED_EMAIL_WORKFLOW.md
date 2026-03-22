@@ -91,7 +91,7 @@ PM follow-up questions:
 
 1. Should class-empty fallback remain metadata-only, or render a visible class section message?
 2. If canonical sort keys are missing, is lexical class ID fallback acceptable in production?
-3. Do templates need per-child attribution labels, or is class-level grouping sufficient for v1?
+3. (Resolved 2026-03-20) Email templates are managed internally in CMS, and publish/send flow must pin `templateRevisionId` per batch.
 
 ## Rollout and Backfill Status
 
