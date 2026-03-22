@@ -120,5 +120,6 @@ describe('emailContentPreparationService', () => {
     expect(summary.readyRecipients).toBe(1)
     expect(summary.failedRecipients).toBe(1)
     expect(summary.actionableErrors.length).toBeGreaterThan(0)
+    expect(summary.actionableErrors[0]?.detailRef).toContain('guardian:')
   })
 })

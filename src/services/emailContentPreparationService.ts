@@ -123,8 +123,9 @@ function summarize(recipients: PreparedRecipientRecord[]): EmailContentPreparati
   const actionableErrors = recipients.flatMap((recipient) =>
     recipient.findings
       .filter((finding) => finding.severity === 'error')
-      .map((finding) => ({
+      .map((finding, index) => ({
         guardianId: recipient.guardianId,
+        detailRef: `guardian:${recipient.guardianId}:finding:${index}`,
         code: finding.code,
         message: finding.message,
         field: finding.field,
@@ -300,11 +301,18 @@ class EmailContentPreparationService {
       throw new Error(`Preparation job not found: ${jobId}`)
     }
 
+    const readyPayloads = job.recipients
+      .filter((recipient) => recipient.status === 'ready')
+      .map((recipient) => recipient.payload)
+    const warningPayloads = job.recipients
+      .filter((recipient) => recipient.status === 'warning')
+      .map((recipient) => recipient.payload)
+
     return {
       jobId,
-      readyPayloads: job.recipients
-        .filter((recipient) => recipient.status === 'ready')
-        .map((recipient) => recipient.payload),
+      deliverablePayloads: [...readyPayloads, ...warningPayloads],
+      readyPayloads,
+      warningPayloads,
       failedRecipients: job.recipients.filter((recipient) => recipient.status === 'failed'),
     }
   }

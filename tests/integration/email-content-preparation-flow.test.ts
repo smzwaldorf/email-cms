@@ -29,6 +29,12 @@ function createFlowInput(): PrepareEmailContentInput {
         children: [{ studentId: 'student-1', classId: 'A' }],
       },
       {
+        guardianId: 'guardian-warning',
+        guardianEmail: 'warning@example.com',
+        familyId: 'family-warning',
+        children: [{ studentId: 'student-warning', classId: 'Z' }],
+      },
+      {
         guardianId: 'guardian-failed',
         guardianEmail: 'failed@example.com',
         familyId: null,
@@ -39,14 +45,18 @@ function createFlowInput(): PrepareEmailContentInput {
 }
 
 describe('email content preparation flow', () => {
-  it('keeps mixed-outcome batches and hands off only ready payloads', () => {
+  it('keeps mixed-outcome batches and hands off all deliverable payloads', () => {
     const job = emailContentPreparationService.prepare(createFlowInput())
     const handoff = emailContentPreparationService.createDeliveryHandoff(job.jobId)
 
     expect(job.summary.readyRecipients).toBe(1)
+    expect(job.summary.warningRecipients).toBe(1)
     expect(job.summary.failedRecipients).toBe(1)
     expect(handoff.readyPayloads).toHaveLength(1)
     expect(handoff.readyPayloads[0].guardianId).toBe('guardian-ready')
+    expect(handoff.warningPayloads).toHaveLength(1)
+    expect(handoff.warningPayloads[0].guardianId).toBe('guardian-warning')
+    expect(handoff.deliverablePayloads).toHaveLength(2)
     expect(handoff.failedRecipients).toHaveLength(1)
     expect(handoff.failedRecipients[0].guardianId).toBe('guardian-failed')
   })

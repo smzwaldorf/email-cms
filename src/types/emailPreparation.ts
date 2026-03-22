@@ -47,6 +47,7 @@ export interface PreparationReviewSummary {
   failedRecipients: number
   actionableErrors: Array<{
     guardianId: string
+    detailRef: string
     code: PreparationFindingCode
     message: string
     field?: 'subject' | 'body'
@@ -81,6 +82,8 @@ export interface PreparedRecipientPreview {
 
 export interface DeliveryHandoffContract {
   jobId: string
+  deliverablePayloads: PersonalizedEmailPayload[]
   readyPayloads: PersonalizedEmailPayload[]
+  warningPayloads: PersonalizedEmailPayload[]
   failedRecipients: PreparedRecipientRecord[]
 }
