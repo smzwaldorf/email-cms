@@ -5,11 +5,13 @@ const {
   mockCreatePublishBatch,
   mockCreateResendBatch,
   mockListDeliveryBatches,
+  mockListBatchRecipients,
   mockPreviewAudience,
 } = vi.hoisted(() => ({
   mockCreatePublishBatch: vi.fn(),
   mockCreateResendBatch: vi.fn(),
   mockListDeliveryBatches: vi.fn(),
+  mockListBatchRecipients: vi.fn(),
   mockPreviewAudience: vi.fn(),
 }))
 
@@ -53,6 +55,7 @@ vi.mock('@/services/newsletterDeliveryService', () => ({
     createPublishBatch: mockCreatePublishBatch,
     createResendBatch: mockCreateResendBatch,
     listBatchesForNewsletter: mockListDeliveryBatches,
+    listBatchRecipients: mockListBatchRecipients,
     previewAudience: mockPreviewAudience,
   },
 }))
@@ -98,6 +101,7 @@ describe('AdminService', () => {
       createdAt: '2026-01-02T00:00:00Z',
     })
     mockListDeliveryBatches.mockResolvedValue([])
+    mockListBatchRecipients.mockResolvedValue([])
     mockPreviewAudience.mockResolvedValue({
       selection: { mode: 'all' },
       totalCandidates: 1,
@@ -298,6 +302,74 @@ describe('AdminService', () => {
         newsletterId: 'newsletter-1',
         audience: { mode: 'classes', classIds: ['A1'] },
       })
+    })
+
+    it('publishNewsletterWithDelivery rolls back publish when delivery batch creation fails', async () => {
+      const mockArticleResponse = { data: [{ article_id: 'article-1' }], error: null }
+      const mockPublishResponse = {
+        data: {
+          id: 'newsletter-1',
+          week_number: '2025-W01',
+          title: 'Week 1 Newsletter',
+          release_date: '2025-01-01',
+          status: 'published',
+          published_at: '2025-01-01T12:00:00Z',
+          created_at: '2025-01-01',
+          updated_at: '2025-01-01',
+        },
+        error: null,
+      }
+      const mockRollbackResponse = { data: [], error: null }
+
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve(mockArticleResponse))
+        .mockImplementationOnce((resolve) => resolve(mockPublishResponse))
+        .mockImplementationOnce((resolve) => resolve(mockRollbackResponse))
+
+      mockCreatePublishBatch.mockRejectedValueOnce(new Error('delivery bootstrap failed'))
+
+      await expect(
+        adminService.publishNewsletterWithDelivery('newsletter-1', { mode: 'all' }),
+      ).rejects.toThrow('Publish was rolled back to draft')
+
+      expect(mockBuilder.update).toHaveBeenCalledWith(expect.objectContaining({
+        status: 'draft',
+        published_at: null,
+      }))
+    })
+  })
+
+  describe('delivery recipients', () => {
+    it('fetchNewsletterDeliveryRecipients maps recipient outcomes for admin workflow', async () => {
+      mockListBatchRecipients.mockResolvedValue([
+        {
+          id: 'recipient-1',
+          batchId: 'batch-1',
+          familyId: 'family-1',
+          parentId: 'parent-1',
+          parentEmail: 'parent@example.com',
+          eligibilityStatus: 'eligible',
+          preparationStatus: 'ready',
+          sendStatus: 'sent',
+          failureReason: null,
+          preparedPayload: null,
+          providerMessageId: 'provider-1',
+          providerError: null,
+          lastAttemptedAt: '2026-01-01T00:00:00Z',
+          sentAt: '2026-01-01T00:00:00Z',
+          createdAt: '2026-01-01T00:00:00Z',
+          updatedAt: '2026-01-01T00:00:00Z',
+        },
+      ])
+
+      const result = await adminService.fetchNewsletterDeliveryRecipients('batch-1')
+
+      expect(mockListBatchRecipients).toHaveBeenCalledWith('batch-1')
+      expect(result[0]).toEqual(expect.objectContaining({
+        id: 'recipient-1',
+        familyId: 'family-1',
+        sendStatus: 'sent',
+      }))
     })
   })
 

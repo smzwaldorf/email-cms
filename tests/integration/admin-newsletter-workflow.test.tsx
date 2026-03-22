@@ -14,6 +14,7 @@ vi.mock('@/services/adminService', () => ({
     fetchClasses: vi.fn(),
     fetchFamilies: vi.fn(),
     fetchNewsletterDeliveryBatches: vi.fn(),
+    fetchNewsletterDeliveryRecipients: vi.fn(),
     reorderArticlesInNewsletterById: vi.fn(),
     updateArticleTargetingInNewsletterById: vi.fn(),
     addArticleToNewsletterById: vi.fn(),
@@ -151,6 +152,7 @@ describe('Admin newsletter workflow page', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
     currentWeekNewsletter = { ...draftNewsletter }
     vi.mocked(adminService.fetchNewsletterByWeek).mockImplementation(async () => currentWeekNewsletter)
     vi.mocked(adminService.fetchNewsletter).mockImplementation(async () => specialEditionPublishedNewsletter as FetchNewsletterResult)
@@ -187,6 +189,7 @@ describe('Admin newsletter workflow page', () => {
       },
     ] as FetchFamiliesResult)
     vi.mocked(adminService.fetchNewsletterDeliveryBatches).mockResolvedValue([] as FetchNewsletterDeliveryBatchesResult)
+    vi.mocked(adminService.fetchNewsletterDeliveryRecipients).mockResolvedValue([])
     vi.mocked(adminService.reorderArticlesInNewsletterById).mockResolvedValue()
     vi.mocked(adminService.updateArticleTargetingInNewsletterById).mockResolvedValue()
     vi.mocked(adminService.addArticleToNewsletterById).mockResolvedValue({

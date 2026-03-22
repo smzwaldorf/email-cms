@@ -7,6 +7,7 @@ import type {
   NewsletterPublishAudienceSelection,
   NewsletterPublishReadiness,
   NewsletterDeliveryBatchSummary,
+  NewsletterDeliveryRecipientSummary,
 } from '@/types/admin'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
@@ -35,6 +36,9 @@ export function AdminArticleListPage() {
   const [publishAudience, setPublishAudience] = useState<NewsletterPublishAudienceSelection>({ mode: 'all' })
   const [availableFamilies, setAvailableFamilies] = useState<Array<{ id: string; name: string }>>([])
   const [deliveryBatches, setDeliveryBatches] = useState<NewsletterDeliveryBatchSummary[]>([])
+  const [expandedBatchId, setExpandedBatchId] = useState<string | null>(null)
+  const [loadingRecipientsBatchId, setLoadingRecipientsBatchId] = useState<string | null>(null)
+  const [batchRecipientsByBatchId, setBatchRecipientsByBatchId] = useState<Record<string, NewsletterDeliveryRecipientSummary[]>>({})
   const [isLoading, setIsLoading] = useState(true)
   const [isMutating, setIsMutating] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -90,6 +94,13 @@ export function AdminArticleListPage() {
       setAvailableClasses(classes.map((classItem) => ({ id: classItem.id, name: classItem.name })))
       setAvailableFamilies(families.map((family) => ({ id: family.id, name: family.name })))
       setDeliveryBatches(batches)
+      const validBatchIds = new Set(batches.map((batch) => batch.id))
+      setBatchRecipientsByBatchId((prev) => Object.fromEntries(
+        Object.entries(prev).filter(([batchId]) => validBatchIds.has(batchId)),
+      ))
+      if (expandedBatchId && !validBatchIds.has(expandedBatchId)) {
+        setExpandedBatchId(null)
+      }
       setTargetingDrafts(
         articlesData.reduce(
           (acc, article) => {
@@ -168,6 +179,44 @@ export function AdminArticleListPage() {
       setArticles(previousArticles)
     } finally {
       setIsMutating(false)
+    }
+  }
+
+  const formatAudienceModeLabel = (mode: NewsletterPublishAudienceSelection['mode']): string => {
+    switch (mode) {
+      case 'classes':
+        return '指定班級'
+      case 'families':
+        return '指定家庭'
+      case 'family':
+        return '單一家庭'
+      default:
+        return '全部符合資格家庭'
+    }
+  }
+
+  const handleToggleBatchRecipients = async (batchId: string) => {
+    if (expandedBatchId === batchId) {
+      setExpandedBatchId(null)
+      return
+    }
+
+    const cached = batchRecipientsByBatchId[batchId]
+    if (cached) {
+      setExpandedBatchId(batchId)
+      return
+    }
+
+    try {
+      setLoadingRecipientsBatchId(batchId)
+      const recipients = await adminService.fetchNewsletterDeliveryRecipients(batchId)
+      setBatchRecipientsByBatchId((prev) => ({ ...prev, [batchId]: recipients }))
+      setExpandedBatchId(batchId)
+    } catch (err) {
+      const message = err instanceof AdminServiceError ? err.message : '載入批次收件者結果失敗'
+      setError(message)
+    } finally {
+      setLoadingRecipientsBatchId(null)
     }
   }
 
@@ -308,6 +357,17 @@ export function AdminArticleListPage() {
 
   const handlePublish = async () => {
     if (!newsletter) return
+    const audienceSummary = publishReadiness.audienceSummary
+    const confirmationMessage = [
+      '確認要發布並啟動投遞嗎？',
+      `投遞模式：${formatAudienceModeLabel(publishAudience.mode)}`,
+      audienceSummary ? `候選：${audienceSummary.totalCandidates}` : null,
+      audienceSummary ? `可投遞：${audienceSummary.eligibleCount}` : null,
+      audienceSummary ? `排除：${audienceSummary.ineligibleCount}` : null,
+      '',
+      '此操作會同時發布電子報並建立投遞批次。',
+    ].filter(Boolean).join('\n')
+    if (!window.confirm(confirmationMessage)) return
 
     try {
       setIsMutating(true)
@@ -663,6 +723,40 @@ export function AdminArticleListPage() {
                     >
                       補發此批次（同一份電子報）
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleToggleBatchRecipients(batch.id)}
+                      disabled={loadingRecipientsBatchId === batch.id}
+                      className="ml-2 mt-2 rounded border border-waldorf-clay-300 px-3 py-1 text-xs text-waldorf-clay-700 hover:bg-waldorf-cream-50 disabled:opacity-50"
+                    >
+                      {expandedBatchId === batch.id ? '隱藏收件者結果' : '查看收件者結果'}
+                    </button>
+                    {loadingRecipientsBatchId === batch.id && (
+                      <p className="mt-2 text-xs text-waldorf-clay-500">載入中...</p>
+                    )}
+                    {expandedBatchId === batch.id && (
+                      <div className="mt-3 max-h-56 overflow-y-auto rounded border border-waldorf-cream-200 bg-waldorf-cream-50 p-2">
+                        {(batchRecipientsByBatchId[batch.id] ?? []).length === 0 ? (
+                          <p className="text-xs text-waldorf-clay-500">此批次沒有收件者結果。</p>
+                        ) : (
+                          <ul className="space-y-1 text-xs text-waldorf-clay-700">
+                            {(batchRecipientsByBatchId[batch.id] ?? []).map((recipient) => (
+                              <li key={recipient.id} className="rounded border border-waldorf-cream-200 bg-white p-2">
+                                <p className="font-medium">
+                                  {recipient.parentEmail ?? recipient.parentId ?? recipient.familyId}
+                                </p>
+                                <p>
+                                  資格 {recipient.eligibilityStatus} / 準備 {recipient.preparationStatus} / 發送 {recipient.sendStatus}
+                                </p>
+                                {recipient.failureReason && (
+                                  <p className="text-waldorf-rose-700">原因：{recipient.failureReason}</p>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

@@ -32,6 +32,7 @@ import type {
   NewsletterPublishAudienceSelection,
   NewsletterPublishReadiness,
   NewsletterDeliveryBatchSummary,
+  NewsletterDeliveryRecipientSummary,
   ArticleCategory,
   ArticleTag,
   ArticleRevision,
@@ -1741,10 +1742,36 @@ class AdminService {
     const updatedNewsletter = await this.publishNewsletter(id)
 
     const selection: DeliveryAudienceSelection = (audienceSelection ?? { mode: 'all' }) as DeliveryAudienceSelection
-    await newsletterDeliveryService.createPublishBatch({
-      newsletterId: id,
-      audience: selection,
-    })
+    try {
+      await newsletterDeliveryService.createPublishBatch({
+        newsletterId: id,
+        audience: selection,
+      })
+    } catch (err) {
+      // Keep publish-and-send as one operator action: if delivery bootstrap fails, revert publish.
+      const supabase = getSupabaseClient()
+      const { error: rollbackError } = await supabase
+        .from('newsletters')
+        .update({
+          status: 'draft',
+          published_at: null,
+        })
+        .eq('id', id)
+
+      if (rollbackError) {
+        throw new AdminServiceError(
+          `Delivery batch creation failed and rollback failed: ${rollbackError.message}`,
+          'PUBLISH_DELIVERY_ERROR',
+          err,
+        )
+      }
+
+      throw new AdminServiceError(
+        `Delivery batch creation failed. Publish was rolled back to draft: ${err instanceof Error ? err.message : String(err)}`,
+        'PUBLISH_DELIVERY_ERROR',
+        err,
+      )
+    }
 
     return updatedNewsletter
   }
@@ -1807,6 +1834,22 @@ class AdminService {
       invalidRecipients: batch.invalidRecipients,
       createdAt: batch.createdAt,
     }
+  }
+
+  async fetchNewsletterDeliveryRecipients(batchId: string): Promise<NewsletterDeliveryRecipientSummary[]> {
+    const recipients = await newsletterDeliveryService.listBatchRecipients(batchId)
+    return recipients.map((recipient) => ({
+      id: recipient.id,
+      familyId: recipient.familyId,
+      parentId: recipient.parentId,
+      parentEmail: recipient.parentEmail,
+      eligibilityStatus: recipient.eligibilityStatus,
+      preparationStatus: recipient.preparationStatus,
+      sendStatus: recipient.sendStatus,
+      failureReason: recipient.failureReason,
+      lastAttemptedAt: recipient.lastAttemptedAt,
+      sentAt: recipient.sentAt,
+    }))
   }
 
   /**

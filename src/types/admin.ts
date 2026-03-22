@@ -233,6 +233,19 @@ export interface NewsletterDeliveryBatchSummary {
   createdAt: string
 }
 
+export interface NewsletterDeliveryRecipientSummary {
+  id: string
+  familyId: string
+  parentId: string | null
+  parentEmail: string | null
+  eligibilityStatus: 'eligible' | 'ineligible'
+  preparationStatus: 'pending' | 'ready' | 'warning' | 'failed' | 'skipped'
+  sendStatus: 'pending' | 'handoff_pending' | 'sent' | 'failed' | 'skipped'
+  failureReason: string | null
+  lastAttemptedAt: string | null
+  sentAt: string | null
+}
+
 /**
  * Admin Article (用於管理面板的文章編輯視圖)
  */
