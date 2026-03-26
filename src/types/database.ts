@@ -428,11 +428,13 @@ export interface NewsletterDeliveryBatchRecipientRow {
   parent_id?: string | null;
   parent_email?: string | null;
   guardian_email?: string | null;
+  journey_correlation_id: string;
   eligibility_status: 'eligible' | 'ineligible';
   preparation_status: 'pending' | 'ready' | 'warning' | 'failed' | 'skipped';
   send_status: 'pending' | 'handoff_pending' | 'sent' | 'failed' | 'skipped';
   failure_reason?: string | null;
   prepared_payload?: Record<string, unknown> | null;
+  preparation_findings?: Record<string, unknown>[] | null;
   provider_message_id?: string | null;
   provider_error?: string | null;
   last_attempted_at?: string | null;

@@ -96,7 +96,6 @@ export function FamilyManagementPage() {
         familyData.name,
         familyData.description,
         familyData.relatedTopics,
-        familyData.guardianEmail
       )
       setNotification({ message: '家族已成功新增', type: 'success' })
       setPageState('list')
@@ -122,7 +121,6 @@ export function FamilyManagementPage() {
       setIsSaving(true)
       await adminService.updateFamily(familyData.id, {
         name: familyData.name,
-        guardianEmail: familyData.guardianEmail,
         description: familyData.description,
         relatedTopics: familyData.relatedTopics,
       })

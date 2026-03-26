@@ -15,6 +15,7 @@ import type {
   NewsletterDeliveryBatchRow,
   NewsletterRow,
 } from '@/types/database'
+import type { PreparationFinding } from '@/types/emailPreparation'
 import type {
   PersonalizationInputClass,
   PersonalizationInputGuardian,
@@ -25,13 +26,11 @@ import type {
 interface FamilyWithEnrollments {
   id: string
   is_active: boolean
-  newsletter_subscription_status: 'pending' | 'subscribed' | 'unsubscribed' | 'bounced' | 'complained'
   classIds: string[]
 }
 
 export interface RecipientEligibilityInput {
   is_active: boolean
-  newsletter_subscription_status: 'pending' | 'subscribed' | 'unsubscribed' | 'bounced' | 'complained' | undefined
   classIds: string[]
 }
 
@@ -39,7 +38,11 @@ interface NewsletterArticleJoinRow {
   article_order: number
   targeting_mode?: 'shared' | 'targeted' | null
   target_class_ids?: string[] | null
-  articles?: Array<{
+  articles?: {
+    id: string
+    title?: string | null
+    content: string
+  } | Array<{
     id: string
     title?: string | null
     content: string
@@ -64,11 +67,13 @@ interface ParentUserEmailRow {
   email: string
 }
 
-const ACTIVE_SUBSCRIPTION_STATES = new Set(['pending', 'subscribed'])
-
 function asArrayValue<T>(value: T | T[] | null | undefined): T[] {
   if (value == null) return []
   return Array.isArray(value) ? value : [value]
+}
+
+function generateJourneyCorrelationId(): string {
+  return `journey-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
 }
 
 export interface AudienceCandidateShape {
@@ -95,9 +100,6 @@ export function defaultAudienceSelection(input?: DeliveryAudienceSelection): Del
 export function validateRecipientEligibility(family: RecipientEligibilityInput): { eligible: boolean; reason: string | null } {
   if (!family.is_active) {
     return { eligible: false, reason: 'family_inactive' }
-  }
-  if (!ACTIVE_SUBSCRIPTION_STATES.has(family.newsletter_subscription_status ?? 'pending')) {
-    return { eligible: false, reason: 'subscription_blocked' }
   }
   if (family.classIds.length === 0) {
     return { eligible: false, reason: 'no_active_enrollment' }
@@ -168,6 +170,8 @@ function mapRecipientRow(row: NewsletterDeliveryBatchRecipientRow): NewsletterDe
     sendStatus: row.send_status,
     failureReason: row.failure_reason ?? null,
     preparedPayload: (row.prepared_payload ?? null) as NewsletterDeliveryRecipient['preparedPayload'],
+    preparationFindings: (row.preparation_findings ?? []) as unknown as PreparationFinding[],
+    journeyCorrelationId: row.journey_correlation_id,
     providerMessageId: row.provider_message_id ?? null,
     providerError: row.provider_error ?? null,
     lastAttemptedAt: row.last_attempted_at ?? null,
@@ -178,12 +182,48 @@ function mapRecipientRow(row: NewsletterDeliveryBatchRecipientRow): NewsletterDe
 }
 
 class NewsletterDeliveryService {
+  private async sendPreparedBatchViaKit(input: {
+    batchId: string
+    newsletterId: string
+    recipients: Array<{
+      recipientId: string
+      familyId: string
+      parentEmail: string | null
+      journeyCorrelationId: string
+      subject: string
+      htmlContent: string
+    }>
+  }): Promise<{
+    providerMessageId: string | null
+    sentRecipientIds: string[]
+    failedRecipients: Array<{ recipientId: string; error: string }>
+  }> {
+    const supabase = getSupabaseClient()
+    const { data, error } = await supabase.functions.invoke('kit-send-newsletter', {
+      body: {
+        batchId: input.batchId,
+        newsletterId: input.newsletterId,
+        recipients: input.recipients,
+      },
+    })
+
+    if (error) {
+      throw new Error(`Kit send invoke failed: ${error.message}`)
+    }
+
+    return {
+      providerMessageId: (data as { providerMessageId?: string | null } | null)?.providerMessageId ?? null,
+      sentRecipientIds: (data as { sentRecipientIds?: string[] } | null)?.sentRecipientIds ?? [],
+      failedRecipients: (data as { failedRecipients?: Array<{ recipientId: string; error: string }> } | null)?.failedRecipients ?? [],
+    }
+  }
+
   private async loadFamiliesWithEnrollments(candidateFamilyIds?: string[]): Promise<FamilyWithEnrollments[]> {
     const supabase = getSupabaseClient()
 
     let familyQuery = supabase
       .from('families')
-      .select('id, is_active, newsletter_subscription_status')
+      .select('id, is_active')
     if (candidateFamilyIds && candidateFamilyIds.length > 0) {
       familyQuery = familyQuery.in('id', candidateFamilyIds)
     }
@@ -216,7 +256,6 @@ class NewsletterDeliveryService {
     return (families ?? []).map((family) => ({
       id: family.id,
       is_active: family.is_active ?? true,
-      newsletter_subscription_status: family.newsletter_subscription_status ?? 'pending',
       classIds: Array.from(classIdsByFamily.get(family.id) ?? []),
     }))
   }
@@ -280,7 +319,7 @@ class NewsletterDeliveryService {
         familyId: family.id,
         classIds: family.classIds,
         isActive: family.is_active,
-        subscriptionStatus: family.newsletter_subscription_status ?? 'pending',
+        subscriptionStatus: 'subscribed' as const,
         hasEnrollment: family.classIds.length > 0,
       }
 
@@ -390,7 +429,7 @@ class NewsletterDeliveryService {
     const sharedBlocks: PersonalizationInputNewsletter['sharedBlocks'] = []
     const classBlocks: PersonalizationInputNewsletter['classBlocks'] = []
     for (const row of (data ?? []) as unknown as NewsletterArticleJoinRow[]) {
-      const article = row.articles?.[0]
+      const article = asArrayValue(row.articles)[0]
       if (!article) continue
       const block = {
         blockId: article.id,
@@ -412,6 +451,7 @@ class NewsletterDeliveryService {
     return {
       newsletterId: newsletter.id,
       newsletterRevisionId: newsletter.updated_at,
+      title: newsletter.title ?? null,
       sharedBlocks,
       classBlocks,
     }
@@ -497,12 +537,12 @@ class NewsletterDeliveryService {
     const totalRecipients = recipients?.length ?? 0
     const eligibleRecipients = (recipients ?? []).filter((recipient) => recipient.eligibility_status === 'eligible').length
     const invalidRecipients = (recipients ?? []).filter((recipient) => recipient.eligibility_status === 'ineligible').length
-    const readyRecipients = (recipients ?? []).filter((recipient) =>
-      recipient.preparation_status === 'ready' || recipient.preparation_status === 'warning',
-    ).length
+    const readyRecipients = (recipients ?? []).filter((recipient) => recipient.preparation_status === 'ready').length
     const sentRecipients = (recipients ?? []).filter((recipient) => recipient.send_status === 'sent').length
     const failedRecipients = (recipients ?? []).filter((recipient) =>
-      recipient.preparation_status === 'failed' || recipient.send_status === 'failed',
+      recipient.preparation_status === 'warning' ||
+      recipient.preparation_status === 'failed' ||
+      recipient.send_status === 'failed',
     ).length
 
     const state = failedRecipients > 0
@@ -564,14 +604,23 @@ class NewsletterDeliveryService {
       const personalizationNewsletter = await this.buildNewsletterPersonalizationInput(newsletter)
 
       const preparationJob = emailContentPreparationService.prepare({
-        rulesVersion: 'v1',
+        rulesVersion: batch.rulesVersion,
         newsletter: personalizationNewsletter,
         template,
         classes,
         guardians,
         startedAt: new Date().toISOString(),
-        preparationJobId: `delivery-${batch.id}`,
+        preparationJobId: batch.preparationJobId ?? `delivery-${batch.id}`,
       })
+
+      if (
+        preparationJob.pinnedInputs.newsletterRevisionId !== batch.pinnedNewsletterRevisionId ||
+        preparationJob.pinnedInputs.templateId !== batch.pinnedTemplateId ||
+        preparationJob.pinnedInputs.templateRevisionId !== batch.pinnedTemplateRevisionId ||
+        preparationJob.pinnedInputs.rulesVersion !== batch.rulesVersion
+      ) {
+        throw new Error('Preparation pinned inputs mismatch with delivery batch contract')
+      }
 
       await supabase
         .from('newsletter_delivery_batches')
@@ -582,26 +631,116 @@ class NewsletterDeliveryService {
         .eq('id', batch.id)
 
       const recipientsByGuardian = new Map(eligibleRecipientRows.map((recipient) => [recipient.id, recipient]))
+      const readyRecipientsToSend: Array<{
+        rowId: string
+        familyId: string
+        parentEmail: string | null
+        journeyCorrelationId: string
+        subject: string
+        htmlContent: string
+      }> = []
+
       for (const prepared of preparationJob.recipients) {
         const row = recipientsByGuardian.get(prepared.guardianId)
         if (!row) {
           continue
         }
-        const isDeliverable = prepared.status === 'ready' || prepared.status === 'warning'
-        const updates: Partial<NewsletterDeliveryBatchRecipientRow> = {
+        const isDeliverable = prepared.status === 'ready'
+        const baseUpdates: Partial<NewsletterDeliveryBatchRecipientRow> = {
           preparation_status: prepared.status,
-          send_status: isDeliverable ? 'sent' : 'failed',
           prepared_payload: prepared.payload as unknown as Record<string, unknown>,
-          failure_reason: isDeliverable ? null : prepared.findings.find((finding) => finding.severity === 'error')?.message ?? 'preparation_failed',
-          provider_message_id: isDeliverable ? `local-${batch.id}-${row.family_id}-${row.parent_id ?? row.id}` : null,
-          provider_error: isDeliverable ? null : 'preparation_failed',
-          sent_at: isDeliverable ? new Date().toISOString() : null,
+          preparation_findings: prepared.findings as unknown as Record<string, unknown>[],
           last_attempted_at: new Date().toISOString(),
+        }
+        let updates: Partial<NewsletterDeliveryBatchRecipientRow>
+        if (!isDeliverable) {
+          updates = {
+            ...baseUpdates,
+            send_status: 'failed',
+            failure_reason: prepared.findings.find((finding) => finding.severity === 'error')?.message
+              ?? (prepared.status === 'warning' ? 'recipient_not_ready' : 'preparation_failed'),
+            provider_message_id: null,
+            provider_error: prepared.status === 'warning' ? 'recipient_not_ready' : 'preparation_failed',
+            sent_at: null,
+          }
+        } else {
+          readyRecipientsToSend.push({
+            rowId: row.id,
+            familyId: row.family_id,
+            parentEmail: row.parent_email ?? null,
+            journeyCorrelationId: row.journey_correlation_id,
+            subject: prepared.payload.renderedSubject ?? '',
+            htmlContent: prepared.payload.renderedBody ?? '',
+          })
+          updates = {
+            ...baseUpdates,
+            send_status: 'pending',
+            failure_reason: null,
+            provider_message_id: null,
+            provider_error: null,
+            sent_at: null,
+          }
         }
         await supabase
           .from('newsletter_delivery_batch_recipients')
           .update(updates)
           .eq('id', row.id)
+      }
+
+      if (readyRecipientsToSend.length > 0) {
+        try {
+          const sendResult = await this.sendPreparedBatchViaKit({
+            batchId: batch.id,
+            newsletterId: newsletter.id,
+            recipients: readyRecipientsToSend.map((recipient) => ({
+              recipientId: recipient.rowId,
+              familyId: recipient.familyId,
+              parentEmail: recipient.parentEmail,
+              journeyCorrelationId: recipient.journeyCorrelationId,
+              subject: recipient.subject,
+              htmlContent: recipient.htmlContent,
+            })),
+          })
+
+          const failedByRecipientId = new Map(
+            sendResult.failedRecipients.map((entry) => [entry.recipientId, entry.error]),
+          )
+          const sentRecipientIds = new Set(sendResult.sentRecipientIds)
+          const sentAt = new Date().toISOString()
+
+          for (const recipient of readyRecipientsToSend) {
+            const recipientFailure = failedByRecipientId.get(recipient.rowId)
+              ?? (!sentRecipientIds.has(recipient.rowId) ? 'recipient_not_sent' : null)
+            const isSent = !recipientFailure
+            await supabase
+              .from('newsletter_delivery_batch_recipients')
+              .update({
+                send_status: isSent ? 'sent' : 'failed',
+                failure_reason: isSent ? null : recipientFailure,
+                provider_message_id: isSent ? sendResult.providerMessageId : null,
+                provider_error: isSent ? null : recipientFailure,
+                sent_at: isSent ? sentAt : null,
+                last_attempted_at: sentAt,
+              })
+              .eq('id', recipient.rowId)
+          }
+        } catch (sendError) {
+          const errorMessage = sendError instanceof Error ? sendError.message : String(sendError)
+          const attemptedAt = new Date().toISOString()
+          for (const recipient of readyRecipientsToSend) {
+            await supabase
+              .from('newsletter_delivery_batch_recipients')
+              .update({
+                send_status: 'failed',
+                failure_reason: errorMessage,
+                provider_message_id: null,
+                provider_error: errorMessage,
+                sent_at: null,
+                last_attempted_at: attemptedAt,
+              })
+              .eq('id', recipient.rowId)
+          }
+        }
       }
 
       await this.updateBatchAggregateState(batch.id)
@@ -662,6 +801,7 @@ class NewsletterDeliveryService {
       parent_id: recipient.parentId,
       parent_email: recipient.parentEmail,
       guardian_email: null,
+      journey_correlation_id: generateJourneyCorrelationId(),
       eligibility_status: recipient.eligibilityStatus,
       preparation_status: recipient.eligibilityStatus === 'eligible' ? 'pending' : 'skipped',
       send_status: recipient.eligibilityStatus === 'eligible' ? 'pending' : 'skipped',
@@ -730,7 +870,7 @@ class NewsletterDeliveryService {
     if (priorRecipientError) {
       throw new Error(`Failed to load resend candidate recipients: ${priorRecipientError.message}`)
     }
-    const priorCandidateFamilyIds = (priorRecipients ?? []).map((recipient) => recipient.family_id)
+    const priorCandidateFamilyIds = Array.from(new Set((priorRecipients ?? []).map((recipient) => recipient.family_id)))
     const resolvedAudience = await this.resolveAudience(request.audience, {
       constrainedFamilyIds: priorCandidateFamilyIds,
     })

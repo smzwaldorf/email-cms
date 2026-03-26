@@ -18,7 +18,7 @@ export interface AuthContextType {
   isAuthenticated: boolean
   isLoading: boolean
   signIn: (email: string, password: string) => Promise<boolean>
-  signInWithGoogle: () => Promise<void>
+  signInWithGoogle: (redirectTo?: string) => Promise<void>
   sendMagicLink: (email: string, redirectTo?: string) => Promise<boolean>
   verifyMagicLink: (token: string) => Promise<boolean>
   signOut: () => Promise<void>
@@ -193,10 +193,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }
 
-  const signInWithGoogle = async (): Promise<void> => {
+  const signInWithGoogle = async (redirectTo?: string): Promise<void> => {
     try {
       setIsLoading(true)
-      await authService.signInWithGoogle()
+      await authService.signInWithGoogle(redirectTo)
       // OAuth redirects, so we don't need to do anything here
     } catch (err) {
       console.error('Google sign in error:', err)

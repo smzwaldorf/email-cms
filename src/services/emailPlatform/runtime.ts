@@ -38,6 +38,11 @@ interface StudentClassEnrollmentJoinRow {
   classes?: JoinedClass | JoinedClass[] | null
 }
 
+interface FamilyParentEnrollmentJoinRow {
+  parent_id: string
+  relationship: string
+}
+
 function pickJoin<T>(value: T | T[] | null | undefined): T | undefined {
   if (value == null) return undefined
   return Array.isArray(value) ? value[0] : value
@@ -119,7 +124,7 @@ export async function loadRecipientRecord(adminClient: AdminClientLike, familyId
   const { data: family, error: familyError } = await adminClient
     .from('families')
     .select(
-      'id, family_name, guardian_email, is_active, newsletter_subscription_status, newsletter_subscription_updated_at',
+      'id, family_name, is_active, newsletter_subscription_status, newsletter_subscription_updated_at',
     )
     .eq('id', familyId)
     .maybeSingle()
@@ -134,13 +139,33 @@ export async function loadRecipientRecord(adminClient: AdminClientLike, familyId
 
   const { data: parentEnrollments, error: parentError } = await adminClient
     .from('family_enrollment')
-    .select('relationship')
+    .select('parent_id, relationship')
     .eq('family_id', familyId)
     .not('parent_id', 'is', null)
 
   if (parentError) {
     throw new Error(parentError.message)
   }
+
+  const parentRows = (parentEnrollments ?? []) as FamilyParentEnrollmentJoinRow[]
+  const parentIds = Array.from(new Set(parentRows.map((row) => row.parent_id)))
+  const { data: parentUsers, error: parentUsersError } = parentIds.length > 0
+    ? await adminClient
+      .from('user_roles')
+      .select('id, email')
+      .in('id', parentIds)
+    : { data: [], error: null }
+  if (parentUsersError) {
+    throw new Error(parentUsersError.message)
+  }
+
+  const emailByParentId = new Map(
+    (parentUsers ?? []).map((row) => [row.id as string, row.email as string]),
+  )
+  const parentEmails = parentRows
+    .map((row) => emailByParentId.get(row.parent_id) ?? null)
+    .filter((email): email is string => !!email)
+  const primaryEmail = parentEmails[0] ?? null
 
   const { data: childEnrollments, error: childError } = await adminClient
     .from('student_class_enrollment')
@@ -156,11 +181,11 @@ export async function loadRecipientRecord(adminClient: AdminClientLike, familyId
 
   return {
     familyId: family.id,
-    guardianEmail: family.guardian_email,
+    primaryEmail,
     familyName: family.family_name,
     isActive: family.is_active ?? true,
     subscriptionStatus: family.newsletter_subscription_status ?? 'pending',
-    parentRelationships: (parentEnrollments ?? []).map((row: { relationship: string }) => row.relationship),
+    parentRelationships: parentRows.map((row) => row.relationship),
     children: ((childEnrollments ?? []) as StudentClassEnrollmentJoinRow[])
       .filter((row) => {
         const student = pickJoin(row.students)
@@ -499,7 +524,7 @@ export async function processSyncJob(
       })
     }
 
-    if (!recipient.isActive || !recipient.guardianEmail || recipient.children.length === 0) {
+    if (!recipient.isActive || !recipient.primaryEmail || recipient.children.length === 0) {
       throw new EmailPlatformError(
         `Family ${familyId} is not eligible for outbound Kit sync.`,
         {
@@ -576,7 +601,7 @@ async function processReconciliationJob(
 
   const recipient = await loadRecipientRecord(adminClient, familyId)
 
-  if (!recipient || !recipient.guardianEmail) {
+  if (!recipient || !recipient.primaryEmail) {
     throw new EmailPlatformError(`Family ${familyId} is unavailable for reconciliation.`, {
       code: 'family_not_found',
       retryable: false,
@@ -815,7 +840,7 @@ export async function processWebhookEvent(
       family = recipient
         ? ({
             id: recipient.familyId,
-            guardian_email: recipient.guardianEmail,
+            guardian_email: recipient.primaryEmail,
             newsletter_subscription_status: recipient.subscriptionStatus,
             newsletter_subscription_updated_at: null,
           } as FamilyRow)

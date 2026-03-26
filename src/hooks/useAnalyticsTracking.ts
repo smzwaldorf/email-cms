@@ -20,6 +20,7 @@ export function useAnalyticsTracking({ articleId, newsletterId, classId, enabled
   const location = useLocation();
   const { user } = useAuth();
   const sessionIdRef = useRef<string>('');
+  const journeyCorrelationId = new URLSearchParams(location.search).get('jc');
 
   const lastLoggedKeyRef = useRef<string>(''); // Track the unique key of the last logged view
   
@@ -82,7 +83,8 @@ export function useAnalyticsTracking({ articleId, newsletterId, classId, enabled
         metadata: {
           path: location.pathname,
           search: location.search,
-          class_id: classId
+          class_id: classId,
+          journey_correlation_id: journeyCorrelationId,
         }
       });
 
@@ -149,7 +151,8 @@ export function useAnalyticsTracking({ articleId, newsletterId, classId, enabled
         metadata: {
           path: ctx.pathname,
           time_spent_seconds: timeSpentSeconds,
-          class_id: ctx.classId
+          class_id: ctx.classId,
+          journey_correlation_id: journeyCorrelationId,
         }
       });
     };
@@ -172,7 +175,7 @@ export function useAnalyticsTracking({ articleId, newsletterId, classId, enabled
       console.log('[Analytics] About to call logSessionEnd from cleanup');
       logSessionEnd();
     };
-  }, [articleId, enabled]); // Minimal dependencies - reads other values from refs
+  }, [articleId, enabled, journeyCorrelationId]); // Minimal dependencies - reads other values from refs
 
   // Scroll Tracking (Simplified)
   useEffect(() => {

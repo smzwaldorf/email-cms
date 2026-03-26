@@ -28,7 +28,7 @@ flowchart TD
     R --> H
 ```
 
-This document currently covers the implemented Kit sync and webhook foundation. As newsletter-delivery orchestration is added, the delivery batch should become the operator's main unit of work, with Kit subscriber sync and webhook reconciliation remaining supporting mechanics underneath it.
+This document covers the Kit sync/webhook foundation and the connected publish-to-send flow. Delivery batches are the operator's main unit of work, with Kit subscriber sync, send handoff, and webhook reconciliation as supporting mechanics underneath it.
 
 ## Goal: Send The 1st Email
 
@@ -52,6 +52,7 @@ Use this as the working checklist for the first successful Kit send.
 - [x] 8. Call `POST /functions/v1/kit-sync-worker` to process the first sync job.
 - [x] 9. Verify the subscriber in Kit has the expected email, class tag, and custom fields: `child_classes`, `child_names`, `parent_type`.
 - [x] 10. Create and send the first broadcast in Kit UI using the synced subscriber or tag. Delivery confirmed.
+- [x] 11. Verify publish-triggered delivery invokes `kit-send-newsletter` for ready recipients and records real Kit broadcast ids in `newsletter_delivery_batch_recipients.provider_message_id`.
 
 ### Quick SQL For Step 7
 
@@ -76,7 +77,7 @@ insert into public.email_platform_sync_jobs (
 ### Notes While Progressing
 
 - This implementation syncs contacts, tags, and custom fields to Kit first.
-- The actual email send still happens from Kit.
+- Ready recipients are then sent via Kit API by `kit-send-newsletter` during publish-triggered delivery orchestration.
 - If a step fails, check `email_platform_sync_jobs`, `email_platform_subscriber_mappings`, and `email_platform_webhook_events`.
 
 ## Required Configuration
@@ -96,6 +97,7 @@ Set these server-side environment variables anywhere the Supabase Edge Functions
 ## Worker Entry Points
 
 - `kit-sync-worker`: Processes pending outbound sync jobs and retryable jobs.
+- `kit-send-newsletter`: Sends ready newsletter recipients through Kit by creating targeted broadcasts.
 - `kit-webhook`: Verifies the shared secret, stores the webhook event, and then processes it idempotently.
 - `kit-replay`: Resets failed or dead-lettered jobs/events so they can run again.
 - `kit-reconcile`: Reprocesses retryable or unresolved webhook events and runs scheduled reconciliation jobs.

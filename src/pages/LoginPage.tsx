@@ -5,17 +5,21 @@
  */
 
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { GoogleButton } from '@/components/GoogleButton'
 import { MagicLinkForm } from '@/components/MagicLinkForm'
 import { WeekService } from '@/services/WeekService'
+import { isSafeAppRedirectPath } from '@/utils/urlUtils'
 
 type AuthMethod = 'password' | 'magic-link'
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { signIn, isLoading } = useAuth()
+  const redirectTo = searchParams.get('redirect_to')
+  const safeRedirectTo = isSafeAppRedirectPath(redirectTo) ? redirectTo : undefined
 
   const [authMethod, setAuthMethod] = useState<AuthMethod>('password')
   const [email, setEmail] = useState('')
@@ -50,6 +54,11 @@ export const LoginPage: React.FC = () => {
   ]
 
   const redirectToLatestWeek = async () => {
+    if (safeRedirectTo) {
+      navigate(safeRedirectTo)
+      return
+    }
+
     try {
       const latestWeek = await WeekService.getLatestPublishedWeek()
       if (latestWeek) {
@@ -151,7 +160,7 @@ export const LoginPage: React.FC = () => {
 
           {/* Google Sign-in */}
           <div className="mb-6">
-            <GoogleButton disabled={isLoading} />
+            <GoogleButton disabled={isLoading} redirectTo={safeRedirectTo} />
             <p className="mt-2 text-center text-xs text-waldorf-clay-500">
               Recommended for the quickest sign-in experience
             </p>
@@ -260,7 +269,7 @@ export const LoginPage: React.FC = () => {
 
           {/* Magic Link Form */}
           {authMethod === 'magic-link' && (
-            <MagicLinkForm onSuccess={handleMagicLinkSuccess} isLoading={isLoading} />
+            <MagicLinkForm onSuccess={handleMagicLinkSuccess} isLoading={isLoading} redirectTo={safeRedirectTo} />
           )}
 
           {/* Test Users Quick Fill (Dev Mode Only) */}

@@ -40,7 +40,6 @@ describe('newsletterDeliveryService helpers', () => {
     expect(
       validateRecipientEligibility({
         is_active: true,
-        newsletter_subscription_status: 'subscribed',
         classIds: ['A1'],
       }),
     ).toEqual({ eligible: true, reason: null })
@@ -48,7 +47,6 @@ describe('newsletterDeliveryService helpers', () => {
     expect(
       validateRecipientEligibility({
         is_active: false,
-        newsletter_subscription_status: 'subscribed',
         classIds: ['A1'],
       }),
     ).toEqual({ eligible: false, reason: 'family_inactive' })
@@ -56,9 +54,8 @@ describe('newsletterDeliveryService helpers', () => {
     expect(
       validateRecipientEligibility({
         is_active: true,
-        newsletter_subscription_status: 'unsubscribed',
         classIds: ['A1'],
       }),
-    ).toEqual({ eligible: false, reason: 'subscription_blocked' })
+    ).toEqual({ eligible: true, reason: null })
   })
 })

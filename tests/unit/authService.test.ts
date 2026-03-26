@@ -196,4 +196,28 @@ describe('AuthService - Magic Link with Redirect', () => {
       consoleLogSpy.mockRestore()
     })
   })
+
+  describe('signInWithGoogle redirect handling', () => {
+    it('passes safe redirect_to through OAuth callback URL', async () => {
+      vi.mocked(mockSupabase.auth.signInWithOAuth).mockResolvedValueOnce({ error: null, data: {} })
+
+      await authService.signInWithGoogle('/article/article-123?jc=journey-1')
+
+      const callArgs = vi.mocked(mockSupabase.auth.signInWithOAuth).mock.calls[0][0]
+      const callbackUrl = new URL(callArgs.options?.redirectTo ?? '')
+      expect(callbackUrl.pathname).toBe('/auth/callback')
+      expect(callbackUrl.searchParams.get('redirect_to')).toBe('/article/article-123?jc=journey-1')
+    })
+
+    it('drops unsafe external redirect_to values for OAuth', async () => {
+      vi.mocked(mockSupabase.auth.signInWithOAuth).mockResolvedValueOnce({ error: null, data: {} })
+
+      await authService.signInWithGoogle('https://evil.example/path')
+
+      const callArgs = vi.mocked(mockSupabase.auth.signInWithOAuth).mock.calls[0][0]
+      const callbackUrl = new URL(callArgs.options?.redirectTo ?? '')
+      expect(callbackUrl.pathname).toBe('/auth/callback')
+      expect(callbackUrl.searchParams.get('redirect_to')).toBeNull()
+    })
+  })
 })

@@ -9,9 +9,10 @@ import { useAuth } from '@/context/AuthContext'
 
 interface GoogleButtonProps {
   disabled?: boolean
+  redirectTo?: string
 }
 
-export const GoogleButton: React.FC<GoogleButtonProps> = ({ disabled = false }) => {
+export const GoogleButton: React.FC<GoogleButtonProps> = ({ disabled = false, redirectTo }) => {
   const { signInWithGoogle } = useAuth()
   const [isLoading, setIsLoading] = React.useState(false)
 
@@ -19,7 +20,7 @@ export const GoogleButton: React.FC<GoogleButtonProps> = ({ disabled = false }) 
     try {
       setIsLoading(true)
       console.log('🔐 Initiating Google OAuth flow...')
-      await signInWithGoogle()
+      await signInWithGoogle(redirectTo)
       // OAuth redirects, so onSuccess won't be called immediately
       // After callback, user will be authenticated
     } catch (error) {

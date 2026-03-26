@@ -84,6 +84,42 @@ function toResolvedBlock(
   }
 }
 
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function renderBlocksHtml(blocks: PersonalizedEmailResolvedBlock[]): string {
+  if (blocks.length === 0) {
+    return ''
+  }
+  return blocks
+    .map((block) => {
+      const titleHtml = block.title ? `<h2>${escapeHtml(block.title)}</h2>` : ''
+      return `<section>${titleHtml}${block.content}</section>`
+    })
+    .join('\n')
+}
+
+function renderArticleSummaryHtml(blocks: PersonalizedEmailResolvedBlock[]): string {
+  if (blocks.length === 0) {
+    return ''
+  }
+
+  const items = blocks
+    .map((block, index) => {
+      const title = toCanonicalString(block.title) || `Article ${index + 1}`
+      return `<li>${escapeHtml(title)}</li>`
+    })
+    .join('')
+
+  return `<section><h2>Articles in this newsletter</h2><ul>${items}</ul></section>`
+}
+
 function stableStringify(value: unknown): string {
   if (value === null || typeof value !== 'object') {
     return JSON.stringify(value)
@@ -305,6 +341,19 @@ export function composePersonalizedEmails(
         })
       }
     }
+
+    const orderedNewsletterBlocks = [...resolvedSharedBlocks, ...resolvedClassBlocks].sort(compareBlockOrder)
+    const newsletterSummaryHtml = renderArticleSummaryHtml(orderedNewsletterBlocks)
+    const newsletterContentHtml = renderBlocksHtml(orderedNewsletterBlocks)
+    const composedNewsletterHtml = [newsletterSummaryHtml, newsletterContentHtml].filter(Boolean).join('\n')
+    const baseBody = toCanonicalString(renderedBody)
+    if (composedNewsletterHtml) {
+      renderedBody = baseBody
+        ? `${baseBody}\n<hr />\n${composedNewsletterHtml}`
+        : composedNewsletterHtml
+    }
+    const fallbackTitle = toCanonicalString(input.newsletter.title) || `Newsletter ${input.newsletter.newsletterId}`
+    renderedSubject = fallbackTitle
 
     payloads.push({
       guardianId: guardian.guardianId,

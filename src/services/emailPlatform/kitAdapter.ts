@@ -34,6 +34,14 @@ interface KitCustomField {
   label: string
 }
 
+interface KitBroadcastResponse {
+  broadcast: {
+    id: number
+    send_at: string | null
+    public_url: string | null
+  }
+}
+
 export class KitAdapter implements EmailPlatformAdapter {
   private readonly baseHeaders: HeadersInit
 
@@ -124,6 +132,60 @@ export class KitAdapter implements EmailPlatformAdapter {
         subscriber: subscriberResponse.subscriber,
         tags,
       },
+    }
+  }
+
+  async createBroadcast(input: {
+    subject: string
+    content: string
+    description: string
+    previewText: string
+    sendAt: string
+    tagNames: string[]
+    emailAddress?: string | null
+  }): Promise<{
+    broadcastId: string
+    sendAt: string | null
+    publicUrl: string | null
+  }> {
+    const tagRecords = await this.ensureTags(input.tagNames)
+    const tagIds = tagRecords.map((tag) => tag.id)
+    if (tagIds.length === 0) {
+      throw new KitApiError('Broadcast requires at least one target tag.', {
+        retryable: false,
+      })
+    }
+
+    const response = await this.request<KitBroadcastResponse>('/v4/broadcasts', {
+      method: 'POST',
+      body: JSON.stringify({
+        email_address: input.emailAddress ?? null,
+        content: input.content,
+        description: input.description,
+        public: false,
+        published_at: input.sendAt,
+        send_at: input.sendAt,
+        preview_text: input.previewText,
+        subject: input.subject,
+        subscriber_filter: [
+          {
+            all: [
+              {
+                type: 'tag',
+                ids: tagIds,
+              },
+            ],
+            any: null,
+            none: null,
+          },
+        ],
+      }),
+    })
+
+    return {
+      broadcastId: String(response.broadcast.id),
+      sendAt: response.broadcast.send_at ?? null,
+      publicUrl: response.broadcast.public_url ?? null,
     }
   }
 

@@ -199,4 +199,27 @@ describe('composePersonalizedEmails', () => {
       'unknown_target_class',
     ])
   })
+
+  it('includes article titles as bullet list in rendered body', () => {
+    const result = composePersonalizedEmails(
+      createBaseInput({
+        newsletter: {
+          newsletterId: 'newsletter-1',
+          newsletterRevisionId: 'rev-42',
+          sharedBlocks: [
+            { blockId: 'shared-1', title: 'School Calendar', content: '<p>Details</p>', editorialOrder: 1 },
+          ],
+          classBlocks: [
+            { blockId: 'a-1', classId: 'A', title: null, content: '<p>Class update</p>', editorialOrder: 2 },
+          ],
+        },
+      }),
+    )
+
+    const body = result.payloads[0].renderedBody ?? ''
+    expect(body).toContain('<h2>Articles in this newsletter</h2>')
+    expect(body).toContain('<ul>')
+    expect(body).toContain('<li>School Calendar</li>')
+    expect(body).toContain('<li>Article 2</li>')
+  })
 })

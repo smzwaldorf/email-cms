@@ -41,7 +41,7 @@ describe('mapRecipientToKitPayload', () => {
       child_names: 'Alice, Ben',
       parent_type: 'mother',
     })
-    expect(payload.tagNames).toEqual(['class:A1', 'class:B2'])
+    expect(payload.tagNames).toEqual(['class:A1', 'class:B2', 'family:family-1'])
   })
 
   it('marks mixed parent roles and unsubscribed families correctly', () => {
@@ -69,6 +69,6 @@ describe('mapRecipientToKitPayload', () => {
     expect(payload.firstName).toBeUndefined()
     expect(payload.state).toBe('cancelled')
     expect(payload.parentType).toBe('mixed')
-    expect(payload.tagNames).toEqual(['grade:C1'])
+    expect(payload.tagNames).toEqual(['family:family-2', 'grade:C1'])
   })
 })

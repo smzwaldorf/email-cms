@@ -44,7 +44,6 @@ export interface Class {
 export interface Family {
   id: string // UUID
   name: string // 家族名稱（例如：升學進路、親子教育）
-  guardianEmail?: string
   description?: string
   relatedTopics?: string[] // 相關主題清單
   isActive?: boolean

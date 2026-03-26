@@ -35,20 +35,10 @@ function deriveParentType(relationships: string[]): ParentType {
 }
 
 function deriveSubscriberState(
-  subscriptionStatus: NewsletterSubscriptionStatus,
+  _subscriptionStatus: NewsletterSubscriptionStatus,
 ): EmailPlatformRecipientPayload['state'] {
-  switch (subscriptionStatus) {
-    case 'subscribed':
-      return 'active'
-    case 'unsubscribed':
-      return 'cancelled'
-    case 'bounced':
-      return 'bounced'
-    case 'complained':
-      return 'complained'
-    default:
-      return 'inactive'
-  }
+  // Enforce active state for all CMS-driven subscriber upserts.
+  return 'active'
 }
 
 function deriveFirstName(familyName: string | null | undefined): string | undefined {
@@ -65,11 +55,12 @@ export function mapRecipientToKitPayload(
   const classTagNames = normalizeUnique(
     recipient.children.map((child) => `${options.classTagPrefix}${child.classCode}`),
   )
+  const familyTagName = `family:${recipient.familyId}`
   const parentType = deriveParentType(recipient.parentRelationships)
 
   return {
     externalIdentityKey: `family:${recipient.familyId}`,
-    emailAddress: recipient.guardianEmail.trim().toLowerCase(),
+    emailAddress: (recipient.primaryEmail ?? '').trim().toLowerCase(),
     firstName: deriveFirstName(recipient.familyName),
     state: deriveSubscriberState(recipient.subscriptionStatus),
     parentType,
@@ -81,6 +72,6 @@ export function mapRecipientToKitPayload(
       child_names: childNames.join(', '),
       parent_type: parentType,
     },
-    tagNames: classTagNames,
+    tagNames: normalizeUnique([familyTagName, ...classTagNames]),
   }
 }

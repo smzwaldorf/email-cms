@@ -84,6 +84,6 @@ export interface DeliveryHandoffContract {
   jobId: string
   deliverablePayloads: PersonalizedEmailPayload[]
   readyPayloads: PersonalizedEmailPayload[]
-  warningPayloads: PersonalizedEmailPayload[]
+  nonReadyRecipients: PreparedRecipientRecord[]
   failedRecipients: PreparedRecipientRecord[]
 }

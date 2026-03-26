@@ -9,10 +9,12 @@ const TRANSPARENT_GIF = new Uint8Array([
 ]);
 
 // Validate JWT payload structure
-const isValidPayload = (payload: any): boolean => {
+const isValidPayload = (payload: unknown): boolean => {
   if (typeof payload !== 'object' || !payload) return false;
-  if (typeof payload.sub !== 'string' || !payload.sub) return false;
-  if (typeof payload.nwl !== 'string' || !payload.nwl) return false;
+  const typed = payload as Record<string, unknown>;
+  if (typeof typed.sub !== 'string' || !typed.sub) return false;
+  if (typeof typed.nwl !== 'string' || !typed.nwl) return false;
+  if (typeof typed.jti !== 'string' || !typed.jti) return false;
   return true;
 };
 
@@ -67,7 +69,11 @@ serve(async (req) => {
       });
     }
 
-    const { sub: user_id, nwl: newsletter_id } = payload as { sub: string; nwl: string };
+    const { sub: user_id, nwl: newsletter_id, jti: correlation_id } = payload as {
+      sub: string;
+      nwl: string;
+      jti: string;
+    };
 
     // Deduplication: Check for recent events (last 10 seconds)
     const { count } = await supabase
@@ -88,6 +94,8 @@ serve(async (req) => {
         user_id,
         newsletter_id,
         metadata: {
+          source: "email_open",
+          correlation_id,
           user_agent: req.headers.get("user-agent"),
           ip: req.headers.get("x-forwarded-for"),
         }

@@ -8,6 +8,7 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import WeekService from '@/services/WeekService'
+import { isSafeAppRedirectPath } from '@/utils/urlUtils'
 
 export const AuthCallbackPage: React.FC = () => {
   const navigate = useNavigate()
@@ -38,7 +39,8 @@ export const AuthCallbackPage: React.FC = () => {
 
         // Get redirect destination from query params
         const redirectUrl = searchParams.get('redirect_to')
-        console.log('📍 Redirect destination from params:', redirectUrl || 'none')
+        const safeRedirectUrl = isSafeAppRedirectPath(redirectUrl) ? redirectUrl : null
+        console.log('📍 Redirect destination from params:', safeRedirectUrl || 'none')
 
         // Supabase handles OAuth and Magic Link callbacks automatically
         // The user session is established when the auth state changes
@@ -58,10 +60,10 @@ export const AuthCallbackPage: React.FC = () => {
             // Redirect to original article link or latest week
             setTimeout(async () => {
               try {
-                if (redirectUrl) {
-                  console.log('🔄 Redirecting to original article:', redirectUrl)
+                if (safeRedirectUrl) {
+                  console.log('🔄 Redirecting to original article:', safeRedirectUrl)
                   setStatus('success')
-                  navigate(redirectUrl)
+                  navigate(safeRedirectUrl, { replace: true })
                 } else {
                   // Fetch latest published week from database
                   const latestWeek = await WeekService.getLatestPublishedWeek()

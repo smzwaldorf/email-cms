@@ -52,7 +52,7 @@ export interface EmailPlatformRecipientChild {
 
 export interface EmailPlatformRecipientRecord {
   familyId: string
-  guardianEmail: string
+  primaryEmail: string | null
   familyName?: string | null
   parentRelationships: string[]
   children: EmailPlatformRecipientChild[]
@@ -100,6 +100,19 @@ export interface EmailPlatformSubscriberSnapshot {
 export interface EmailPlatformAdapter {
   upsertSubscriber(input: EmailPlatformSyncRequest): Promise<EmailPlatformSyncOutcome>
   getSubscriberSnapshot(externalSubscriberId: string): Promise<EmailPlatformSubscriberSnapshot>
+  createBroadcast(input: {
+    subject: string
+    content: string
+    description: string
+    previewText: string
+    sendAt: string
+    tagNames: string[]
+    emailAddress?: string | null
+  }): Promise<{
+    broadcastId: string
+    sendAt: string | null
+    publicUrl: string | null
+  }>
 }
 
 export interface EmailPlatformWebhookVerificationResult {

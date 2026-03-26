@@ -868,11 +868,12 @@ HAVING COUNT(*) > 5;
 
 ### Newsletter Delivery Operations
 
-- **Publish default behavior**: Publishing a valid draft now starts a delivery batch with default audience mode `all` (all currently eligible families).
-- **Audience override before publish**: In the admin publish panel, operators can switch audience mode to `classes`, `families`, or `family` and review the resolved candidate/eligible counts before confirming publish.
-- **Partial success handling**: Recipient preparation and send are tracked per family. Invalid recipients are marked with explicit reasons and do not block eligible recipients from sending.
-- **Resend procedure**: From a prior batch with failures, create a resend batch. Resend candidates are constrained to prior eligible recipients and re-validated against current family activity/subscription/enrollment status before handoff.
-- **Operator review surface**: Admin workflow shows delivery batch history (state and aggregate counts) so teams can identify partial failures and trigger targeted resend actions.
+- **Canonical 7-step journey**: `write -> publish -> send -> email analytics -> article click attempt -> authenticate -> redirect to intended article`.
+- **Pinned preparation contract**: Every batch is bound to `newsletterRevisionId`, `templateRevisionId`, `recipientSnapshotCapturedAt`, and `rulesVersion` before send orchestration.
+- **Ready-only delivery handoff**: Only recipients with `preparation_status = ready` are deliverable. `warning/failed` recipients are persisted with findings for correction.
+- **Targeted resend procedure**: Resend batches are constrained to recipients that failed in the parent batch, then re-evaluated against current eligibility and newly pinned inputs.
+- **Auth and redirect fidelity**: Protected routes preserve full deep links for `/week/:weekNumber/:shortId`, `/newsletter/:newsletterId/:shortId`, and `/article/:articleId` through login/callback.
+- **Journey correlation continuity**: Delivery recipients carry `journey_correlation_id`, and email open/click plus site events record correlation metadata for end-to-end conversion analysis.
 
 ### Complete Documentation
 

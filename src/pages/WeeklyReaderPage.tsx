@@ -40,10 +40,13 @@ export function WeeklyReaderPage() {
     newsletterId?: string, 
     shortId?: string 
   }>()
+  const { articleId } = useParams<{ articleId?: string }>()
   const navigate = useNavigate()
   const location = useLocation()
   const locationState = location.state as WeeklyReaderLocationState | null
-  const isAdminInlineFromQuery = new URLSearchParams(location.search).get('admin') === '1'
+  const queryParams = new URLSearchParams(location.search)
+  const isAdminInlineFromQuery = queryParams.get('admin') === '1'
+  const journeyCorrelationId = queryParams.get('jc')
 
   const { user } = useAuth()
   const navigation = useNavigation()
@@ -59,6 +62,16 @@ export function WeeklyReaderPage() {
     if (newsletterId) {
       // /newsletter/:newsletterId route - use directly
       setResolvedNewsletterId(newsletterId)
+    } else if (articleId) {
+      ArticleService.getArticleWithNewsletter(articleId)
+        .then((articleWithContext) => {
+          if (articleWithContext.newsletter_id) {
+            setResolvedNewsletterId(articleWithContext.newsletter_id)
+          }
+        })
+        .catch((err) => {
+          console.error('[WeeklyReaderPage] Failed to resolve article route context:', err)
+        })
     } else if (weekNumber) {
       // /week/:weekNumber route - look up newsletter UUID from week_number
       WeekService.getWeek(weekNumber)
@@ -71,7 +84,7 @@ export function WeeklyReaderPage() {
           setResolvedNewsletterId(weekNumber)
         })
     }
-  }, [weekNumber, newsletterId])
+  }, [weekNumber, newsletterId, articleId])
 
   // Use resolved newsletter ID
   const currentNewsletterId = resolvedNewsletterId || weekNumber || newsletterId || ''
@@ -166,22 +179,11 @@ export function WeeklyReaderPage() {
                          (currentList.length === articles.length && 
                           JSON.stringify(currentList.map(a => a.title)) !== JSON.stringify(articles.map(a => a.title)))
 
-      // Check for cached short ID from localStorage (redirect after login)
-      const cachedShortId = localStorage.getItem('pending_short_id')
-      const cachedWeekNumber = localStorage.getItem('pending_week_number')
-      
-      // Determine which shortId to use: URL param or cached
-      const targetShortId = shortId || (cachedWeekNumber === currentNewsletterId ? cachedShortId : null)
+      const targetShortId = shortId
 
       if (targetShortId) {
         // Handle short URL redirection
         const targetArticle = articles.find(a => a.shortId === targetShortId)
-        
-        // Clear cache if we attempted to use it
-        if (cachedShortId) {
-          localStorage.removeItem('pending_short_id')
-          localStorage.removeItem('pending_week_number')
-        }
 
         if (targetArticle) {
           navigation.setCurrentNewsletter(currentNewsletterId)
@@ -201,7 +203,34 @@ export function WeeklyReaderPage() {
           const redirectPath = targetArticle.weekNumber 
             ? `/week/${targetArticle.weekNumber}` 
             : `/newsletter/${currentNewsletterId}`
-          navigate(redirectPath, { replace: true })
+          const redirectWithCorrelation = journeyCorrelationId
+            ? `${redirectPath}?jc=${encodeURIComponent(journeyCorrelationId)}`
+            : redirectPath
+          navigate(redirectWithCorrelation, { replace: true })
+          return
+        }
+      }
+
+      if (articleId) {
+        const targetArticle = articles.find((item) => item.id === articleId)
+        if (targetArticle) {
+          const targetOrder = targetArticle.order ?? 1
+          navigation.setCurrentNewsletter(currentNewsletterId)
+          navigation.setArticleList(articles)
+          navigation.setCurrentArticle(targetArticle.id, targetOrder)
+          if (targetOrder < articles.length) {
+            navigation.setNextArticleId(articles[targetOrder]?.id)
+          } else {
+            navigation.setNextArticleId(undefined)
+          }
+
+          const redirectPath = targetArticle.weekNumber
+            ? `/week/${targetArticle.weekNumber}`
+            : `/newsletter/${currentNewsletterId}`
+          const redirectWithCorrelation = journeyCorrelationId
+            ? `${redirectPath}?jc=${encodeURIComponent(journeyCorrelationId)}`
+            : redirectPath
+          navigate(redirectWithCorrelation, { replace: true })
           return
         }
       }
@@ -230,7 +259,7 @@ export function WeeklyReaderPage() {
         navigation.setArticleList(articles)
       }
     }
-  }, [articles, currentNewsletterId, navigation, shortId, navigate])
+  }, [articles, articleId, currentNewsletterId, journeyCorrelationId, navigation, shortId, navigate])
 
   useEffect(() => {
     if (locationState?.focusArticleId) {

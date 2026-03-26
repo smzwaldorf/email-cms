@@ -148,7 +148,7 @@ describe('AuthCallbackPage - Redirect URL Handling', () => {
       // Run all pending timers
       vi.runAllTimers()
 
-      expect(mockNavigate).toHaveBeenCalledWith(articleUrl)
+      expect(mockNavigate).toHaveBeenCalledWith(articleUrl, { replace: true })
     })
 
     it('navigates to latest week from database when no redirect_to param', async () => {
@@ -198,6 +198,29 @@ describe('AuthCallbackPage - Redirect URL Handling', () => {
 
       vi.useFakeTimers()
     })
+
+    it('ignores unsafe external redirect_to and falls back to latest week', async () => {
+      vi.useRealTimers()
+      mockSearchParams = new URLSearchParams('redirect_to=https://evil.example/phish')
+
+      mockUseAuth.mockReturnValue({
+        user: testUser,
+        isLoading: false,
+        verifyMagicLink: vi.fn(),
+      })
+
+      render(
+        <Router>
+          <AuthCallbackPage />
+        </Router>
+      )
+
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith('/week/2025-W43')
+      }, { timeout: 2000 })
+
+      vi.useFakeTimers()
+    })
   })
 
   describe('redirect URL patterns', () => {
@@ -219,7 +242,7 @@ describe('AuthCallbackPage - Redirect URL Handling', () => {
 
       vi.runAllTimers()
 
-      expect(mockNavigate).toHaveBeenCalledWith(url)
+      expect(mockNavigate).toHaveBeenCalledWith(url, { replace: true })
     })
 
     it('handles different week numbers', async () => {
@@ -244,7 +267,7 @@ describe('AuthCallbackPage - Redirect URL Handling', () => {
 
         vi.runAllTimers()
 
-        expect(mockNavigate).toHaveBeenCalledWith(url)
+        expect(mockNavigate).toHaveBeenCalledWith(url, { replace: true })
       }
     })
 
@@ -268,7 +291,47 @@ describe('AuthCallbackPage - Redirect URL Handling', () => {
       vi.runAllTimers()
 
       // Should decode and navigate to original URL
-      expect(mockNavigate).toHaveBeenCalledWith(originalUrl)
+      expect(mockNavigate).toHaveBeenCalledWith(originalUrl, { replace: true })
+    })
+
+    it('preserves newsletter short-link redirect destination', () => {
+      const url = '/newsletter/11111111-1111-1111-1111-111111111111/a001?jc=journey-123'
+      mockSearchParams = new URLSearchParams(`redirect_to=${encodeURIComponent(url)}`)
+
+      mockUseAuth.mockReturnValue({
+        user: testUser,
+        isLoading: false,
+        verifyMagicLink: vi.fn(),
+      })
+
+      render(
+        <Router>
+          <AuthCallbackPage />
+        </Router>
+      )
+
+      vi.runAllTimers()
+      expect(mockNavigate).toHaveBeenCalledWith(url, { replace: true })
+    })
+
+    it('preserves article deep-link redirect destination', () => {
+      const url = '/article/article-123?jc=journey-abc'
+      mockSearchParams = new URLSearchParams(`redirect_to=${encodeURIComponent(url)}`)
+
+      mockUseAuth.mockReturnValue({
+        user: testUser,
+        isLoading: false,
+        verifyMagicLink: vi.fn(),
+      })
+
+      render(
+        <Router>
+          <AuthCallbackPage />
+        </Router>
+      )
+
+      vi.runAllTimers()
+      expect(mockNavigate).toHaveBeenCalledWith(url, { replace: true })
     })
   })
 

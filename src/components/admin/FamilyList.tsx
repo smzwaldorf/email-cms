@@ -210,9 +210,6 @@ export function FamilyList({
                 </span>
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">
-                監護人信箱
-              </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">
                 描述
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">
@@ -247,9 +244,6 @@ export function FamilyList({
                   <span className="font-display text-lg font-semibold text-waldorf-clay-800">
                     {family.name}
                   </span>
-                </td>
-                <td className="px-6 py-4 text-sm text-waldorf-clay-600">
-                  {family.guardianEmail || <span className="text-waldorf-clay-400">-</span>}
                 </td>
                 <td className="px-6 py-4 text-sm text-waldorf-clay-600">
                   {family.description || <span className="text-waldorf-clay-400">-</span>}

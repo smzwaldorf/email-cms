@@ -51,3 +51,18 @@ export function extractWeekNumberFromUrl(url: string): string | null {
 export function isValidWeekNumber(weekNumber: string): boolean {
   return /^\d{4}-W\d{2}$/.test(weekNumber)
 }
+
+const ALLOWED_REDIRECT_PREFIXES = ['/week/', '/newsletter/', '/article/']
+
+export function isSafeAppRedirectPath(path: string | null | undefined): path is string {
+  if (!path) return false
+  if (!path.startsWith('/')) return false
+  if (path.startsWith('//')) return false
+  return ALLOWED_REDIRECT_PREFIXES.some((prefix) => path.startsWith(prefix))
+}
+
+export function buildLoginRedirectPath(currentPathname: string, currentSearch = ''): string {
+  const destination = `${currentPathname}${currentSearch}`
+  const encoded = encodeURIComponent(destination)
+  return `/login?redirect_to=${encoded}`
+}

@@ -304,15 +304,14 @@ class EmailContentPreparationService {
     const readyPayloads = job.recipients
       .filter((recipient) => recipient.status === 'ready')
       .map((recipient) => recipient.payload)
-    const warningPayloads = job.recipients
-      .filter((recipient) => recipient.status === 'warning')
-      .map((recipient) => recipient.payload)
+    const nonReadyRecipients = job.recipients
+      .filter((recipient) => recipient.status === 'warning' || recipient.status === 'failed')
 
     return {
       jobId,
-      deliverablePayloads: [...readyPayloads, ...warningPayloads],
+      deliverablePayloads: readyPayloads,
       readyPayloads,
-      warningPayloads,
+      nonReadyRecipients,
       failedRecipients: job.recipients.filter((recipient) => recipient.status === 'failed'),
     }
   }

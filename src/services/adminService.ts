@@ -866,19 +866,12 @@ class AdminService {
   private async validateFamilyWriteInput(input: {
     idToExclude?: string
     name?: string
-    guardianEmail?: string
   }): Promise<void> {
     const fieldErrors: Record<string, string> = {}
     const normalizedName = (input.name || '').trim()
-    const normalizedEmail = (input.guardianEmail || '').trim().toLowerCase()
 
     if (!normalizedName) {
       fieldErrors.name = '家族名稱為必填項'
-    }
-    if (!normalizedEmail) {
-      fieldErrors.guardianEmail = '監護人電子郵件為必填項'
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-      fieldErrors.guardianEmail = '監護人電子郵件格式不正確'
     }
 
     if (Object.keys(fieldErrors).length > 0) {
@@ -890,39 +883,24 @@ class AdminService {
 
     const supabase = getSupabaseClient()
     const normalizedCode = this.normalizeFamilyCode(normalizedName)
-    const [codeCheck, emailCheck] = await Promise.all([
-      supabase
-        .from('families')
-        .select('id')
-        .eq('is_active', true)
-        .ilike('family_code', normalizedCode),
-      supabase
-        .from('families')
-        .select('id')
-        .eq('is_active', true)
-        .ilike('guardian_email', normalizedEmail),
-    ])
+    const { data: codeRows, error: codeError } = await supabase
+      .from('families')
+      .select('id')
+      .eq('is_active', true)
+      .ilike('family_code', normalizedCode)
 
-    if (codeCheck.error || emailCheck.error) {
+    if (codeError) {
       throw new AdminServiceError(
-        `Failed to validate family identity: ${codeCheck.error?.message || emailCheck.error?.message}`,
+        `Failed to validate family identity: ${codeError.message}`,
         'FAMILY_VALIDATION_ERROR',
-        (codeCheck.error || emailCheck.error)
+        codeError
       )
     }
 
-    const duplicateCode = (codeCheck.data || []).find((row: IdOnlyRow) => row.id !== input.idToExclude)
+    const duplicateCode = (codeRows || []).find((row: IdOnlyRow) => row.id !== input.idToExclude)
     if (duplicateCode) {
       throw new AdminServiceError(
         JSON.stringify({ fieldErrors: { name: '家族名稱已存在' } }),
-        'FAMILY_VALIDATION_ERROR'
-      )
-    }
-
-    const duplicateEmail = (emailCheck.data || []).find((row: IdOnlyRow) => row.id !== input.idToExclude)
-    if (duplicateEmail) {
-      throw new AdminServiceError(
-        JSON.stringify({ fieldErrors: { guardianEmail: '監護人電子郵件已存在' } }),
         'FAMILY_VALIDATION_ERROR'
       )
     }
@@ -932,7 +910,6 @@ class AdminService {
     return {
       id: row.id,
       name: row.family_name || row.family_code || '',
-      guardianEmail: row.guardian_email || '',
       description: row.description || '',
       relatedTopics: Array.isArray(row.related_topics) ? row.related_topics : [],
       isActive: row.is_active ?? true,
@@ -4698,22 +4675,21 @@ class AdminService {
     name: string,
     description?: string,
     relatedTopics?: string[],
-    guardianEmail?: string,
+    _guardianEmail?: string,
     options: FamilyWriteOptions = {}
   ): Promise<Family> {
     try {
-      await this.validateFamilyWriteInput({ name, guardianEmail })
+      await this.validateFamilyWriteInput({ name })
       const supabase = getSupabaseClient()
       const normalizedName = name.trim()
       const normalizedCode = this.normalizeFamilyCode(normalizedName)
-      const normalizedEmail = (guardianEmail || '').trim().toLowerCase()
 
       const { data, error } = await supabase
         .from('families')
         .insert({
           family_code: normalizedCode,
           family_name: normalizedName,
-          guardian_email: normalizedEmail,
+          guardian_email: null,
           description: description?.trim() || null,
           related_topics: relatedTopics || [],
           is_active: true,
@@ -4760,7 +4736,6 @@ class AdminService {
     id: string,
     updates: {
       name?: string,
-      guardianEmail?: string,
       description?: string,
       relatedTopics?: string[]
     },
@@ -4784,20 +4759,15 @@ class AdminService {
 
       const updatePayload: Record<string, unknown> = {}
       const resolvedName = updates.name ?? existing.family_name ?? existing.family_code
-      const resolvedGuardianEmail = updates.guardianEmail ?? existing.guardian_email
       await this.validateFamilyWriteInput({
         idToExclude: id,
         name: resolvedName,
-        guardianEmail: resolvedGuardianEmail,
       })
 
       if (updates.name !== undefined) {
         const normalizedName = updates.name.trim()
         updatePayload.family_name = normalizedName
         updatePayload.family_code = this.normalizeFamilyCode(normalizedName)
-      }
-      if (updates.guardianEmail !== undefined) {
-        updatePayload.guardian_email = updates.guardianEmail.trim().toLowerCase()
       }
       if (updates.description !== undefined) {
         updatePayload.description = updates.description.trim() || null

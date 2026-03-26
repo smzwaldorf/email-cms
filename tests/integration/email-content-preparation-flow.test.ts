@@ -45,7 +45,7 @@ function createFlowInput(): PrepareEmailContentInput {
 }
 
 describe('email content preparation flow', () => {
-  it('keeps mixed-outcome batches and hands off all deliverable payloads', () => {
+  it('keeps mixed-outcome batches and hands off ready-only payloads', () => {
     const job = emailContentPreparationService.prepare(createFlowInput())
     const handoff = emailContentPreparationService.createDeliveryHandoff(job.jobId)
 
@@ -54,9 +54,8 @@ describe('email content preparation flow', () => {
     expect(job.summary.failedRecipients).toBe(1)
     expect(handoff.readyPayloads).toHaveLength(1)
     expect(handoff.readyPayloads[0].guardianId).toBe('guardian-ready')
-    expect(handoff.warningPayloads).toHaveLength(1)
-    expect(handoff.warningPayloads[0].guardianId).toBe('guardian-warning')
-    expect(handoff.deliverablePayloads).toHaveLength(2)
+    expect(handoff.deliverablePayloads).toHaveLength(1)
+    expect(handoff.nonReadyRecipients).toHaveLength(2)
     expect(handoff.failedRecipients).toHaveLength(1)
     expect(handoff.failedRecipients[0].guardianId).toBe('guardian-failed')
   })

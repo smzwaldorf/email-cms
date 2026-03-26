@@ -34,7 +34,6 @@ export function FamilyForm({
   const [formData, setFormData] = useState<Partial<Family>>(
     initialFamily || {
       name: '',
-      guardianEmail: '',
       description: '',
       relatedTopics: [],
     }
@@ -52,11 +51,6 @@ export function FamilyForm({
 
     if (!formData.name || formData.name.trim() === '') {
       errors.name = '家族名稱為必填項'
-    }
-    if (!formData.guardianEmail || formData.guardianEmail.trim() === '') {
-      errors.guardianEmail = '監護人電子郵件為必填項'
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.guardianEmail.trim())) {
-      errors.guardianEmail = '監護人電子郵件格式不正確'
     }
 
     setValidationErrors(errors)
@@ -82,16 +76,6 @@ export function FamilyForm({
   const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setSaveError(null)
     setFormData({ ...formData, description: e.target.value })
-  }
-
-  const handleGuardianEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSaveError(null)
-    setValidationErrors((prev) => {
-      const updated = { ...prev }
-      delete updated.guardianEmail
-      return updated
-    })
-    setFormData({ ...formData, guardianEmail: e.target.value })
   }
 
   /**
@@ -146,7 +130,6 @@ export function FamilyForm({
       const familyData: Family = {
         id: initialFamily?.id || crypto.randomUUID(),
         name: formData.name || '',
-        guardianEmail: formData.guardianEmail || '',
         description: formData.description,
         relatedTopics: formData.relatedTopics,
         isActive: initialFamily?.isActive ?? true,
@@ -170,7 +153,7 @@ export function FamilyForm({
       <h2 className="text-3xl font-display font-bold mb-2 text-waldorf-clay-800 tracking-tight">
         {isNew ? '新增家族' : '編輯家族'}
       </h2>
-      <p className="text-waldorf-clay-500 mb-8 font-medium">輸入家族名稱、監護人聯絡資訊、描述和相關主題</p>
+      <p className="text-waldorf-clay-500 mb-8 font-medium">輸入家族名稱、描述和相關主題</p>
 
       {/* Error Message */}
       {saveError && (
@@ -214,33 +197,8 @@ export function FamilyForm({
           )}
         </div>
 
-        {/* Guardian Email */}
-        <div className="animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-          <label className="block text-sm font-semibold text-waldorf-clay-700 mb-2">
-            監護人電子郵件 <span className="text-waldorf-rose-500">*</span>
-          </label>
-          <input
-            type="email"
-            value={formData.guardianEmail || ''}
-            onChange={handleGuardianEmailChange}
-            placeholder="guardian@example.com"
-            className={`w-full px-4 py-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:border-waldorf-sage-400 bg-waldorf-cream-50 transition-all duration-200 ${
-              validationErrors.guardianEmail
-                ? 'border-waldorf-rose-300 focus:ring-waldorf-rose-300'
-                : 'border-waldorf-cream-300 focus:ring-waldorf-sage-300'
-            }`}
-            data-testid="guardian-email-input"
-            required
-          />
-          {validationErrors.guardianEmail && (
-            <p className="mt-2 text-sm text-waldorf-rose-600 font-medium" data-testid="guardian-email-error">
-              {validationErrors.guardianEmail}
-            </p>
-          )}
-        </div>
-
         {/* Description */}
-        <div className="animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
+        <div className="animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
           <label className="block text-sm font-semibold text-waldorf-clay-700 mb-2">描述</label>
           <textarea
             value={formData.description || ''}
@@ -253,7 +211,7 @@ export function FamilyForm({
         </div>
 
         {/* Related Topics */}
-        <div className="animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
+        <div className="animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
           <label className="block text-sm font-semibold text-waldorf-clay-700 mb-3">
             相關主題 <span className="text-waldorf-clay-500 font-normal">({(formData.relatedTopics || []).length})</span>
           </label>
@@ -304,7 +262,7 @@ export function FamilyForm({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex justify-end gap-3 pt-6 border-t border-waldorf-cream-200/50 animate-fade-in-up" style={{ animationDelay: '0.5s' }}>
+        <div className="flex justify-end gap-3 pt-6 border-t border-waldorf-cream-200/50 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
           <button
             onClick={onCancel}
             className="px-6 py-2.5 text-waldorf-clay-700 bg-waldorf-cream-100 border border-waldorf-cream-300 rounded-xl hover:bg-waldorf-cream-200 font-medium transition-all duration-200"

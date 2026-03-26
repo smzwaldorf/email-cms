@@ -390,8 +390,14 @@ export function AdminArticleListPage() {
     try {
       setIsMutating(true)
       setError(null)
-      await adminService.createNewsletterResendBatch(batchId, publishAudience)
-      setSuccessMessage('已建立補發批次')
+      const resendBatch = await adminService.createNewsletterResendBatch(batchId, publishAudience)
+      if (resendBatch.sentRecipients > 0) {
+        setSuccessMessage(`已建立補發批次，成功送達 ${resendBatch.sentRecipients} 筆`)
+      } else {
+        setError(
+          `補發批次已建立，但無可送達收件者（失敗 ${resendBatch.failedRecipients} 筆）。請查看收件者結果中的失敗原因。`,
+        )
+      }
       await loadData()
     } catch (err) {
       const message = err instanceof AdminServiceError ? err.message : '建立補發批次失敗'

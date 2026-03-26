@@ -41,6 +41,7 @@ export interface PersonalizationClassBlock extends PersonalizationInputBlock {
 export interface PersonalizationInputNewsletter {
   newsletterId: string
   newsletterRevisionId: string
+  title?: string | null
   sharedBlocks: PersonalizationInputBlock[]
   classBlocks: PersonalizationClassBlock[]
 }

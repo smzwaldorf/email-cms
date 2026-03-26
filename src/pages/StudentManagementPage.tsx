@@ -36,13 +36,11 @@ export function StudentManagementPage() {
     class?: string
     familySelection?: string
     familyName?: string
-    familyGuardianEmail?: string
   }>({})
   const [selectedFamilyId, setSelectedFamilyId] = useState('')
   const [selectedClassId, setSelectedClassId] = useState('')
   const [familyMode, setFamilyMode] = useState<FamilyMode>('skip')
   const [newFamilyName, setNewFamilyName] = useState('')
-  const [newFamilyGuardianEmail, setNewFamilyGuardianEmail] = useState('')
   const [newFamilyDescription, setNewFamilyDescription] = useState('')
   const [availableFamilies, setAvailableFamilies] = useState<Family[]>([])
   const [availableClasses, setAvailableClasses] = useState<Class[]>([])
@@ -73,7 +71,6 @@ export function StudentManagementPage() {
     setSelectedClassId('')
     setFamilyMode('skip')
     setNewFamilyName('')
-    setNewFamilyGuardianEmail('')
     setNewFamilyDescription('')
     setWizardStep('details')
     setWizardErrors({})
@@ -116,7 +113,6 @@ export function StudentManagementPage() {
       const nextErrors: {
         familySelection?: string
         familyName?: string
-        familyGuardianEmail?: string
       } = {}
 
       if (familyMode === 'existing' && !selectedFamilyId) {
@@ -126,12 +122,6 @@ export function StudentManagementPage() {
       if (familyMode === 'create') {
         if (!newFamilyName.trim()) {
           nextErrors.familyName = '新家庭名稱為必填項'
-        }
-        const normalizedEmail = newFamilyGuardianEmail.trim()
-        if (!normalizedEmail) {
-          nextErrors.familyGuardianEmail = '監護人電子郵件為必填項'
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-          nextErrors.familyGuardianEmail = '監護人電子郵件格式不正確'
         }
       }
 
@@ -174,7 +164,6 @@ export function StudentManagementPage() {
             newFamilyName,
             newFamilyDescription,
             [],
-            newFamilyGuardianEmail
           )
           resolvedFamilyId = createdFamily.id
           setSelectedFamilyId(createdFamily.id)
@@ -247,7 +236,6 @@ export function StudentManagementPage() {
           newFamilyName,
           newFamilyDescription,
           [],
-          newFamilyGuardianEmail
         )
         setSelectedFamilyId(createdFamily.id)
         setFamilyMode('existing')
@@ -469,16 +457,6 @@ export function StudentManagementPage() {
                         />
                         {wizardErrors.familyName && (
                           <span className="text-sm text-waldorf-rose-700">{wizardErrors.familyName}</span>
-                        )}
-                        <input
-                          type="email"
-                          value={newFamilyGuardianEmail}
-                          onChange={(event) => setNewFamilyGuardianEmail(event.target.value)}
-                          placeholder="監護人電子郵件"
-                          className="w-full px-4 py-3 border border-waldorf-cream-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-waldorf-sage-300"
-                        />
-                        {wizardErrors.familyGuardianEmail && (
-                          <span className="text-sm text-waldorf-rose-700">{wizardErrors.familyGuardianEmail}</span>
                         )}
                         <textarea
                           value={newFamilyDescription}

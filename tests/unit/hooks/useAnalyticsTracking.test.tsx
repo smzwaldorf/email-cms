@@ -25,6 +25,9 @@ describe('useAnalyticsTracking', () => {
   const wrapper = ({ children }: { children: React.ReactNode }) => (
     <MemoryRouter>{children}</MemoryRouter>
   )
+  const wrapperWithJourneyCorrelation = ({ children }: { children: React.ReactNode }) => (
+    <MemoryRouter initialEntries={['/week/2025-W43?jc=journey-123']}>{children}</MemoryRouter>
+  )
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -71,6 +74,20 @@ describe('useAnalyticsTracking', () => {
       metadata: expect.objectContaining({
         path: expect.any(String)
       })
+    }))
+  })
+
+  it('includes journey correlation id in page_view metadata when present in URL', () => {
+    renderHook(() => useAnalyticsTracking({
+      articleId: mockArticleId,
+      newsletterId: mockNewsletterId,
+    }), { wrapper: wrapperWithJourneyCorrelation })
+
+    expect(trackingService.logEvent).toHaveBeenCalledWith(expect.objectContaining({
+      event_type: 'page_view',
+      metadata: expect.objectContaining({
+        journey_correlation_id: 'journey-123',
+      }),
     }))
   })
 

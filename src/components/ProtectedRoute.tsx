@@ -10,6 +10,7 @@ import { useAuth } from '@/context/AuthContext'
 
 import { canAccess } from '@/lib/rbac'
 import type { UserRole } from '@/types/auth'
+import { buildLoginRedirectPath } from '@/utils/urlUtils'
 
 export interface ProtectedRouteProps {
   children: React.ReactNode
@@ -71,16 +72,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requir
 
   // Redirect to login if not authenticated
   if (!isAuthenticated || !user) {
-    // Check if we are trying to access a short URL
-    const pathParts = window.location.pathname.split('/')
-    // Expected format: /week/:weekNumber/:shortId
-    if (pathParts.length >= 4 && pathParts[1] === 'week' && pathParts[3]) {
-      const shortId = pathParts[3]
-      localStorage.setItem('pending_short_id', shortId)
-      localStorage.setItem('pending_week_number', pathParts[2])
-    }
-    
-    return <Navigate to="/login" replace />
+    const redirectPath = buildLoginRedirectPath(window.location.pathname, window.location.search)
+    return <Navigate to={redirectPath} replace />
   }
 
   // Check role requirement if specified

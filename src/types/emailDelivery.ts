@@ -1,4 +1,5 @@
 import type { PersonalizedEmailPayload } from '@/types/personalization'
+import type { PreparationFinding } from '@/types/emailPreparation'
 
 export type NewsletterDeliveryTrigger = 'publish' | 'resend'
 export type NewsletterDeliveryAudienceMode = 'all' | 'classes' | 'families' | 'family'
@@ -79,6 +80,8 @@ export interface NewsletterDeliveryRecipient {
   sendStatus: NewsletterDeliverySendStatus
   failureReason: string | null
   preparedPayload: PersonalizedEmailPayload | null
+  preparationFindings: PreparationFinding[]
+  journeyCorrelationId: string
   providerMessageId: string | null
   providerError: string | null
   lastAttemptedAt: string | null

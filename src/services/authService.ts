@@ -9,6 +9,7 @@ import type { AuthSession } from '@supabase/supabase-js'
 import type { AuthUser } from '@/types/auth'
 import { auditLogger } from './auditLogger'
 import { tokenManager } from './tokenManager'
+import { isSafeAppRedirectPath } from '@/utils/urlUtils'
 
 function errorMessageFromUnknown(err: unknown): string {
   return err instanceof Error ? err.message : String(err)
@@ -16,7 +17,7 @@ function errorMessageFromUnknown(err: unknown): string {
 
 export interface AuthServiceInterface {
   signIn(email: string, password: string): Promise<AuthUser | null>
-  signInWithGoogle(): Promise<AuthUser | null>
+  signInWithGoogle(redirectTo?: string): Promise<AuthUser | null>
   sendMagicLink(email: string, redirectTo?: string): Promise<boolean>
   verifyMagicLink(token: string): Promise<AuthUser | null>
   signOut(): Promise<void>
@@ -156,7 +157,7 @@ class SupabaseAuthService implements AuthServiceInterface {
     }
   }
 
-  async signInWithGoogle(): Promise<AuthUser | null> {
+  async signInWithGoogle(redirectTo?: string): Promise<AuthUser | null> {
     const supabase = getSupabaseClient()
 
     try {
@@ -170,10 +171,15 @@ class SupabaseAuthService implements AuthServiceInterface {
       })
 
       // Initiate OAuth flow with Google
+      const callbackUrl = new URL(`${window.location.origin}/auth/callback`)
+      if (isSafeAppRedirectPath(redirectTo)) {
+        callbackUrl.searchParams.set('redirect_to', redirectTo)
+      }
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: callbackUrl.toString(),
         },
       })
 
@@ -214,14 +220,15 @@ class SupabaseAuthService implements AuthServiceInterface {
 
     try {
       console.log('📧 Sending magic link to:', email)
-      if (redirectTo) {
-        console.log('📍 Redirect destination:', redirectTo)
+      const safeRedirectTo = isSafeAppRedirectPath(redirectTo) ? redirectTo : undefined
+      if (safeRedirectTo) {
+        console.log('📍 Redirect destination:', safeRedirectTo)
       }
 
       // Build email redirect URL with optional redirect parameter
       const callbackUrl = new URL(`${window.location.origin}/auth/callback`)
-      if (redirectTo) {
-        callbackUrl.searchParams.set('redirect_to', redirectTo)
+      if (safeRedirectTo) {
+        callbackUrl.searchParams.set('redirect_to', safeRedirectTo)
       }
 
       // Use Supabase's built-in magic link functionality
