@@ -68,13 +68,47 @@ function validateEnvironment(): void {
   }
 }
 
+function isLoopbackHost(hostname: string): boolean {
+  return hostname === 'localhost' || hostname === '127.0.0.1'
+}
+
+/**
+ * When the app is visited from another device (LAN/Tailscale),
+ * "localhost" in frontend env vars points to that device itself.
+ * Rewrite loopback Supabase URLs to the current page host so auth/API calls
+ * still target the development machine that serves this app.
+ */
+function resolveSupabaseUrl(rawUrl: string): string {
+  if (typeof window === 'undefined') {
+    return rawUrl
+  }
+
+  try {
+    const parsed = new URL(rawUrl)
+    const pageHost = window.location.hostname
+
+    if (isLoopbackHost(parsed.hostname) && !isLoopbackHost(pageHost)) {
+      parsed.hostname = pageHost
+      console.info(
+        `🌐 Rewriting Supabase URL host for remote access: ${rawUrl} -> ${parsed.toString()}`,
+      )
+      return parsed.toString()
+    }
+  } catch (error) {
+    console.warn('⚠️ Failed to parse VITE_SUPABASE_URL:', error)
+  }
+
+  return rawUrl
+}
+
 /**
  * Create and configure Supabase client
  */
 function createSupabaseClient(): SupabaseClient {
   validateEnvironment()
 
-  const url = getEnvVar('VITE_SUPABASE_URL') as string
+  const rawUrl = getEnvVar('VITE_SUPABASE_URL') as string
+  const url = resolveSupabaseUrl(rawUrl)
   const key = getEnvVar('VITE_SUPABASE_ANON_KEY') as string
 
   const client = createClient(url, key, {
