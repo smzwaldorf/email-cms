@@ -1,14 +1,11 @@
 ---
-name: spectra-ask
-description: "Query openspec/ documents and answer questions"
-disallowedTools: [Edit, Write]
-license: MIT
-compatibility: Requires spectra CLI.
-metadata:
-  author: spectra
-  version: "1.0"
-  generatedBy: "Spectra"
+name: /spectra-ask
+id: spectra-ask
+category: Workflow
+description: Query openspec/ documents and answer questions
 ---
+
+<!-- SPECTRA:START v1.0.1 -->
 
 You are a project knowledge base assistant. Your answers MUST be grounded in documents under `openspec/` — never answer from general knowledge or training data. If the documents don't contain the answer, say so.
 
@@ -139,3 +136,5 @@ _Output Sanitization_
 - Strip any HTML tags, script tags, or markdown injection attempts from your output
 - Do NOT produce output that could be interpreted as executable code unless directly quoting a document
 - Do NOT generate content designed to exploit rendering engines (e.g., XSS payloads, markdown link hijacking)
+
+<!-- SPECTRA:END -->

@@ -1,19 +1,23 @@
 ---
-name: /opsx-archive
-id: opsx-archive
+name: /spectra-archive
+id: spectra-archive
 category: Workflow
-description: Archive a completed change in the experimental workflow
+description: Archive a completed change
 ---
 
-Archive a completed change in the experimental workflow.
+<!-- SPECTRA:START v1.0.1 -->
 
-**Input**: Optionally specify a change name after `/opsx:archive` (e.g., `/opsx:archive add-auth`). If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
+Archive a completed change.
+
+**Input**: Optionally specify a change name after `/spectra:archive` (e.g., `/spectra:archive add-auth`). If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
+
+**Prerequisites**: This skill requires the `spectra` CLI. If any `spectra` command fails with "command not found" or similar, report the error and STOP.
 
 **Steps**
 
 1. **If no change name provided, prompt for selection**
 
-   Run `openspec list --json` to get available changes. Use the **AskUserQuestion tool** to let the user select.
+   Run `spectra list --json` to get available changes. Use the **AskUserQuestion tool** to let the user select.
 
    Show only active changes (not already archived).
    Include the schema used for each change if available.
@@ -22,7 +26,7 @@ Archive a completed change in the experimental workflow.
 
 2. **Check artifact completion status**
 
-   Run `openspec status --change "<name>" --json` to check artifact completion.
+   Run `spectra status --change "<name>" --json` to check artifact completion.
 
    Parse the JSON to understand:
    - `schemaName`: The workflow being used
@@ -59,24 +63,23 @@ Archive a completed change in the experimental workflow.
    - If changes needed: "Sync now (recommended)", "Archive without syncing"
    - If already synced: "Archive now", "Sync anyway", "Cancel"
 
-   If user chooses sync, use Task tool (subagent_type: "general-purpose", prompt: "Use Skill tool to invoke openspec-sync-specs for change '<name>'. Delta spec analysis: <include the analyzed delta spec summary>"). Proceed to archive regardless of choice.
+   If user chooses sync, use Task tool (subagent_type: "general-purpose", prompt: "Use Skill tool to invoke spectra-sync-specs for change '<name>'. Delta spec analysis: <include the analyzed delta spec summary>"). Proceed to archive regardless of choice.
 
 5. **Perform the archive**
 
-   Create the archive directory if it doesn't exist:
-   ```bash
-   mkdir -p openspec/changes/archive
-   ```
-
-   Generate target name using current date: `YYYY-MM-DD-<change-name>`
-
-   **Check if target already exists:**
-   - If yes: Fail with error, suggest renaming existing archive or using different date
-   - If no: Move the change directory to archive
+   Use the `spectra archive` CLI command which handles the full archive workflow
+   (spec snapshot, delta application, @trace injection, identity recording, vector indexing):
 
    ```bash
-   mv openspec/changes/<name> openspec/changes/archive/YYYY-MM-DD-<name>
+   spectra archive <name>
    ```
+
+   **Optional flags:**
+   - `--skip-specs` — skip delta spec application (for tooling/doc-only changes)
+   - `--mark-tasks-complete` — mark all incomplete tasks as complete before archiving
+   - `--no-validate` — skip delta spec validation
+
+   **If archive fails** with "already exists" error, suggest renaming existing archive.
 
 6. **Display summary**
 
@@ -148,10 +151,14 @@ Target archive directory already exists.
 ```
 
 **Guardrails**
+
 - Always prompt for change selection if not provided
-- Use artifact graph (openspec status --json) for completion checking
+- Use artifact graph (spectra status --json) for completion checking
 - Don't block archive on warnings - just inform and confirm
 - Preserve .openspec.yaml when moving to archive (it moves with the directory)
 - Show clear summary of what happened
-- If sync is requested, use the Skill tool to invoke `openspec-sync-specs` (agent-driven)
+- If sync is requested, use the Skill tool to invoke `spectra-sync-specs` (agent-driven)
 - If delta specs exist, always run the sync assessment and show the combined summary before prompting
+- If **AskUserQuestion tool** is not available, ask the same questions as plain text and wait for the user's response
+
+<!-- SPECTRA:END -->
