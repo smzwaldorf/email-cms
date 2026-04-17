@@ -6,6 +6,7 @@ import type {
   EmailTemplateValidationResult,
 } from '@/types/emailTemplate'
 import type { EmailTemplateRevisionRow, EmailTemplateRow } from '@/types/database'
+import { normalizeCanvaEmailHtml } from '@/services/canvaEmailImport'
 import {
   renderEmailTemplatePreview,
   validateEmailTemplate,
@@ -49,6 +50,31 @@ function mapTemplateRevisionRow(row: EmailTemplateRevisionRow): EmailTemplateRev
 }
 
 class EmailTemplateService {
+  normalizeImportedBodyHtml(rawHtml: string) {
+    return normalizeCanvaEmailHtml(rawHtml)
+  }
+
+  private resolveBodyTemplateInput(input: {
+    bodyTemplate: string
+    importedBodyHtml?: string | null
+  }): string {
+    if (!input.importedBodyHtml) {
+      return input.bodyTemplate
+    }
+
+    const importResult = this.normalizeImportedBodyHtml(input.importedBodyHtml)
+    if (importResult.hasBlockingIssues) {
+      const detail = importResult.issues.map((issue) => issue.message).join(' ')
+      throw new EmailTemplateServiceError(
+        `Cannot save imported HTML template: ${detail}`,
+        'EMAIL_TEMPLATE_IMPORT_VALIDATION_ERROR',
+        importResult.issues,
+      )
+    }
+
+    return importResult.normalizedHtml
+  }
+
   private assertTemplateValidation(
     validation: EmailTemplateValidationResult,
     operation: 'create' | 'save',
@@ -109,8 +135,10 @@ class EmailTemplateService {
     description?: string | null
     subjectTemplate: string
     bodyTemplate: string
+    importedBodyHtml?: string | null
   }): Promise<{ template: EmailTemplate; revision: EmailTemplateRevision; validation: EmailTemplateValidationResult }> {
-    const validation = validateEmailTemplate(input.subjectTemplate, input.bodyTemplate)
+    const resolvedBodyTemplate = this.resolveBodyTemplateInput(input)
+    const validation = validateEmailTemplate(input.subjectTemplate, resolvedBodyTemplate)
     this.assertTemplateValidation(validation, 'create')
     const supabase = getSupabaseClient()
 
@@ -138,7 +166,7 @@ class EmailTemplateService {
         template_id: templateRow.id,
         revision_number: 1,
         subject_template: input.subjectTemplate,
-        body_template: input.bodyTemplate,
+        body_template: resolvedBodyTemplate,
       })
       .select('*')
       .single()
@@ -182,9 +210,11 @@ class EmailTemplateService {
       description?: string | null
       subjectTemplate: string
       bodyTemplate: string
+      importedBodyHtml?: string | null
     },
   ): Promise<{ template: EmailTemplate; revision: EmailTemplateRevision; validation: EmailTemplateValidationResult }> {
-    const validation = validateEmailTemplate(input.subjectTemplate, input.bodyTemplate)
+    const resolvedBodyTemplate = this.resolveBodyTemplateInput(input)
+    const validation = validateEmailTemplate(input.subjectTemplate, resolvedBodyTemplate)
     this.assertTemplateValidation(validation, 'save')
     const supabase = getSupabaseClient()
     const maxRevision = await this.fetchMaxRevisionNumber(templateId)
@@ -195,7 +225,7 @@ class EmailTemplateService {
         template_id: templateId,
         revision_number: maxRevision + 1,
         subject_template: input.subjectTemplate,
-        body_template: input.bodyTemplate,
+        body_template: resolvedBodyTemplate,
       })
       .select('*')
       .single()

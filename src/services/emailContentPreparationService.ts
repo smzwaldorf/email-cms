@@ -1,3 +1,4 @@
+import { normalizeCanvaEmailHtml } from '@/services/canvaEmailImport'
 import { validateEmailTemplate } from '@/services/emailTemplateTokens'
 import { composePersonalizedEmails } from '@/services/personalizedEmailComposer'
 import type {
@@ -180,6 +181,9 @@ class EmailContentPreparationService {
       input.template?.subjectTemplate ?? '',
       input.template?.bodyTemplate ?? '',
     )
+    const importValidation = input.template
+      ? normalizeCanvaEmailHtml(input.template.bodyTemplate)
+      : null
 
     const recipientRecords = composition.payloads.map((payload) => {
       const findings: PreparationFinding[] = [...(warningByGuardian.get(payload.guardianId) ?? [])]
@@ -211,6 +215,26 @@ class EmailContentPreparationService {
           ...toMalformedTokenFindings(input.template.subjectTemplate, 'subject', payload.guardianId),
           ...toMalformedTokenFindings(input.template.bodyTemplate, 'body', payload.guardianId),
         )
+      }
+
+      if (importValidation?.hasBlockingIssues) {
+        for (const issue of importValidation.issues) {
+          findings.push({
+            code: 'incompatible_template_html',
+            severity: 'error',
+            guardianId: payload.guardianId,
+            field: 'body',
+            message: issue.message,
+            details: {
+              code: issue.code,
+              tagName: issue.tagName,
+              attribute: issue.attribute,
+              value: issue.value,
+              templateId: input.template?.templateId ?? null,
+              templateRevisionId: input.template?.templateRevisionId ?? null,
+            },
+          })
+        }
       }
 
       if ((payload.renderedSubject ?? '').length === 0) {

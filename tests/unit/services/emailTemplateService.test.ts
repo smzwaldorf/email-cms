@@ -101,5 +101,90 @@ describe('emailTemplateService', () => {
     })
     expect(mockSupabase.from).not.toHaveBeenCalled()
   })
+
+  it('normalizes imported html before creating a template revision', async () => {
+    mockBuilder.then
+      .mockImplementationOnce((resolve) =>
+        resolve({
+          data: {
+            id: 'template-2',
+            name: 'Imported',
+            description: null,
+            state: 'active',
+            current_revision_id: null,
+            created_at: '2026-03-20T10:00:00Z',
+            updated_at: '2026-03-20T10:00:00Z',
+          },
+          error: null,
+        }),
+      )
+      .mockImplementationOnce((resolve) =>
+        resolve({
+          data: {
+            id: 'rev-2',
+            template_id: 'template-2',
+            revision_number: 1,
+            subject_template: 'Hello {{guardian.email}}',
+            body_template: '<table><tbody><tr><td>Imported</td></tr></tbody></table>',
+            created_at: '2026-03-20T10:00:01Z',
+          },
+          error: null,
+        }),
+      )
+      .mockImplementationOnce((resolve) =>
+        resolve({
+          data: {
+            id: 'template-2',
+            name: 'Imported',
+            description: null,
+            state: 'active',
+            current_revision_id: 'rev-2',
+            created_at: '2026-03-20T10:00:00Z',
+            updated_at: '2026-03-20T10:00:01Z',
+          },
+          error: null,
+        }),
+      )
+
+    const created = await emailTemplateService.createTemplate({
+      name: 'Imported',
+      subjectTemplate: 'Hello {{guardian.email}}',
+      bodyTemplate: '',
+      importedBodyHtml: `
+        <!doctype html>
+        <html>
+          <body>
+            <table><tr><td>Imported</td></tr></table>
+          </body>
+        </html>
+      `,
+    })
+
+    expect(created.revision.bodyTemplate).toBe('<table><tbody><tr><td>Imported</td></tr></tbody></table>')
+    expect(mockBuilder.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body_template: '<table><tbody><tr><td>Imported</td></tr></tbody></table>',
+      }),
+    )
+  })
+
+  it('blocks imported html with compatibility issues', async () => {
+    await expect(
+      emailTemplateService.createTemplate({
+        name: 'Imported',
+        subjectTemplate: 'Hello {{guardian.email}}',
+        bodyTemplate: '',
+        importedBodyHtml: `
+          <html>
+            <head><style>.hero { color: red; }</style></head>
+            <body><div>Imported</div></body>
+          </html>
+        `,
+      }),
+    ).rejects.toMatchObject({
+      code: 'EMAIL_TEMPLATE_IMPORT_VALIDATION_ERROR',
+    })
+    expect(mockSupabase.from).not.toHaveBeenCalled()
+  })
 })
 

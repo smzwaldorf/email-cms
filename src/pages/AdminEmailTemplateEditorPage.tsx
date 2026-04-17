@@ -4,6 +4,7 @@ import type { Editor } from '@tiptap/react'
 import { AdminLayout } from '@/components/admin/AdminLayout'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { SimpleEditor } from '@/components/tiptap-templates/simple/simple-editor'
+import type { CanvaEmailImportIssue } from '@/services/canvaEmailImport'
 import { emailTemplateService } from '@/services/emailTemplateService'
 import { EMAIL_TEMPLATE_TOKENS, validateEmailTemplate } from '@/services/emailTemplateTokens'
 import type { EmailTemplateRevision } from '@/types/emailTemplate'
@@ -35,18 +36,23 @@ export function AdminEmailTemplateEditorPage() {
   const [previewSubject, setPreviewSubject] = useState('')
   const [previewBody, setPreviewBody] = useState('')
   const [previewWarnings, setPreviewWarnings] = useState<string[]>([])
+  const [importIssues, setImportIssues] = useState<CanvaEmailImportIssue[]>([])
   const [showImportPanel, setShowImportPanel] = useState(false)
   const [importHtml, setImportHtml] = useState('')
   const [rawImportedHtml, setRawImportedHtml] = useState<string | null>(null)
   const [bodyEditorMode, setBodyEditorMode] = useState<'tiptap' | 'html'>('tiptap')
 
-  const effectiveBodyTemplate = rawImportedHtml ?? bodyTemplate
+  const importResult = useMemo(
+    () => (rawImportedHtml !== null ? emailTemplateService.normalizeImportedBodyHtml(rawImportedHtml) : null),
+    [rawImportedHtml],
+  )
+  const effectiveBodyTemplate = importResult?.normalizedHtml ?? bodyTemplate
 
   const validation = useMemo(
     () => validateEmailTemplate(subjectTemplate, effectiveBodyTemplate),
     [subjectTemplate, effectiveBodyTemplate],
   )
-  const hasValidationIssues = validation.issues.length > 0
+  const hasValidationIssues = validation.issues.length > 0 || (importResult?.hasBlockingIssues ?? false)
 
   useEffect(() => {
     if (isNew || !templateId) return
@@ -60,6 +66,7 @@ export function AdminEmailTemplateEditorPage() {
         setSubjectTemplate(current.revision.subjectTemplate)
         setBodyTemplate(current.revision.bodyTemplate)
         setRawImportedHtml(null)
+        setImportIssues([])
         setEditingRevision(current.revision)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load template')
@@ -84,6 +91,7 @@ export function AdminEmailTemplateEditorPage() {
         name: name || 'Untitled template',
         subjectTemplate,
         bodyTemplate: effectiveBodyTemplate,
+        importedBodyHtml: rawImportedHtml,
       })
       setSuccess('Template created.')
       navigate(`/admin/email-templates/${created.template.id}`)
@@ -108,6 +116,7 @@ export function AdminEmailTemplateEditorPage() {
         name,
         subjectTemplate,
         bodyTemplate: effectiveBodyTemplate,
+        importedBodyHtml: rawImportedHtml,
       })
       setEditingRevision(updated.revision)
       setSuccess(`Saved revision v${updated.revision.revisionNumber}.`)
@@ -188,12 +197,20 @@ export function AdminEmailTemplateEditorPage() {
   }
 
   const handleApplyImportedHtml = () => {
-    // Keep exact imported HTML for persistence/preview without TipTap normalization.
+    const nextImportResult = emailTemplateService.normalizeImportedBodyHtml(importHtml)
     setRawImportedHtml(importHtml)
-    setBodyTemplate(importHtml)
+    setBodyTemplate(nextImportResult.normalizedHtml)
+    setImportIssues(nextImportResult.issues)
     setBodyEditorMode('html')
     setShowImportPanel(false)
-    setSuccess('HTML imported. Original markup will be preserved as-is.')
+    if (nextImportResult.hasBlockingIssues) {
+      setError('Imported HTML has compatibility issues. Resolve them before saving.')
+      setSuccess(null)
+      return
+    }
+
+    setError(null)
+    setSuccess('HTML imported. Compatible markup will be preserved for save and preview.')
   }
 
   const handleImportFile = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -204,6 +221,7 @@ export function AdminEmailTemplateEditorPage() {
       setImportHtml(text)
       setShowImportPanel(true)
       setSuccess(null)
+      setError(null)
     } catch {
       setError('Failed to read HTML file.')
     } finally {
@@ -273,7 +291,11 @@ export function AdminEmailTemplateEditorPage() {
                       <div className="inline-flex overflow-hidden rounded-lg border border-waldorf-cream-300 text-xs">
                         <button
                           type="button"
-                          onClick={() => setBodyEditorMode('tiptap')}
+                          onClick={() => {
+                            setRawImportedHtml(null)
+                            setImportIssues([])
+                            setBodyEditorMode('tiptap')
+                          }}
                           className={`px-2 py-1 ${bodyEditorMode === 'tiptap' ? 'bg-waldorf-peach-100 text-waldorf-clay-700' : 'bg-white text-waldorf-clay-600'}`}
                         >
                           TipTap
@@ -282,6 +304,7 @@ export function AdminEmailTemplateEditorPage() {
                           type="button"
                           onClick={() => {
                             setRawImportedHtml(effectiveBodyTemplate)
+                            setImportIssues([])
                             setBodyEditorMode('html')
                           }}
                           className={`border-l border-waldorf-cream-300 px-2 py-1 ${bodyEditorMode === 'html' ? 'bg-waldorf-peach-100 text-waldorf-clay-700' : 'bg-white text-waldorf-clay-600'}`}
@@ -295,7 +318,10 @@ export function AdminEmailTemplateEditorPage() {
                         Imported HTML preservation mode is on. Save/Preview will use the original imported HTML exactly as-is.
                         <button
                           type="button"
-                          onClick={() => setRawImportedHtml(null)}
+                          onClick={() => {
+                            setRawImportedHtml(null)
+                            setImportIssues([])
+                          }}
                           className="ml-2 underline"
                         >
                           Switch to TipTap output
@@ -315,15 +341,17 @@ export function AdminEmailTemplateEditorPage() {
                       </div>
                     ) : (
                       <textarea
-                        value={effectiveBodyTemplate}
+                        value={rawImportedHtml ?? effectiveBodyTemplate}
                         onChange={(event) => {
                           const nextHtml = event.target.value
                           setRawImportedHtml(nextHtml)
-                          setBodyTemplate(nextHtml)
+                          const nextImportResult = emailTemplateService.normalizeImportedBodyHtml(nextHtml)
+                          setBodyTemplate(nextImportResult.normalizedHtml)
+                          setImportIssues(nextImportResult.issues)
                         }}
                         rows={16}
                         className="w-full rounded-lg border border-waldorf-cream-300 bg-white px-3 py-2 font-mono text-xs text-waldorf-clay-700"
-                        placeholder="<table>...</table>"
+                        placeholder="<html>...</html>"
                       />
                     )}
                   </div>
@@ -425,6 +453,15 @@ export function AdminEmailTemplateEditorPage() {
                   <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                     {validation.issues.map((issue, index) => (
                       <p key={`${issue.field}-${index}`}>- {issue.message}</p>
+                    ))}
+                  </div>
+                )}
+
+                {importIssues.length > 0 && (
+                  <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    <p className="font-semibold">Imported HTML compatibility issues</p>
+                    {importIssues.map((issue, index) => (
+                      <p key={`${issue.code}-${index}`}>- {issue.message}</p>
                     ))}
                   </div>
                 )}

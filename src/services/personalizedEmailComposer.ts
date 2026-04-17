@@ -353,7 +353,9 @@ export function composePersonalizedEmails(
         : composedNewsletterHtml
     }
     const fallbackTitle = toCanonicalString(input.newsletter.title) || `Newsletter ${input.newsletter.newsletterId}`
-    renderedSubject = fallbackTitle
+    if (!toCanonicalString(renderedSubject)) {
+      renderedSubject = fallbackTitle
+    }
 
     payloads.push({
       guardianId: guardian.guardianId,

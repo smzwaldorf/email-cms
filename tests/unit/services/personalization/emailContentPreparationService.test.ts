@@ -90,6 +90,28 @@ describe('emailContentPreparationService', () => {
     expect(preview.findings).toEqual([])
   })
 
+  it('fails preparation when the pinned template html is incompatible', () => {
+    const result = emailContentPreparationService.prepare(
+      createBaseInput({
+        template: {
+          templateId: 'template-1',
+          templateRevisionId: 'tmpl-rev-imported',
+          subjectTemplate: 'Hello {{guardian.email}}',
+          bodyTemplate: `
+            <html>
+              <head><style>.hero { color: red; }</style></head>
+              <body><table><tr><td>Imported</td></tr></table></body>
+            </html>
+          `,
+        },
+      }),
+    )
+
+    const recipient = result.recipients[0]
+    expect(recipient.status).toBe('failed')
+    expect(recipient.findings.map((finding) => finding.code)).toContain('incompatible_template_html')
+  })
+
   it('produces review summary counts and actionable errors', () => {
     const result = emailContentPreparationService.prepare(
       createBaseInput({

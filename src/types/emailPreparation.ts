@@ -7,6 +7,7 @@ export type PreparationFindingCode =
   | 'malformed_token_syntax'
   | 'missing_required_section'
   | 'missing_required_value'
+  | 'incompatible_template_html'
   | 'missing_class_mapping'
   | 'inconsistent_membership'
   | 'unknown_target_class'
