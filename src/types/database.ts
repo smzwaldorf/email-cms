@@ -52,6 +52,13 @@ export interface EmailTemplateRevisionRow {
   revision_number: number;
   subject_template: string;
   body_template: string;
+  /**
+   * Ordered list of typed `EmailTemplateBlock` records that defines the
+   * structural sections of the rendered email. Stored as JSONB. Backfilled
+   * to `[{ type: 'custom-html', order: 0, visible: true, bodyHtml: body_template, config: {} }]`
+   * for revisions created before block-based authoring.
+   */
+  blocks: unknown;
   created_at: string;
   created_by?: string | null;
 }

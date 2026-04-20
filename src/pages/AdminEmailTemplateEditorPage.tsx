@@ -4,10 +4,12 @@ import type { Editor } from '@tiptap/react'
 import { AdminLayout } from '@/components/admin/AdminLayout'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { SimpleEditor } from '@/components/tiptap-templates/simple/simple-editor'
-import type { CanvaEmailImportIssue } from '@/services/canvaEmailImport'
+import { detectCanvaSections, type CanvaEmailImportIssue } from '@/services/canvaEmailImport'
+import { createDefaultBlock } from '@/services/emailTemplateBlocks'
 import { emailTemplateService } from '@/services/emailTemplateService'
 import { EMAIL_TEMPLATE_TOKENS, validateEmailTemplate } from '@/services/emailTemplateTokens'
-import type { EmailTemplateRevision } from '@/types/emailTemplate'
+import type { EmailTemplateBlock, EmailTemplateRevision } from '@/types/emailTemplate'
+import { EmailTemplateBlockList } from '@/components/admin/EmailTemplateBlockList'
 
 const TOKEN_EXAMPLES = {
   'guardian.id': 'guardian-demo',
@@ -41,6 +43,10 @@ export function AdminEmailTemplateEditorPage() {
   const [importHtml, setImportHtml] = useState('')
   const [rawImportedHtml, setRawImportedHtml] = useState<string | null>(null)
   const [bodyEditorMode, setBodyEditorMode] = useState<'tiptap' | 'html'>('tiptap')
+  // Block list snapshot. When non-empty, persisted to `email_template_revisions.blocks`
+  // and rendered through the block walker; otherwise the legacy single-body path is used.
+  const [editorBlocks, setEditorBlocks] = useState<EmailTemplateBlock[] | null>(null)
+  const [importDetectionMessage, setImportDetectionMessage] = useState<string | null>(null)
 
   const importResult = useMemo(
     () => (rawImportedHtml !== null ? emailTemplateService.normalizeImportedBodyHtml(rawImportedHtml) : null),
@@ -48,9 +54,17 @@ export function AdminEmailTemplateEditorPage() {
   )
   const effectiveBodyTemplate = importResult?.normalizedHtml ?? bodyTemplate
 
+  // The template view defaults to the typed block list when the loaded
+  // revision has any block beyond a single legacy `custom-html` block. Legacy
+  // single-body revisions stay on the single-body editor until the admin
+  // clicks "Convert to blocks".
+  const isLegacySingleBlock =
+    editorBlocks !== null && editorBlocks.length === 1 && editorBlocks[0].type === 'custom-html'
+  const showBlockList = editorBlocks !== null && !isLegacySingleBlock
+
   const validation = useMemo(
-    () => validateEmailTemplate(subjectTemplate, effectiveBodyTemplate),
-    [subjectTemplate, effectiveBodyTemplate],
+    () => validateEmailTemplate(subjectTemplate, effectiveBodyTemplate, editorBlocks ?? undefined),
+    [subjectTemplate, effectiveBodyTemplate, editorBlocks],
   )
   const hasValidationIssues = validation.issues.length > 0 || (importResult?.hasBlockingIssues ?? false)
 
@@ -67,6 +81,8 @@ export function AdminEmailTemplateEditorPage() {
         setBodyTemplate(current.revision.bodyTemplate)
         setRawImportedHtml(null)
         setImportIssues([])
+        setEditorBlocks(current.revision.blocks.length > 0 ? current.revision.blocks : null)
+        setImportDetectionMessage(null)
         setEditingRevision(current.revision)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load template')
@@ -91,6 +107,7 @@ export function AdminEmailTemplateEditorPage() {
         name: name || 'Untitled template',
         subjectTemplate,
         bodyTemplate: effectiveBodyTemplate,
+        blocks: editorBlocks ?? undefined,
         importedBodyHtml: rawImportedHtml,
       })
       setSuccess('Template created.')
@@ -116,9 +133,11 @@ export function AdminEmailTemplateEditorPage() {
         name,
         subjectTemplate,
         bodyTemplate: effectiveBodyTemplate,
+        blocks: editorBlocks ?? undefined,
         importedBodyHtml: rawImportedHtml,
       })
       setEditingRevision(updated.revision)
+      setEditorBlocks(updated.revision.blocks.length > 0 ? updated.revision.blocks : null)
       setSuccess(`Saved revision v${updated.revision.revisionNumber}.`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save template')
@@ -206,7 +225,24 @@ export function AdminEmailTemplateEditorPage() {
     if (nextImportResult.hasBlockingIssues) {
       setError('Imported HTML has compatibility issues. Resolve them before saving.')
       setSuccess(null)
+      setEditorBlocks(null)
+      setImportDetectionMessage(null)
       return
+    }
+    // detectCanvaSections returns null when fewer than 3 sections match, in
+    // which case the importer falls back to a single `custom-html` block by
+    // leaving `editorBlocks` null (the service backfills custom-html on save).
+    const detected = detectCanvaSections(nextImportResult.normalizedHtml)
+    if (detected && detected.length >= 3) {
+      setEditorBlocks(detected)
+      setImportDetectionMessage(
+        `Detected ${detected.length} sections from imported HTML and mapped them to typed blocks.`,
+      )
+    } else {
+      setEditorBlocks(null)
+      setImportDetectionMessage(
+        'Could not detect three or more sections; saved as a single custom-html block.',
+      )
     }
 
     setError(null)
@@ -287,33 +323,68 @@ export function AdminEmailTemplateEditorPage() {
                   </div>
                   <div>
                     <div className="mb-2 flex items-center justify-between">
-                      <p className="text-xs font-medium text-waldorf-clay-600">Body template</p>
-                      <div className="inline-flex overflow-hidden rounded-lg border border-waldorf-cream-300 text-xs">
+                      <p className="text-xs font-medium text-waldorf-clay-600">
+                        {showBlockList ? 'Template blocks' : 'Body template'}
+                      </p>
+                      {!showBlockList && (
+                        <div className="inline-flex overflow-hidden rounded-lg border border-waldorf-cream-300 text-xs">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRawImportedHtml(null)
+                              setImportIssues([])
+                              setBodyEditorMode('tiptap')
+                            }}
+                            className={`px-2 py-1 ${bodyEditorMode === 'tiptap' ? 'bg-waldorf-peach-100 text-waldorf-clay-700' : 'bg-white text-waldorf-clay-600'}`}
+                          >
+                            TipTap
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRawImportedHtml(effectiveBodyTemplate)
+                              setImportIssues([])
+                              setBodyEditorMode('html')
+                            }}
+                            className={`border-l border-waldorf-cream-300 px-2 py-1 ${bodyEditorMode === 'html' ? 'bg-waldorf-peach-100 text-waldorf-clay-700' : 'bg-white text-waldorf-clay-600'}`}
+                          >
+                            HTML
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    {showBlockList ? (
+                      <EmailTemplateBlockList
+                        blocks={editorBlocks ?? []}
+                        onChange={(next) => setEditorBlocks(next.length > 0 ? next : null)}
+                        scopeKey={`${templateId || 'new'}:${editingRevision?.id ?? 'unsaved'}`}
+                      />
+                    ) : null}
+                    {!showBlockList && isLegacySingleBlock && (
+                      <div className="mb-2 flex items-center justify-between rounded border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800">
+                        <span>This template stores its body as a single legacy block. Convert to use the typed block editor.</span>
                         <button
                           type="button"
                           onClick={() => {
-                            setRawImportedHtml(null)
-                            setImportIssues([])
-                            setBodyEditorMode('tiptap')
+                            const existing = editorBlocks?.[0]
+                            const existingBody = existing?.bodyHtml ?? effectiveBodyTemplate
+                            const seed: EmailTemplateBlock[] = [
+                              createDefaultBlock('header', 0),
+                              {
+                                ...createDefaultBlock('custom-html', 1),
+                                bodyHtml: existingBody,
+                              },
+                              createDefaultBlock('footer', 2),
+                            ]
+                            setEditorBlocks(seed)
                           }}
-                          className={`px-2 py-1 ${bodyEditorMode === 'tiptap' ? 'bg-waldorf-peach-100 text-waldorf-clay-700' : 'bg-white text-waldorf-clay-600'}`}
+                          className="rounded border border-sky-300 bg-white px-2 py-1 text-xs text-sky-800"
                         >
-                          TipTap
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setRawImportedHtml(effectiveBodyTemplate)
-                            setImportIssues([])
-                            setBodyEditorMode('html')
-                          }}
-                          className={`border-l border-waldorf-cream-300 px-2 py-1 ${bodyEditorMode === 'html' ? 'bg-waldorf-peach-100 text-waldorf-clay-700' : 'bg-white text-waldorf-clay-600'}`}
-                        >
-                          HTML
+                          Convert to blocks
                         </button>
                       </div>
-                    </div>
-                    {rawImportedHtml !== null && (
+                    )}
+                    {!showBlockList && rawImportedHtml !== null && (
                       <div className="mb-2 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
                         Imported HTML preservation mode is on. Save/Preview will use the original imported HTML exactly as-is.
                         <button
@@ -328,7 +399,7 @@ export function AdminEmailTemplateEditorPage() {
                         </button>
                       </div>
                     )}
-                    {bodyEditorMode === 'tiptap' ? (
+                    {!showBlockList && bodyEditorMode === 'tiptap' && (
                       <div className="overflow-hidden rounded-lg border border-waldorf-cream-300">
                         <SimpleEditor
                           key={`${templateId || 'new'}:${editingRevision?.id ?? 'unsaved'}`}
@@ -339,7 +410,8 @@ export function AdminEmailTemplateEditorPage() {
                           placeholder="輸入郵件內文模板..."
                         />
                       </div>
-                    ) : (
+                    )}
+                    {!showBlockList && bodyEditorMode === 'html' && (
                       <textarea
                         value={rawImportedHtml ?? effectiveBodyTemplate}
                         onChange={(event) => {
@@ -454,6 +526,12 @@ export function AdminEmailTemplateEditorPage() {
                     {validation.issues.map((issue, index) => (
                       <p key={`${issue.field}-${index}`}>- {issue.message}</p>
                     ))}
+                  </div>
+                )}
+
+                {importDetectionMessage && (
+                  <div className="mt-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800">
+                    {importDetectionMessage}
                   </div>
                 )}
 

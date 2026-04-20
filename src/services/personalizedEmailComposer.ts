@@ -10,6 +10,12 @@ import type {
   PersonalizedEmailResolvedBlock,
 } from '@/types/personalization'
 import { renderEmailTemplatePreview } from '@/services/emailTemplateTokens'
+import {
+  renderTemplateForRecipient,
+  type RecipientArticle,
+  type RecipientClass,
+  type RecipientRenderContext,
+} from '@/services/emailTemplateRenderer'
 
 const DEFAULT_RULES_VERSION = 'v1'
 
@@ -118,6 +124,58 @@ function renderArticleSummaryHtml(blocks: PersonalizedEmailResolvedBlock[]): str
     .join('')
 
   return `<section><h2>Articles in this newsletter</h2><ul>${items}</ul></section>`
+}
+
+function stripHtml(html: string): string {
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function blockToArticle(block: PersonalizedEmailResolvedBlock): RecipientArticle {
+  return {
+    id: block.blockId,
+    title: toCanonicalString(block.title),
+    excerpt: stripHtml(block.content ?? ''),
+    url: '',
+    imageUrl: null,
+    sourceTag: null,
+  }
+}
+
+function buildRecipientClasses(
+  classOrder: string[],
+  classMetaById: Map<string, PersonalizationInputClass>,
+  classBlocksByClassId: Map<string, PersonalizedEmailResolvedBlock[]>,
+): RecipientClass[] {
+  return classOrder.map((classId) => {
+    const meta = classMetaById.get(classId)
+    const articles = (classBlocksByClassId.get(classId) ?? []).map(blockToArticle)
+    return {
+      id: classId,
+      code: meta?.classCode ?? null,
+      name: meta?.className ?? meta?.classCode ?? null,
+      articles,
+    }
+  })
+}
+
+function hashHtmlFingerprint(html: string): string {
+  let hash = 2166136261
+  for (let i = 0; i < html.length; i += 1) {
+    hash ^= html.charCodeAt(i)
+    hash = Math.imul(hash, 16777619)
+  }
+  return `html-${(hash >>> 0).toString(16).padStart(8, '0')}`
 }
 
 function stableStringify(value: unknown): string {
@@ -343,19 +401,74 @@ export function composePersonalizedEmails(
     }
 
     const orderedNewsletterBlocks = [...resolvedSharedBlocks, ...resolvedClassBlocks].sort(compareBlockOrder)
-    const newsletterSummaryHtml = renderArticleSummaryHtml(orderedNewsletterBlocks)
-    const newsletterContentHtml = renderBlocksHtml(orderedNewsletterBlocks)
-    const composedNewsletterHtml = [newsletterSummaryHtml, newsletterContentHtml].filter(Boolean).join('\n')
-    const baseBody = toCanonicalString(renderedBody)
-    if (composedNewsletterHtml) {
-      renderedBody = baseBody
-        ? `${baseBody}\n<hr />\n${composedNewsletterHtml}`
-        : composedNewsletterHtml
+
+    const templateBlocks = input.template?.blocks
+    if (templateBlocks && templateBlocks.length > 0) {
+      const sharedArticles = resolvedSharedBlocks.map(blockToArticle)
+      const classBlocksByClassId = new Map<string, PersonalizedEmailResolvedBlock[]>()
+      for (const block of resolvedClassBlocks) {
+        const classId = block.classId ?? ''
+        if (!classId) continue
+        const list = classBlocksByClassId.get(classId) ?? []
+        list.push(block)
+        classBlocksByClassId.set(classId, list)
+      }
+      const recipientClasses: RecipientClass[] = buildRecipientClasses(
+        eligibleClassIds,
+        classesById,
+        classBlocksByClassId,
+      )
+      const recipientContext: RecipientRenderContext = {
+        templateContext: {
+          guardian: { id: guardian.guardianId, email: guardian.guardianEmail },
+          family: { id: guardian.familyId ?? null },
+          newsletter: {
+            id: input.newsletter.newsletterId,
+            revisionId: input.newsletter.newsletterRevisionId,
+          },
+          classes: { ids: eligibleClassIds },
+        },
+        sharedArticles,
+        classes: recipientClasses,
+        weeklyItems: sharedArticles,
+      }
+      const walkerResult = renderTemplateForRecipient(templateBlocks, recipientContext, {
+        subjectForDocumentTitle: renderedSubject ?? input.newsletter.title ?? input.newsletter.newsletterId,
+        wrapInDocumentShell: true,
+      })
+      renderedBody = walkerResult.html
+      for (const token of walkerResult.missingTokens) {
+        warnings.push({
+          code: 'missing_template_value',
+          guardianId: guardian.guardianId,
+          message: `Missing value for token: ${token}`,
+          details: {
+            token,
+            templateId,
+            templateRevisionId,
+          },
+        })
+      }
+    } else {
+      const newsletterSummaryHtml = renderArticleSummaryHtml(orderedNewsletterBlocks)
+      const newsletterContentHtml = renderBlocksHtml(orderedNewsletterBlocks)
+      const composedNewsletterHtml = [newsletterSummaryHtml, newsletterContentHtml]
+        .filter(Boolean)
+        .join('\n')
+      const baseBody = toCanonicalString(renderedBody)
+      if (composedNewsletterHtml) {
+        renderedBody = baseBody
+          ? `${baseBody}\n<hr />\n${composedNewsletterHtml}`
+          : composedNewsletterHtml
+      }
     }
+
     const fallbackTitle = toCanonicalString(input.newsletter.title) || `Newsletter ${input.newsletter.newsletterId}`
     if (!toCanonicalString(renderedSubject)) {
       renderedSubject = fallbackTitle
     }
+
+    const renderedHtmlFingerprint = renderedBody ? hashHtmlFingerprint(renderedBody) : undefined
 
     payloads.push({
       guardianId: guardian.guardianId,
@@ -379,6 +492,7 @@ export function composePersonalizedEmails(
       templateRevisionId,
       renderedSubject,
       renderedBody,
+      renderedHtmlFingerprint,
     })
   }
 

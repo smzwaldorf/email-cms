@@ -107,6 +107,20 @@ export function arePreparationOutputsDeterministic(
   return left.deterministicHash === right.deterministicHash
 }
 
+function templateHtmlForCanvaImport(template: {
+  bodyTemplate: string
+  blocks?: Array<{ bodyHtml?: string }>
+}): string {
+  const trimmed = template.bodyTemplate?.trim() ?? ''
+  if (trimmed.length > 0) {
+    return template.bodyTemplate
+  }
+  if (template.blocks && template.blocks.length > 0) {
+    return template.blocks.map((block) => block.bodyHtml ?? '').join('\n')
+  }
+  return template.bodyTemplate ?? ''
+}
+
 function classifyStatus(findings: PreparationFinding[]): PreparationRecipientStatus {
   if (findings.some((finding) => finding.severity === 'error')) {
     return 'failed'
@@ -180,9 +194,10 @@ class EmailContentPreparationService {
     const templateValidation = validateEmailTemplate(
       input.template?.subjectTemplate ?? '',
       input.template?.bodyTemplate ?? '',
+      input.template?.blocks,
     )
     const importValidation = input.template
-      ? normalizeCanvaEmailHtml(input.template.bodyTemplate)
+      ? normalizeCanvaEmailHtml(templateHtmlForCanvaImport(input.template))
       : null
 
     const recipientRecords = composition.payloads.map((payload) => {
@@ -206,6 +221,14 @@ class EmailContentPreparationService {
             field: issue.field,
             message: issue.message,
             details: { field: issue.field, token: issue.token },
+          })
+        } else if (issue.code === 'unsupported_block_type') {
+          findings.push({
+            code: 'unsupported_token',
+            severity: 'error',
+            guardianId: payload.guardianId,
+            message: issue.message,
+            details: { blockIndex: issue.blockIndex, blockType: issue.blockType },
           })
         }
       }

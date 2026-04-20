@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
+import { renderTemplateForRecipient } from '@/services/emailTemplateRenderer'
+import { renderEmailTemplatePreview } from '@/services/emailTemplateTokens'
 import { composePersonalizedEmails } from '@/services/personalizedEmailComposer'
 import type { ComposePersonalizedEmailInput } from '@/types/personalization'
 
@@ -221,5 +223,87 @@ describe('composePersonalizedEmails', () => {
     expect(body).toContain('<ul>')
     expect(body).toContain('<li>School Calendar</li>')
     expect(body).toContain('<li>Article 2</li>')
+  })
+
+  it('matches legacy body-template token expansion for a single custom-html block (backfill shape)', () => {
+    const bodyTemplate = '<p>{{newsletter.id}} — {{classes.list}}</p>'
+    const ctx = {
+      guardian: { id: 'g1', email: 'a@b.com' },
+      family: { id: 'f1' },
+      newsletter: { id: 'n1', revisionId: 'r1' },
+      classes: { ids: ['A', 'B'] },
+    }
+    const legacy = renderEmailTemplatePreview('', bodyTemplate, ctx).body
+    const walker = renderTemplateForRecipient(
+      [{ type: 'custom-html', order: 0, visible: true, bodyHtml: bodyTemplate, config: {} }],
+      { templateContext: ctx, sharedArticles: [], classes: [], weeklyItems: [] },
+      { wrapInDocumentShell: false },
+    ).html
+    expect(walker).toBe(legacy)
+  })
+
+  it('uses stable renderedHtmlFingerprint for identical block-based composition inputs', () => {
+    const input = createBaseInput({
+      newsletter: {
+        newsletterId: 'newsletter-1',
+        newsletterRevisionId: 'rev-42',
+        sharedBlocks: [],
+        classBlocks: [],
+      },
+      template: {
+        templateId: 'template-1',
+        templateRevisionId: 'tmpl-rev-1',
+        subjectTemplate: 'Hello {{guardian.email}}',
+        bodyTemplate: '<p>legacy body unused when blocks present</p>',
+        blocks: [
+          {
+            type: 'custom-html',
+            order: 0,
+            visible: true,
+            bodyHtml: '<p>{{guardian.email}}</p>',
+            config: {},
+          },
+        ],
+      },
+    })
+    const first = composePersonalizedEmails(input)
+    const second = composePersonalizedEmails(input)
+    expect(first.payloads[0].renderedHtmlFingerprint).toBe(second.payloads[0].renderedHtmlFingerprint)
+    expect(first.payloads[0].renderedHtmlFingerprint).toMatch(/^html-[0-9a-f]{8}$/)
+  })
+
+  it('does not append legacy newsletter summary HTML when template blocks are present', () => {
+    const withBlocks = composePersonalizedEmails(
+      createBaseInput({
+        template: {
+          templateId: 't',
+          templateRevisionId: 'tr',
+          subjectTemplate: 'Subject',
+          bodyTemplate: '',
+          blocks: [
+            {
+              type: 'custom-html',
+              order: 0,
+              visible: true,
+              bodyHtml: '<p>block only</p>',
+              config: {},
+            },
+          ],
+        },
+      }),
+    )
+    expect(withBlocks.payloads[0].renderedBody ?? '').not.toContain('Articles in this newsletter')
+
+    const legacyPath = composePersonalizedEmails(
+      createBaseInput({
+        template: {
+          templateId: 't',
+          templateRevisionId: 'tr',
+          subjectTemplate: 'Subject',
+          bodyTemplate: '<p>base</p>',
+        },
+      }),
+    )
+    expect(legacyPath.payloads[0].renderedBody ?? '').toContain('Articles in this newsletter')
   })
 })

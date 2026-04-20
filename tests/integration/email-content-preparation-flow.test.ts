@@ -96,4 +96,32 @@ describe('email content preparation flow', () => {
     expect(retry.recipients[0].guardianId).toBe('guardian-failed')
     expect(retry.recipients[0].status).toBe('ready')
   })
+
+  it('prepares block-based templates via the same composition path as apply-for-merge', () => {
+    const job = emailContentPreparationService.prepare({
+      ...createFlowInput(),
+      template: {
+        templateId: 'template-1',
+        templateRevisionId: 'tmpl-rev-blocks',
+        subjectTemplate: 'Hello {{guardian.email}}',
+        bodyTemplate: '',
+        blocks: [
+          {
+            type: 'custom-html',
+            order: 0,
+            visible: true,
+            bodyHtml: '<p>Family {{family.id}} · {{newsletter.id}}</p>',
+            config: {},
+          },
+        ],
+      },
+    })
+
+    const ready = job.recipients.filter((r) => r.status === 'ready')
+    expect(ready).toHaveLength(1)
+    const body = ready[0].payload.renderedBody ?? ''
+    expect(body).toContain('family-ready')
+    expect(body).toContain('newsletter-1')
+    expect(body).not.toContain('Articles in this newsletter')
+  })
 })

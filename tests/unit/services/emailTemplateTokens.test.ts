@@ -51,5 +51,53 @@ describe('emailTemplateTokens', () => {
     expect(EMAIL_TEMPLATE_TOKENS).toContain('newsletter.revisionId')
     expect(EMAIL_TEMPLATE_TOKENS).toContain('classes.list')
   })
+
+  it('accepts article-scoped tokens inside a shared-article-feature block', () => {
+    const result = validateEmailTemplate('Weekly {{newsletter.id}}', '', [
+      {
+        type: 'shared-article-feature',
+        order: 0,
+        visible: true,
+        bodyHtml: '<p>{{article.title}} {{article.url}}</p>',
+        config: {},
+      },
+    ])
+    expect(result.valid).toBe(true)
+    expect(result.issues).toHaveLength(0)
+  })
+
+  it('rejects tokens that are not in global or block inner scope', () => {
+    const result = validateEmailTemplate('Hello', '', [
+      {
+        type: 'shared-article-feature',
+        order: 0,
+        visible: true,
+        bodyHtml: '<p>{{article.unknown}}</p>',
+        config: {},
+      },
+    ])
+    expect(result.valid).toBe(false)
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'unsupported_token',
+          token: 'article.unknown',
+        }),
+      ]),
+    )
+  })
+
+  it('rejects invalid tokens in subject even when blocks are present', () => {
+    const result = validateEmailTemplate('{{not.a.token}}', '', [
+      {
+        type: 'custom-html',
+        order: 0,
+        visible: true,
+        bodyHtml: '<p>{{guardian.email}}</p>',
+        config: {},
+      },
+    ])
+    expect(result.valid).toBe(false)
+  })
 })
 

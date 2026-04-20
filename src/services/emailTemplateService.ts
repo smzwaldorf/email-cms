@@ -1,6 +1,7 @@
 import { getSupabaseClient } from '@/lib/supabase'
 import type {
   EmailTemplate,
+  EmailTemplateBlock,
   EmailTemplatePreviewResult,
   EmailTemplateRevision,
   EmailTemplateValidationResult,
@@ -8,10 +9,20 @@ import type {
 import type { EmailTemplateRevisionRow, EmailTemplateRow } from '@/types/database'
 import { normalizeCanvaEmailHtml } from '@/services/canvaEmailImport'
 import {
+  coerceEmailTemplateBlocks,
+  createDefaultBlock,
+} from '@/services/emailTemplateBlocks'
+import {
   renderEmailTemplatePreview,
   validateEmailTemplate,
   type EmailTemplateRenderContext,
 } from '@/services/emailTemplateTokens'
+import {
+  renderTemplateForRecipient,
+  type RecipientArticle,
+  type RecipientClass,
+  type RecipientRenderContext,
+} from '@/services/emailTemplateRenderer'
 
 export class EmailTemplateServiceError extends Error {
   constructor(
@@ -38,15 +49,50 @@ function mapTemplateRow(row: EmailTemplateRow): EmailTemplate {
 }
 
 function mapTemplateRevisionRow(row: EmailTemplateRevisionRow): EmailTemplateRevision {
+  const coercedBlocks = coerceEmailTemplateBlocks(row.blocks)
+  // Legacy revisions saved before the block backfill ran (or test fixtures
+  // that omit `blocks`) materialize as a single `custom-html` block whose
+  // `bodyHtml` is the legacy body_template.
+  const blocks: EmailTemplateBlock[] =
+    coercedBlocks.length > 0
+      ? coercedBlocks
+      : [
+          {
+            ...createDefaultBlock('custom-html', 0),
+            bodyHtml: row.body_template ?? '',
+          },
+        ]
   return {
     id: row.id,
     templateId: row.template_id,
     revisionNumber: row.revision_number,
     subjectTemplate: row.subject_template,
     bodyTemplate: row.body_template,
+    blocks,
     createdAt: row.created_at,
     createdBy: row.created_by ?? null,
   }
+}
+
+function buildBlocksPayload(input: {
+  blocks?: EmailTemplateBlock[]
+  bodyTemplate: string
+}): EmailTemplateBlock[] {
+  if (Array.isArray(input.blocks) && input.blocks.length > 0) {
+    return input.blocks.map((block, index) => ({
+      type: block.type,
+      order: typeof block.order === 'number' ? block.order : index,
+      visible: block.visible !== false,
+      bodyHtml: block.bodyHtml ?? '',
+      config: block.config && typeof block.config === 'object' ? block.config : {},
+    }))
+  }
+  return [
+    {
+      ...createDefaultBlock('custom-html', 0),
+      bodyHtml: input.bodyTemplate,
+    },
+  ]
 }
 
 class EmailTemplateService {
@@ -135,10 +181,12 @@ class EmailTemplateService {
     description?: string | null
     subjectTemplate: string
     bodyTemplate: string
+    blocks?: EmailTemplateBlock[]
     importedBodyHtml?: string | null
   }): Promise<{ template: EmailTemplate; revision: EmailTemplateRevision; validation: EmailTemplateValidationResult }> {
     const resolvedBodyTemplate = this.resolveBodyTemplateInput(input)
-    const validation = validateEmailTemplate(input.subjectTemplate, resolvedBodyTemplate)
+    const blocksPayload = buildBlocksPayload({ blocks: input.blocks, bodyTemplate: resolvedBodyTemplate })
+    const validation = validateEmailTemplate(input.subjectTemplate, resolvedBodyTemplate, blocksPayload)
     this.assertTemplateValidation(validation, 'create')
     const supabase = getSupabaseClient()
 
@@ -167,6 +215,7 @@ class EmailTemplateService {
         revision_number: 1,
         subject_template: input.subjectTemplate,
         body_template: resolvedBodyTemplate,
+        blocks: blocksPayload,
       })
       .select('*')
       .single()
@@ -210,11 +259,13 @@ class EmailTemplateService {
       description?: string | null
       subjectTemplate: string
       bodyTemplate: string
+      blocks?: EmailTemplateBlock[]
       importedBodyHtml?: string | null
     },
   ): Promise<{ template: EmailTemplate; revision: EmailTemplateRevision; validation: EmailTemplateValidationResult }> {
     const resolvedBodyTemplate = this.resolveBodyTemplateInput(input)
-    const validation = validateEmailTemplate(input.subjectTemplate, resolvedBodyTemplate)
+    const blocksPayload = buildBlocksPayload({ blocks: input.blocks, bodyTemplate: resolvedBodyTemplate })
+    const validation = validateEmailTemplate(input.subjectTemplate, resolvedBodyTemplate, blocksPayload)
     this.assertTemplateValidation(validation, 'save')
     const supabase = getSupabaseClient()
     const maxRevision = await this.fetchMaxRevisionNumber(templateId)
@@ -226,6 +277,7 @@ class EmailTemplateService {
         revision_number: maxRevision + 1,
         subject_template: input.subjectTemplate,
         body_template: resolvedBodyTemplate,
+        blocks: blocksPayload,
       })
       .select('*')
       .single()
@@ -279,6 +331,13 @@ class EmailTemplateService {
       description: source.template.description ?? null,
       subjectTemplate: source.revision.subjectTemplate,
       bodyTemplate: source.revision.bodyTemplate,
+      blocks: source.revision.blocks.map((block) => ({
+        type: block.type,
+        order: block.order,
+        visible: block.visible,
+        bodyHtml: block.bodyHtml,
+        config: { ...block.config },
+      })),
     })
 
     return {
@@ -354,10 +413,51 @@ class EmailTemplateService {
   }
 
   previewRevision(
-    revision: Pick<EmailTemplateRevision, 'subjectTemplate' | 'bodyTemplate'>,
+    revision: Pick<EmailTemplateRevision, 'subjectTemplate' | 'bodyTemplate'> & {
+      blocks?: EmailTemplateBlock[]
+    },
     context: EmailTemplateRenderContext,
+    sampleData?: {
+      sharedArticles?: RecipientArticle[]
+      classes?: RecipientClass[]
+      weeklyItems?: RecipientArticle[]
+    },
   ): EmailTemplatePreviewResult {
-    return renderEmailTemplatePreview(revision.subjectTemplate, revision.bodyTemplate, context)
+    const subjectPreview = renderEmailTemplatePreview(revision.subjectTemplate, '', context)
+    const blocks = Array.isArray(revision.blocks) ? revision.blocks : []
+    if (blocks.length === 0) {
+      const bodyPreview = renderEmailTemplatePreview('', revision.bodyTemplate, context)
+      return {
+        subject: subjectPreview.subject,
+        body: bodyPreview.body,
+        warnings: [
+          ...subjectPreview.warnings,
+          ...bodyPreview.warnings,
+        ],
+      }
+    }
+    const recipientContext: RecipientRenderContext = {
+      templateContext: context,
+      sharedArticles: sampleData?.sharedArticles ?? [],
+      classes: sampleData?.classes ?? [],
+      weeklyItems: sampleData?.weeklyItems ?? [],
+    }
+    const walker = renderTemplateForRecipient(blocks, recipientContext, {
+      subjectForDocumentTitle: subjectPreview.subject,
+      wrapInDocumentShell: true,
+    })
+    return {
+      subject: subjectPreview.subject,
+      body: walker.html,
+      warnings: [
+        ...subjectPreview.warnings,
+        ...walker.missingTokens.map((token) => ({
+          field: 'body' as const,
+          token,
+          message: `Missing value for token: ${token}`,
+        })),
+      ],
+    }
   }
 }
 

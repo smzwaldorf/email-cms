@@ -11,21 +11,46 @@ export interface EmailTemplate {
   deactivatedAt?: string | null
 }
 
+export type EmailBlockType =
+  | 'header'
+  | 'shared-article-feature'
+  | 'class-article-feature'
+  | 'weekly-summary-list'
+  | 'section-divider'
+  | 'about'
+  | 'footer'
+  | 'custom-html'
+
+export type EmailTemplateBlockConfig = Record<string, unknown>
+
+export interface EmailTemplateBlock {
+  type: EmailBlockType
+  order: number
+  visible: boolean
+  bodyHtml: string
+  config: EmailTemplateBlockConfig
+}
+
 export interface EmailTemplateRevision {
   id: string
   templateId: string
   revisionNumber: number
   subjectTemplate: string
   bodyTemplate: string
+  blocks: EmailTemplateBlock[]
   createdAt: string
   createdBy?: string | null
 }
 
+export type EmailTemplateValidationField = 'subject' | 'body' | `block:${number}`
+
 export interface EmailTemplateValidationIssue {
-  code: 'unsupported_token' | 'required_field_missing'
-  field: 'subject' | 'body'
+  code: 'unsupported_token' | 'required_field_missing' | 'unsupported_block_type'
+  field: EmailTemplateValidationField
   message: string
   token?: string
+  blockIndex?: number
+  blockType?: EmailBlockType
 }
 
 export interface EmailTemplateValidationResult {
@@ -34,9 +59,11 @@ export interface EmailTemplateValidationResult {
 }
 
 export interface EmailTemplatePreviewWarning {
-  field: 'subject' | 'body'
+  field: EmailTemplateValidationField
   token: string
   message: string
+  blockIndex?: number
+  blockType?: EmailBlockType
 }
 
 export interface EmailTemplatePreviewResult {

@@ -1,6 +1,8 @@
 import { getSupabaseClient } from '@/lib/supabase'
 import { emailContentPreparationService } from '@/services/emailContentPreparationService'
 import { enqueueSyncJob } from '@/services/emailPlatform/runtime'
+import { coerceEmailTemplateBlocks } from '@/services/emailTemplateBlocks'
+import { composePersonalizedEmails } from '@/services/personalizedEmailComposer'
 import type {
   DeliveryAudienceRecipient,
   DeliveryAudienceSelection,
@@ -21,6 +23,7 @@ import type {
   PersonalizationInputGuardian,
   PersonalizationInputNewsletter,
   PersonalizationInputTemplate,
+  PersonalizationWarning,
 } from '@/types/personalization'
 
 interface FamilyWithEnrollments {
@@ -409,6 +412,132 @@ class NewsletterDeliveryService {
       templateRevisionId: revision.id,
       subjectTemplate: revision.subject_template,
       bodyTemplate: revision.body_template,
+      blocks: coerceEmailTemplateBlocks((revision as { blocks?: unknown }).blocks),
+    }
+  }
+
+  /**
+   * Resolve a specific template revision (or the latest revision of a template)
+   * for use by `previewPersonalizationForFamily`. Returns `undefined` when the
+   * template has no revisions.
+   */
+  async resolveTemplateInputForPreview(templateId: string): Promise<PersonalizationInputTemplate | undefined> {
+    const supabase = getSupabaseClient()
+    const { data: template, error: templateError } = await supabase
+      .from('email_templates')
+      .select('id, current_revision_id')
+      .eq('id', templateId)
+      .maybeSingle()
+    if (templateError) {
+      throw new Error(`Failed to load template ${templateId}: ${templateError.message}`)
+    }
+    if (!template?.current_revision_id) {
+      return undefined
+    }
+    const { data: revision, error: revisionError } = await supabase
+      .from('email_template_revisions')
+      .select('*')
+      .eq('id', template.current_revision_id)
+      .single()
+    if (revisionError) {
+      throw new Error(`Failed to load template revision: ${revisionError.message}`)
+    }
+    return {
+      templateId: revision.template_id,
+      templateRevisionId: revision.id,
+      subjectTemplate: revision.subject_template,
+      bodyTemplate: revision.body_template,
+      blocks: coerceEmailTemplateBlocks((revision as { blocks?: unknown }).blocks),
+    }
+  }
+
+  /**
+   * Build a `PrepareEmailContentInput`-compatible composition for a single
+   * (newsletter × family × template) tuple without touching delivery batches.
+   * Used by the admin "Apply for merge" preview to render exactly what the
+   * recipient would receive at send time.
+   */
+  async previewPersonalizationForFamily(args: {
+    newsletterId: string
+    familyId: string
+    templateId?: string
+  }): Promise<{
+    renderedSubject: string
+    renderedBody: string
+    warnings: PersonalizationWarning[]
+    template: PersonalizationInputTemplate | undefined
+    guardianEmail: string | null
+  }> {
+    const supabase = getSupabaseClient()
+    const [{ data: newsletter, error: newsletterError }, { data: parentEnrollments, error: parentsError }] = await Promise.all([
+      supabase.from('newsletters').select('*').eq('id', args.newsletterId).maybeSingle(),
+      supabase
+        .from('family_enrollment')
+        .select('parent_id, family_id')
+        .eq('family_id', args.familyId)
+        .not('parent_id', 'is', null)
+        .limit(1),
+    ])
+    if (newsletterError || !newsletter) {
+      throw new Error(`Failed to load newsletter for preview: ${newsletterError?.message ?? 'not found'}`)
+    }
+    if (parentsError) {
+      throw new Error(`Failed to load family parents: ${parentsError.message}`)
+    }
+    const parentEnrollment = (parentEnrollments ?? [])[0] as { parent_id: string } | undefined
+    let parentEmail: string | null = null
+    if (parentEnrollment?.parent_id) {
+      const { data: parentUser, error: parentUserError } = await supabase
+        .from('user_roles')
+        .select('email')
+        .eq('id', parentEnrollment.parent_id)
+        .maybeSingle()
+      if (parentUserError) {
+        throw new Error(`Failed to load parent email: ${parentUserError.message}`)
+      }
+      parentEmail = (parentUser as { email?: string | null } | null)?.email ?? null
+    }
+
+    const template = args.templateId
+      ? await this.resolveTemplateInputForPreview(args.templateId)
+      : await this.resolveActiveTemplate()
+    const personalizationNewsletter = await this.buildNewsletterPersonalizationInput(newsletter as NewsletterRow)
+    const recipientRow: NewsletterDeliveryBatchRecipientRow = {
+      id: `preview-${args.familyId}`,
+      family_id: args.familyId,
+      parent_id: parentEnrollment?.parent_id ?? null,
+      parent_email: parentEmail,
+      guardian_email: null,
+      journey_correlation_id: 'preview',
+      eligibility_status: 'eligible',
+      preparation_status: 'pending',
+      send_status: 'pending',
+      failure_reason: null,
+      provider_message_id: null,
+      provider_error: null,
+      sent_at: null,
+      last_attempted_at: null,
+      batch_id: 'preview',
+      eligibility_reason: null,
+      prepared_payload: null,
+      preparation_findings: null,
+    } as unknown as NewsletterDeliveryBatchRecipientRow
+
+    const { guardians, classes } = await this.loadGuardianInputs([recipientRow])
+    const composition = composePersonalizedEmails({
+      rulesVersion: 'v1',
+      newsletter: personalizationNewsletter,
+      template,
+      classes,
+      guardians,
+    })
+    const payload = composition.payloads[0]
+    return {
+      renderedSubject: payload?.renderedSubject ?? '',
+      renderedBody: payload?.renderedBody ?? '',
+      warnings: composition.warnings,
+      template,
+      guardianEmail: parentEmail,
     }
   }
 

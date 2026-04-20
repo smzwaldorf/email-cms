@@ -46,11 +46,20 @@ export interface PersonalizationInputNewsletter {
   classBlocks: PersonalizationClassBlock[]
 }
 
+import type { EmailTemplateBlock } from '@/types/emailTemplate'
+
 export interface PersonalizationInputTemplate {
   templateId: string
   templateRevisionId: string
   subjectTemplate: string
   bodyTemplate: string
+  /**
+   * Pinned ordered block list snapshot for this template revision. When
+   * non-empty, the composer renders per-recipient HTML by walking these
+   * blocks. When omitted or empty, the composer falls back to the legacy
+   * `subjectTemplate` / `bodyTemplate` render path.
+   */
+  blocks?: EmailTemplateBlock[]
 }
 
 export interface PersonalizationSnapshot {
@@ -83,6 +92,12 @@ export interface PersonalizedEmailPayload {
   templateRevisionId?: string
   renderedSubject?: string
   renderedBody?: string
+  /**
+   * Stable fingerprint of `renderedBody` so a downstream service (e.g. the
+   * Kit edge function) can verify the HTML it sends matches the HTML the
+   * composer produced for this recipient. Computed when `renderedBody` is set.
+   */
+  renderedHtmlFingerprint?: string
 }
 
 export interface PersonalizationWarning {
