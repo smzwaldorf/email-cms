@@ -163,9 +163,6 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, activeTab, h
               <TabLink to="/admin/media" isActive={activeTab === 'media'}>
                 Media
               </TabLink>
-              <TabLink to="/admin/email-templates" isActive={activeTab === 'email-templates'}>
-                Email Templates
-              </TabLink>
               <TabButton
                 isActive={activeTab === 'users'}
                 onClick={() => handleTabClick('users')}
