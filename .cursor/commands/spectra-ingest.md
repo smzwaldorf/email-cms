@@ -5,7 +5,7 @@ category: Workflow
 description: Update an existing Spectra change from a plan file or conversation context
 ---
 
-<!-- SPECTRA:START v1.0.1 -->
+<!-- SPECTRA:START v1.0.2 -->
 
 Update an existing Spectra change — from a plan file or conversation context.
 
