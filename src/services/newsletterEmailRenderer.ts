@@ -13,6 +13,7 @@
  */
 export {
   createDefaultBlock as createDefaultNewsletterBlock,
+  createStarterEmailBlocks as createStarterNewsletterEmailBlocks,
   getEmailBlockTypeDefinition as getNewsletterBlockDefinition,
   listEmailBlockTypeDefinitions as listNewsletterBlockDefinitions,
 } from '@/services/emailTemplateBlocks'

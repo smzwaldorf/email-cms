@@ -250,6 +250,22 @@ export function createDefaultBlock(type: EmailBlockType, order: number): EmailTe
   }
 }
 
+/**
+ * Default block layout: header → main `custom-html` → footer.
+ * Use for new templates, expanding legacy single-`custom-html` revisions, and import fallback.
+ */
+export function createStarterEmailBlocks(options?: {
+  mainBodyHtml?: string
+  mainConfig?: EmailTemplateBlockConfig
+}): EmailTemplateBlock[] {
+  const middle: EmailTemplateBlock = {
+    ...createDefaultBlock('custom-html', 1),
+    ...(options?.mainBodyHtml !== undefined ? { bodyHtml: options.mainBodyHtml } : {}),
+    ...(options?.mainConfig !== undefined ? { config: options.mainConfig } : {}),
+  }
+  return [createDefaultBlock('header', 0), middle, createDefaultBlock('footer', 2)]
+}
+
 export function isRepeaterBlockType(type: EmailBlockType): boolean {
   return REGISTRY[type].isRepeater
 }

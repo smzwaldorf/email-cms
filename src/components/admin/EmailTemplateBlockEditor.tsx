@@ -38,6 +38,10 @@ export function EmailTemplateBlockEditor({ block, blockKey, onChange }: EmailTem
       </div>
 
       <div>
+        <p className="mb-2 text-xs text-waldorf-clay-500">
+          In TipTap mode, use the toolbar image button to upload files or choose images from the media gallery. Images are
+          saved as storage links in this block and swapped to signed URLs when the newsletter is prepared for delivery.
+        </p>
         <div className="mb-2 flex items-center justify-between">
           <span className="text-xs font-medium text-waldorf-clay-600">Body HTML</span>
           <div className="inline-flex overflow-hidden rounded-lg border border-waldorf-cream-300 text-xs">

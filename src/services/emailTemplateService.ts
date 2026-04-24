@@ -35,6 +35,64 @@ export class EmailTemplateServiceError extends Error {
   }
 }
 
+/** Sample articles / classes / weekly items so block-walker previews show repeater output. */
+export const DEFAULT_EMAIL_TEMPLATE_PREVIEW_SAMPLES: {
+  sharedArticles: RecipientArticle[]
+  classes: RecipientClass[]
+  weeklyItems: RecipientArticle[]
+} = {
+  sharedArticles: [
+    {
+      id: 'preview-sa-1',
+      title: 'Demo shared article',
+      excerpt: 'Sample excerpt for preview.',
+      url: 'https://example.com/a1',
+      imageUrl: null,
+    },
+  ],
+  classes: [
+    {
+      id: 'preview-class-a',
+      code: 'A1',
+      name: 'Grade 1A',
+      articles: [
+        {
+          id: 'preview-ca-1',
+          title: 'Demo class article',
+          excerpt: 'Class excerpt for preview.',
+          url: 'https://example.com/c1',
+          imageUrl: null,
+        },
+      ],
+    },
+  ],
+  weeklyItems: [
+    {
+      id: 'preview-w-1',
+      title: 'Weekly item',
+      excerpt: 'Weekly excerpt.',
+      url: 'https://example.com/w1',
+      sourceTag: 'weekly',
+    },
+  ],
+}
+
+function mergePreviewSampleData(sampleData?: {
+  sharedArticles?: RecipientArticle[]
+  classes?: RecipientClass[]
+  weeklyItems?: RecipientArticle[]
+}): {
+  sharedArticles: RecipientArticle[]
+  classes: RecipientClass[]
+  weeklyItems: RecipientArticle[]
+} {
+  return {
+    sharedArticles: sampleData?.sharedArticles ?? DEFAULT_EMAIL_TEMPLATE_PREVIEW_SAMPLES.sharedArticles,
+    classes: sampleData?.classes ?? DEFAULT_EMAIL_TEMPLATE_PREVIEW_SAMPLES.classes,
+    weeklyItems: sampleData?.weeklyItems ?? DEFAULT_EMAIL_TEMPLATE_PREVIEW_SAMPLES.weeklyItems,
+  }
+}
+
 function mapTemplateRow(row: EmailTemplateRow): EmailTemplate {
   return {
     id: row.id,
@@ -195,7 +253,9 @@ class EmailTemplateService {
       .insert({
         name: input.name.trim(),
         description: input.description?.trim() || null,
-        state: 'active',
+        // state defaults to 'draft' at the DB level. Admins promote a template
+        // explicitly via setActiveTemplate; we no longer auto-activate on
+        // create/save so the user's "in use" choice is preserved.
       })
       .select('*')
       .single()
@@ -292,7 +352,9 @@ class EmailTemplateService {
 
     const payload: Record<string, unknown> = {
       current_revision_id: revisionRow.id,
-      state: 'active',
+      // Intentionally do not touch `state` here: editing a draft or inactive
+      // template should not silently promote it to the publishing default.
+      // Use setActiveTemplate(id) to change which template is "in use".
     }
     if (input.name !== undefined) {
       payload.name = input.name.trim()
@@ -360,6 +422,79 @@ class EmailTemplateService {
         error,
       )
     }
+  }
+
+  /**
+   * Promote a template to the singleton "active" slot used by
+   * `newsletterDeliveryService.resolveActiveTemplate()` when publishing a
+   * newsletter. Demotes any currently-active template to `inactive` first so
+   * the partial unique index `email_templates_single_active_idx` (see
+   * migration 20260423000000) is satisfied.
+   *
+   * Requires the template to have at least one saved revision; without one,
+   * publishing would resolve to a template with no body to render.
+   */
+  async setActiveTemplate(templateId: string): Promise<EmailTemplate> {
+    const supabase = getSupabaseClient()
+
+    const { data: targetRow, error: targetError } = await supabase
+      .from('email_templates')
+      .select('*')
+      .eq('id', templateId)
+      .single()
+
+    if (targetError || !targetRow) {
+      throw new EmailTemplateServiceError(
+        `Template not found: ${templateId}`,
+        'EMAIL_TEMPLATE_NOT_FOUND',
+        targetError,
+      )
+    }
+
+    if (!(targetRow as EmailTemplateRow).current_revision_id) {
+      throw new EmailTemplateServiceError(
+        'Template has no saved revision yet. Save the template before marking it as active.',
+        'EMAIL_TEMPLATE_NO_REVISION',
+      )
+    }
+
+    if ((targetRow as EmailTemplateRow).state === 'active') {
+      return mapTemplateRow(targetRow as EmailTemplateRow)
+    }
+
+    // Demote first, promote second. Order matters: the partial unique index on
+    // (state) WHERE state='active' would reject a second active row, so we
+    // never have two actives in flight, even briefly.
+    const { error: demoteError } = await supabase
+      .from('email_templates')
+      .update({ state: 'inactive' })
+      .eq('state', 'active')
+      .neq('id', templateId)
+
+    if (demoteError) {
+      throw new EmailTemplateServiceError(
+        `Failed to demote previous active template: ${demoteError.message}`,
+        'EMAIL_TEMPLATE_SET_ACTIVE_ERROR',
+        demoteError,
+      )
+    }
+
+    const { data: updatedRow, error: promoteError } = await supabase
+      .from('email_templates')
+      .update({ state: 'active' })
+      .eq('id', templateId)
+      .select('*')
+      .single()
+
+    if (promoteError || !updatedRow) {
+      throw new EmailTemplateServiceError(
+        `Failed to mark template as active: ${promoteError?.message ?? 'unknown error'}`,
+        'EMAIL_TEMPLATE_SET_ACTIVE_ERROR',
+        promoteError,
+      )
+    }
+
+    return mapTemplateRow(updatedRow as EmailTemplateRow)
   }
 
   async getCurrentRevision(templateId: string): Promise<{ template: EmailTemplate; revision: EmailTemplateRevision }> {
@@ -436,11 +571,12 @@ class EmailTemplateService {
         ],
       }
     }
+    const merged = mergePreviewSampleData(sampleData)
     const recipientContext: RecipientRenderContext = {
       templateContext: context,
-      sharedArticles: sampleData?.sharedArticles ?? [],
-      classes: sampleData?.classes ?? [],
-      weeklyItems: sampleData?.weeklyItems ?? [],
+      sharedArticles: merged.sharedArticles,
+      classes: merged.classes,
+      weeklyItems: merged.weeklyItems,
     }
     const walker = renderTemplateForRecipient(blocks, recipientContext, {
       subjectForDocumentTitle: subjectPreview.subject,
@@ -451,6 +587,43 @@ class EmailTemplateService {
       body: walker.html,
       warnings: [
         ...subjectPreview.warnings,
+        ...walker.missingTokens.map((token) => ({
+          field: 'body' as const,
+          token,
+          message: `Missing value for token: ${token}`,
+        })),
+      ],
+    }
+  }
+
+  /**
+   * Render a single block with the same sample data as `previewRevision`, without the outer
+   * document shell (fragment only), for admin “preview this block” UX.
+   */
+  previewBlock(
+    block: EmailTemplateBlock,
+    context: EmailTemplateRenderContext,
+    sampleData?: {
+      sharedArticles?: RecipientArticle[]
+      classes?: RecipientClass[]
+      weeklyItems?: RecipientArticle[]
+    },
+  ): EmailTemplatePreviewResult {
+    const merged = mergePreviewSampleData(sampleData)
+    const recipientContext: RecipientRenderContext = {
+      templateContext: context,
+      sharedArticles: merged.sharedArticles,
+      classes: merged.classes,
+      weeklyItems: merged.weeklyItems,
+    }
+    const walker = renderTemplateForRecipient([block], recipientContext, {
+      subjectForDocumentTitle: '',
+      wrapInDocumentShell: false,
+    })
+    return {
+      subject: '',
+      body: walker.html,
+      warnings: [
         ...walker.missingTokens.map((token) => ({
           field: 'body' as const,
           token,

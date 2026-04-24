@@ -169,7 +169,8 @@ function buildRecipientClasses(
   })
 }
 
-function hashHtmlFingerprint(html: string): string {
+/** Fingerprint of final HTML (e.g. after resolving `storage://` URLs) for delivery verification. */
+export function computeRenderedHtmlFingerprint(html: string): string {
   let hash = 2166136261
   for (let i = 0; i < html.length; i += 1) {
     hash ^= html.charCodeAt(i)
@@ -468,7 +469,7 @@ export function composePersonalizedEmails(
       renderedSubject = fallbackTitle
     }
 
-    const renderedHtmlFingerprint = renderedBody ? hashHtmlFingerprint(renderedBody) : undefined
+    const renderedHtmlFingerprint = renderedBody ? computeRenderedHtmlFingerprint(renderedBody) : undefined
 
     payloads.push({
       guardianId: guardian.guardianId,

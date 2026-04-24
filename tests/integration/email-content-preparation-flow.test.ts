@@ -45,8 +45,8 @@ function createFlowInput(): PrepareEmailContentInput {
 }
 
 describe('email content preparation flow', () => {
-  it('keeps mixed-outcome batches and hands off ready-only payloads', () => {
-    const job = emailContentPreparationService.prepare(createFlowInput())
+  it('keeps mixed-outcome batches and hands off ready-only payloads', async () => {
+    const job = await emailContentPreparationService.prepare(createFlowInput())
     const handoff = emailContentPreparationService.createDeliveryHandoff(job.jobId)
 
     expect(job.summary.readyRecipients).toBe(1)
@@ -60,9 +60,9 @@ describe('email content preparation flow', () => {
     expect(handoff.failedRecipients[0].guardianId).toBe('guardian-failed')
   })
 
-  it('retries only previously failed recipients against new pinned inputs', () => {
-    const first = emailContentPreparationService.prepare(createFlowInput())
-    const retry = emailContentPreparationService.retryFailedRecipients(first.jobId, {
+  it('retries only previously failed recipients against new pinned inputs', async () => {
+    const first = await emailContentPreparationService.prepare(createFlowInput())
+    const retry = await emailContentPreparationService.retryFailedRecipients(first.jobId, {
       ...createFlowInput(),
       startedAt: '2026-03-22T10:00:00.000Z',
       newsletter: {
@@ -97,8 +97,8 @@ describe('email content preparation flow', () => {
     expect(retry.recipients[0].status).toBe('ready')
   })
 
-  it('prepares block-based templates via the same composition path as apply-for-merge', () => {
-    const job = emailContentPreparationService.prepare({
+  it('prepares block-based templates via the same composition path as apply-for-merge', async () => {
+    const job = await emailContentPreparationService.prepare({
       ...createFlowInput(),
       template: {
         templateId: 'template-1',

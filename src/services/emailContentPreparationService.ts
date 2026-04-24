@@ -1,6 +1,10 @@
 import { normalizeCanvaEmailHtml } from '@/services/canvaEmailImport'
 import { validateEmailTemplate } from '@/services/emailTemplateTokens'
-import { composePersonalizedEmails } from '@/services/personalizedEmailComposer'
+import {
+  composePersonalizedEmails,
+  computeRenderedHtmlFingerprint,
+} from '@/services/personalizedEmailComposer'
+import { EMAIL_HTML_STORAGE_SIGN_TTL_SECONDS, replaceStorageTokens } from '@/utils/contentParser'
 import type {
   DeliveryHandoffContract,
   EmailContentPreparationJob,
@@ -160,12 +164,28 @@ function summarize(recipients: PreparedRecipientRecord[]): EmailContentPreparati
 class EmailContentPreparationService {
   private readonly jobs = new Map<string, EmailContentPreparationJob>()
 
-  prepare(input: PrepareEmailContentInput): EmailContentPreparationJob {
+  async prepare(input: PrepareEmailContentInput): Promise<EmailContentPreparationJob> {
     const createdAt = input.startedAt ?? new Date().toISOString()
     const composition = composePersonalizedEmails({
       ...input,
       snapshotCapturedAt: input.snapshotCapturedAt ?? createdAt,
     })
+
+    const payloadsWithResolvedStorage = await Promise.all(
+      composition.payloads.map(async (payload) => {
+        const raw = payload.renderedBody ?? ''
+        if (!raw.includes('storage://')) {
+          return payload
+        }
+        const resolved = await replaceStorageTokens(raw, EMAIL_HTML_STORAGE_SIGN_TTL_SECONDS)
+        return {
+          ...payload,
+          renderedBody: resolved,
+          renderedHtmlFingerprint: computeRenderedHtmlFingerprint(resolved),
+        }
+      }),
+    )
+
     const pinnedInputs = createPinnedReferences(input, composition.snapshot.capturedAt)
     const warningByGuardian = new Map<string, PreparationFinding[]>()
 
@@ -200,25 +220,29 @@ class EmailContentPreparationService {
       ? normalizeCanvaEmailHtml(templateHtmlForCanvaImport(input.template))
       : null
 
-    const recipientRecords = composition.payloads.map((payload) => {
+    const recipientRecords = payloadsWithResolvedStorage.map((payload) => {
       const findings: PreparationFinding[] = [...(warningByGuardian.get(payload.guardianId) ?? [])]
 
       for (const issue of templateValidation.issues) {
         if (issue.code === 'required_field_missing') {
+          const field =
+            issue.field === 'subject' || issue.field === 'body' ? issue.field : undefined
           findings.push({
             code: 'missing_required_section',
             severity: 'error',
             guardianId: payload.guardianId,
-            field: issue.field,
+            field,
             message: issue.message,
             details: { field: issue.field },
           })
         } else if (issue.code === 'unsupported_token') {
+          const field =
+            issue.field === 'subject' || issue.field === 'body' ? issue.field : undefined
           findings.push({
             code: 'unsupported_token',
             severity: 'error',
             guardianId: payload.guardianId,
-            field: issue.field,
+            field,
             message: issue.message,
             details: { field: issue.field, token: issue.token },
           })
@@ -363,7 +387,10 @@ class EmailContentPreparationService {
     }
   }
 
-  retryFailedRecipients(previousJobId: string, input: PrepareEmailContentInput): EmailContentPreparationJob {
+  async retryFailedRecipients(
+    previousJobId: string,
+    input: PrepareEmailContentInput,
+  ): Promise<EmailContentPreparationJob> {
     const previous = this.jobs.get(previousJobId)
     if (!previous) {
       throw new Error(`Preparation job not found: ${previousJobId}`)

@@ -5,11 +5,17 @@ import { AdminLayout } from '@/components/admin/AdminLayout'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { SimpleEditor } from '@/components/tiptap-templates/simple/simple-editor'
 import { detectCanvaSections, type CanvaEmailImportIssue } from '@/services/canvaEmailImport'
-import { createDefaultBlock } from '@/services/emailTemplateBlocks'
+import { createStarterEmailBlocks, getEmailBlockTypeDefinition } from '@/services/emailTemplateBlocks'
 import { emailTemplateService } from '@/services/emailTemplateService'
-import { EMAIL_TEMPLATE_TOKENS, validateEmailTemplate } from '@/services/emailTemplateTokens'
-import type { EmailTemplateBlock, EmailTemplateRevision } from '@/types/emailTemplate'
+import {
+  EMAIL_TEMPLATE_TOKENS,
+  renderEmailTemplatePreview,
+  validateEmailTemplate,
+  type EmailTemplateRenderContext,
+} from '@/services/emailTemplateTokens'
+import type { EmailTemplate, EmailTemplateBlock, EmailTemplateRevision } from '@/types/emailTemplate'
 import { EmailTemplateBlockList } from '@/components/admin/EmailTemplateBlockList'
+import { replaceStorageTokens } from '@/utils/contentParser'
 
 const TOKEN_EXAMPLES = {
   'guardian.id': 'guardian-demo',
@@ -21,12 +27,59 @@ const TOKEN_EXAMPLES = {
   'classes.list': 'A1, B1',
 } as const satisfies Record<(typeof EMAIL_TEMPLATE_TOKENS)[number], string>
 
+function buildDemoEmailPreviewContext(): EmailTemplateRenderContext {
+  const truncate = (value: string, max = 20): string =>
+    value.length > max ? `${value.slice(0, max)}...` : value
+  return {
+    guardian: {
+      id: truncate('guardian-demo-very-long-id-123456789'),
+      email: truncate('guardian.very.long.email@example.com'),
+    },
+    family: {
+      id: truncate('family-very-long-id-987654321'),
+    },
+    newsletter: {
+      id: truncate('newsletter-demo-long-id'),
+      revisionId: truncate('newsletter-revision-long-id'),
+    },
+    classes: {
+      ids: ['A1', 'B1', 'C1'],
+    },
+  }
+}
+
+function EmailPreviewFrame({ html, decode }: { html: string; decode: (value: string) => string }) {
+  const raw = decode(html)
+  if (!raw.trim()) {
+    return <p className="text-sm text-waldorf-clay-500">(empty)</p>
+  }
+  const isFullDoc = /^\s*<!doctype/i.test(raw) || /<html[\s>]/i.test(raw.trim())
+  if (isFullDoc) {
+    return (
+      <iframe
+        title="Email preview"
+        sandbox="allow-same-origin"
+        srcDoc={raw}
+        className="h-[min(520px,70vh)] w-full rounded border border-waldorf-cream-200 bg-white"
+      />
+    )
+  }
+  return (
+    <div
+      className="prose max-w-none rounded border border-waldorf-cream-200 bg-white p-3 text-sm"
+      dangerouslySetInnerHTML={{ __html: raw || '<p>(empty)</p>' }}
+    />
+  )
+}
+
 export function AdminEmailTemplateEditorPage() {
   const { templateId } = useParams<{ templateId: string }>()
   const navigate = useNavigate()
   const isNew = !templateId
 
   const [editingRevision, setEditingRevision] = useState<EmailTemplateRevision | null>(null)
+  const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null)
+  const [isActivating, setIsActivating] = useState(false)
   const [name, setName] = useState('')
   const [subjectTemplate, setSubjectTemplate] = useState('')
   const [bodyTemplate, setBodyTemplate] = useState('')
@@ -35,9 +88,6 @@ export function AdminEmailTemplateEditorPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [bodyEditor, setBodyEditor] = useState<Editor | null>(null)
-  const [previewSubject, setPreviewSubject] = useState('')
-  const [previewBody, setPreviewBody] = useState('')
-  const [previewWarnings, setPreviewWarnings] = useState<string[]>([])
   const [importIssues, setImportIssues] = useState<CanvaEmailImportIssue[]>([])
   const [showImportPanel, setShowImportPanel] = useState(false)
   const [importHtml, setImportHtml] = useState('')
@@ -45,8 +95,13 @@ export function AdminEmailTemplateEditorPage() {
   const [bodyEditorMode, setBodyEditorMode] = useState<'tiptap' | 'html'>('tiptap')
   // Block list snapshot. When non-empty, persisted to `email_template_revisions.blocks`
   // and rendered through the block walker; otherwise the legacy single-body path is used.
-  const [editorBlocks, setEditorBlocks] = useState<EmailTemplateBlock[] | null>(null)
+  const [editorBlocks, setEditorBlocks] = useState<EmailTemplateBlock[] | null>(() =>
+    !templateId ? createStarterEmailBlocks() : null,
+  )
   const [importDetectionMessage, setImportDetectionMessage] = useState<string | null>(null)
+  /** Combined = full walker output with document shell; block = one block fragment with sample repeater data. */
+  const [previewScope, setPreviewScope] = useState<'combined' | 'block'>('combined')
+  const [previewBlockIndex, setPreviewBlockIndex] = useState(0)
 
   const importResult = useMemo(
     () => (rawImportedHtml !== null ? emailTemplateService.normalizeImportedBodyHtml(rawImportedHtml) : null),
@@ -54,10 +109,8 @@ export function AdminEmailTemplateEditorPage() {
   )
   const effectiveBodyTemplate = importResult?.normalizedHtml ?? bodyTemplate
 
-  // The template view defaults to the typed block list when the loaded
-  // revision has any block beyond a single legacy `custom-html` block. Legacy
-  // single-body revisions stay on the single-body editor until the admin
-  // clicks "Convert to blocks".
+  // Block-based layout is the default (see `createStarterEmailBlocks`). The single-body
+  // editor appears only when the template is exactly one `custom-html` block (legacy shape).
   const isLegacySingleBlock =
     editorBlocks !== null && editorBlocks.length === 1 && editorBlocks[0].type === 'custom-html'
   const showBlockList = editorBlocks !== null && !isLegacySingleBlock
@@ -67,6 +120,80 @@ export function AdminEmailTemplateEditorPage() {
     [subjectTemplate, effectiveBodyTemplate, editorBlocks],
   )
   const hasValidationIssues = validation.issues.length > 0 || (importResult?.hasBlockingIssues ?? false)
+
+  const livePreview = useMemo(() => {
+    const context = buildDemoEmailPreviewContext()
+    const legacySingle =
+      editorBlocks !== null && editorBlocks.length === 1 && editorBlocks[0].type === 'custom-html'
+    const listMode = editorBlocks !== null && !legacySingle
+
+    if (listMode && editorBlocks && editorBlocks.length > 0) {
+      if (previewScope === 'block') {
+        const idx = Math.min(Math.max(0, previewBlockIndex), editorBlocks.length - 1)
+        const block = editorBlocks[idx]
+        const blockPreview = emailTemplateService.previewBlock(block, context)
+        const subjectPreview = renderEmailTemplatePreview(subjectTemplate, '', context)
+        return {
+          subject: subjectPreview.subject,
+          body: blockPreview.body,
+          warnings: [
+            ...subjectPreview.warnings.map((w) => w.message),
+            ...blockPreview.warnings.map((w) => w.message),
+          ],
+        }
+      }
+      const preview = emailTemplateService.previewRevision(
+        {
+          subjectTemplate,
+          bodyTemplate: effectiveBodyTemplate,
+          blocks: editorBlocks,
+        },
+        context,
+      )
+      return {
+        subject: preview.subject,
+        body: preview.body,
+        warnings: preview.warnings.map((w) => w.message),
+      }
+    }
+
+    const preview = emailTemplateService.previewRevision(
+      {
+        subjectTemplate,
+        bodyTemplate: effectiveBodyTemplate,
+      },
+      context,
+    )
+    return {
+      subject: preview.subject,
+      body: preview.body,
+      warnings: preview.warnings.map((w) => w.message),
+    }
+  }, [subjectTemplate, effectiveBodyTemplate, editorBlocks, previewScope, previewBlockIndex])
+
+  const [resolvedLivePreviewBody, setResolvedLivePreviewBody] = useState<string | null>(null)
+
+  useEffect(() => {
+    const raw = livePreview.body
+    if (!raw.includes('storage://')) {
+      setResolvedLivePreviewBody(raw)
+      return
+    }
+    setResolvedLivePreviewBody(null)
+    let cancelled = false
+    void replaceStorageTokens(raw, 60 * 60).then((out) => {
+      if (!cancelled) setResolvedLivePreviewBody(out)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [livePreview.body])
+
+  const livePreviewFrameHtml = livePreview.body.includes('storage://')
+    ? (resolvedLivePreviewBody ?? '')
+    : livePreview.body
+  const livePreviewResolvingGallery =
+    livePreview.body.includes('storage://') && resolvedLivePreviewBody === null
 
   useEffect(() => {
     if (isNew || !templateId) return
@@ -81,9 +208,22 @@ export function AdminEmailTemplateEditorPage() {
         setBodyTemplate(current.revision.bodyTemplate)
         setRawImportedHtml(null)
         setImportIssues([])
-        setEditorBlocks(current.revision.blocks.length > 0 ? current.revision.blocks : null)
+        const loadedBlocks = current.revision.blocks
+        if (loadedBlocks.length === 1 && loadedBlocks[0].type === 'custom-html') {
+          setEditorBlocks(
+            createStarterEmailBlocks({
+              mainBodyHtml: loadedBlocks[0].bodyHtml,
+              mainConfig: loadedBlocks[0].config,
+            }),
+          )
+        } else if (loadedBlocks.length > 0) {
+          setEditorBlocks(loadedBlocks)
+        } else {
+          setEditorBlocks(createStarterEmailBlocks())
+        }
         setImportDetectionMessage(null)
         setEditingRevision(current.revision)
+        setEditingTemplate(current.template)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load template')
       } finally {
@@ -93,6 +233,13 @@ export function AdminEmailTemplateEditorPage() {
 
     void loadTemplate()
   }, [isNew, templateId])
+
+  useEffect(() => {
+    if (!editorBlocks?.length) return
+    if (previewBlockIndex >= editorBlocks.length) {
+      setPreviewBlockIndex(Math.max(0, editorBlocks.length - 1))
+    }
+  }, [editorBlocks, previewBlockIndex])
 
   const handleCreate = async () => {
     if (hasValidationIssues) {
@@ -137,6 +284,7 @@ export function AdminEmailTemplateEditorPage() {
         importedBodyHtml: rawImportedHtml,
       })
       setEditingRevision(updated.revision)
+      setEditingTemplate(updated.template)
       setEditorBlocks(updated.revision.blocks.length > 0 ? updated.revision.blocks : null)
       setSuccess(`Saved revision v${updated.revision.revisionNumber}.`)
     } catch (err) {
@@ -178,41 +326,28 @@ export function AdminEmailTemplateEditorPage() {
     }
   }
 
+  const handleSetActive = async () => {
+    if (!templateId) return
+    if (!editingTemplate?.currentRevisionId) {
+      setError('Save the template at least once before marking it as active.')
+      return
+    }
+    setIsActivating(true)
+    setError(null)
+    try {
+      const updated = await emailTemplateService.setActiveTemplate(templateId)
+      setEditingTemplate(updated)
+      setSuccess('This template is now used for newsletter publishing.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to mark template as active')
+    } finally {
+      setIsActivating(false)
+    }
+  }
+
   const handleInsertToken = (token: string) => {
     if (!bodyEditor) return
     bodyEditor.chain().focus().insertContent(`{{${token}}}`).run()
-  }
-
-  const truncateValue = (value: string, max = 20): string =>
-    value.length > max ? `${value.slice(0, max)}...` : value
-
-  const handlePreview = () => {
-    const preview = emailTemplateService.previewRevision(
-      {
-        subjectTemplate,
-        bodyTemplate: effectiveBodyTemplate,
-      },
-      {
-        guardian: {
-          id: truncateValue('guardian-demo-very-long-id-123456789'),
-          email: truncateValue('guardian.very.long.email@example.com'),
-        },
-        family: {
-          id: truncateValue('family-very-long-id-987654321'),
-        },
-        newsletter: {
-          id: truncateValue('newsletter-demo-long-id'),
-          revisionId: truncateValue('newsletter-revision-long-id'),
-        },
-        classes: {
-          ids: ['A1', 'B1', 'C1'],
-        },
-      },
-    )
-
-    setPreviewSubject(preview.subject)
-    setPreviewBody(preview.body)
-    setPreviewWarnings(preview.warnings.map((warning) => warning.message))
   }
 
   const handleApplyImportedHtml = () => {
@@ -225,13 +360,11 @@ export function AdminEmailTemplateEditorPage() {
     if (nextImportResult.hasBlockingIssues) {
       setError('Imported HTML has compatibility issues. Resolve them before saving.')
       setSuccess(null)
-      setEditorBlocks(null)
+      setEditorBlocks(createStarterEmailBlocks({ mainBodyHtml: nextImportResult.normalizedHtml }))
       setImportDetectionMessage(null)
       return
     }
-    // detectCanvaSections returns null when fewer than 3 sections match, in
-    // which case the importer falls back to a single `custom-html` block by
-    // leaving `editorBlocks` null (the service backfills custom-html on save).
+    // If fewer than three Canva-style sections match, place markup in the middle custom-html block.
     const detected = detectCanvaSections(nextImportResult.normalizedHtml)
     if (detected && detected.length >= 3) {
       setEditorBlocks(detected)
@@ -239,9 +372,9 @@ export function AdminEmailTemplateEditorPage() {
         `Detected ${detected.length} sections from imported HTML and mapped them to typed blocks.`,
       )
     } else {
-      setEditorBlocks(null)
+      setEditorBlocks(createStarterEmailBlocks({ mainBodyHtml: nextImportResult.normalizedHtml }))
       setImportDetectionMessage(
-        'Could not detect three or more sections; saved as a single custom-html block.',
+        'Could not detect three or more sections; main content was placed in the middle custom-html block with header and footer.',
       )
     }
 
@@ -265,9 +398,8 @@ export function AdminEmailTemplateEditorPage() {
     }
   }
 
-  const getRenderedPreviewBody = (value: string): string => {
-    if (!value) return '<p>(empty)</p>'
-    // If editor content includes escaped tags (e.g. &lt;table&gt;), decode once for visual preview rendering.
+  const decodePreviewHtml = (value: string): string => {
+    if (!value) return ''
     if (value.includes('&lt;') || value.includes('&gt;')) {
       const textarea = document.createElement('textarea')
       textarea.innerHTML = value
@@ -284,17 +416,51 @@ export function AdminEmailTemplateEditorPage() {
           {success && <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{success}</div>}
 
           <div className="rounded-xl border border-waldorf-cream-200 bg-white p-4">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-waldorf-clay-700">
-                {isNew ? 'Create Email Template' : 'Edit Email Template'}
-              </h2>
-              <button
-                type="button"
-                onClick={() => navigate('/admin/email-templates')}
-                className="rounded-lg border border-waldorf-cream-300 px-3 py-2 text-sm text-waldorf-clay-700 hover:bg-waldorf-cream-100"
-              >
-                Back to List
-              </button>
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-semibold text-waldorf-clay-700">
+                  {isNew ? 'Create Email Template' : 'Edit Email Template'}
+                </h2>
+                {!isNew && editingTemplate && (
+                  editingTemplate.state === 'active' ? (
+                    <span className="rounded-full bg-waldorf-sage-600 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+                      In use
+                    </span>
+                  ) : editingTemplate.state === 'draft' ? (
+                    <span className="rounded-full bg-waldorf-cream-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-waldorf-clay-600">
+                      Draft
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-waldorf-cream-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-waldorf-clay-500">
+                      Inactive
+                    </span>
+                  )
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {!isNew && editingTemplate && editingTemplate.state !== 'active' && (
+                  <button
+                    type="button"
+                    onClick={() => void handleSetActive()}
+                    disabled={isActivating || !editingTemplate.currentRevisionId}
+                    title={
+                      !editingTemplate.currentRevisionId
+                        ? 'Save the template at least once before marking it as active'
+                        : 'Use this template for newsletter publishing'
+                    }
+                    className="rounded-lg border border-waldorf-sage-300 bg-white px-3 py-2 text-sm text-waldorf-sage-700 hover:bg-waldorf-sage-50 disabled:opacity-50"
+                  >
+                    {isActivating ? 'Activating…' : 'Use this template'}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => navigate('/admin/email-templates')}
+                  className="rounded-lg border border-waldorf-cream-300 px-3 py-2 text-sm text-waldorf-clay-700 hover:bg-waldorf-cream-100"
+                >
+                  Back to List
+                </button>
+              </div>
             </div>
 
             {isLoading ? (
@@ -368,15 +534,12 @@ export function AdminEmailTemplateEditorPage() {
                           onClick={() => {
                             const existing = editorBlocks?.[0]
                             const existingBody = existing?.bodyHtml ?? effectiveBodyTemplate
-                            const seed: EmailTemplateBlock[] = [
-                              createDefaultBlock('header', 0),
-                              {
-                                ...createDefaultBlock('custom-html', 1),
-                                bodyHtml: existingBody,
-                              },
-                              createDefaultBlock('footer', 2),
-                            ]
-                            setEditorBlocks(seed)
+                            setEditorBlocks(
+                              createStarterEmailBlocks({
+                                mainBodyHtml: existingBody,
+                                mainConfig: existing?.config,
+                              }),
+                            )
                           }}
                           className="rounded border border-sky-300 bg-white px-2 py-1 text-xs text-sky-800"
                         >
@@ -429,6 +592,45 @@ export function AdminEmailTemplateEditorPage() {
                   </div>
                 </div>
 
+                {showBlockList && editorBlocks && editorBlocks.length > 0 && (
+                  <div className="mt-4 flex flex-wrap items-center gap-3 rounded-lg border border-waldorf-cream-200 bg-waldorf-cream-50/50 px-3 py-2 text-xs text-waldorf-clay-600">
+                    <span className="font-medium text-waldorf-clay-700">Live preview</span>
+                    <label className="inline-flex cursor-pointer items-center gap-1.5">
+                      <input
+                        type="radio"
+                        name="preview-scope"
+                        checked={previewScope === 'combined'}
+                        onChange={() => setPreviewScope('combined')}
+                        className="accent-waldorf-sage-600"
+                      />
+                      Combined template
+                    </label>
+                    <label className="inline-flex cursor-pointer items-center gap-1.5">
+                      <input
+                        type="radio"
+                        name="preview-scope"
+                        checked={previewScope === 'block'}
+                        onChange={() => setPreviewScope('block')}
+                        className="accent-waldorf-sage-600"
+                      />
+                      Single block
+                    </label>
+                    {previewScope === 'block' && (
+                      <select
+                        value={Math.min(previewBlockIndex, editorBlocks.length - 1)}
+                        onChange={(event) => setPreviewBlockIndex(Number(event.target.value))}
+                        className="rounded border border-waldorf-cream-300 bg-white px-2 py-1 text-xs text-waldorf-clay-700"
+                      >
+                        {editorBlocks.map((block, index) => (
+                          <option key={`${block.type}-${index}`} value={index}>
+                            {index + 1}. {getEmailBlockTypeDefinition(block.type).label}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                )}
+
                 <div className="mt-4 flex flex-wrap gap-2">
                   {isNew ? (
                     <button
@@ -463,13 +665,6 @@ export function AdminEmailTemplateEditorPage() {
                       </button>
                     </>
                   )}
-                  <button
-                    onClick={handlePreview}
-                    disabled={isSaving}
-                    className="rounded-lg border border-waldorf-cream-300 px-3 py-2 text-sm text-waldorf-clay-700 disabled:opacity-50"
-                  >
-                    Preview
-                  </button>
                   <button
                     type="button"
                     onClick={() => {
@@ -544,25 +739,32 @@ export function AdminEmailTemplateEditorPage() {
                   </div>
                 )}
 
-                {(previewSubject || previewBody || previewWarnings.length > 0) && (
-                  <div className="mt-4 rounded-lg border border-waldorf-cream-200 bg-waldorf-cream-50 p-4">
-                    <h3 className="mb-2 text-sm font-semibold text-waldorf-clay-700">Preview Result (tokens truncated)</h3>
-                    <p className="mb-2 text-xs text-waldorf-clay-500">Subject</p>
-                    <p className="mb-3 text-sm text-waldorf-clay-700">{previewSubject || '(empty)'}</p>
-                    <p className="mb-2 text-xs text-waldorf-clay-500">HTML Body</p>
-                    <div
-                      className="prose max-w-none rounded border border-waldorf-cream-200 bg-white p-3 text-sm"
-                      dangerouslySetInnerHTML={{ __html: getRenderedPreviewBody(previewBody) }}
-                    />
-                    {previewWarnings.length > 0 && (
-                      <div className="mt-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-                        {previewWarnings.map((warning) => (
-                          <p key={warning}>- {warning}</p>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
+                <div className="mt-4 rounded-lg border border-waldorf-cream-200 bg-waldorf-cream-50 p-4">
+                  <h3 className="mb-1 text-sm font-semibold text-waldorf-clay-700">Live preview (sample data)</h3>
+                  <p className="mb-3 text-xs text-waldorf-clay-500">
+                    Updates as you edit.{' '}
+                    {showBlockList && previewScope === 'block'
+                      ? 'Subject uses global tokens; body is the selected block only (repeaters use demo articles).'
+                      : showBlockList
+                        ? 'Full assembled email: visible blocks in order, wrapped like a sent message.'
+                        : 'Legacy single body: subject and body templates with truncated demo tokens.'}
+                  </p>
+                  <p className="mb-2 text-xs text-waldorf-clay-500">Subject</p>
+                  <p className="mb-3 text-sm text-waldorf-clay-700">{livePreview.subject || '(empty)'}</p>
+                  <p className="mb-2 text-xs text-waldorf-clay-500">HTML body</p>
+                  {livePreviewResolvingGallery ? (
+                    <p className="text-xs text-waldorf-clay-500">Loading image previews (gallery URLs)…</p>
+                  ) : (
+                    <EmailPreviewFrame html={livePreviewFrameHtml} decode={decodePreviewHtml} />
+                  )}
+                  {livePreview.warnings.length > 0 && (
+                    <div className="mt-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                      {livePreview.warnings.map((warning, index) => (
+                        <p key={`${index}-${warning}`}>- {warning}</p>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </div>

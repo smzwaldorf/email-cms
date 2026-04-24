@@ -1,11 +1,21 @@
 import { storageService } from '@/services/storageService'
 
+/** Default signed URL TTL for inline previews (short). */
+const DEFAULT_STORAGE_SIGN_TTL_SECONDS = 300
+
+/** Signed URL TTL for email HTML (images must load when the message is opened days later). */
+export const EMAIL_HTML_STORAGE_SIGN_TTL_SECONDS = 60 * 60 * 24 * 7 // 7 days
+
 /**
  * Replace storage:// tokens in HTML with signed URLs
  * @param html HTML content containing storage:// tokens
+ * @param expiresInSeconds Supabase signed URL lifetime (default short TTL for page previews)
  * @returns HTML with signed URLs
  */
-export async function replaceStorageTokens(html: string): Promise<string> {
+export async function replaceStorageTokens(
+  html: string,
+  expiresInSeconds: number = DEFAULT_STORAGE_SIGN_TTL_SECONDS,
+): Promise<string> {
   if (!html) return ''
 
   // Find all storage:// tokens
@@ -31,7 +41,7 @@ export async function replaceStorageTokens(html: string): Promise<string> {
         const path = pathParts.join('/')
 
         if (bucket && path) {
-          const signedUrl = await storageService.getSignedUrl(bucket, path, 300) // 5 minutes validity
+          const signedUrl = await storageService.getSignedUrl(bucket, path, expiresInSeconds)
           return { token, signedUrl }
         }
       } catch (error) {

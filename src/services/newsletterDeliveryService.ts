@@ -3,6 +3,7 @@ import { emailContentPreparationService } from '@/services/emailContentPreparati
 import { enqueueSyncJob } from '@/services/emailPlatform/runtime'
 import { coerceEmailTemplateBlocks } from '@/services/emailTemplateBlocks'
 import { composePersonalizedEmails } from '@/services/personalizedEmailComposer'
+import { EMAIL_HTML_STORAGE_SIGN_TTL_SECONDS, replaceStorageTokens } from '@/utils/contentParser'
 import type {
   DeliveryAudienceRecipient,
   DeliveryAudienceSelection,
@@ -532,9 +533,13 @@ class NewsletterDeliveryService {
       guardians,
     })
     const payload = composition.payloads[0]
+    let renderedBody = payload?.renderedBody ?? ''
+    if (renderedBody.includes('storage://')) {
+      renderedBody = await replaceStorageTokens(renderedBody, EMAIL_HTML_STORAGE_SIGN_TTL_SECONDS)
+    }
     return {
       renderedSubject: payload?.renderedSubject ?? '',
-      renderedBody: payload?.renderedBody ?? '',
+      renderedBody,
       warnings: composition.warnings,
       template,
       guardianEmail: parentEmail,
@@ -732,7 +737,7 @@ class NewsletterDeliveryService {
       const template = await this.resolveActiveTemplate()
       const personalizationNewsletter = await this.buildNewsletterPersonalizationInput(newsletter)
 
-      const preparationJob = emailContentPreparationService.prepare({
+      const preparationJob = await emailContentPreparationService.prepare({
         rulesVersion: batch.rulesVersion,
         newsletter: personalizationNewsletter,
         template,

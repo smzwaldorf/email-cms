@@ -37,9 +37,9 @@ function createBaseInput(overrides: Partial<PrepareEmailContentInput> = {}): Pre
 }
 
 describe('emailContentPreparationService', () => {
-  it('builds deterministic outputs for identical pinned inputs', () => {
-    const first = emailContentPreparationService.prepare(createBaseInput())
-    const second = emailContentPreparationService.prepare(createBaseInput())
+  it('builds deterministic outputs for identical pinned inputs', async () => {
+    const first = await emailContentPreparationService.prepare(createBaseInput())
+    const second = await emailContentPreparationService.prepare(createBaseInput())
 
     expect(first.pinnedInputs.newsletterRevisionId).toBe('news-rev-1')
     expect(first.pinnedInputs.templateRevisionId).toBe('tmpl-rev-1')
@@ -49,8 +49,8 @@ describe('emailContentPreparationService', () => {
     expect(first.recipients).toEqual(second.recipients)
   })
 
-  it('marks recipients failed for unsupported tokens, malformed syntax, missing sections, and missing required values', () => {
-    const result = emailContentPreparationService.prepare(
+  it('marks recipients failed for unsupported tokens, malformed syntax, missing sections, and missing required values', async () => {
+    const result = await emailContentPreparationService.prepare(
       createBaseInput({
         template: {
           templateId: 'template-1',
@@ -80,8 +80,8 @@ describe('emailContentPreparationService', () => {
     )
   })
 
-  it('returns preview for a selected recipient and exposes findings', () => {
-    const result = emailContentPreparationService.prepare(createBaseInput())
+  it('returns preview for a selected recipient and exposes findings', async () => {
+    const result = await emailContentPreparationService.prepare(createBaseInput())
     const preview = emailContentPreparationService.getRecipientPreview(result.jobId, 'guardian-1')
 
     expect(preview.subject).toContain('guardian.one@example.com')
@@ -90,8 +90,8 @@ describe('emailContentPreparationService', () => {
     expect(preview.findings).toEqual([])
   })
 
-  it('fails preparation when the pinned template html is incompatible', () => {
-    const result = emailContentPreparationService.prepare(
+  it('fails preparation when the pinned template html is incompatible', async () => {
+    const result = await emailContentPreparationService.prepare(
       createBaseInput({
         template: {
           templateId: 'template-1',
@@ -112,8 +112,8 @@ describe('emailContentPreparationService', () => {
     expect(recipient.findings.map((finding) => finding.code)).toContain('incompatible_template_html')
   })
 
-  it('produces review summary counts and actionable errors', () => {
-    const result = emailContentPreparationService.prepare(
+  it('produces review summary counts and actionable errors', async () => {
+    const result = await emailContentPreparationService.prepare(
       createBaseInput({
         guardians: [
           {

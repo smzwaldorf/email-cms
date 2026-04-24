@@ -7,6 +7,7 @@ const mockBuilder = {
   insert: vi.fn().mockReturnThis(),
   update: vi.fn().mockReturnThis(),
   eq: vi.fn().mockReturnThis(),
+  neq: vi.fn().mockReturnThis(),
   order: vi.fn().mockReturnThis(),
   limit: vi.fn().mockReturnThis(),
   single: vi.fn().mockReturnThis(),
@@ -185,6 +186,91 @@ describe('emailTemplateService', () => {
       code: 'EMAIL_TEMPLATE_IMPORT_VALIDATION_ERROR',
     })
     expect(mockSupabase.from).not.toHaveBeenCalled()
+  })
+
+  describe('setActiveTemplate', () => {
+    it('demotes the previous active template and promotes the chosen one', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) =>
+          resolve({
+            data: {
+              id: 'template-2',
+              name: 'New look',
+              description: null,
+              state: 'draft',
+              current_revision_id: 'rev-2',
+              created_at: '2026-04-22T10:00:00Z',
+              updated_at: '2026-04-22T10:00:00Z',
+            },
+            error: null,
+          }),
+        )
+        .mockImplementationOnce((resolve) => resolve({ data: null, error: null }))
+        .mockImplementationOnce((resolve) =>
+          resolve({
+            data: {
+              id: 'template-2',
+              name: 'New look',
+              description: null,
+              state: 'active',
+              current_revision_id: 'rev-2',
+              created_at: '2026-04-22T10:00:00Z',
+              updated_at: '2026-04-22T11:00:00Z',
+            },
+            error: null,
+          }),
+        )
+
+      const result = await emailTemplateService.setActiveTemplate('template-2')
+
+      expect(result.state).toBe('active')
+      expect(mockBuilder.update).toHaveBeenCalledWith({ state: 'inactive' })
+      expect(mockBuilder.update).toHaveBeenCalledWith({ state: 'active' })
+    })
+
+    it('rejects activation when the template has no saved revision yet', async () => {
+      mockBuilder.then.mockImplementationOnce((resolve) =>
+        resolve({
+          data: {
+            id: 'template-3',
+            name: 'Empty',
+            description: null,
+            state: 'draft',
+            current_revision_id: null,
+            created_at: '2026-04-22T10:00:00Z',
+            updated_at: '2026-04-22T10:00:00Z',
+          },
+          error: null,
+        }),
+      )
+
+      await expect(emailTemplateService.setActiveTemplate('template-3')).rejects.toMatchObject({
+        code: 'EMAIL_TEMPLATE_NO_REVISION',
+      })
+      expect(mockBuilder.update).not.toHaveBeenCalled()
+    })
+
+    it('returns immediately when the template is already active', async () => {
+      mockBuilder.then.mockImplementationOnce((resolve) =>
+        resolve({
+          data: {
+            id: 'template-1',
+            name: 'Welcome',
+            description: null,
+            state: 'active',
+            current_revision_id: 'rev-1',
+            created_at: '2026-03-20T10:00:00Z',
+            updated_at: '2026-03-20T10:00:00Z',
+          },
+          error: null,
+        }),
+      )
+
+      const result = await emailTemplateService.setActiveTemplate('template-1')
+
+      expect(result.state).toBe('active')
+      expect(mockBuilder.update).not.toHaveBeenCalled()
+    })
   })
 })
 
