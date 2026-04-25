@@ -166,6 +166,7 @@ export * from './database';
 export * from './admin';
 export * from './personalization';
 export * from './emailTemplate';
+export * from './fileEmailTemplate';
 export * from './emailPreparation';
 export * from './emailDelivery';
 export * from './emailJourney';

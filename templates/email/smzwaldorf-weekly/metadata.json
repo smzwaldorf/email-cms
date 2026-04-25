@@ -1,0 +1,96 @@
+{
+  "sourceId": "smzwaldorf-weekly",
+  "name": "SMZ Waldorf Weekly",
+  "description": "Bundled filesystem-authored newsletter template for admin preview and sync.",
+  "version": "1.0.0",
+  "subject": "subject.hbs",
+  "partials": [
+    {
+      "name": "ctaButton",
+      "file": "partials/cta-button.hbs"
+    },
+    {
+      "name": "sectionTitle",
+      "file": "partials/section-title.hbs"
+    }
+  ],
+  "blocks": [
+    {
+      "id": "header",
+      "mode": "static",
+      "type": "header",
+      "label": "Header",
+      "file": "blocks/header.hbs",
+      "order": 0,
+      "config": {
+        "brandName": "善美真華德福教育",
+        "tagline": "Weekly community notes"
+      }
+    },
+    {
+      "id": "featured-shared-articles",
+      "mode": "article-repeat",
+      "type": "shared-article-feature",
+      "label": "Featured shared articles",
+      "file": "blocks/shared-article.hbs",
+      "order": 1,
+      "articleSource": "sharedArticles",
+      "config": {
+        "eyebrow": "School News",
+        "ctaLabel": "Read the story",
+        "maxItems": 3,
+        "excerptLength": 220
+      }
+    },
+    {
+      "id": "class-news",
+      "mode": "class-article-repeat",
+      "type": "class-article-feature",
+      "label": "Class news",
+      "file": "blocks/class-article.hbs",
+      "order": 2,
+      "config": {
+        "eyebrow": "Class Notes",
+        "ctaLabel": "Open class article",
+        "maxItemsPerClass": 2,
+        "excerptLength": 180
+      }
+    },
+    {
+      "id": "weekly-items",
+      "mode": "weekly-repeat",
+      "type": "weekly-summary-list",
+      "label": "Weekly reminders",
+      "file": "blocks/weekly-item.hbs",
+      "order": 3,
+      "articleSource": "weeklyItems",
+      "config": {
+        "sectionTitle": "This Week",
+        "sourceTag": "weekly",
+        "excerptLength": 120
+      }
+    },
+    {
+      "id": "community-html",
+      "mode": "custom-html",
+      "type": "custom-html",
+      "label": "Community announcement",
+      "file": "blocks/custom-html.hbs",
+      "order": 4,
+      "htmlSlot": "communityAnnouncement"
+    },
+    {
+      "id": "footer",
+      "mode": "static",
+      "type": "footer",
+      "label": "Footer",
+      "file": "blocks/footer.hbs",
+      "order": 5,
+      "config": {
+        "tel": "+886-2-0000-0000",
+        "fax": "+886-2-0000-0001",
+        "address": "善美真華德福教育園區"
+      }
+    }
+  ]
+}

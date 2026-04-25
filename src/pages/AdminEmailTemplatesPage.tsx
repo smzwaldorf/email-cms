@@ -3,14 +3,22 @@ import { useNavigate } from 'react-router-dom'
 import { AdminLayout } from '@/components/admin/AdminLayout'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { emailTemplateService } from '@/services/emailTemplateService'
+import {
+  listFileEmailTemplateSources,
+  previewFileEmailTemplateSource,
+} from '@/services/fileEmailTemplateLoader'
+import { createDefaultFileEmailTemplateRenderContext } from '@/services/fileEmailTemplatePreviewContext'
 import type { EmailTemplate } from '@/types/emailTemplate'
+import type { FileEmailTemplateSourceMetadata } from '@/types/fileEmailTemplate'
 
 export function AdminEmailTemplatesPage() {
   const navigate = useNavigate()
   const [templates, setTemplates] = useState<EmailTemplate[]>([])
+  const [fileSources, setFileSources] = useState<FileEmailTemplateSourceMetadata[]>([])
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [activatingId, setActivatingId] = useState<string | null>(null)
+  const [syncingSourceId, setSyncingSourceId] = useState<string | null>(null)
 
   const loadTemplates = async () => {
     try {
@@ -18,10 +26,36 @@ export function AdminEmailTemplatesPage() {
       setError(null)
       const data = await emailTemplateService.listTemplates()
       setTemplates(data)
+      setFileSources(listFileEmailTemplateSources())
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load templates')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleSyncFileSource = async (source: FileEmailTemplateSourceMetadata) => {
+    try {
+      setSyncingSourceId(source.sourceId)
+      setError(null)
+      const preview = previewFileEmailTemplateSource(
+        source.sourceId,
+        createDefaultFileEmailTemplateRenderContext(),
+      )
+      if (!preview) {
+        setError(`File template source not found: ${source.sourceId}`)
+        return
+      }
+      if (!preview.valid) {
+        setError(preview.issues.map((issue) => issue.message).join(' '))
+        return
+      }
+      await emailTemplateService.syncFileTemplate({ preview })
+      await loadTemplates()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to sync file template')
+    } finally {
+      setSyncingSourceId(null)
     }
   }
 
@@ -138,6 +172,57 @@ export function AdminEmailTemplatesPage() {
                     </div>
                   )
                 })}
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-waldorf-cream-200 bg-white p-4">
+            <div className="mb-4">
+              <h2 className="text-sm font-semibold text-waldorf-clay-700">File Template Sources</h2>
+              <p className="mt-1 text-xs text-waldorf-clay-500">
+                Read-only templates bundled from <code>templates/email</code>. Edit files externally, then preview
+                and sync a database revision snapshot.
+              </p>
+            </div>
+
+            {fileSources.length === 0 ? (
+              <p className="text-sm text-waldorf-clay-600">No file template sources found.</p>
+            ) : (
+              <div className="space-y-2">
+                {fileSources.map((source) => (
+                  <div
+                    key={source.sourceId}
+                    className="flex items-center gap-3 rounded-lg border border-waldorf-cream-200 bg-waldorf-cream-50/40 px-3 py-3 text-sm"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-waldorf-clay-700">{source.displayName}</p>
+                        <span className="rounded-full bg-waldorf-cream-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-waldorf-clay-600">
+                          Read-only file source
+                        </span>
+                      </div>
+                      {source.description && (
+                        <p className="mt-1 text-xs text-waldorf-clay-500">{source.description}</p>
+                      )}
+                      <p className="mt-1 text-xs text-waldorf-clay-400">{source.folderPath}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/admin/email-templates/file/${source.sourceId}`)}
+                      className="rounded-lg border border-waldorf-clay-200 bg-white px-3 py-1.5 text-xs font-medium text-waldorf-clay-700 hover:bg-waldorf-cream-50"
+                    >
+                      Preview
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleSyncFileSource(source)}
+                      disabled={syncingSourceId === source.sourceId}
+                      className="rounded-lg border border-waldorf-sage-300 bg-white px-3 py-1.5 text-xs font-medium text-waldorf-sage-700 hover:bg-waldorf-sage-50 disabled:cursor-wait disabled:opacity-60"
+                    >
+                      {syncingSourceId === source.sourceId ? 'Syncing...' : 'Sync now'}
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
           </div>

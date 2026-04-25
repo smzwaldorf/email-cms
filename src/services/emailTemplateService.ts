@@ -6,6 +6,7 @@ import type {
   EmailTemplateRevision,
   EmailTemplateValidationResult,
 } from '@/types/emailTemplate'
+import type { FileEmailTemplateSyncInput } from '@/types/fileEmailTemplate'
 import type { EmailTemplateRevisionRow, EmailTemplateRow } from '@/types/database'
 import { normalizeCanvaEmailHtml } from '@/services/canvaEmailImport'
 import {
@@ -383,6 +384,44 @@ class EmailTemplateService {
       revision: mapTemplateRevisionRow(revisionRow as EmailTemplateRevisionRow),
       validation,
     }
+  }
+
+  async syncFileTemplate(input: FileEmailTemplateSyncInput): Promise<{
+    template: EmailTemplate
+    revision: EmailTemplateRevision
+    validation: EmailTemplateValidationResult
+  }> {
+    if (!input.preview.valid) {
+      const detail = input.preview.issues.map((issue) => issue.message).join(' ')
+      throw new EmailTemplateServiceError(
+        `Cannot sync file template: ${detail}`,
+        'FILE_EMAIL_TEMPLATE_VALIDATION_ERROR',
+        input.preview.issues,
+      )
+    }
+
+    const subjectTemplate = input.preview.subjectTemplate
+    const bodyTemplate = input.preview.bodyHtml
+    const blocks = input.preview.blocks
+    const targetTemplateId = input.targetTemplateId ?? input.preview.source.linkedTemplateId
+
+    if (targetTemplateId) {
+      return this.updateTemplateRevision(targetTemplateId, {
+        name: input.preview.source.displayName,
+        description: input.preview.source.description ?? null,
+        subjectTemplate,
+        bodyTemplate,
+        blocks,
+      })
+    }
+
+    return this.createTemplate({
+      name: input.preview.source.displayName,
+      description: input.preview.source.description ?? null,
+      subjectTemplate,
+      bodyTemplate,
+      blocks,
+    })
   }
 
   async duplicateTemplate(templateId: string, nameOverride?: string): Promise<{ template: EmailTemplate; revision: EmailTemplateRevision }> {

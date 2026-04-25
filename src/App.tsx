@@ -25,6 +25,7 @@ const LazyNewsletterCreatePage = lazy(() => import('@/pages/NewsletterCreatePage
 const LazyAdminTemplatesPage = lazy(() => import('@/pages/AdminTemplatesPage').then(m => ({ default: m.AdminTemplatesPage })))
 const LazyAdminEmailTemplatesPage = lazy(() => import('@/pages/AdminEmailTemplatesPage').then(m => ({ default: m.AdminEmailTemplatesPage })))
 const LazyAdminEmailTemplateEditorPage = lazy(() => import('@/pages/AdminEmailTemplateEditorPage').then(m => ({ default: m.AdminEmailTemplateEditorPage })))
+const LazyAdminFileEmailTemplatePreviewPage = lazy(() => import('@/pages/AdminFileEmailTemplatePreviewPage').then(m => ({ default: m.AdminFileEmailTemplatePreviewPage })))
 const LazyNewsletterEmailPreviewPage = lazy(() => import('@/pages/NewsletterEmailPreviewPage').then(m => ({ default: m.NewsletterEmailPreviewPage })))
 const LazyClassManagementPage = lazy(() => import('@/pages/ClassManagementPage').then(m => ({ default: m.ClassManagementPage })))
 const LazyTeacherManagementPage = lazy(() => import('@/pages/TeacherManagementPage').then(m => ({ default: m.TeacherManagementPage })))
@@ -176,6 +177,18 @@ export default function App() {
                     <ProtectedRoute requiredRole="admin">
                       <Suspense fallback={<RouteLoader />}>
                         <LazyAdminEmailTemplateEditorPage />
+                      </Suspense>
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/admin/email-templates/file/:sourceId"
+                element={
+                  <ErrorBoundary>
+                    <ProtectedRoute requiredRole="admin">
+                      <Suspense fallback={<RouteLoader />}>
+                        <LazyAdminFileEmailTemplatePreviewPage />
                       </Suspense>
                     </ProtectedRoute>
                   </ErrorBoundary>

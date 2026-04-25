@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { emailTemplateService } from '@/services/emailTemplateService'
+import type { FileEmailTemplatePreviewResult } from '@/types/fileEmailTemplate'
 
 const mockBuilder = {
   select: vi.fn().mockReturnThis(),
@@ -21,6 +22,59 @@ const mockSupabase = {
 vi.mock('@/lib/supabase', () => ({
   getSupabaseClient: () => mockSupabase,
 }))
+
+function validFilePreview(
+  overrides: Partial<FileEmailTemplatePreviewResult> = {},
+): FileEmailTemplatePreviewResult {
+  const preview: FileEmailTemplatePreviewResult = {
+    valid: true,
+    issues: [],
+    source: {
+      sourceId: 'file-weekly',
+      displayName: 'File Weekly',
+      description: 'Filesystem template',
+      folderPath: 'templates/email/file-weekly',
+      metadataPath: 'templates/email/file-weekly/metadata.json',
+      subjectPath: 'templates/email/file-weekly/subject.hbs',
+      blockPaths: ['templates/email/file-weekly/blocks/body.hbs'],
+      partialPaths: [],
+    },
+    manifest: {
+      sourceId: 'file-weekly',
+      name: 'File Weekly',
+      description: 'Filesystem template',
+      subject: 'subject.hbs',
+      blocks: [
+        {
+          id: 'body',
+          mode: 'custom-html',
+          type: 'custom-html',
+          file: 'blocks/body.hbs',
+          order: 0,
+        },
+      ],
+    },
+    subjectTemplate: 'Hello {{guardian.email}}',
+    renderedSubject: 'Hello guardian@example.com',
+    bodyHtml: '<p>Body</p>',
+    blocks: [
+      {
+        type: 'custom-html',
+        order: 0,
+        visible: true,
+        bodyHtml: '<p>{{guardian.email}}</p>',
+        config: { fileTemplateBlockId: 'body', fileTemplateMode: 'custom-html' },
+      },
+    ],
+    blockPreviews: [],
+    context: {
+      sharedArticles: [],
+      classes: [],
+      weeklyItems: [],
+    },
+  }
+  return { ...preview, ...overrides }
+}
 
 describe('emailTemplateService', () => {
   beforeEach(() => {
@@ -186,6 +240,135 @@ describe('emailTemplateService', () => {
       code: 'EMAIL_TEMPLATE_IMPORT_VALIDATION_ERROR',
     })
     expect(mockSupabase.from).not.toHaveBeenCalled()
+  })
+
+  it('syncs a file template into an immutable revision for an existing template', async () => {
+    const preview = validFilePreview()
+    mockBuilder.then
+      .mockImplementationOnce((resolve) =>
+        resolve({
+          data: [{ revision_number: 3 }],
+          error: null,
+        }),
+      )
+      .mockImplementationOnce((resolve) =>
+        resolve({
+          data: {
+            id: 'rev-4',
+            template_id: 'template-existing',
+            revision_number: 4,
+            subject_template: preview.subjectTemplate,
+            body_template: preview.bodyHtml,
+            blocks: preview.blocks,
+            created_at: '2026-04-25T10:00:00Z',
+          },
+          error: null,
+        }),
+      )
+      .mockImplementationOnce((resolve) =>
+        resolve({
+          data: {
+            id: 'template-existing',
+            name: 'File Weekly',
+            description: 'Filesystem template',
+            state: 'active',
+            current_revision_id: 'rev-4',
+            created_at: '2026-04-20T10:00:00Z',
+            updated_at: '2026-04-25T10:00:00Z',
+          },
+          error: null,
+        }),
+      )
+
+    const result = await emailTemplateService.syncFileTemplate({
+      preview,
+      targetTemplateId: 'template-existing',
+    })
+
+    expect(result.revision.revisionNumber).toBe(4)
+    expect(result.template.currentRevisionId).toBe('rev-4')
+    expect(result.template.state).toBe('active')
+    expect(mockBuilder.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        template_id: 'template-existing',
+        revision_number: 4,
+        subject_template: preview.subjectTemplate,
+        body_template: preview.bodyHtml,
+        blocks: preview.blocks,
+      }),
+    )
+    expect(mockBuilder.update).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        state: expect.any(String),
+      }),
+    )
+  })
+
+  it('syncs a new file source to a draft template with an initial revision', async () => {
+    const preview = validFilePreview()
+    mockBuilder.then
+      .mockImplementationOnce((resolve) =>
+        resolve({
+          data: {
+            id: 'template-new',
+            name: 'File Weekly',
+            description: 'Filesystem template',
+            state: 'draft',
+            current_revision_id: null,
+            created_at: '2026-04-25T10:00:00Z',
+            updated_at: '2026-04-25T10:00:00Z',
+          },
+          error: null,
+        }),
+      )
+      .mockImplementationOnce((resolve) =>
+        resolve({
+          data: {
+            id: 'rev-1',
+            template_id: 'template-new',
+            revision_number: 1,
+            subject_template: preview.subjectTemplate,
+            body_template: preview.bodyHtml,
+            blocks: preview.blocks,
+            created_at: '2026-04-25T10:00:01Z',
+          },
+          error: null,
+        }),
+      )
+      .mockImplementationOnce((resolve) =>
+        resolve({
+          data: {
+            id: 'template-new',
+            name: 'File Weekly',
+            description: 'Filesystem template',
+            state: 'draft',
+            current_revision_id: 'rev-1',
+            created_at: '2026-04-25T10:00:00Z',
+            updated_at: '2026-04-25T10:00:01Z',
+          },
+          error: null,
+        }),
+      )
+
+    const result = await emailTemplateService.syncFileTemplate({ preview })
+
+    expect(result.template.state).toBe('draft')
+    expect(result.template.currentRevisionId).toBe('rev-1')
+    expect(result.revision.revisionNumber).toBe(1)
+    expect(mockBuilder.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'File Weekly',
+        description: 'Filesystem template',
+      }),
+    )
+    expect(mockBuilder.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        template_id: 'template-new',
+        revision_number: 1,
+        subject_template: preview.subjectTemplate,
+        blocks: preview.blocks,
+      }),
+    )
   })
 
   describe('setActiveTemplate', () => {
