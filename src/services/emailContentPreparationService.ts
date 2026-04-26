@@ -15,6 +15,16 @@ import type {
   PreparedRecipientPreview,
   PreparedRecipientRecord,
 } from '@/types/emailPreparation'
+import type {
+  KitClassArticleExcerpt,
+  KitClassArticleExcerptSet,
+  KitPreparedRecipientMergeData,
+} from '@/types/kitMergeProperties'
+import type {
+  PersonalizationInputClass,
+  PersonalizationInputGuardian,
+  PersonalizedEmailResolvedBlock,
+} from '@/types/personalization'
 
 const TOKEN_VALUE_PATTERN = /^[a-zA-Z0-9_.]+$/
 
@@ -135,6 +145,70 @@ function classifyStatus(findings: PreparationFinding[]): PreparationRecipientSta
   return 'ready'
 }
 
+function stripHtml(value: string): string {
+  return value
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function toClassArticleExcerpt(block: PersonalizedEmailResolvedBlock): KitClassArticleExcerpt {
+  return {
+    blockId: block.blockId,
+    title: block.title ?? null,
+    excerpt: stripHtml(block.content),
+    editorialOrder: block.editorialOrder,
+    personalizationKey: block.personalizationKey,
+    classId: block.classId ?? '',
+  }
+}
+
+function buildPreparedKitMergeData(input: {
+  guardian: PersonalizationInputGuardian | undefined
+  classesById: Map<string, PersonalizationInputClass>
+  payload: PreparedRecipientRecord['payload']
+}): KitPreparedRecipientMergeData {
+  const classArticleExcerptSets: KitClassArticleExcerptSet[] = input.payload.resolvedClassIds.map((classId) => ({
+    classId,
+    excerpts: input.payload.classBlocks
+      .filter((block) => block.classId === classId)
+      .sort((left, right) => {
+        if (left.editorialOrder !== right.editorialOrder) {
+          return left.editorialOrder - right.editorialOrder
+        }
+        return left.blockId.localeCompare(right.blockId)
+      })
+      .map(toClassArticleExcerpt),
+  }))
+  const childClasses = (input.guardian?.children ?? []).map((child) => {
+    const klass = input.classesById.get(child.classId)
+    return klass?.className ?? klass?.classCode ?? child.classId
+  })
+  const childNames = (input.guardian?.children ?? []).map((child) => child.studentName ?? child.studentId)
+
+  return {
+    identity: {
+      firstName: input.guardian?.firstName?.trim() || null,
+      lastName: input.guardian?.lastName?.trim() || null,
+    },
+    stableMetadata: {
+      parentType: input.guardian?.parentType ?? 'guardian',
+      childClasses,
+      childNames,
+    },
+    classArticleExcerptSets,
+    sourceBlocks: input.payload.classBlocks,
+  }
+}
+
 function summarize(recipients: PreparedRecipientRecord[]): EmailContentPreparationJob['summary'] {
   const readyRecipients = recipients.filter((recipient) => recipient.status === 'ready').length
   const warningRecipients = recipients.filter((recipient) => recipient.status === 'warning').length
@@ -220,6 +294,8 @@ class EmailContentPreparationService {
       ? normalizeCanvaEmailHtml(templateHtmlForCanvaImport(input.template))
       : null
 
+    const guardiansById = new Map(input.guardians.map((guardian) => [guardian.guardianId, guardian]))
+    const classesById = new Map(input.classes.map((klass) => [klass.id, klass]))
     const recipientRecords = payloadsWithResolvedStorage.map((payload) => {
       const findings: PreparationFinding[] = [...(warningByGuardian.get(payload.guardianId) ?? [])]
 
@@ -310,6 +386,11 @@ class EmailContentPreparationService {
         guardianId: payload.guardianId,
         guardianEmail: payload.guardianEmail,
         payload,
+        kitMergeData: buildPreparedKitMergeData({
+          guardian: guardiansById.get(payload.guardianId),
+          classesById,
+          payload,
+        }),
         findings,
         status: classifyStatus(findings),
       }

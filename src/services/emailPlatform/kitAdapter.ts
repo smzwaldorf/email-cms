@@ -1,11 +1,17 @@
 import {
   EmailPlatformAdapter,
   EmailPlatformConfig,
+  EmailPlatformMergePropertySyncOutcome,
+  EmailPlatformMergePropertySyncRequest,
   EmailPlatformSubscriberSnapshot,
   EmailPlatformSyncOutcome,
   EmailPlatformSyncRequest,
   KitApiError,
 } from '../../types/emailPlatform.ts'
+import type {
+  KitProviderFieldIdentifier,
+  KitProviderFieldIdentifierMap,
+} from '../../types/kitMergeProperties.ts'
 import { computePayloadFingerprint } from './utils.ts'
 
 interface KitSubscriberResponse {
@@ -56,7 +62,7 @@ export class KitAdapter implements EmailPlatformAdapter {
   }
 
   async upsertSubscriber(input: EmailPlatformSyncRequest): Promise<EmailPlatformSyncOutcome> {
-    await this.ensureCustomFields(Object.keys(input.payload.customFields))
+    const fieldRecords = await this.ensureCustomFields(Object.keys(input.payload.customFields))
 
     const subscriberResponse = await this.request<KitSubscriberResponse>('/v4/subscribers', {
       method: 'POST',
@@ -103,6 +109,37 @@ export class KitAdapter implements EmailPlatformAdapter {
       syncedTagNames: snapshot.tagNames,
       syncedTagIds: desiredTags.map((tag) => tag.id),
       syncedFieldKeys: Object.keys(snapshot.fields),
+      syncedFieldIdentifiers: this.toFieldIdentifierMap(fieldRecords),
+      raw: snapshot.raw,
+    }
+  }
+
+  async ensureMergePropertyFields(fieldKeys: string[]): Promise<KitProviderFieldIdentifier[]> {
+    return this.ensureCustomFields(fieldKeys).then((fields) => fields.map(this.toFieldIdentifier))
+  }
+
+  async upsertSubscriberMergeProperties(
+    input: EmailPlatformMergePropertySyncRequest,
+  ): Promise<EmailPlatformMergePropertySyncOutcome> {
+    const fieldRecords = await this.ensureCustomFields(Object.keys(input.fields))
+    const subscriberResponse = await this.request<KitSubscriberResponse>('/v4/subscribers', {
+      method: 'POST',
+      body: JSON.stringify({
+        email_address: input.emailAddress,
+        first_name: input.firstName ?? null,
+        fields: input.fields,
+      }),
+    })
+    const subscriberId = String(subscriberResponse.subscriber.id)
+    const snapshot = await this.getSubscriberSnapshot(subscriberId)
+
+    return {
+      externalSubscriberId: subscriberId,
+      externalEmailAddress: snapshot.emailAddress,
+      providerState: snapshot.state,
+      providerVersionMarker: snapshot.providerVersionMarker,
+      syncedFieldKeys: Object.keys(input.fields),
+      syncedFieldIdentifiers: this.toFieldIdentifierMap(fieldRecords),
       raw: snapshot.raw,
     }
   }
@@ -274,6 +311,18 @@ export class KitAdapter implements EmailPlatformAdapter {
 
       return field
     })
+  }
+
+  private toFieldIdentifier(field: KitCustomField): KitProviderFieldIdentifier {
+    return {
+      key: field.key,
+      providerFieldId: String(field.id),
+      providerFieldName: field.name ?? field.label ?? null,
+    }
+  }
+
+  private toFieldIdentifierMap(fields: KitCustomField[]): KitProviderFieldIdentifierMap {
+    return Object.fromEntries(fields.map((field) => [field.key, this.toFieldIdentifier(field)]))
   }
 
   private async request<T>(path: string, init: RequestInit): Promise<T> {

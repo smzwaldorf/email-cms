@@ -1,4 +1,5 @@
 import type { ComposePersonalizedEmailInput, PersonalizedEmailPayload } from '@/types/personalization'
+import type { KitPreparedRecipientMergeData } from '@/types/kitMergeProperties'
 
 export type PreparationRecipientStatus = 'ready' | 'warning' | 'failed'
 
@@ -38,6 +39,7 @@ export interface PreparedRecipientRecord {
   guardianEmail: string
   status: PreparationRecipientStatus
   payload: PersonalizedEmailPayload
+  kitMergeData: KitPreparedRecipientMergeData
   findings: PreparationFinding[]
 }
 

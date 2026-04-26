@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { KitAdapter } from '@/services/emailPlatform/kitAdapter.ts'
-import { EmailPlatformConfig } from '@/types/emailPlatform.ts'
+import { EmailPlatformConfig, KitApiError } from '@/types/emailPlatform.ts'
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -200,5 +200,90 @@ describe('KitAdapter', () => {
       sendAt: '2026-03-23T12:00:00Z',
       publicUrl: null,
     })
+  })
+
+  it('creates newsletter merge fields and updates subscriber merge properties', async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse({
+          custom_fields: [
+            {
+              id: 21,
+              name: 'newsletter_b_1_class_article_excerpts',
+              key: 'newsletter_b_1_class_article_excerpts',
+              label: 'newsletter_b_1_class_article_excerpts',
+            },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          custom_field: {
+            id: 22,
+            name: 'newsletter_b_1_payload_fingerprint',
+            key: 'newsletter_b_1_payload_fingerprint',
+            label: 'newsletter_b_1_payload_fingerprint',
+          },
+        }, 201),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          subscriber: {
+            id: 202,
+            email_address: 'parent@example.com',
+            state: 'active',
+            fields: {
+              newsletter_b_1_class_article_excerpts: '[{"classId":"oak"}]',
+              newsletter_b_1_payload_fingerprint: 'fp-1',
+            },
+          },
+        }, 201),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          subscriber: {
+            id: 202,
+            email_address: 'parent@example.com',
+            state: 'active',
+            fields: {
+              newsletter_b_1_class_article_excerpts: '[{"classId":"oak"}]',
+              newsletter_b_1_payload_fingerprint: 'fp-1',
+            },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(jsonResponse({ tags: [] }))
+
+    const adapter = new KitAdapter(config, fetchMock as unknown as typeof fetch)
+    const result = await adapter.upsertSubscriberMergeProperties({
+      externalSubscriberId: '202',
+      emailAddress: 'parent@example.com',
+      firstName: 'Mei',
+      fields: {
+        newsletter_b_1_class_article_excerpts: '[{"classId":"oak"}]',
+        newsletter_b_1_payload_fingerprint: 'fp-1',
+      },
+    })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.kit.com/v4/custom_fields',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ label: 'newsletter_b_1_payload_fingerprint' }),
+      }),
+    )
+    expect(result.syncedFieldIdentifiers.newsletter_b_1_class_article_excerpts?.providerFieldId).toBe('21')
+    expect(result.syncedFieldIdentifiers.newsletter_b_1_payload_fingerprint?.providerFieldId).toBe('22')
+  })
+
+  it('surfaces provider errors when merge field creation fails', async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ custom_fields: [] }))
+      .mockResolvedValueOnce(jsonResponse({ errors: ['custom field limit reached'] }, 422))
+
+    const adapter = new KitAdapter(config, fetchMock as unknown as typeof fetch)
+
+    await expect(adapter.ensureMergePropertyFields(['newsletter_b_1_class_article_excerpts']))
+      .rejects.toBeInstanceOf(KitApiError)
   })
 })

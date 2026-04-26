@@ -28,6 +28,9 @@ function createBaseInput(overrides: Partial<PrepareEmailContentInput> = {}): Pre
       {
         guardianId: 'guardian-1',
         guardianEmail: 'guardian.one@example.com',
+        firstName: 'Mei',
+        lastName: 'Chen',
+        parentType: 'mother',
         familyId: 'family-1',
         children: [{ studentId: 'student-1', classId: 'A' }],
       },
@@ -88,6 +91,33 @@ describe('emailContentPreparationService', () => {
     expect(preview.body).toContain('news-rev-1')
     expect(preview.status).toBe('ready')
     expect(preview.findings).toEqual([])
+  })
+
+  it('exposes prepared identity fields and class article excerpts for Kit merge sync', async () => {
+    const result = await emailContentPreparationService.prepare(createBaseInput())
+    const recipient = result.recipients[0]
+
+    expect(recipient.kitMergeData.identity).toEqual({ firstName: 'Mei', lastName: 'Chen' })
+    expect(recipient.kitMergeData.stableMetadata).toEqual({
+      parentType: 'mother',
+      childClasses: ['Grade 1A'],
+      childNames: ['student-1'],
+    })
+    expect(recipient.kitMergeData.classArticleExcerptSets).toEqual([
+      {
+        classId: 'A',
+        excerpts: [
+          {
+            blockId: 'class-A-1',
+            title: null,
+            excerpt: 'Class content',
+            editorialOrder: 1,
+            personalizationKey: 'block:class-A-1',
+            classId: 'A',
+          },
+        ],
+      },
+    ])
   })
 
   it('fails preparation when the pinned template html is incompatible', async () => {

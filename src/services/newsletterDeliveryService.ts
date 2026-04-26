@@ -20,6 +20,12 @@ import type {
 } from '@/types/database'
 import type { PreparationFinding } from '@/types/emailPreparation'
 import type {
+  KitMergePropertySyncState,
+  KitMergePropertySyncStatus,
+  KitNewsletterMergePropertyPayload,
+  KitProviderFieldIdentifierMap,
+} from '@/types/kitMergeProperties'
+import type {
   PersonalizationInputClass,
   PersonalizationInputGuardian,
   PersonalizationInputNewsletter,
@@ -134,6 +140,16 @@ export function filterAudienceCandidateFamilyIds(
   return candidates.map((candidate) => candidate.familyId)
 }
 
+export function selectCampaignReadyDeliveryRecipients(
+  recipients: NewsletterDeliveryRecipient[],
+): NewsletterDeliveryRecipient[] {
+  return recipients.filter((recipient) =>
+    recipient.preparationStatus === 'ready' &&
+    recipient.kitMergeSyncStatus === 'synced' &&
+    recipient.campaignReady,
+  )
+}
+
 function mapBatchRow(row: NewsletterDeliveryBatchRow): NewsletterDeliveryBatch {
   return {
     id: row.id,
@@ -163,6 +179,21 @@ function mapBatchRow(row: NewsletterDeliveryBatchRow): NewsletterDeliveryBatch {
 }
 
 function mapRecipientRow(row: NewsletterDeliveryBatchRecipientRow): NewsletterDeliveryRecipient {
+  const kitMergeSyncStatus: KitMergePropertySyncStatus = row.kit_merge_sync_status ?? 'pending'
+  const kitMergeProviderFieldIds = (row.kit_merge_provider_field_ids ?? {}) as KitProviderFieldIdentifierMap
+  const kitMergeSyncState: KitMergePropertySyncState = {
+    status: kitMergeSyncStatus,
+    payloadFingerprint: row.kit_merge_payload_fingerprint ?? null,
+    lastSuccessfulPayloadFingerprint:
+      kitMergeSyncStatus === 'synced' ? row.kit_merge_payload_fingerprint ?? null : null,
+    lastSuccessfulSyncedAt: row.kit_merge_last_synced_at ?? null,
+    providerFieldIdentifiers: kitMergeProviderFieldIds,
+    providerError: row.kit_merge_provider_error ?? null,
+    validationErrors: [],
+    driftReason: kitMergeSyncStatus === 'drifted' ? 'payload_fingerprint_changed' : null,
+    campaignReady: row.campaign_ready ?? false,
+  }
+
   return {
     id: row.id,
     batchId: row.batch_id,
@@ -178,6 +209,14 @@ function mapRecipientRow(row: NewsletterDeliveryBatchRecipientRow): NewsletterDe
     journeyCorrelationId: row.journey_correlation_id,
     providerMessageId: row.provider_message_id ?? null,
     providerError: row.provider_error ?? null,
+    kitMergeSyncStatus,
+    kitMergePayload: (row.kit_merge_payload ?? null) as KitNewsletterMergePropertyPayload | null,
+    kitMergePayloadFingerprint: row.kit_merge_payload_fingerprint ?? null,
+    kitMergeProviderFieldIds,
+    kitMergeLastSyncedAt: row.kit_merge_last_synced_at ?? null,
+    kitMergeProviderError: row.kit_merge_provider_error ?? null,
+    kitMergeSyncState,
+    campaignReady: row.campaign_ready ?? false,
     lastAttemptedAt: row.last_attempted_at ?? null,
     sentAt: row.sent_at ?? null,
     createdAt: row.created_at,
@@ -795,6 +834,11 @@ class NewsletterDeliveryService {
               ?? (prepared.status === 'warning' ? 'recipient_not_ready' : 'preparation_failed'),
             provider_message_id: null,
             provider_error: prepared.status === 'warning' ? 'recipient_not_ready' : 'preparation_failed',
+            kit_merge_sync_status: 'skipped',
+            kit_merge_payload: null,
+            kit_merge_payload_fingerprint: null,
+            kit_merge_provider_error: prepared.status === 'warning' ? 'recipient_not_ready' : 'preparation_failed',
+            campaign_ready: false,
             sent_at: null,
           }
         } else {
@@ -808,10 +852,15 @@ class NewsletterDeliveryService {
           })
           updates = {
             ...baseUpdates,
-            send_status: 'pending',
+            send_status: 'handoff_pending',
             failure_reason: null,
             provider_message_id: null,
             provider_error: null,
+            kit_merge_sync_status: 'syncing',
+            kit_merge_payload: prepared.kitMergeData as unknown as Record<string, unknown>,
+            kit_merge_payload_fingerprint: prepared.payload.input_fingerprint,
+            kit_merge_provider_error: null,
+            campaign_ready: false,
             sent_at: null,
           }
         }
@@ -853,6 +902,10 @@ class NewsletterDeliveryService {
                 failure_reason: isSent ? null : recipientFailure,
                 provider_message_id: isSent ? sendResult.providerMessageId : null,
                 provider_error: isSent ? null : recipientFailure,
+                kit_merge_sync_status: isSent ? 'synced' : 'failed',
+                kit_merge_last_synced_at: isSent ? sentAt : null,
+                kit_merge_provider_error: isSent ? null : recipientFailure,
+                campaign_ready: isSent,
                 sent_at: isSent ? sentAt : null,
                 last_attempted_at: sentAt,
               })
@@ -869,6 +922,9 @@ class NewsletterDeliveryService {
                 failure_reason: errorMessage,
                 provider_message_id: null,
                 provider_error: errorMessage,
+                kit_merge_sync_status: 'failed',
+                kit_merge_provider_error: errorMessage,
+                campaign_ready: false,
                 sent_at: null,
                 last_attempted_at: attemptedAt,
               })

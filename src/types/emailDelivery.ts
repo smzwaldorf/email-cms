@@ -1,5 +1,11 @@
 import type { PersonalizedEmailPayload } from '@/types/personalization'
 import type { PreparationFinding } from '@/types/emailPreparation'
+import type {
+  KitMergePropertySyncState,
+  KitMergePropertySyncStatus,
+  KitNewsletterMergePropertyPayload,
+  KitProviderFieldIdentifierMap,
+} from '@/types/kitMergeProperties'
 
 export type NewsletterDeliveryTrigger = 'publish' | 'resend'
 export type NewsletterDeliveryAudienceMode = 'all' | 'classes' | 'families' | 'family'
@@ -84,6 +90,14 @@ export interface NewsletterDeliveryRecipient {
   journeyCorrelationId: string
   providerMessageId: string | null
   providerError: string | null
+  kitMergeSyncStatus: KitMergePropertySyncStatus
+  kitMergePayload: KitNewsletterMergePropertyPayload | null
+  kitMergePayloadFingerprint: string | null
+  kitMergeProviderFieldIds: KitProviderFieldIdentifierMap
+  kitMergeLastSyncedAt: string | null
+  kitMergeProviderError: string | null
+  kitMergeSyncState: KitMergePropertySyncState
+  campaignReady: boolean
   lastAttemptedAt: string | null
   sentAt: string | null
   createdAt: string

@@ -334,7 +334,7 @@ export interface EmailPlatformSyncJobRow {
   family_id?: string | null;
   mapping_id?: string | null;
   provider: 'kit';
-  job_type: 'upsert_subscriber' | 'reconcile_subscriber';
+  job_type: 'upsert_subscriber' | 'reconcile_subscriber' | 'sync_newsletter_merge_properties';
   status: 'pending' | 'processing' | 'retryable' | 'succeeded' | 'failed' | 'dead_lettered';
   enqueue_reason: string;
   payload: Record<string, unknown>;
@@ -444,6 +444,13 @@ export interface NewsletterDeliveryBatchRecipientRow {
   preparation_findings?: Record<string, unknown>[] | null;
   provider_message_id?: string | null;
   provider_error?: string | null;
+  kit_merge_sync_status?: 'pending' | 'skipped' | 'syncing' | 'synced' | 'failed' | 'drifted';
+  kit_merge_payload?: Record<string, unknown> | null;
+  kit_merge_payload_fingerprint?: string | null;
+  kit_merge_provider_field_ids?: Record<string, unknown> | null;
+  kit_merge_last_synced_at?: string | null;
+  kit_merge_provider_error?: string | null;
+  campaign_ready?: boolean;
   last_attempted_at?: string | null;
   sent_at?: string | null;
   created_at: string;

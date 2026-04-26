@@ -1,6 +1,14 @@
 export type EmailPlatformProvider = 'kit'
 
-export type EmailPlatformJobType = 'upsert_subscriber' | 'reconcile_subscriber'
+import type {
+  KitProviderFieldIdentifier,
+  KitProviderFieldIdentifierMap,
+} from '@/types/kitMergeProperties'
+
+export type EmailPlatformJobType =
+  | 'upsert_subscriber'
+  | 'reconcile_subscriber'
+  | 'sync_newsletter_merge_properties'
 
 export type EmailPlatformSyncJobStatus =
   | 'pending'
@@ -84,6 +92,24 @@ export interface EmailPlatformSyncOutcome {
   syncedTagNames: string[]
   syncedTagIds: number[]
   syncedFieldKeys: string[]
+  syncedFieldIdentifiers?: KitProviderFieldIdentifierMap
+  raw: unknown
+}
+
+export interface EmailPlatformMergePropertySyncRequest {
+  externalSubscriberId?: string | null
+  emailAddress: string
+  fields: Record<string, string>
+  firstName?: string | null
+}
+
+export interface EmailPlatformMergePropertySyncOutcome {
+  externalSubscriberId: string
+  externalEmailAddress: string
+  providerState: string
+  providerVersionMarker: string
+  syncedFieldKeys: string[]
+  syncedFieldIdentifiers: KitProviderFieldIdentifierMap
   raw: unknown
 }
 
@@ -100,6 +126,10 @@ export interface EmailPlatformSubscriberSnapshot {
 export interface EmailPlatformAdapter {
   upsertSubscriber(input: EmailPlatformSyncRequest): Promise<EmailPlatformSyncOutcome>
   getSubscriberSnapshot(externalSubscriberId: string): Promise<EmailPlatformSubscriberSnapshot>
+  ensureMergePropertyFields(fieldKeys: string[]): Promise<KitProviderFieldIdentifier[]>
+  upsertSubscriberMergeProperties(
+    input: EmailPlatformMergePropertySyncRequest,
+  ): Promise<EmailPlatformMergePropertySyncOutcome>
   createBroadcast(input: {
     subject: string
     content: string

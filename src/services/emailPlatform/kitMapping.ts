@@ -4,6 +4,14 @@ import {
   NewsletterSubscriptionStatus,
   ParentType,
 } from '../../types/emailPlatform.ts'
+import type { KitNewsletterMergeFieldKeys } from '../../types/kitMergeProperties.ts'
+
+const STABLE_CUSTOM_FIELD_KEYS = {
+  externalIdentityKey: 'external_identity_key',
+  childClasses: 'child_classes',
+  childNames: 'child_names',
+  parentType: 'parent_type',
+} as const
 
 function normalizeUnique(values: string[]): string[] {
   return Array.from(
@@ -35,15 +43,57 @@ function deriveParentType(relationships: string[]): ParentType {
 }
 
 function deriveSubscriberState(
-  _subscriptionStatus: NewsletterSubscriptionStatus,
+  subscriptionStatus: NewsletterSubscriptionStatus,
 ): EmailPlatformRecipientPayload['state'] {
-  // Enforce active state for all CMS-driven subscriber upserts.
-  return 'active'
+  switch (subscriptionStatus) {
+    case 'unsubscribed':
+      return 'cancelled'
+    case 'bounced':
+      return 'bounced'
+    case 'complained':
+      return 'complained'
+    default:
+      return 'active'
+  }
 }
 
 function deriveFirstName(familyName: string | null | undefined): string | undefined {
   const trimmedFamilyName = familyName?.trim()
   return trimmedFamilyName ? trimmedFamilyName : undefined
+}
+
+export function normalizeKitFieldSegment(value: string): string {
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .replace(/_{2,}/g, '_')
+
+  return normalized || 'unknown'
+}
+
+export function buildNewsletterMergeFieldNamespace(input: {
+  deliveryBatchId?: string | null
+  campaignId?: string | null
+  newsletterId: string
+}): string {
+  const source = input.deliveryBatchId ?? input.campaignId ?? input.newsletterId
+  return `newsletter_${normalizeKitFieldSegment(source)}`
+}
+
+export function buildNewsletterMergeFieldKeys(input: {
+  deliveryBatchId?: string | null
+  campaignId?: string | null
+  newsletterId: string
+}): KitNewsletterMergeFieldKeys {
+  const namespace = buildNewsletterMergeFieldNamespace(input)
+
+  return {
+    classArticleExcerpts: `${namespace}_class_article_excerpts`,
+    classArticleCount: `${namespace}_class_article_count`,
+    payloadFingerprint: `${namespace}_payload_fingerprint`,
+  }
 }
 
 export function mapRecipientToKitPayload(
@@ -67,10 +117,10 @@ export function mapRecipientToKitPayload(
     childClasses,
     childNames,
     customFields: {
-      external_identity_key: `family:${recipient.familyId}`,
-      child_classes: childClasses.join(', '),
-      child_names: childNames.join(', '),
-      parent_type: parentType,
+      [STABLE_CUSTOM_FIELD_KEYS.externalIdentityKey]: `family:${recipient.familyId}`,
+      [STABLE_CUSTOM_FIELD_KEYS.childClasses]: childClasses.join(', '),
+      [STABLE_CUSTOM_FIELD_KEYS.childNames]: childNames.join(', '),
+      [STABLE_CUSTOM_FIELD_KEYS.parentType]: parentType,
     },
     tagNames: normalizeUnique([familyTagName, ...classTagNames]),
   }

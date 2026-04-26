@@ -19,6 +19,7 @@ import { verifyKitWebhookSecret } from './webhook.ts'
 import {
   EmailPlatformConfig,
   EmailPlatformError,
+  EmailPlatformJobType,
   EmailPlatformSyncJobStatus,
   EmailPlatformWebhookStatus,
 } from '../../types/emailPlatform.ts'
@@ -297,7 +298,7 @@ export async function enqueueSyncJob(
   jobInput: {
     familyId?: string | null
     mappingId?: string | null
-    jobType: 'upsert_subscriber' | 'reconcile_subscriber'
+    jobType: EmailPlatformJobType
     enqueueReason: string
     payload: unknown
     payloadFingerprint?: string | null
@@ -507,6 +508,10 @@ export async function processSyncJob(
       return await processReconciliationJob(adminClient, job, adapter, config)
     }
 
+    if (job.job_type === 'sync_newsletter_merge_properties') {
+      return await processNewsletterMergePropertyJob(adminClient, job, adapter)
+    }
+
     const familyId = job.family_id
     if (!familyId) {
       throw new EmailPlatformError('Sync job is missing family_id.', {
@@ -575,6 +580,68 @@ export async function processSyncJob(
   } catch (error) {
     return await handleSyncJobFailure(adminClient, job, error, config)
   }
+}
+
+async function processNewsletterMergePropertyJob(
+  adminClient: AdminClientLike,
+  job: EmailPlatformSyncJobRow,
+  adapter: KitAdapter,
+): Promise<EmailPlatformSyncJobStatus> {
+  const payload = job.payload
+  const emailAddress = typeof payload.email_address === 'string' ? payload.email_address : null
+  const fields = payload.fields && typeof payload.fields === 'object'
+    ? payload.fields as Record<string, string>
+    : null
+  const externalSubscriberId =
+    typeof payload.external_subscriber_id === 'string' ? payload.external_subscriber_id : null
+  const firstName = typeof payload.first_name === 'string' ? payload.first_name : null
+  const deliveryRecipientId =
+    typeof payload.delivery_recipient_id === 'string' ? payload.delivery_recipient_id : null
+
+  if (!emailAddress || !fields) {
+    throw new EmailPlatformError('Newsletter merge property job is missing email_address or fields.', {
+      code: 'invalid_merge_property_job_payload',
+      retryable: false,
+    })
+  }
+
+  const outcome = await adapter.upsertSubscriberMergeProperties({
+    externalSubscriberId,
+    emailAddress,
+    firstName,
+    fields,
+  })
+  const completedAt = new Date().toISOString()
+
+  if (deliveryRecipientId) {
+    const { error } = await adminClient
+      .from('newsletter_delivery_batch_recipients')
+      .update({
+        kit_merge_sync_status: 'synced',
+        kit_merge_provider_field_ids: outcome.syncedFieldIdentifiers,
+        kit_merge_last_synced_at: completedAt,
+        kit_merge_provider_error: null,
+        campaign_ready: true,
+      })
+      .eq('id', deliveryRecipientId)
+
+    if (error) {
+      throw new Error(error.message)
+    }
+  }
+
+  await updateJobStatus(adminClient, job.id, {
+    status: 'succeeded',
+    completed_at: completedAt,
+    last_error_code: null,
+    last_error_message: null,
+    metrics: {
+      synced_field_count: outcome.syncedFieldKeys.length,
+      external_subscriber_id: outcome.externalSubscriberId,
+    },
+  })
+
+  return 'succeeded'
 }
 
 async function processReconciliationJob(

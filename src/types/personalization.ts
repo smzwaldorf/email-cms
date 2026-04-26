@@ -22,6 +22,9 @@ export interface PersonalizationInputChild {
 export interface PersonalizationInputGuardian {
   guardianId: string
   guardianEmail: string
+  firstName?: string | null
+  lastName?: string | null
+  parentType?: 'father' | 'mother' | 'guardian' | 'mixed' | null
   familyId?: string | null
   children: PersonalizationInputChild[]
 }

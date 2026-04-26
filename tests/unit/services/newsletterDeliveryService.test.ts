@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest'
 import {
   defaultAudienceSelection,
   filterAudienceCandidateFamilyIds,
+  selectCampaignReadyDeliveryRecipients,
   validateRecipientEligibility,
 } from '@/services/newsletterDeliveryService'
+import type { NewsletterDeliveryRecipient } from '@/types/emailDelivery'
 
 describe('newsletterDeliveryService helpers', () => {
   it('defaults to all audience mode', () => {
@@ -57,5 +59,65 @@ describe('newsletterDeliveryService helpers', () => {
         classIds: ['A1'],
       }),
     ).toEqual({ eligible: true, reason: null })
+  })
+
+  it('selects only fully synced recipients for one Kit campaign audience', () => {
+    const baseRecipient: NewsletterDeliveryRecipient = {
+      id: 'recipient-1',
+      batchId: 'batch-1',
+      familyId: 'family-1',
+      parentId: 'parent-1',
+      parentEmail: 'parent@example.com',
+      eligibilityStatus: 'eligible',
+      preparationStatus: 'ready',
+      sendStatus: 'handoff_pending',
+      failureReason: null,
+      preparedPayload: null,
+      preparationFindings: [],
+      journeyCorrelationId: 'journey-1',
+      providerMessageId: null,
+      providerError: null,
+      kitMergeSyncStatus: 'synced',
+      kitMergePayload: null,
+      kitMergePayloadFingerprint: 'fp-1',
+      kitMergeProviderFieldIds: {},
+      kitMergeLastSyncedAt: '2026-04-25T00:00:00.000Z',
+      kitMergeProviderError: null,
+      kitMergeSyncState: {
+        status: 'synced',
+        payloadFingerprint: 'fp-1',
+        lastSuccessfulPayloadFingerprint: 'fp-1',
+        lastSuccessfulSyncedAt: '2026-04-25T00:00:00.000Z',
+        providerFieldIdentifiers: {},
+        providerError: null,
+        validationErrors: [],
+        driftReason: null,
+        campaignReady: true,
+      },
+      campaignReady: true,
+      lastAttemptedAt: null,
+      sentAt: null,
+      createdAt: '2026-04-25T00:00:00.000Z',
+      updatedAt: '2026-04-25T00:00:00.000Z',
+    }
+
+    const selected = selectCampaignReadyDeliveryRecipients([
+      baseRecipient,
+      {
+        ...baseRecipient,
+        id: 'recipient-failed-sync',
+        kitMergeSyncStatus: 'failed',
+        kitMergeProviderError: 'payload_size_exceeded',
+        campaignReady: false,
+        kitMergeSyncState: {
+          ...baseRecipient.kitMergeSyncState,
+          status: 'failed',
+          providerError: 'payload_size_exceeded',
+          campaignReady: false,
+        },
+      },
+    ])
+
+    expect(selected.map((recipient) => recipient.id)).toEqual(['recipient-1'])
   })
 })
