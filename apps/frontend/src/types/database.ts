@@ -1,0 +1,592 @@
+/**
+ * Database Type Definitions
+ * Corresponds to the CMS database schema (specs/002-database-structure/contracts/schema.sql)
+ * These types represent the actual database entities from PostgreSQL via Supabase
+ */
+
+// ============================================================================
+// Newsletters (電子報)
+// ============================================================================
+
+export interface NewsletterRow {
+  /** UUID primary key */
+  id: string;
+  /** Optional: Format "YYYY-Www" (e.g., "2025-W47") - ISO 8601 week format */
+  week_number?: string | null;
+  /** Newsletter headline */
+  title?: string | null;
+  /** Newsletter summary/description */
+  description?: string | null;
+  /** Expected publication date */
+  release_date: string; // DATE
+  /** Newsletter status: draft, published, or archived */
+  status: 'draft' | 'published' | 'archived';
+  /** Whether this newsletter record is a reusable template */
+  is_template?: boolean;
+  /** Timestamp when the newsletter was published */
+  published_at?: string | null; // TIMESTAMP WITH TIME ZONE
+  /** Auto-managed creation timestamp */
+  created_at: string; // TIMESTAMP WITH TIME ZONE
+  /** Auto-updated on any change */
+  updated_at: string; // TIMESTAMP WITH TIME ZONE
+}
+
+// ============================================================================
+// Email templates (郵件模板)
+// ============================================================================
+
+export interface EmailTemplateRow {
+  id: string;
+  name: string;
+  description?: string | null;
+  state: 'draft' | 'active' | 'inactive';
+  current_revision_id?: string | null;
+  created_at: string;
+  updated_at: string;
+  deactivated_at?: string | null;
+}
+
+export interface EmailTemplateRevisionRow {
+  id: string;
+  template_id: string;
+  revision_number: number;
+  subject_template: string;
+  body_template: string;
+  /**
+   * Ordered list of typed `EmailTemplateBlock` records that defines the
+   * structural sections of the rendered email. Stored as JSONB. Backfilled
+   * to `[{ type: 'custom-html', order: 0, visible: true, bodyHtml: body_template, config: {} }]`
+   * for revisions created before block-based authoring.
+   */
+  blocks: unknown;
+  created_at: string;
+  created_by?: string | null;
+}
+
+/** @deprecated Use NewsletterRow instead */
+export type NewsletterWeekRow = NewsletterRow;
+
+// ============================================================================
+// Articles (文章)
+// ============================================================================
+
+export interface ArticleRow {
+  /** UUID primary key */
+  id: string;
+  /** Article headline */
+  title: string;
+  /** Markdown-formatted content */
+  content: string;
+  /** UUID of the teacher/admin who wrote the article */
+  author_id?: string | null;
+  /** Article status: draft, published, or archived */
+  status: 'draft' | 'published' | 'archived';
+  /** Enum: 'public' | 'class_restricted' */
+  visibility_type: 'public' | 'class_restricted';
+  /** JSON array of class IDs if visibility_type = 'class_restricted' */
+  restricted_to_classes?: string[] | null; // JSONB
+  /** UUID of creator user */
+  created_by?: string | null;
+  /** Creation timestamp */
+  created_at: string; // TIMESTAMP WITH TIME ZONE
+  /** Last modification timestamp (auto-updated via trigger) */
+  updated_at: string; // TIMESTAMP WITH TIME ZONE
+  /** Soft-delete marker (null = active, timestamp = deleted) */
+  deleted_at?: string | null; // TIMESTAMP WITH TIME ZONE
+  /** User id that moved the article to recycle bin */
+  deleted_by?: string | null;
+  /** Scheduled purge timestamp based on retention policy */
+  purge_scheduled_at?: string | null; // TIMESTAMP WITH TIME ZONE
+  /** Unique short ID for URL sharing */
+  short_id: string; // VARCHAR(10)
+}
+
+// ============================================================================
+// Newsletter Articles Junction Table (文章-電子報關聯)
+// Enables many-to-many relationship between articles and newsletters
+// ============================================================================
+
+export interface NewsletterArticleRow {
+  /** UUID primary key */
+  id: string;
+  /** Foreign key to newsletters (UUID) */
+  newsletter_id: string;
+  /** Foreign key to articles */
+  article_id: string;
+  /** Position within this specific newsletter (1-based) */
+  article_order: number;
+  /** Audience targeting mode for this article within newsletter */
+  targeting_mode?: 'shared' | 'targeted';
+  /** Class IDs allowed when targeting_mode = targeted */
+  target_class_ids?: string[] | null;
+  /** Timestamp when article was added to this newsletter */
+  added_at: string; // TIMESTAMP WITH TIME ZONE
+  /** UUID of user who added the article to this newsletter */
+  added_by?: string | null;
+}
+
+/**
+ * Article with all its newsletter associations
+ * Used when querying articles with their newsletter placements
+ */
+export interface ArticleWithNewsletters extends ArticleRow {
+  /** All newsletters this article belongs to */
+  newsletters: Array<{
+    newsletter_id: string;
+    article_order: number;
+    week_number?: string | null;
+    title?: string | null;
+    release_date?: string;
+    status?: 'draft' | 'published' | 'archived';
+  }>;
+}
+
+// ============================================================================
+// Classes (班級)
+// ============================================================================
+
+export interface ClassRow {
+  /** Class identifier (e.g., "A1", "B2") */
+  id: string; // VARCHAR(10) PRIMARY KEY
+  /** Stable class identity code used by admin workflows */
+  class_code: string;
+  /** Human-readable name (e.g., "Grade 1A") */
+  class_name: string;
+  /** Optional class description shown in admin UI */
+  description?: string | null;
+  /** Grade level (1-12) */
+  class_grade_year: number;
+  /** Lifecycle status */
+  is_active: boolean;
+  /** Deactivation timestamp for inactive classes */
+  deactivated_at?: string | null;
+  /** Creation timestamp */
+  created_at: string; // TIMESTAMP WITH TIME ZONE
+  /** Last update timestamp */
+  updated_at?: string; // TIMESTAMP WITH TIME ZONE
+}
+
+// ============================================================================
+// User Roles (使用者)
+// ============================================================================
+
+export interface UserRoleRow {
+  /** UUID - references Supabase auth.users */
+  id: string;
+  /** User email address */
+  email: string;
+  /** Enum: 'admin' | 'teacher' | 'parent' | 'student' */
+  role: 'admin' | 'teacher' | 'parent' | 'student';
+  /** Creation timestamp */
+  created_at: string; // TIMESTAMP WITH TIME ZONE
+  /** Last update timestamp */
+  updated_at: string; // TIMESTAMP WITH TIME ZONE
+}
+
+// ============================================================================
+// Auth events (稽核 / Realtime)
+// ============================================================================
+
+/** Row from public.auth_events (see migrations/20251128000000_create_auth_events_table.sql) */
+export interface AuthEventRow {
+  id: string;
+  user_id: string | null;
+  event_type: string;
+  auth_method?: string | null;
+  ip_address?: string | null;
+  user_agent?: string | null;
+  metadata?: Record<string, unknown> | null;
+  created_at: string;
+}
+
+// ============================================================================
+// Families (家庭)
+// ============================================================================
+
+export interface FamilyRow {
+  /** UUID primary key */
+  id: string;
+  /** Unique enrollment code for parents to join */
+  family_code: string;
+  /** Optional display name for admin UI */
+  family_name?: string | null;
+  /** Guardian contact email */
+  guardian_email?: string | null;
+  /** Optional free-form description */
+  description?: string | null;
+  /** Related topic labels */
+  related_topics?: string[] | null;
+  /** Lifecycle status */
+  is_active?: boolean;
+  /** Local newsletter subscription state reconciled with Kit */
+  newsletter_subscription_status?: 'pending' | 'subscribed' | 'unsubscribed' | 'bounced' | 'complained';
+  /** Origin of the most recent subscription state change */
+  newsletter_subscription_source?: string | null;
+  /** Timestamp for the latest local subscription transition */
+  newsletter_subscription_updated_at?: string | null;
+  /** Timestamp for a confirmed subscribe event */
+  newsletter_subscribed_at?: string | null;
+  /** Timestamp for a confirmed unsubscribe event */
+  newsletter_unsubscribed_at?: string | null;
+  /** Deactivation timestamp */
+  deactivated_at?: string | null;
+  /** Creation timestamp */
+  created_at: string; // TIMESTAMP WITH TIME ZONE
+  /** Last update timestamp */
+  updated_at?: string;
+}
+
+// ============================================================================
+// Family Enrollment (家庭成員)
+// Links parents to families
+// ============================================================================
+
+export interface FamilyEnrollmentRow {
+  /** UUID primary key */
+  id: string;
+  /** Foreign key to families */
+  family_id: string;
+  /** Foreign key to user_roles (parent's user ID) */
+  parent_id?: string | null;
+  /** Foreign key to students (student ID) */
+  student_id?: string | null;
+  /** Enum: parent/student relationship */
+  relationship: 'father' | 'mother' | 'guardian' | 'child' | 'student';
+  /** Enrollment timestamp */
+  enrolled_at: string; // TIMESTAMP WITH TIME ZONE
+}
+
+// ============================================================================
+// Student (學生)
+// ============================================================================
+
+export interface StudentRow {
+  id: string;
+  name: string;
+  student_code: string;
+  is_active: boolean;
+  deactivated_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// ============================================================================
+// Student Class Enrollment (學生班級註冊)
+// ============================================================================
+
+export interface ChildClassEnrollmentRow {
+  /** UUID primary key */
+  id: string;
+  /** Legacy foreign key name retained for compatibility */
+  child_id?: string;
+  /** Foreign key to students (student ID) */
+  student_id: string;
+  /** Foreign key to families - links back to family */
+  family_id: string;
+  /** Foreign key to classes */
+  class_id: string;
+  /** Enrollment timestamp */
+  enrolled_at: string; // TIMESTAMP WITH TIME ZONE
+  /** Graduation timestamp (null = still enrolled) */
+  graduated_at?: string | null; // TIMESTAMP WITH TIME ZONE
+}
+
+// ============================================================================
+// Teacher Class Assignment (教師班級分派)
+// Assigns teachers to classes for edit permissions
+// ============================================================================
+
+export interface TeacherClassAssignmentRow {
+  /** UUID primary key */
+  id: string;
+  /** Foreign key to user_roles (teacher's user ID, role = 'teacher') */
+  teacher_id: string;
+  /** Foreign key to classes */
+  class_id: string;
+  /** Assignment timestamp */
+  assigned_at: string; // TIMESTAMP WITH TIME ZONE
+}
+
+// ============================================================================
+// Email Platform Integration
+// ============================================================================
+
+export interface EmailPlatformSubscriberMappingRow {
+  id: string;
+  family_id: string;
+  provider: 'kit';
+  external_identity_key: string;
+  external_subscriber_id?: string | null;
+  external_email_address?: string | null;
+  provider_state?: string | null;
+  last_synced_at?: string | null;
+  last_payload_fingerprint?: string | null;
+  last_provider_version_marker?: string | null;
+  last_reconciled_at?: string | null;
+  last_drift_reason?: string | null;
+  sync_metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EmailPlatformSyncJobRow {
+  id: string;
+  family_id?: string | null;
+  mapping_id?: string | null;
+  provider: 'kit';
+  job_type: 'upsert_subscriber' | 'reconcile_subscriber' | 'sync_newsletter_merge_properties';
+  status: 'pending' | 'processing' | 'retryable' | 'succeeded' | 'failed' | 'dead_lettered';
+  enqueue_reason: string;
+  payload: Record<string, unknown>;
+  payload_fingerprint?: string | null;
+  attempt_count: number;
+  max_attempts: number;
+  next_retry_at: string;
+  processing_started_at?: string | null;
+  completed_at?: string | null;
+  dead_lettered_at?: string | null;
+  mismatch_reason?: string | null;
+  last_error_code?: string | null;
+  last_error_message?: string | null;
+  metrics: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EmailPlatformWebhookEventRow {
+  id: string;
+  provider: 'kit';
+  provider_event_id: string;
+  event_type: string;
+  delivery_key: string;
+  signature_valid: boolean;
+  signature_failure_reason?: string | null;
+  payload: Record<string, unknown>;
+  payload_hash: string;
+  occurred_at?: string | null;
+  received_at: string;
+  status: 'received' | 'processing' | 'retryable' | 'processed' | 'unresolved' | 'failed' | 'dead_lettered';
+  attempt_count: number;
+  max_attempts: number;
+  next_retry_at: string;
+  processing_started_at?: string | null;
+  processed_at?: string | null;
+  dead_lettered_at?: string | null;
+  resolved_family_id?: string | null;
+  resolved_mapping_id?: string | null;
+  unresolved_reason?: string | null;
+  last_error_code?: string | null;
+  last_error_message?: string | null;
+  metrics: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EmailPlatformSubscriptionAuditRow {
+  id: string;
+  family_id: string;
+  provider: 'kit';
+  mapping_id?: string | null;
+  webhook_event_id?: string | null;
+  old_status?: 'pending' | 'subscribed' | 'unsubscribed' | 'bounced' | 'complained' | null;
+  new_status: 'pending' | 'subscribed' | 'unsubscribed' | 'bounced' | 'complained';
+  source: string;
+  event_type?: string | null;
+  occurred_at?: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+// ============================================================================
+// Newsletter Delivery
+// ============================================================================
+
+export interface NewsletterDeliveryBatchRow {
+  id: string;
+  newsletter_id: string;
+  trigger: 'publish' | 'resend';
+  audience_mode: 'all' | 'classes' | 'families' | 'family';
+  selected_class_ids: string[];
+  selected_family_ids: string[];
+  parent_batch_id?: string | null;
+  state: 'queued' | 'preparing' | 'sending' | 'completed' | 'completed_with_failures' | 'failed';
+  pinned_newsletter_revision_id: string;
+  pinned_template_id?: string | null;
+  pinned_template_revision_id?: string | null;
+  recipient_snapshot_captured_at: string;
+  rules_version: string;
+  preparation_job_id?: string | null;
+  total_recipients: number;
+  eligible_recipients: number;
+  ready_recipients: number;
+  sent_recipients: number;
+  failed_recipients: number;
+  invalid_recipients: number;
+  metadata: Record<string, unknown>;
+  created_by?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NewsletterDeliveryBatchRecipientRow {
+  id: string;
+  batch_id: string;
+  family_id: string;
+  parent_id?: string | null;
+  parent_email?: string | null;
+  guardian_email?: string | null;
+  journey_correlation_id: string;
+  eligibility_status: 'eligible' | 'ineligible';
+  preparation_status: 'pending' | 'ready' | 'warning' | 'failed' | 'skipped';
+  send_status: 'pending' | 'handoff_pending' | 'sent' | 'failed' | 'skipped';
+  failure_reason?: string | null;
+  prepared_payload?: Record<string, unknown> | null;
+  preparation_findings?: Record<string, unknown>[] | null;
+  provider_message_id?: string | null;
+  provider_error?: string | null;
+  kit_merge_sync_status?: 'pending' | 'skipped' | 'syncing' | 'synced' | 'failed' | 'drifted';
+  kit_merge_payload?: Record<string, unknown> | null;
+  kit_merge_payload_fingerprint?: string | null;
+  kit_merge_provider_field_ids?: Record<string, unknown> | null;
+  kit_merge_last_synced_at?: string | null;
+  kit_merge_provider_error?: string | null;
+  campaign_ready?: boolean;
+  last_attempted_at?: string | null;
+  sent_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// ============================================================================
+// Article Audit Log (文章審計日誌)
+// Complete audit trail of article modifications
+// ============================================================================
+
+export interface ArticleAuditLogRow {
+  /** UUID primary key */
+  id: string;
+  /** Foreign key to articles */
+  article_id: string;
+  /** Enum: 'create' | 'update' | 'publish' | 'unpublish' | 'delete' */
+  action: 'create' | 'update' | 'publish' | 'unpublish' | 'delete';
+  /** UUID of user who made the change */
+  changed_by?: string | null;
+  /** Previous field values (JSON representation of entire row) */
+  old_values?: Record<string, unknown> | null; // JSONB
+  /** New field values (JSON representation of entire row) */
+  new_values?: Record<string, unknown> | null; // JSONB
+  /** Timestamp of change */
+  changed_at: string; // TIMESTAMP WITH TIME ZONE
+}
+
+// ============================================================================
+// Database Schema Union Types
+// ============================================================================
+
+/** All database table row types */
+export type DatabaseRow =
+  | StudentRow
+  | NewsletterWeekRow
+  | ArticleRow
+  | NewsletterArticleRow
+  | ClassRow
+  | UserRoleRow
+  | FamilyRow
+  | FamilyEnrollmentRow
+  | ChildClassEnrollmentRow
+  | TeacherClassAssignmentRow
+  | EmailPlatformSubscriberMappingRow
+  | EmailPlatformSyncJobRow
+  | EmailPlatformWebhookEventRow
+  | EmailPlatformSubscriptionAuditRow
+  | NewsletterDeliveryBatchRow
+  | NewsletterDeliveryBatchRecipientRow
+  | ArticleAuditLogRow;
+
+// ============================================================================
+// Helper Types for Common Query Results
+// ============================================================================
+
+/**
+ * Result of fetching articles for a specific week
+ */
+export interface WeeklyArticlesResult {
+  week: NewsletterWeekRow;
+  articles: ArticleRow[];
+}
+
+/**
+ * Article with expanded class information
+ */
+export interface ArticleWithClasses extends ArticleRow {
+  classes?: ClassRow[];
+}
+
+/**
+ * Parent's family context with children and their classes
+ */
+export interface ParentFamilyContext {
+  family: FamilyRow;
+  parent: UserRoleRow;
+  children: Array<{
+    child: UserRoleRow;
+    enrollments: Array<ChildClassEnrollmentRow & { class: ClassRow }>;
+  }>;
+}
+
+/**
+ * Teacher's assignment context with classes and articles
+ */
+export interface TeacherAssignmentContext {
+  teacher: UserRoleRow;
+  assignments: Array<TeacherClassAssignmentRow & { class: ClassRow }>;
+}
+
+/**
+ * Complete article edit context
+ */
+export interface ArticleEditContext {
+  article: ArticleRow;
+  week: NewsletterWeekRow;
+  auditLog: ArticleAuditLogRow[];
+  canEdit: boolean;
+  editReason?: string; // 'creator' | 'admin' | 'assigned_teacher'
+}
+
+// ============================================================================
+// Supabase Integration Helpers
+// ============================================================================
+
+/**
+ * Options for fetching articles with filters
+ */
+export interface FetchArticlesOptions {
+  weekNumber?: string;
+  classId?: string;
+  isPublished?: boolean;
+  visibilityType?: 'public' | 'class_restricted';
+  excludeDeleted?: boolean;
+  limit?: number;
+  offset?: number;
+}
+
+/**
+ * Options for querying user permissions
+ */
+export interface UserPermissionsOptions {
+  userId: string;
+  articleId?: string;
+  weekNumber?: string;
+  classId?: string;
+}
+
+/**
+ * Audit log entry metadata
+ */
+export interface AuditLogMetadata {
+  action: 'create' | 'update' | 'publish' | 'unpublish' | 'delete';
+  changedBy: string; // User ID
+  oldValues?: Record<string, unknown>;
+  newValues?: Record<string, unknown>;
+  timestamp?: string;
+}

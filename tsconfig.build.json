@@ -1,6 +1,8 @@
 {
-  "extends": "./tsconfig.json",
-  "include": ["src", "vite-env.d.ts"],
-  "exclude": ["tests", "scripts", "supabase", "**/*.test.ts", "**/*.test.tsx"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "files": [],
+  "references": [
+    { "path": "./packages/shared" },
+    { "path": "./apps/backend" },
+    { "path": "./apps/frontend/tsconfig.build.json" }
+  ]
 }

@@ -1,7 +1,6 @@
 module.exports = {
   root: true,
   env: {
-    browser: true,
     es2020: true,
   },
   extends: [
@@ -22,4 +21,39 @@ module.exports = {
       },
     ],
   },
+  overrides: [
+    {
+      files: ['apps/frontend/**/*.{ts,tsx}'],
+      env: {
+        browser: true,
+      },
+      rules: {
+        'no-restricted-imports': [
+          'error',
+          {
+            patterns: [
+              {
+                group: ['apps/backend/**', '../../backend/**', '../backend/**'],
+                message: 'Frontend code must call the backend API instead of importing backend modules.',
+              },
+              {
+                group: [
+                  '@/services/emailContentPreparationService',
+                  '@/services/kitMergePropertySyncService',
+                  '@/services/emailPlatform/**',
+                ],
+                message: 'Admin email delivery logic belongs in apps/backend. Use a frontend API client facade.',
+              },
+            ],
+          },
+        ],
+      },
+    },
+    {
+      files: ['apps/backend/**/*.ts'],
+      env: {
+        node: true,
+      },
+    },
+  ],
 }
