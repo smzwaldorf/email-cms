@@ -22,6 +22,7 @@ const TOKEN_EXAMPLES = {
   'guardian.email': 'guardian@example.com',
   'family.id': 'family-001',
   'newsletter.id': 'newsletter-demo',
+  'newsletter.title': 'Weekly Newsletter',
   'newsletter.revisionId': 'newsletter-rev-1',
   'classes.count': '2',
   'classes.list': 'A1, B1',
@@ -40,6 +41,7 @@ function buildDemoEmailPreviewContext(): EmailTemplateRenderContext {
     },
     newsletter: {
       id: truncate('newsletter-demo-long-id'),
+      title: truncate('Weekly Newsletter Demo'),
       revisionId: truncate('newsletter-revision-long-id'),
     },
     classes: {

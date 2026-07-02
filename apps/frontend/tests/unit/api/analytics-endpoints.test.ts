@@ -47,8 +47,8 @@ const queryBuilder = {
   then: (resolve: (value: CountResult) => unknown) => resolve({ count: 0, error: null })
 }
 
-// Logic implementations (mirrors Edge Functions)
-// We define them here to unit test the LOGIC, as we can't easily import Deno files into Node Vitest
+// Logic implementations (mirrors backend tracking endpoints)
+// We define them here to unit test the LOGIC without booting the backend server.
 const handlePixelLogic = async (req: Request, verifyToken: (t: string) => Promise<VerifyPayload>) => {
   const url = new URL(req.url)
   const token = url.searchParams.get("t")

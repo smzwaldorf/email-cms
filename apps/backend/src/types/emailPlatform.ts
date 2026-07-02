@@ -3,7 +3,7 @@ export type EmailPlatformProvider = 'kit'
 import type {
   KitProviderFieldIdentifier,
   KitProviderFieldIdentifierMap,
-} from '#/types/kitMergeProperties'
+} from './kitMergeProperties'
 
 export type EmailPlatformJobType =
   | 'upsert_subscriber'

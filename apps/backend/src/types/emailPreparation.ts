@@ -1,5 +1,5 @@
-import type { ComposePersonalizedEmailInput, PersonalizedEmailPayload } from '#/types/personalization'
-import type { KitPreparedRecipientMergeData } from '#/types/kitMergeProperties'
+import type { ComposePersonalizedEmailInput, PersonalizedEmailPayload } from './personalization'
+import type { KitPreparedRecipientMergeData } from './kitMergeProperties'
 
 export type PreparationRecipientStatus = 'ready' | 'warning' | 'failed'
 

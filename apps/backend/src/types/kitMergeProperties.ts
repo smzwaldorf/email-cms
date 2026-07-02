@@ -1,5 +1,5 @@
-import type { ParentType } from '#/types/emailPlatform'
-import type { PersonalizedEmailResolvedBlock } from '#/types/personalization'
+import type { ParentType } from './emailPlatform'
+import type { PersonalizedEmailResolvedBlock } from './personalization'
 
 export type KitMergePropertySyncStatus =
   | 'pending'
@@ -103,4 +103,3 @@ export interface KitMergePropertyLimits {
   maxSerializedPayloadBytes: number
   requiredFieldKeys: Array<keyof KitNewsletterMergeFieldKeys>
 }
-

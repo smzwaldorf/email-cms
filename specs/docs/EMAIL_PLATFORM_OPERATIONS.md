@@ -42,17 +42,17 @@ Use this as the working checklist for the first successful Kit send.
 
 ### First Email Checklist
 
-- [x] 1. Set Edge Function secrets: `KIT_API_TOKEN` or `KIT_API_KEY`, plus `KIT_WEBHOOK_SECRET`.
+- [x] 1. Set backend server secrets: `KIT_API_TOKEN` or `KIT_API_KEY`, plus `KIT_WEBHOOK_SECRET`.
 - [ ] 2. Optionally set `KIT_CLASS_TAG_PREFIX` if you do not want the default `class:`.
-- [x] 3. Deploy the new Supabase Edge Functions: `kit-sync-worker`, `kit-webhook`, `kit-replay`, and `kit-reconcile`.
+- [x] 3. Deploy the backend service with Kit worker, webhook, replay, and reconciliation routes.
 - [x] 4. Apply the migration `supabase/migrations/20260319000400_add_email_platform_integration.sql`.
-- [ ] 5. Create a Kit webhook pointing to `https://<project-ref>.supabase.co/functions/v1/kit-webhook?secret=<KIT_WEBHOOK_SECRET>`.
+- [ ] 5. Create a Kit webhook pointing to `https://<backend-domain>/api/webhooks/kit?secret=<KIT_WEBHOOK_SECRET>`.
 - [x] 6. Confirm one local family is eligible: active family, real `guardian_email`, and at least one active row in `student_class_enrollment`.
 - [x] 7. Insert one row into `email_platform_sync_jobs` with `job_type = 'upsert_subscriber'` and `status = 'pending'`.
-- [x] 8. Call `POST /functions/v1/kit-sync-worker` to process the first sync job.
+- [x] 8. Call `POST /api/admin/email-platform/kit-sync-worker` to process the first sync job.
 - [x] 9. Verify the subscriber in Kit has the expected email, class tag, and custom fields: `child_classes`, `child_names`, `parent_type`.
 - [x] 10. Create and send the first broadcast in Kit UI using the synced subscriber or tag. Delivery confirmed.
-- [x] 11. Verify publish-triggered delivery invokes `kit-send-newsletter` for ready recipients and records real Kit broadcast ids in `newsletter_delivery_batch_recipients.provider_message_id`.
+- [x] 11. Verify publish-triggered delivery calls the backend Kit send service for ready recipients and records real Kit broadcast ids in `newsletter_delivery_batch_recipients.provider_message_id`.
 
 ### Quick SQL For Step 7
 
@@ -77,15 +77,15 @@ insert into public.email_platform_sync_jobs (
 ### Notes While Progressing
 
 - This implementation syncs contacts, tags, and custom fields to Kit first.
-- Ready recipients are then sent via Kit API by `kit-send-newsletter` during publish-triggered delivery orchestration.
+- Ready recipients are then sent via Kit API by the backend Kit send service during publish-triggered delivery orchestration.
 - If a step fails, check `email_platform_sync_jobs`, `email_platform_subscriber_mappings`, and `email_platform_webhook_events`.
 
 ## Required Configuration
 
-Set these server-side environment variables anywhere the Supabase Edge Functions run:
+Set these server-side environment variables on the backend service:
 
 - `KIT_API_TOKEN` or `KIT_API_KEY` or `KIT_API_SECRET`: Kit API credential used for subscriber, tag, and custom-field sync.
-- `KIT_WEBHOOK_SECRET`: Shared secret required by the `kit-webhook` function. Provide it as the `x-kit-webhook-secret` header or `?secret=` query parameter from Kit.
+- `KIT_WEBHOOK_SECRET`: Shared secret required by the Kit webhook route. Provide it as the `x-kit-webhook-secret` header or `?secret=` query parameter from Kit.
 - `KIT_API_BASE_URL`: Optional. Defaults to `https://api.kit.com`.
 - `KIT_CLASS_TAG_PREFIX`: Optional. Defaults to `class:`.
 - `KIT_MAX_ATTEMPTS`: Optional. Defaults to `5`.
@@ -96,11 +96,11 @@ Set these server-side environment variables anywhere the Supabase Edge Functions
 
 ## Worker Entry Points
 
-- `kit-sync-worker`: Processes pending outbound sync jobs and retryable jobs.
-- `kit-send-newsletter`: Sends ready newsletter recipients through Kit by creating targeted broadcasts.
-- `kit-webhook`: Verifies the shared secret, stores the webhook event, and then processes it idempotently.
-- `kit-replay`: Resets failed or dead-lettered jobs/events so they can run again.
-- `kit-reconcile`: Reprocesses retryable or unresolved webhook events and runs scheduled reconciliation jobs.
+- `POST /api/admin/email-platform/kit-sync-worker`: Processes pending outbound sync jobs and retryable jobs.
+- Backend Kit send service: Sends ready newsletter recipients through Kit by creating targeted broadcasts.
+- `POST /api/webhooks/kit`: Verifies the shared secret, stores the webhook event, and then processes it idempotently.
+- `POST /api/admin/email-platform/kit-replay`: Resets failed or dead-lettered jobs/events so they can run again.
+- `POST /api/admin/email-platform/kit-reconcile`: Reprocesses retryable or unresolved webhook events and runs scheduled reconciliation jobs.
 
 ## Deployment Modes
 
@@ -109,22 +109,22 @@ Set these server-side environment variables anywhere the Supabase Edge Functions
 Use this mode for development, payload testing, and first-pass webhook verification.
 
 - Start local Supabase: `supabase start`
-- Serve functions locally: `supabase functions serve --env-file .env`
-- Expose local port `54321` with a public tunnel such as `ngrok http 54321`
+- Start the backend: `npm run backend:dev`
+- Expose the backend port with a public tunnel such as `ngrok http 8787`
 - Point Kit webhook target URL to:
 
 ```text
-https://<your-ngrok-domain>/functions/v1/kit-webhook?secret=<KIT_WEBHOOK_SECRET>
+https://<your-ngrok-domain>/api/webhooks/kit?secret=<KIT_WEBHOOK_SECRET>
 ```
 
-- Keep both the local functions server and the tunnel running while Kit sends webhook traffic
-- Local function requests usually need Supabase gateway headers when called manually with `curl`, but Kit webhook delivery only needs the public URL plus the shared secret
+- Keep both the local backend server and the tunnel running while Kit sends webhook traffic
+- Kit webhook delivery only needs the public URL plus the shared secret
 
 ### Zeabur / Self-Hosted Supabase
 
 Use this mode for stable hosted testing or production-like operation.
 
-- Deploy your Supabase stack so Edge Functions are available on a public HTTPS domain
+- Deploy the backend service so the webhook route is available on a public HTTPS domain
 - Set the same server-side env vars on Zeabur:
   - `KIT_API_TOKEN`
   - `KIT_WEBHOOK_SECRET`
@@ -132,16 +132,16 @@ Use this mode for stable hosted testing or production-like operation.
 - Point Kit webhook target URL to:
 
 ```text
-https://<your-zeabur-domain>/functions/v1/kit-webhook?secret=<KIT_WEBHOOK_SECRET>
+https://<your-zeabur-domain>/api/webhooks/kit?secret=<KIT_WEBHOOK_SECRET>
 ```
 
 - This removes the need for `ngrok` and gives Kit a stable callback URL
-- Recommended: keep outbound workers private/internal and expose only `kit-webhook` publicly
+- Recommended: keep outbound worker routes admin-protected and expose only `/api/webhooks/kit` publicly
 
 ### Important Gateway Note
 
 - Kit will not send Supabase auth headers like `apikey` or `Authorization`
-- For hosted webhook delivery to work, `kit-webhook` must be reachable publicly without requiring a Supabase JWT from Kit
+- For hosted webhook delivery to work, `/api/webhooks/kit` must be reachable publicly without requiring a Supabase JWT from Kit
 - The webhook is protected by HTTPS plus `KIT_WEBHOOK_SECRET`, which this implementation validates via `x-kit-webhook-secret` or `?secret=`
 
 ## Operational Flow
@@ -158,16 +158,16 @@ https://<your-zeabur-domain>/functions/v1/kit-webhook?secret=<KIT_WEBHOOK_SECRET
 flowchart TD
     A[Local family and student data<br/>families + family_enrollment + student_class_enrollment]
     B[Create sync job<br/>email_platform_sync_jobs]
-    C[kit-sync-worker]
+    C[Backend kit-sync-worker route]
     D[Kit API v4<br/>subscribers + tags + custom fields]
     E[Persist subscriber mapping<br/>email_platform_subscriber_mappings]
     F[Kit broadcast send]
     G[Kit webhook delivery]
-    H[kit-webhook]
+    H[Backend Kit webhook route]
     I[Persist webhook event<br/>email_platform_webhook_events]
     J[Apply subscription update<br/>families.newsletter_subscription_status]
     K[Write audit trail<br/>email_platform_subscription_audit]
-    L[kit-reconcile / scheduled reconciliation]
+    L[Backend kit-reconcile route / scheduled reconciliation]
     M[Queue re-sync if drift detected]
 
     A --> B
@@ -191,14 +191,14 @@ flowchart TD
 - Check `email_platform_sync_jobs` for rows in `retryable`, `failed`, or `dead_lettered`.
 - Check `email_platform_webhook_events` for rows in `retryable`, `unresolved`, `failed`, or `dead_lettered`.
 - Review `last_error_code`, `last_error_message`, `attempt_count`, `mismatch_reason`, and `metrics`.
-- Use the structured JSON logs emitted by the Edge Functions to inspect throughput, retries, and dead-letter totals.
+- Use the structured JSON logs emitted by the backend service to inspect throughput, retries, and dead-letter totals.
 
 ## Replay Procedures
 
 Replay specific records:
 
 ```json
-POST /functions/v1/kit-replay
+POST /api/admin/email-platform/kit-replay
 {
   "jobIds": ["<sync-job-id>"],
   "webhookEventIds": ["<webhook-event-id>"]
@@ -208,7 +208,7 @@ POST /functions/v1/kit-replay
 Replay every failed record:
 
 ```json
-POST /functions/v1/kit-replay
+POST /api/admin/email-platform/kit-replay
 {
   "replayAllFailed": true
 }
@@ -219,7 +219,7 @@ POST /functions/v1/kit-replay
 - Trigger the worker directly after a bulk local import or family/class cleanup:
 
 ```json
-POST /functions/v1/kit-reconcile
+POST /api/admin/email-platform/kit-reconcile
 {
   "limit": 50
 }

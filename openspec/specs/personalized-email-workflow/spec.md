@@ -56,7 +56,7 @@ code:
   - src/pages/FamilyManagementPage.tsx
   - src/types/database.ts
   - vite.config.ts
-  - supabase/functions/tracking-click/index.ts
+  - apps/backend/src/services/emailTrackingEndpointService.ts
   - src/services/adminService.ts
   - src/types/emailDelivery.ts
   - src/services/emailContentPreparationService.ts
@@ -68,12 +68,12 @@ code:
   - src/services/personalizedEmailComposer.ts
   - .agents/skills/spectra-ingest/SKILL.md
   - src/pages/AuthCallbackPage.tsx
-  - supabase/functions/tracking-pixel/index.ts
+  - apps/backend/src/services/emailTrackingEndpointService.ts
   - src/components/admin/NewsletterTable.tsx
   - src/services/authService.ts
   - src/services/emailPlatform/kitAdapter.ts
   - src/hooks/useAnalyticsTracking.ts
-  - supabase/functions/kit-send-newsletter/index.ts
+  - apps/backend/src/services/emailPlatform/backendEmailPlatformService.ts
   - supabase/migrations/20260322000000_add_newsletter_delivery_batches.sql
   - src/lib/supabase.ts
   - src/services/emailPlatform/kitMapping.ts
@@ -141,7 +141,7 @@ code:
   - src/pages/FamilyManagementPage.tsx
   - src/types/database.ts
   - vite.config.ts
-  - supabase/functions/tracking-click/index.ts
+  - apps/backend/src/services/emailTrackingEndpointService.ts
   - src/services/adminService.ts
   - src/types/emailDelivery.ts
   - src/services/emailContentPreparationService.ts
@@ -153,12 +153,12 @@ code:
   - src/services/personalizedEmailComposer.ts
   - .agents/skills/spectra-ingest/SKILL.md
   - src/pages/AuthCallbackPage.tsx
-  - supabase/functions/tracking-pixel/index.ts
+  - apps/backend/src/services/emailTrackingEndpointService.ts
   - src/components/admin/NewsletterTable.tsx
   - src/services/authService.ts
   - src/services/emailPlatform/kitAdapter.ts
   - src/hooks/useAnalyticsTracking.ts
-  - supabase/functions/kit-send-newsletter/index.ts
+  - apps/backend/src/services/emailPlatform/backendEmailPlatformService.ts
   - supabase/migrations/20260322000000_add_newsletter_delivery_batches.sql
   - src/lib/supabase.ts
   - src/services/emailPlatform/kitMapping.ts

@@ -1,4 +1,4 @@
-import type { NewsletterRow } from '#/types/database';
+import type { NewsletterRow } from './database';
 
 export type AnalyticsEventType = 
   | 'page_view' 
@@ -78,4 +78,3 @@ export interface ArticleAnalyticsMetadata {
   newsletterId: string | null;
   weekNumber: string | null;
 }
-

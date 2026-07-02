@@ -36,7 +36,7 @@ All critical and high-priority vulnerabilities have been remediated. The system 
 
 ### 2. Open Redirect Vulnerability
 **Severity**: CRITICAL
-**File**: `supabase/functions/tracking-click/index.ts`
+**File**: `apps/backend/src/services/emailTrackingEndpointService.ts`
 **Issue**: Unvalidated `url` query parameter could be redirected to arbitrary URLs (including phishing sites)
 
 **Fix Applied**:
@@ -58,7 +58,7 @@ if (!isValidRedirectUrl(targetUrl)) {
 }
 ```
 
-**Location**: Lines 5-30 in tracking-click/index.ts
+**Location**: Backend tracking click handler
 **Status**: ✅ Fixed
 
 ---
@@ -87,8 +87,7 @@ isValidJWTPayload(payload: any): payload is JWTPayload {
 
 **Applied To**:
 - `src/services/trackingTokenService.ts` (lines 61-96)
-- `supabase/functions/tracking-pixel/index.ts` (lines 11-17)
-- `supabase/functions/tracking-click/index.ts` (lines 17-23)
+- `apps/backend/src/services/emailTrackingEndpointService.ts`
 
 **Status**: ✅ Fixed
 
@@ -179,7 +178,7 @@ const escapeCSVField = (value: string | number): string => {
 
 ### 7. PII Logged in Console/Error Messages
 **Severity**: MEDIUM
-**Files**: `supabase/functions/tracking-*.ts`
+**Files**: `apps/backend/src/services/emailTrackingEndpointService.ts`
 **Issue**: User IDs and other identifiable information logged to console
 
 **Fix Applied**:
@@ -194,8 +193,7 @@ console.error("Token verification failed");
 ```
 
 **Changes**:
-- `supabase/functions/tracking-pixel/index.ts` (line 73)
-- `supabase/functions/tracking-click/index.ts` (line 95)
+- `apps/backend/src/services/emailTrackingEndpointService.ts`
 
 **Status**: ✅ Fixed
 
@@ -203,7 +201,7 @@ console.error("Token verification failed");
 
 ### 8. Deduplication Window Not Validated
 **Severity**: MEDIUM
-**Files**: `src/config/analytics.ts`, edge functions
+**Files**: `src/config/analytics.ts`, backend tracking routes
 **Issue**: Deduplication window value not validated, could accept invalid values
 
 **Fix Applied**:
@@ -226,8 +224,7 @@ const isValidDeduplicationWindow = (windowMs: number): boolean => {
 
 **Applied To**:
 - `src/config/analytics.ts` (lines 15-23)
-- `supabase/functions/tracking-pixel/index.ts` (lines 19-27)
-- `supabase/functions/tracking-click/index.ts` (lines 25-33)
+- `apps/backend/src/services/emailTrackingEndpointService.ts`
 
 **Status**: ✅ Fixed
 
@@ -241,7 +238,7 @@ const isValidDeduplicationWindow = (windowMs: number): boolean => {
 
 ---
 
-### 10. Missing Type Checks in Edge Functions
+### 10. Missing Type Checks in Tracking Endpoints
 **Severity**: MEDIUM
 **Issue**: Payload not validated before destructuring
 
@@ -344,7 +341,7 @@ Before deploying to production:
 
 - [ ] Rotate all hardcoded JWT secrets
 - [ ] Set `JWT_SECRET` in production environment (minimum 32 characters)
-- [ ] Set `SUPABASE_SERVICE_ROLE_KEY` in backend/edge function environment only
+- [ ] Set `SUPABASE_SERVICE_ROLE_KEY` in backend environment only
 - [ ] Enable edge rate limiting (Cloudflare/Vercel)
 - [ ] Set up audit logging for security events
 - [ ] Enable CORS restrictions if needed
@@ -365,9 +362,8 @@ Before deploying to production:
 - `scripts/setup-development.ts` - Removed test credentials
 - `.env.local` - Service key moved out of VITE_
 
-### Edge Functions
-- `supabase/functions/tracking-pixel/index.ts` - Payload & URL validation
-- `supabase/functions/tracking-click/index.ts` - Payload & URL validation
+### Backend Tracking Routes
+- `apps/backend/src/services/emailTrackingEndpointService.ts` - Payload & URL validation
 
 ---
 

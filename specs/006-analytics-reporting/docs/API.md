@@ -1,14 +1,14 @@
 # Analytics Service API Documentation
 
 ## Overview
-The Analytics Service provides endpoints for tracking user interactions via email and web. It uses Supabase Edge Functions.
+The Analytics Service provides backend endpoints for tracking user interactions via email and web.
 
 ## Endpoints
 
 ### 1. Tracking Pixel (Email Open)
 Tracks when a user opens a newsletter email. Returns a transparent 1x1 GIF.
 
-**URL**: `GET /functions/v1/tracking-pixel`
+**URL**: `GET /api/tracking/pixel`
 
 **Query Parameters**:
 - `t` (Required): JWT Token containing `user_id` and `newsletter_id`.
@@ -23,13 +23,13 @@ Tracks when a user opens a newsletter email. Returns a transparent 1x1 GIF.
 
 **Example**:
 ```
-<img src="https://[project].supabase.co/functions/v1/tracking-pixel?t=[token]" />
+<img src="https://[backend-domain]/api/tracking/pixel?t=[token]" />
 ```
 
 ### 2. Tracking Redirect (Link Click)
 Tracks when a user clicks a link in the newsletter. Redirects the user to the target URL.
 
-**URL**: `GET /functions/v1/tracking-click`
+**URL**: `GET /api/tracking/click`
 
 **Query Parameters**:
 - `t` (Required): JWT Token.
@@ -41,7 +41,7 @@ Tracks when a user clicks a link in the newsletter. Redirects the user to the ta
 
 **Example**:
 ```
-https://[project].supabase.co/functions/v1/tracking-click?t=[token]&url=https%3A%2F%2Fexample.com
+https://[backend-domain]/api/tracking/click?t=[token]&url=https%3A%2F%2Fexample.com
 ```
 
 ### 3. Client-Side Tracking

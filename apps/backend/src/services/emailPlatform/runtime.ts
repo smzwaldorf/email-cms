@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-import type { EmailPlatformSyncJobRow, EmailPlatformWebhookEventRow, FamilyRow } from '#/types/database'
+import type { EmailPlatformSyncJobRow, EmailPlatformWebhookEventRow, FamilyRow } from '../../types/database'
 
 import { KitAdapter } from './kitAdapter'
 import { mapRecipientToKitPayload } from './kitMapping'

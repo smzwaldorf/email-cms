@@ -1,11 +1,11 @@
-import type { PersonalizedEmailPayload } from '#/types/personalization'
-import type { PreparationFinding } from '#/types/emailPreparation'
+import type { PersonalizedEmailPayload } from './personalization'
+import type { PreparationFinding } from './emailPreparation'
 import type {
   KitMergePropertySyncState,
   KitMergePropertySyncStatus,
   KitNewsletterMergePropertyPayload,
   KitProviderFieldIdentifierMap,
-} from '#/types/kitMergeProperties'
+} from './kitMergeProperties'
 
 export type NewsletterDeliveryTrigger = 'publish' | 'resend'
 export type NewsletterDeliveryAudienceMode = 'all' | 'classes' | 'families' | 'family'

@@ -12,6 +12,7 @@
  */
 
 import { getSupabaseClient } from '@/lib/supabase'
+import { adminApi } from '@/services/backendApi'
 
 /**
  * CSV row structure expected from user import
@@ -321,8 +322,6 @@ class BatchImportService {
     }
 
     try {
-      const supabase = getSupabaseClient()
-
       // Extract valid rows for insertion
       const rowsToInsert = validation.rowResults
         .filter((r) => r.isValid && r.data)
@@ -339,26 +338,7 @@ class BatchImportService {
         }
       }
 
-      const { data: importData, error } = await supabase.functions.invoke(
-        'batch-import-users',
-        {
-          body: {
-            rows: rowsToInsert,
-          },
-        }
-      )
-
-      if (error) {
-        // All-or-nothing: if any insert failed, entire batch fails
-        return {
-          success: false,
-          reason: `Import failed: ${error.message}. No users were imported.`,
-          details: {
-            failedAt: new Date().toISOString(),
-            attemptedCount: rowsToInsert.length,
-          },
-        }
-      }
+      const importData = await adminApi.importUsers(rowsToInsert)
 
       if (!importData || !Array.isArray(importData.importedUserEmails) || importData.importedUserEmails.length === 0) {
         return {

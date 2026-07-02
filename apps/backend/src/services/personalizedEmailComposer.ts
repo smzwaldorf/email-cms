@@ -84,6 +84,7 @@ function toResolvedBlock(
     blockId: block.blockId,
     title: block.title,
     content: block.content,
+    url: block.url,
     editorialOrder: block.editorialOrder,
     personalizationKey: key,
     classId,
@@ -146,7 +147,7 @@ function blockToArticle(block: PersonalizedEmailResolvedBlock): RecipientArticle
     id: block.blockId,
     title: toCanonicalString(block.title),
     excerpt: stripHtml(block.content ?? ''),
-    url: '',
+    url: block.url ?? '',
     imageUrl: null,
     sourceTag: null,
   }
@@ -374,6 +375,7 @@ export function composePersonalizedEmails(
           },
           newsletter: {
             id: input.newsletter.newsletterId,
+            title: input.newsletter.title ?? null,
             revisionId: input.newsletter.newsletterRevisionId,
           },
           classes: {
@@ -425,6 +427,7 @@ export function composePersonalizedEmails(
           family: { id: guardian.familyId ?? null },
           newsletter: {
             id: input.newsletter.newsletterId,
+            title: input.newsletter.title ?? null,
             revisionId: input.newsletter.newsletterRevisionId,
           },
           classes: { ids: eligibleClassIds },

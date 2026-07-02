@@ -8,6 +8,18 @@ import type {
 } from '@/types/emailDelivery'
 import type { FileEmailTemplatePreviewResult, FileEmailTemplateSourceMetadata } from '@/types/fileEmailTemplate'
 
+export interface BackendBatchImportUserRow {
+  email: string
+  name: string
+  role: 'admin' | 'teacher' | 'parent' | 'student'
+  status?: 'active' | 'disabled' | 'pending_approval'
+}
+
+export interface BackendBatchImportResult {
+  importedCount: number
+  importedUserEmails: string[]
+}
+
 export class BackendApiError extends Error {
   constructor(
     message: string,
@@ -164,5 +176,12 @@ export const adminApi = {
     if (params.eventType) search.set('eventType', params.eventType)
     if (params.days) search.set('days', String(params.days))
     return backendRequest<unknown[]>(`/api/admin/access-control/auth-events?${search.toString()}`)
+  },
+
+  importUsers(rows: BackendBatchImportUserRow[]): Promise<BackendBatchImportResult> {
+    return backendRequest<BackendBatchImportResult>('/api/admin/batch-import-users', {
+      method: 'POST',
+      body: JSON.stringify({ rows }),
+    })
   },
 }

@@ -93,6 +93,7 @@ interface FileTemplateRenderScope {
   }
   newsletter: {
     id: RenderScopeScalar
+    title: RenderScopeScalar
     revisionId: RenderScopeScalar
   }
   classes: {
@@ -738,6 +739,7 @@ function buildRenderScope(
     },
     newsletter: {
       id: renderScopeValue(context.templateContext.newsletter.id),
+      title: renderScopeValue(context.templateContext.newsletter.title ?? ''),
       revisionId: renderScopeValue(context.templateContext.newsletter.revisionId),
     },
     classes: {
@@ -770,6 +772,7 @@ function createTokenPlaceholderContext(
       },
       newsletter: {
         id: '{{newsletter.id}}',
+        title: '{{newsletter.title}}',
         revisionId: '{{newsletter.revisionId}}',
       },
       classes: {

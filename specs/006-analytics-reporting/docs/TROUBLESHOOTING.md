@@ -12,7 +12,7 @@
 ### 2. "Token Invalid" Errors
 **Symptoms**: Pixel returns 400/500 or logs show verification failure.
 **Fix**:
-- Check `JWT_SECRET` in Edge Function secrets. Matches `Supabase Settings > API`.
+- Check `JWT_SECRET` in the backend service environment. It must match the signing secret used when tokens are generated.
 - Ensure tokens are generated with correct `user_id` and `newsletter_id`.
 
 ### 3. Missing Page Views
@@ -24,8 +24,8 @@
 
 ## Debugging Steps
 
-1. **Check Edge Function Logs**:
-   Go to Supabase Dashboard > Edge Functions > `tracking-pixel` > Logs.
+1. **Check Backend Logs**:
+   Inspect the backend service logs for `GET /api/tracking/pixel` and `GET /api/tracking/click`.
    Look for "Event logged" or "Error".
 
 2. **Verify Database**:
@@ -36,5 +36,5 @@
 
 3. **Test with Curl**:
    ```bash
-   curl -v "https://[project].supabase.co/functions/v1/tracking-pixel?t=[token]"
+   curl -v "https://[backend-domain]/api/tracking/pixel?t=[token]"
    ```

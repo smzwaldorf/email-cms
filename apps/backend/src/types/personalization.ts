@@ -33,6 +33,7 @@ export interface PersonalizationInputBlock {
   blockId: string
   title?: string | null
   content: string
+  url?: string | null
   editorialOrder: number
   personalizationKey?: string | null
 }
@@ -49,7 +50,7 @@ export interface PersonalizationInputNewsletter {
   classBlocks: PersonalizationClassBlock[]
 }
 
-import type { EmailTemplateBlock } from '#/types/emailTemplate'
+import type { EmailTemplateBlock } from './emailTemplate'
 
 export interface PersonalizationInputTemplate {
   templateId: string
@@ -74,6 +75,7 @@ export interface PersonalizedEmailResolvedBlock {
   blockId: string
   title?: string | null
   content: string
+  url?: string | null
   editorialOrder: number
   personalizationKey: string
   classId?: string
@@ -97,7 +99,7 @@ export interface PersonalizedEmailPayload {
   renderedBody?: string
   /**
    * Stable fingerprint of `renderedBody` so a downstream service (e.g. the
-   * Kit edge function) can verify the HTML it sends matches the HTML the
+   * Kit send service) can verify the HTML it sends matches the HTML the
    * composer produced for this recipient. Computed when `renderedBody` is set.
    */
   renderedHtmlFingerprint?: string

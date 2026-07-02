@@ -7,7 +7,7 @@ import type {
   RecipientArticle,
   RecipientClass,
   RecipientRenderContext,
-} from '#/services/emailTemplateRenderer'
+} from '../services/emailTemplateRenderer'
 
 export type FileEmailTemplateSourceId = string
 

@@ -1,36 +1,30 @@
 # Analytics Deployment Guide
 
 ## Prerequisites
-- Supabase CLI installed.
-- Deno installed (for local testing).
+- Supabase CLI installed for database migrations.
+- Backend service runtime configured.
 
-## Edge Functions
-The analytics service relies on two Edge Functions:
-1. `tracking-pixel`
-2. `tracking-click`
+## Backend Routes
+The analytics service relies on two public backend routes:
+1. `GET /api/tracking/pixel`
+2. `GET /api/tracking/click`
 
 ### Deployment Steps
-Run the following commands to deploy the functions to Supabase:
+Deploy the backend service and expose it over HTTPS. No Supabase Edge Function deployment is required.
 
 ```bash
-# Login
-supabase login
-
-# Deploy Pixel Function
-supabase functions deploy tracking-pixel --no-verify-jwt
-
-# Deploy Click Redirect Function
-supabase functions deploy tracking-click --no-verify-jwt
+npm run backend:build
+npm run start -w @email-cms/backend
 ```
-> **Note**: We use `--no-verify-jwt` because these endpoints are public and handle their own JWT verification via the `t` parameter.
+> **Note**: These endpoints are public and handle their own JWT verification via the `t` parameter.
 
 ### Environment Variables
-Set the following secrets for the functions:
+Set the following secrets for the backend service:
 
 ```bash
-supabase secrets set JWT_SECRET=your_jwt_signing_secret
-supabase secrets set SUPABASE_URL=your_project_url
-supabase secrets set SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+JWT_SECRET=your_jwt_signing_secret
+VITE_SUPABASE_URL=your_project_url
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 ```
 
 **Security Requirements**:

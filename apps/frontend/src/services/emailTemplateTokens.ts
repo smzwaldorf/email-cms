@@ -12,6 +12,7 @@ export const EMAIL_TEMPLATE_TOKENS = [
   'guardian.email',
   'family.id',
   'newsletter.id',
+  'newsletter.title',
   'newsletter.revisionId',
   'classes.count',
   'classes.list',
@@ -32,6 +33,7 @@ export interface EmailTemplateRenderContext {
   }
   newsletter: {
     id: string
+    title?: string | null
     revisionId: string
   }
   classes: {
@@ -63,6 +65,8 @@ function resolveGlobalToken(token: GlobalToken, context: EmailTemplateRenderCont
       return context.family?.id ?? ''
     case 'newsletter.id':
       return context.newsletter.id
+    case 'newsletter.title':
+      return context.newsletter.title ?? ''
     case 'newsletter.revisionId':
       return context.newsletter.revisionId
     case 'classes.count':
@@ -237,6 +241,7 @@ export function buildGlobalTokenScope(context: EmailTemplateRenderContext): Reco
     'guardian.email': context.guardian?.email ?? '',
     'family.id': context.family?.id ?? '',
     'newsletter.id': context.newsletter.id,
+    'newsletter.title': context.newsletter.title ?? '',
     'newsletter.revisionId': context.newsletter.revisionId,
     'classes.count': String(context.classes.ids.length),
     'classes.list': context.classes.ids.join(', '),

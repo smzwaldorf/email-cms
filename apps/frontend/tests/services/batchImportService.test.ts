@@ -1,23 +1,30 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { batchImportService } from '@/services/batchImportService'
 
-const mockBuilder = {
-  select: vi.fn().mockReturnThis(),
-  in: vi.fn().mockReturnThis(),
-  then: vi.fn((resolve) => resolve({ data: [], error: null })),
-}
+const { mockBuilder, mockImportUsers, mockSupabase } = vi.hoisted(() => {
+  const builder = {
+    select: vi.fn().mockReturnThis(),
+    in: vi.fn().mockReturnThis(),
+    then: vi.fn((resolve) => resolve({ data: [], error: null })),
+  }
 
-const mockFunctionsInvoke = vi.fn()
-
-const mockSupabase = {
-  from: vi.fn(() => mockBuilder),
-  functions: {
-    invoke: mockFunctionsInvoke,
-  },
-}
+  return {
+    mockBuilder: builder,
+    mockImportUsers: vi.fn(),
+    mockSupabase: {
+      from: vi.fn(() => builder),
+    },
+  }
+})
 
 vi.mock('@/lib/supabase', () => ({
   getSupabaseClient: () => mockSupabase,
+}))
+
+vi.mock('@/services/backendApi', () => ({
+  adminApi: {
+    importUsers: mockImportUsers,
+  },
 }))
 
 describe('batchImportService', () => {
@@ -26,12 +33,9 @@ describe('batchImportService', () => {
     mockBuilder.select.mockReturnThis()
     mockBuilder.in.mockReturnThis()
     mockBuilder.then.mockImplementation((resolve) => resolve({ data: [], error: null }))
-    mockFunctionsInvoke.mockResolvedValue({
-      data: {
-        importedCount: 2,
-        importedUserEmails: ['teacher1@school.edu', 'parent1@school.edu'],
-      },
-      error: null,
+    mockImportUsers.mockResolvedValue({
+      importedCount: 2,
+      importedUserEmails: ['teacher1@school.edu', 'parent1@school.edu'],
     })
   })
 
@@ -45,7 +49,7 @@ describe('batchImportService', () => {
     expect(mockSupabase.from).toHaveBeenCalledWith('user_roles')
   })
 
-  it('executes imports through the batch-import-users edge function', async () => {
+  it('executes imports through the backend admin API', async () => {
     const validation = batchImportService.validateCSVFormat([
       { email: 'teacher1@school.edu', name: 'Teacher One', role: 'teacher' },
       { email: 'parent1@school.edu', name: 'Parent One', role: 'parent' },
@@ -53,24 +57,20 @@ describe('batchImportService', () => {
 
     const result = await batchImportService.executeBatchImport(validation)
 
-    expect(mockFunctionsInvoke).toHaveBeenCalledWith('batch-import-users', {
-      body: {
-        rows: [
-          {
-            email: 'teacher1@school.edu',
-            name: 'Teacher One',
-            role: 'teacher',
-            status: 'pending_approval',
-          },
-          {
-            email: 'parent1@school.edu',
-            name: 'Parent One',
-            role: 'parent',
-            status: 'pending_approval',
-          },
-        ],
+    expect(mockImportUsers).toHaveBeenCalledWith([
+      {
+        email: 'teacher1@school.edu',
+        name: 'Teacher One',
+        role: 'teacher',
+        status: 'pending_approval',
       },
-    })
+      {
+        email: 'parent1@school.edu',
+        name: 'Parent One',
+        role: 'parent',
+        status: 'pending_approval',
+      },
+    ])
 
     expect(result).toEqual({
       success: true,

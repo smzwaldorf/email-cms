@@ -1,4 +1,4 @@
-import type { PreparationPinnedInputReferences } from '#/types/emailPreparation'
+import type { PreparationPinnedInputReferences } from './emailPreparation'
 
 export type NewsletterEmailReaderJourneyStep =
   | 'write_newsletter'

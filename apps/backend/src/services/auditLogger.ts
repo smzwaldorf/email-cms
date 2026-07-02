@@ -78,7 +78,7 @@ class AuditLoggerService {
           event_type: options.eventType,
           auth_method: options.authMethod || null,
           user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
-          // Note: IP address would need to be captured server-side via Edge Function
+          // Note: IP address would need to be captured by the backend request handler.
           // Client-side JS cannot reliably access user's IP address
           ip_address: null,
           metadata: options.metadata || null,

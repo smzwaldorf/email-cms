@@ -6,7 +6,7 @@ export function createDefaultFileEmailTemplateRenderContext(): FileEmailTemplate
     templateContext: {
       guardian: { id: 'preview-guardian', email: 'guardian@example.com' },
       family: { id: 'preview-family' },
-      newsletter: { id: 'preview-newsletter', revisionId: 'preview-revision' },
+      newsletter: { id: 'preview-newsletter', title: 'Preview Weekly Newsletter', revisionId: 'preview-revision' },
       classes: { ids: ['A1'] },
     },
     sharedArticles: DEFAULT_EMAIL_TEMPLATE_PREVIEW_SAMPLES.sharedArticles,

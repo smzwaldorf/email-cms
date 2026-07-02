@@ -19,7 +19,7 @@ We collect the minimum data necessary to provide analytics:
 Row Level Security is enforced:
 1. **Admins**: Can view all analytics data (`analytics_admin_all` policy).
 2. **Users**: Can only view their own interactions (if needed for features like "History").
-3. **Public**: Insert-only access via Edge Functions (Service Role) or authenticated client.
+3. **Public**: Insert-only access via backend tracking routes using the service role, or authenticated client.
 
 ## Security Best Practices
 - **JWT Verification**: All tracking pixels/links require a valid signed JWT to prevent spoofing.

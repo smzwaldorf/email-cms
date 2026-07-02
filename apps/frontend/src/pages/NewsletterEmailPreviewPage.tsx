@@ -138,6 +138,7 @@ export function NewsletterEmailPreviewPage() {
       details: warning.details,
     })) as PreparationFinding[]
   }, [preview])
+  const hasBlockingFindings = findings.some((finding) => finding.severity === 'error')
 
   return (
     <ErrorBoundary>
@@ -218,7 +219,8 @@ export function NewsletterEmailPreviewPage() {
               <button
                 type="button"
                 onClick={handlePublish}
-                disabled={!preview || isPublishing}
+                disabled={!preview || hasBlockingFindings || isPublishing}
+                title={hasBlockingFindings ? 'Resolve preparation errors before publishing.' : undefined}
                 className="rounded-lg bg-waldorf-peach-600 px-3 py-2 text-sm text-white disabled:opacity-50"
               >
                 {isPublishing ? 'Publishing...' : 'Confirm and publish'}

@@ -167,7 +167,7 @@ export const analyticsAggregator = {
 
     try {
       // 1. Fetch raw events for the target date
-      // Note: In a real large-scale app, we would use a more efficient query or edge function
+      // Note: In a real large-scale app, we would use a more efficient backend aggregation job.
       const startOfDay = `${targetDate}T00:00:00.000Z`;
       const endOfDay = `${targetDate}T23:59:59.999Z`;
 
@@ -1114,4 +1114,3 @@ export const analyticsAggregator = {
       return data?.map(c => c.class_name) || [];
   }
 };
-

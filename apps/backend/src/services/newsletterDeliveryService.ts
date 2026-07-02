@@ -1,5 +1,6 @@
 import { getSupabaseClient } from '#/lib/supabase'
 import { emailContentPreparationService } from '#/services/emailContentPreparationService'
+import { backendEmailPlatformService } from '#/services/emailPlatform/backendEmailPlatformService'
 import { enqueueSyncJob } from '#/services/emailPlatform/runtime'
 import { coerceEmailTemplateBlocks } from '#/services/emailTemplateBlocks'
 import { composePersonalizedEmails } from '#/services/personalizedEmailComposer'
@@ -50,10 +51,12 @@ interface NewsletterArticleJoinRow {
   target_class_ids?: string[] | null
   articles?: {
     id: string
+    short_id?: string | null
     title?: string | null
     content: string
   } | Array<{
     id: string
+    short_id?: string | null
     title?: string | null
     content: string
   }> | null
@@ -84,6 +87,26 @@ function asArrayValue<T>(value: T | T[] | null | undefined): T[] {
 
 function generateJourneyCorrelationId(): string {
   return `journey-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+}
+
+function getPublicAppBaseUrl(): string {
+  return (process.env.VITE_APP_URL ?? process.env.APP_URL ?? 'http://localhost:5173').replace(/\/+$/, '')
+}
+
+function buildPublicArticleUrl(
+  newsletter: NewsletterRow,
+  article: { id: string; short_id?: string | null },
+): string {
+  const articleKey = article.short_id || article.id
+  const newsletterPath = newsletter.week_number
+    ? `/week/${encodeURIComponent(newsletter.week_number)}/${encodeURIComponent(articleKey)}`
+    : `/newsletter/${encodeURIComponent(newsletter.id)}/${encodeURIComponent(articleKey)}`
+
+  try {
+    return new URL(newsletterPath, `${getPublicAppBaseUrl()}/`).toString()
+  } catch {
+    return newsletterPath
+  }
 }
 
 export interface AudienceCandidateShape {
@@ -257,23 +280,16 @@ class NewsletterDeliveryService {
     sentRecipientIds: string[]
     failedRecipients: Array<{ recipientId: string; error: string }>
   }> {
-    const supabase = getSupabaseClient()
-    const { data, error } = await supabase.functions.invoke('kit-send-newsletter', {
-      body: {
-        batchId: input.batchId,
-        newsletterId: input.newsletterId,
-        recipients: input.recipients,
-      },
+    const data = await backendEmailPlatformService.sendNewsletter({
+      batchId: input.batchId,
+      newsletterId: input.newsletterId,
+      recipients: input.recipients,
     })
 
-    if (error) {
-      throw new Error(`Kit send invoke failed: ${error.message}`)
-    }
-
     return {
-      providerMessageId: (data as { providerMessageId?: string | null } | null)?.providerMessageId ?? null,
-      sentRecipientIds: (data as { sentRecipientIds?: string[] } | null)?.sentRecipientIds ?? [],
-      failedRecipients: (data as { failedRecipients?: Array<{ recipientId: string; error: string }> } | null)?.failedRecipients ?? [],
+      providerMessageId: data.providerMessageId ?? null,
+      sentRecipientIds: data.sentRecipientIds,
+      failedRecipients: data.failedRecipients,
     }
   }
 
@@ -607,7 +623,7 @@ class NewsletterDeliveryService {
     const supabase = getSupabaseClient()
     const { data, error } = await supabase
       .from('newsletter_articles')
-      .select('article_order, targeting_mode, target_class_ids, articles!inner(id, title, content)')
+      .select('article_order, targeting_mode, target_class_ids, articles!inner(id, short_id, title, content)')
       .eq('newsletter_id', newsletter.id)
       .order('article_order', { ascending: true })
 
@@ -624,6 +640,7 @@ class NewsletterDeliveryService {
         blockId: article.id,
         title: article.title ?? null,
         content: article.content,
+        url: buildPublicArticleUrl(newsletter, article),
         editorialOrder: row.article_order,
         personalizationKey: `article:${article.id}`,
       }
