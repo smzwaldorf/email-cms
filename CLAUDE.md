@@ -4,38 +4,49 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Email CMS Newsletter Viewer** - A modern React 18 + TypeScript application for reading and managing email newsletters organized by week. Currently in Phase 7 of development (Polish & Cross-Cutting Concerns).
+**Email CMS Newsletter Viewer** - A React 18 + TypeScript monorepo for reading and managing email newsletters organized by week, plus a Node backend that owns admin/business logic, email delivery, and tracking endpoints.
 
-- **Tech Stack**: React 18, TypeScript 5, Vite 5, Tailwind CSS 3, Vitest, React Router v6, Supabase, PostgreSQL
-- **Current Branch**: `002-database-structure`
-- **Implementation Status**: Phases 1-7 complete (100% - 44/44 tasks), 697 tests passing, 95%+ coverage
+- **Tech Stack**: React 18, TypeScript 5, Vite 5, Tailwind CSS 3, Vitest, React Router v6, Supabase, PostgreSQL, Handlebars (email templates)
+- **Workspaces**: `apps/frontend` (React app), `apps/backend` (Node HTTP service + delivery worker), `packages/shared` (shared types)
+
+## Monorepo Layout
+
+```
+apps/frontend/     @email-cms/frontend  - Vite React app (src/, tests/)
+apps/backend/      @email-cms/backend   - Node HTTP service (src/routes.ts, src/index.ts),
+                                          delivery worker (src/worker/), email templates (templates/email/)
+packages/shared/   @email-cms/shared    - Shared TypeScript types
+```
+
+Architecture rule (enforced by ESLint `no-restricted-imports`): frontend code must call the backend HTTP API (`apps/frontend/src/services/backendApi.ts`) instead of importing backend modules. Frontend `adminService`/`emailTemplateService` are thin proxies over the backend admin RPC endpoint (`/api/admin/rpc`); the real business logic lives in `apps/backend/src/services/`.
 
 ## Development Commands
 
-### Essential Commands
+### Essential Commands (run from repo root)
 ```bash
-npm run dev           # Start dev server (http://localhost:5173 with HMR)
-npm test              # Run tests in watch mode
-npm test -- --run     # Run tests once and exit (use for CI/verification)
-npm run build         # Build for production (runs TypeScript check + Vite build)
-npm run preview       # Preview production build locally
-npm run lint          # ESLint check on src/ and tests/
-npm run format        # Prettier format files
-npm run coverage      # Test coverage report
-npm test:ui           # Vitest UI (visual test interface)
+npm run dev            # Frontend dev server (http://localhost:5173 with HMR)
+npm run backend:dev    # Backend HTTP service (tsx, reads .env / .env.local)
+npm run worker:dev     # Newsletter delivery worker
+npm test               # Frontend then backend test suites (single run)
+npm run build          # Build shared -> backend -> frontend
+npm run preview        # Preview production frontend build
+npm run lint           # ESLint across all workspaces
+npm run format         # Prettier format files
+npm run coverage       # Frontend test coverage report
 ```
 
 ### Useful Test Commands
 ```bash
-npm test -- NavigationBar.test.tsx          # Run single test file
-npm test -- -t "should render"              # Run tests matching pattern
-npm test -- tests/components/ --run         # Run component tests once
-npm test -- --ui                            # Open visual test interface
+npm run test -w @email-cms/frontend                      # Frontend suite only
+npm run test -w @email-cms/backend                       # Backend suite only
+npx vitest --run tests/components/NavigationBar.test.tsx # Single file (run inside apps/frontend)
+npx vitest --run -t "should render"                      # Tests matching pattern
 ```
 
 ### Linting Requirements
 - Keep `@typescript-eslint/no-explicit-any` enabled repo-wide. Do not "fix" lint by disabling the rule globally or by adding broad file-level overrides.
-- When lint fails on typing, prefer real domain/database types from `src/types/`, or use `unknown` plus small type guards/helpers instead of `any`.
+- When lint fails on typing, prefer real domain/database types from the workspace `src/types/` (or `packages/shared/src/types/`), or use `unknown` plus small type guards/helpers instead of `any`.
+- Do not weaken the frontend/backend import boundary override in `.eslintrc.cjs`.
 - The repo currently uses legacy ESLint config via `.eslintrc.cjs`, so do not upgrade ESLint to v9+ without also migrating to flat config (`eslint.config.js`). Upgrading `@typescript-eslint/*` is fine, but keep ESLint on a compatible v8 release unless you are doing the config migration in the same change.
 - After lint/tooling upgrades, re-run `npm run lint` and watch for newly surfaced rules (for example unused catch variables) rather than suppressing them.
 - For Supabase query typing, prefer existing row types in `src/types/database.ts` and small local query result interfaces over `as any`.
@@ -62,32 +73,42 @@ npx tsx scripts/setup-development.ts
 ```
 
 ### Path Aliases
-The project uses `@` alias for `src/` directory:
+Each workspace aliases `@` to its own `src/` directory:
 ```typescript
-import { NavigationBar } from '@/components/NavigationBar'  // resolves to src/components/NavigationBar
+// In apps/frontend: resolves to apps/frontend/src/components/NavigationBar
+import { NavigationBar } from '@/components/NavigationBar'
 ```
+The backend additionally uses subpath imports `#/*` (its own `src/`) and `#shared/*` (`packages/shared/src/`), defined in `apps/backend/package.json`.
 
 ## Architecture
 
-### Three-Layer Architecture
+### Frontend Layers (apps/frontend)
 ```
 Pages (WeeklyReaderPage)
     ↓ (state management, interaction logic)
 Components (ArticleListView, ArticleContent, NavigationBar, SideButton)
     ↓ (rendering, props-based logic)
-Services & Context (mockApi, markdownService, NavigationContext)
-    ↓ (data fetching, state management, transformations)
+Services & Context (backendApi, thin service proxies, NavigationContext)
+    ↓ (reader queries via Supabase RLS; admin operations via backend HTTP API)
+Backend (apps/backend routes.ts -> services)
+    ↓ (business logic, RBAC, Supabase service-role access, Kit sync, tracking)
 ```
 
-### Key Directories
+### Key Directories (apps/frontend)
 - **src/components/** - Reusable UI components (test files: `tests/components/`)
 - **src/pages/** - Page-level components and layout (test files: `tests/integration/`)
-- **src/services/** - Business logic: mockApi.ts, markdownService.ts
+- **src/services/** - Reader-side logic and thin backend API clients (backendApi.ts, adminService.ts proxy)
 - **src/context/** - Global state: NavigationContext.tsx (React Context API)
 - **src/types/** - TypeScript type definitions (centralized in index.ts)
 - **src/utils/** - Helper functions: urlUtils.ts, formatters.ts
 - **src/hooks/** - Custom React hooks for data fetching
 - **src/styles/** - Global styles with Tailwind CSS
+
+### Key Directories (apps/backend)
+- **src/routes.ts / src/index.ts** - HTTP endpoints (admin RPC, tracking pixel/click, kit webhook, batch import)
+- **src/services/** - Business logic (adminService, emailTemplateService, newsletterDeliveryService, emailPlatform/)
+- **src/worker/** - Newsletter delivery worker
+- **templates/email/** - File-based Handlebars email templates
 
 ### State Management
 Uses **React Context API** (lightweight, no Redux needed):
@@ -106,10 +127,10 @@ Uses **React Context API** (lightweight, no Redux needed):
 - When running `npm test`, and needs timeout, always use `timeout 20`
 
 ### Test Structure
-- **Unit tests**: `tests/unit/` (TypeScript utilities)
-- **Component tests**: `tests/components/` (React Testing Library)
-- **Integration tests**: `tests/integration/` (user story workflows)
-- **Performance tests**: `tests/performance/` (benchmark tests)
+- **Frontend** (`apps/frontend/tests/`, jsdom): `unit/`, `components/`, `integration/`, `performance/`
+- **Backend** (`apps/backend/tests/`, node): `unit/services/`, `integration/`
+- Put business-logic tests next to the logic: admin/email-template/delivery service behavior belongs in `apps/backend/tests/`; frontend tests for those services should only pin the proxy/API contract (see `apps/frontend/tests/services/adminService.proxy.test.ts`).
+- `apps/frontend/tests/setup.ts` loads env vars from the repo-root `.env.local` (needed for `VITE_JWT_SECRET` in tracking tests).
 
 ### Test Framework & Libraries
 - **Framework**: Vitest (Jest-compatible, uses jsdom)
@@ -230,12 +251,11 @@ Routes are defined in `src/App.tsx`:
 - Mock data: Centralized in `src/services/mockApi.ts`
 
 ### Git Workflow
-- Current branch: `002-database-structure`
+- Current branch: `feature/email-integration`
 - Main branch: `001-newsletter-viewer`
 - Commit format: `type(scope): description` (e.g., `feat: Add API endpoints` or `docs: Reorganize documentation`)
-- Test verification: Run `npm test -- --run` before committing
+- Test verification: Run `npm test` (frontend + backend suites) before committing
 - All commits include attribution line: `Co-Authored-By: Claude <noreply@anthropic.com>`
-- PR target: Main branch `001-newsletter-viewer` when Phase 7 is complete
 
 ## Debugging
 
