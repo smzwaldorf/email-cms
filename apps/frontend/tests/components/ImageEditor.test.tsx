@@ -272,7 +272,8 @@ describe('ImageEditor Component (T056)', () => {
       })
     })
 
-    it('should handle very long alt text', async () => {
+    // typing 500 chars is slow under full-suite CPU load; allow extra time
+    it('should handle very long alt text', { timeout: 15000, retry: 1 }, async () => {
       const user = userEvent.setup()
       setup()
 

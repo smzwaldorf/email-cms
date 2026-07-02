@@ -203,47 +203,20 @@ describe('WeeklyReaderPage Short URL Logic', () => {
     expect(mockNavigate).not.toHaveBeenCalledWith('/week/2025-W47', { replace: true })
   })
 
-  it('should redirect using cached shortId from localStorage after login', async () => {
-    // Simulate state after login redirect
+  it('should not consume cached shortId from localStorage (handled by the magic-link flow)', async () => {
+    // Short-URL redirects are driven purely by the URL param now; the cached
+    // values are read by MagicLinkForm during login instead of this page.
     localStorage.setItem('pending_short_id', 'otherId')
     localStorage.setItem('pending_week_number', '2025-W47')
-
-    renderPage('/week/2025-W47')
-
-    await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/week/2025-W47', { replace: true })
-    })
-    
-    // Should clear cache
-    expect(localStorage.getItem('pending_short_id')).toBeNull()
-  })
-
-  it('should ignore cached shortId if week number does not match', async () => {
-    localStorage.setItem('pending_short_id', 'validId')
-    localStorage.setItem('pending_week_number', '2025-W48') // Mismatch
 
     renderPage('/week/2025-W47')
 
     await act(async () => {
       await new Promise(resolve => setTimeout(resolve, 100))
     })
+
     expect(mockNavigate).not.toHaveBeenCalled()
-    
-    // Cache should remain (or at least not be consumed by this page)
-    expect(localStorage.getItem('pending_short_id')).toBe('validId')
-  })
-
-  it('should clear cache after successful redirection', async () => {
-    localStorage.setItem('pending_short_id', 'validId')
-    localStorage.setItem('pending_week_number', '2025-W47')
-
-    renderPage('/week/2025-W47')
-
-    await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalled()
-    })
-
-    expect(localStorage.getItem('pending_short_id')).toBeNull()
-    expect(localStorage.getItem('pending_week_number')).toBeNull()
+    expect(localStorage.getItem('pending_short_id')).toBe('otherId')
+    expect(localStorage.getItem('pending_week_number')).toBe('2025-W47')
   })
 })

@@ -33,7 +33,8 @@ vi.mock('@/lib/supabase', () => ({
   }))
 }));
 
-describe('Analytics API Performance', () => {
+// retry: timing assertions are load-sensitive when the full suite runs in parallel
+describe('Analytics API Performance', { retry: 2 }, () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

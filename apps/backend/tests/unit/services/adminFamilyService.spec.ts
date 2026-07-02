@@ -30,6 +30,9 @@ describe('AdminService family management', () => {
     Object.values(mockBuilder).forEach((mock) => {
       if (mock.mockReturnThis) mock.mockReturnThis()
     })
+    // Fully reset `then` so queued mockImplementationOnce entries from a
+    // previous test cannot leak into the next one.
+    mockBuilder.then.mockReset()
     mockBuilder.then.mockImplementation((resolve: QueryResolver<unknown>) =>
       resolve({ data: [], error: null })
     )
@@ -58,7 +61,7 @@ describe('AdminService family management', () => {
 
     expect(mockBuilder.eq).toHaveBeenCalledWith('is_active', true)
     expect(result).toHaveLength(1)
-    expect(result[0].guardianEmail).toBe('smith@example.com')
+    expect(result[0].name).toBe('Smith Family')
   })
 
   it('fetchFamilies includeInactive skips active-only filter', async () => {
@@ -86,21 +89,19 @@ describe('AdminService family management', () => {
     expect(result[0].isActive).toBe(false)
   })
 
-  it('createFamily rejects missing guardian email', async () => {
+  it('createFamily rejects missing name', async () => {
     await expect(
-      adminService.createFamily('Smith Family', 'desc', [], '')
+      adminService.createFamily('', 'desc', [])
     ).rejects.toMatchObject({ code: 'FAMILY_VALIDATION_ERROR' })
   })
 
-  it('createFamily rejects duplicate guardian email', async () => {
-    mockBuilder.then
-      .mockImplementationOnce((resolve: QueryResolver<unknown>) => resolve({ data: [], error: null })) // code check
-      .mockImplementationOnce((resolve: QueryResolver<Array<{ id: string }>>) =>
-        resolve({ data: [{ id: 'existing-family' }], error: null }) // email check
-      )
+  it('createFamily rejects duplicate family name', async () => {
+    mockBuilder.then.mockImplementationOnce((resolve: QueryResolver<Array<{ id: string }>>) =>
+      resolve({ data: [{ id: 'existing-family' }], error: null }) // family code check
+    )
 
     await expect(
-      adminService.createFamily('Smith Family', 'desc', [], 'smith@example.com')
+      adminService.createFamily('Smith Family', 'desc', [])
     ).rejects.toMatchObject({ code: 'FAMILY_VALIDATION_ERROR' })
   })
 
@@ -123,14 +124,12 @@ describe('AdminService family management', () => {
         })
       )
       .mockImplementationOnce((resolve: QueryResolver<unknown>) => resolve({ data: [], error: null })) // code check
-      .mockImplementationOnce((resolve: QueryResolver<unknown>) => resolve({ data: [], error: null })) // email check
       .mockImplementationOnce((resolve: QueryResolver<Record<string, unknown>>) =>
         resolve({
           data: {
             id: 'family-1',
             family_code: 'SMITH-UPDATED',
             family_name: 'Smith Updated',
-            guardian_email: 'updated@example.com',
             description: 'after',
             related_topics: ['topic-a'],
             is_active: true,
@@ -144,7 +143,6 @@ describe('AdminService family management', () => {
 
     const result = await adminService.updateFamily('family-1', {
       name: 'Smith Updated',
-      guardianEmail: 'updated@example.com',
       description: 'after',
       relatedTopics: ['topic-a'],
     })
@@ -152,12 +150,11 @@ describe('AdminService family management', () => {
     expect(mockBuilder.update).toHaveBeenCalledWith(expect.objectContaining({
       family_name: 'Smith Updated',
       family_code: 'SMITH-UPDATED',
-      guardian_email: 'updated@example.com',
       description: 'after',
       related_topics: ['topic-a'],
     }))
     expect(result.name).toBe('Smith Updated')
-    expect(result.guardianEmail).toBe('updated@example.com')
+    expect(result.description).toBe('after')
   })
 
   it('deactivateFamily performs soft lifecycle update', async () => {

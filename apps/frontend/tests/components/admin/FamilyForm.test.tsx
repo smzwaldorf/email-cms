@@ -13,7 +13,6 @@ describe('FamilyForm', () => {
   const mockFamily: Family = {
     id: 'family-001',
     name: '升學進路',
-    guardianEmail: 'guardian@example.com',
     description: '關於升學進路的文章集合',
     relatedTopics: ['大學選擇', '科系介紹', '準備方向'],
     isActive: true,
@@ -31,7 +30,6 @@ describe('FamilyForm', () => {
 
     expect(screen.getByText('新增家族')).toBeInTheDocument()
     expect(screen.getByTestId('name-input')).toHaveValue('')
-    expect(screen.getByTestId('guardian-email-input')).toHaveValue('')
     expect(screen.getByTestId('description-input')).toHaveValue('')
   })
 
@@ -44,7 +42,6 @@ describe('FamilyForm', () => {
 
     expect(screen.getByText('編輯家族')).toBeInTheDocument()
     expect(screen.getByTestId('name-input')).toHaveValue('升學進路')
-    expect(screen.getByTestId('guardian-email-input')).toHaveValue('guardian@example.com')
     expect(screen.getByTestId('description-input')).toHaveValue('關於升學進路的文章集合')
   })
 
@@ -64,7 +61,6 @@ describe('FamilyForm', () => {
     await waitFor(() => {
       expect(screen.getByTestId('name-error')).toBeInTheDocument()
       expect(screen.getByTestId('name-error')).toHaveTextContent('家族名稱為必填項')
-      expect(screen.getByTestId('guardian-email-error')).toBeInTheDocument()
       expect(onSave).not.toHaveBeenCalled()
     })
   })
@@ -216,9 +212,6 @@ describe('FamilyForm', () => {
     const nameInput = screen.getByTestId('name-input')
     await user.type(nameInput, '新家族')
 
-    const emailInput = screen.getByTestId('guardian-email-input')
-    await user.type(emailInput, 'new-guardian@example.com')
-
     const descInput = screen.getByTestId('description-input')
     await user.type(descInput, '新家族描述')
 
@@ -236,7 +229,6 @@ describe('FamilyForm', () => {
       expect(onSave).toHaveBeenCalled()
       const savedFamily = onSave.mock.calls[0][0]
       expect(savedFamily.name).toBe('新家族')
-      expect(savedFamily.guardianEmail).toBe('new-guardian@example.com')
       expect(savedFamily.description).toBe('新家族描述')
       expect(savedFamily.relatedTopics).toContain('主題1')
     })
@@ -317,7 +309,6 @@ describe('FamilyForm', () => {
     const emptyFamily: Family = {
       id: 'family-002',
       name: '新家族',
-      guardianEmail: 'family2@example.com',
       description: '描述',
       relatedTopics: [],
       isActive: true,

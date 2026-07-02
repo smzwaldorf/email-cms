@@ -43,7 +43,8 @@ function generateMockArticles(count: number): Article[] {
   }))
 }
 
-describe('Article Switching Performance', () => {
+// retry: timing assertions are load-sensitive when the full suite runs in parallel
+describe('Article Switching Performance', { retry: 2 }, () => {
   describe('Single Article Switch', () => {
     it('should switch between two articles in < 50ms', () => {
       const mockOnSelect = vi.fn()

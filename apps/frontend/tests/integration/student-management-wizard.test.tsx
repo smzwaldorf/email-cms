@@ -81,7 +81,6 @@ describe('StudentManagementPage wizard', () => {
     createFamilyMock.mockResolvedValue({
       id: 'family-new',
       name: 'New Family',
-      guardianEmail: 'guardian@new.family',
       description: '',
       relatedTopics: [],
       isActive: true,
@@ -172,7 +171,6 @@ describe('StudentManagementPage wizard', () => {
 
     await user.click(screen.getByText('建立新家庭'))
     await user.type(screen.getByPlaceholderText('新家庭名稱'), 'New Family')
-    await user.type(screen.getByPlaceholderText('監護人電子郵件'), 'guardian@new.family')
     await user.click(screen.getByText('下一步')) // class
 
     await user.selectOptions(screen.getByRole('combobox'), 'class-1')
@@ -180,7 +178,7 @@ describe('StudentManagementPage wizard', () => {
     await user.click(screen.getByText('確認建立'))
 
     await waitFor(() => {
-      expect(createFamilyMock).toHaveBeenCalledWith('New Family', '', [], 'guardian@new.family')
+      expect(createFamilyMock).toHaveBeenCalledWith('New Family', '', [])
       expect(addStudentToFamilyMock).toHaveBeenCalledWith('family-new', 'student-1')
       expect(addStudentToClassEnrollmentMock).toHaveBeenCalledWith('class-1', 'student-1', 'family-new')
     })

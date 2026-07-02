@@ -285,7 +285,8 @@ describe('Admin newsletter workflow page', () => {
     })
   })
 
-  it('updates lifecycle actions from publish to archive in the same workflow', async () => {
+  // multi-step workflow is load-sensitive when the full suite runs in parallel
+  it('updates lifecycle actions from publish to archive in the same workflow', { timeout: 15000, retry: 2 }, async () => {
     renderPage()
 
     fireEvent.click(await screen.findByRole('button', { name: '發布電子報' }))

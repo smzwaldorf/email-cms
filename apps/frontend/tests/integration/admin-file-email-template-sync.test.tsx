@@ -139,19 +139,19 @@ describe('admin file email template preview and sync', () => {
     })
   })
 
-  it('previews a valid file source with rendered subject and block summary', () => {
-    mockPreviewFileEmailTemplateSource.mockReturnValue(validPreview())
+  it('previews a valid file source with rendered subject and block summary', async () => {
+    mockPreviewFileEmailTemplateSource.mockResolvedValue(validPreview())
 
     renderPreviewRoute()
 
-    expect(screen.getByText('File Weekly')).toBeInTheDocument()
+    expect(await screen.findByText('File Weekly')).toBeInTheDocument()
     expect(screen.getByText('Hello guardian@example.com')).toBeInTheDocument()
     expect(screen.getByText('Body')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Sync to database revision' })).toBeEnabled()
   })
 
-  it('blocks sync when a file source references a missing block file', () => {
-    mockPreviewFileEmailTemplateSource.mockReturnValue(
+  it('blocks sync when a file source references a missing block file', async () => {
+    mockPreviewFileEmailTemplateSource.mockResolvedValue(
       validPreview({
         valid: false,
         issues: [
@@ -167,17 +167,19 @@ describe('admin file email template preview and sync', () => {
 
     renderPreviewRoute()
 
-    expect(screen.getByText('Missing block template file: blocks/missing-footer.hbs')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Missing block template file: blocks/missing-footer.hbs'),
+    ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Sync to database revision' })).toBeDisabled()
     expect(mockEmailTemplateService.syncFileTemplate).not.toHaveBeenCalled()
   })
 
   it('syncs a linked file source through the existing template path', async () => {
     const preview = validPreview()
-    mockPreviewFileEmailTemplateSource.mockReturnValue(preview)
+    mockPreviewFileEmailTemplateSource.mockResolvedValue(preview)
 
     renderPreviewRoute()
-    fireEvent.click(screen.getByRole('button', { name: 'Sync to database revision' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Sync to database revision' }))
 
     await waitFor(() => {
       expect(mockEmailTemplateService.syncFileTemplate).toHaveBeenCalledWith({ preview })

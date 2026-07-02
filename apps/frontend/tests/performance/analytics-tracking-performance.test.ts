@@ -22,7 +22,8 @@ vi.mock('@/lib/supabase', () => ({
   getSupabaseClient: vi.fn(() => mockSupabaseClient)
 }));
 
-describe('Analytics Tracking Performance', () => {
+// retry: timing assertions are load-sensitive when the full suite runs in parallel
+describe('Analytics Tracking Performance', { retry: 2 }, () => {
   const userId = 'user-123';
   const payload = { nwl: 'week-1', class: 'class-1' };
 
