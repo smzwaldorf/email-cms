@@ -114,7 +114,13 @@ const CUSTOM_HTML_DEFAULT_HTML = `
 </table>
 `.trim()
 
-const ARTICLE_INNER_SCOPE = ['article.title', 'article.excerpt', 'article.url', 'article.image_url']
+const ARTICLE_INNER_SCOPE = [
+  'article.title',
+  'article.excerpt',
+  'article.url',
+  'article.image_url',
+  'article.date',
+]
 const CLASS_INNER_SCOPE = ['class.id', 'class.code', 'class.name']
 
 const REGISTRY: Record<EmailBlockType, EmailBlockTypeDefinition> = {

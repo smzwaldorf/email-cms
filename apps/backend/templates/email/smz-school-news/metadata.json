@@ -1,0 +1,123 @@
+{
+  "sourceId": "smz-school-news",
+  "name": "SMZ School News",
+  "description": "Watercolor-style weekly newsletter matching the SMZ School News design: featured school cards, per-class news cards, and the weekly announcement list (本週重要事情佈達).",
+  "version": "1.0.0",
+  "subject": "subject.hbs",
+  "partials": [
+    {
+      "name": "ctaButton",
+      "file": "partials/cta-button.hbs"
+    }
+  ],
+  "blocks": [
+    {
+      "id": "header",
+      "mode": "static",
+      "type": "header",
+      "label": "Header / masthead",
+      "file": "blocks/header.hbs",
+      "order": 0,
+      "config": {
+        "brandName": "善美真華德福教育",
+        "scriptTitle": "SMZ School News",
+        "tagline": "每週校園新聞與班級動態"
+      }
+    },
+    {
+      "id": "featured-school-articles",
+      "mode": "article-repeat",
+      "type": "shared-article-feature",
+      "label": "Featured school articles",
+      "file": "blocks/shared-article.hbs",
+      "order": 1,
+      "articleSource": "sharedArticles",
+      "config": {
+        "eyebrow": "REGARDING SCHOOL",
+        "ctaLabel": "READ MORE",
+        "maxItems": 3,
+        "excerptLength": 110,
+        "excludeSourceTag": "weekly"
+      }
+    },
+    {
+      "id": "class-news",
+      "mode": "class-article-repeat",
+      "type": "class-article-feature",
+      "label": "Class news & events",
+      "file": "blocks/class-article.hbs",
+      "order": 2,
+      "config": {
+        "eyebrow": "CLASS NEWS & EVENTS",
+        "ctaLabel": "READ MORE",
+        "maxItemsPerClass": 2,
+        "excerptLength": 110
+      }
+    },
+    {
+      "id": "weekly-divider",
+      "mode": "static",
+      "type": "section-divider",
+      "label": "The weekly news divider",
+      "file": "blocks/weekly-divider.hbs",
+      "order": 3,
+      "config": {
+        "scriptTitle": "The weekly news",
+        "sectionTitle": "本週重要事情佈達"
+      }
+    },
+    {
+      "id": "weekly-items",
+      "mode": "weekly-repeat",
+      "type": "weekly-summary-list",
+      "label": "Weekly announcements",
+      "file": "blocks/weekly-item.hbs",
+      "order": 4,
+      "articleSource": "weeklyItems",
+      "config": {
+        "sourceTag": "weekly",
+        "excerptLength": 64,
+        "readMoreLabel": "read more..."
+      }
+    },
+    {
+      "id": "community-html",
+      "mode": "custom-html",
+      "type": "custom-html",
+      "label": "Community announcement",
+      "file": "blocks/custom-html.hbs",
+      "order": 5,
+      "htmlSlot": "communityAnnouncement"
+    },
+    {
+      "id": "read-more-cta",
+      "mode": "static",
+      "type": "custom-html",
+      "label": "Read online button",
+      "file": "blocks/read-more-cta.hbs",
+      "order": 6,
+      "config": {
+        "ctaLabel": "READ MORE"
+      }
+    },
+    {
+      "id": "footer",
+      "mode": "static",
+      "type": "footer",
+      "label": "About us / footer",
+      "file": "blocks/footer.hbs",
+      "order": 7,
+      "config": {
+        "aboutTitleEn": "About us",
+        "aboutTitleZh": "認識 善美真",
+        "schoolMission": "校名「善美真」，就是希望型塑華德福人性的善、美、真，做為教育的核心信念，建立一個與大自然融合的學習平台，幫助成人和學童身心靈知覺均衡發展。",
+        "schoolName": "善美真華德福實驗教育機構",
+        "tel": "04-26263111",
+        "fax": "04-26283830",
+        "address": "436 臺中市清水區公正路 52 號",
+        "facebookUrl": "https://www.facebook.com/smzwaldorf",
+        "facebookLabel": "Facebook 粉絲專頁"
+      }
+    }
+  ]
+}

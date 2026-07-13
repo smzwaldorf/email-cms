@@ -14,6 +14,7 @@ export const EMAIL_TEMPLATE_TOKENS = [
   'newsletter.id',
   'newsletter.title',
   'newsletter.revisionId',
+  'newsletter.url',
   'classes.count',
   'classes.list',
 ] as const
@@ -35,6 +36,8 @@ export interface EmailTemplateRenderContext {
     id: string
     title?: string | null
     revisionId: string
+    /** Public web URL of the newsletter issue. */
+    url?: string | null
   }
   classes: {
     ids: string[]
@@ -69,6 +72,8 @@ function resolveGlobalToken(token: GlobalToken, context: EmailTemplateRenderCont
       return context.newsletter.title ?? ''
     case 'newsletter.revisionId':
       return context.newsletter.revisionId
+    case 'newsletter.url':
+      return context.newsletter.url ?? ''
     case 'classes.count':
       return String(context.classes.ids.length)
     case 'classes.list':
@@ -243,6 +248,7 @@ export function buildGlobalTokenScope(context: EmailTemplateRenderContext): Reco
     'newsletter.id': context.newsletter.id,
     'newsletter.title': context.newsletter.title ?? '',
     'newsletter.revisionId': context.newsletter.revisionId,
+    'newsletter.url': context.newsletter.url ?? '',
     'classes.count': String(context.classes.ids.length),
     'classes.list': context.classes.ids.join(', '),
   }

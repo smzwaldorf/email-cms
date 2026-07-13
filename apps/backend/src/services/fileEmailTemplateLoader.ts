@@ -95,6 +95,7 @@ interface FileTemplateRenderScope {
     id: RenderScopeScalar
     title: RenderScopeScalar
     revisionId: RenderScopeScalar
+    url: RenderScopeScalar
   }
   classes: {
     ids: string[]
@@ -677,6 +678,7 @@ function createPlaceholderArticle(): RecipientArticle {
     excerpt: '{{article.excerpt}}',
     url: '{{article.url}}',
     imageUrl: '{{article.image_url}}',
+    date: '{{article.date}}',
     sourceTag: '{{article.sourceTag}}',
   }
 }
@@ -741,6 +743,7 @@ function buildRenderScope(
       id: renderScopeValue(context.templateContext.newsletter.id),
       title: renderScopeValue(context.templateContext.newsletter.title ?? ''),
       revisionId: renderScopeValue(context.templateContext.newsletter.revisionId),
+      url: renderScopeValue(context.templateContext.newsletter.url ?? ''),
     },
     classes: {
       ids: context.templateContext.classes.ids,
@@ -774,6 +777,7 @@ function createTokenPlaceholderContext(
         id: '{{newsletter.id}}',
         title: '{{newsletter.title}}',
         revisionId: '{{newsletter.revisionId}}',
+        url: '{{newsletter.url}}',
       },
       classes: {
         ids: ['{{classes.list}}'],
@@ -820,6 +824,7 @@ function toArticleScope(article: RecipientArticle) {
     url: renderScopeValue(article.url),
     imageUrl: renderScopeValue(article.imageUrl ?? ''),
     image_url: renderScopeValue(article.imageUrl ?? ''),
+    date: renderScopeValue(article.date ?? ''),
     sourceTag: renderScopeValue(article.sourceTag ?? ''),
   }
 }

@@ -1,0 +1,21 @@
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#fdf6ee;">
+  <tr>
+    <td style="padding:26px 32px 20px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td width="264" valign="middle" style="width:264px;">
+            <img src="{{article.image_url}}" width="264" alt="{{article.title}}" style="display:block;width:264px;max-width:100%;height:auto;border:0;border-radius:16px;background-color:#f4e3d3;" />
+          </td>
+          <td valign="middle" style="padding-left:22px;">
+            <h2 style="margin:0;font-family:'Noto Sans TC','PingFang TC','Microsoft JhengHei',Arial,sans-serif;font-size:26px;line-height:1.35;font-weight:700;color:#54463e;">{{article.title}}</h2>
+            <div style="margin-top:8px;font-family:Arial,'Noto Sans TC',sans-serif;font-size:11px;letter-spacing:2px;color:#a89e95;text-transform:uppercase;">{{eyebrow}} · {{class.name}}</div>
+          </td>
+        </tr>
+      </table>
+      <div style="margin-top:14px;font-family:'Noto Sans TC','PingFang TC','Microsoft JhengHei',Arial,sans-serif;font-size:14px;line-height:1.9;color:#6f645c;">{{article.excerpt}}</div>
+      <div style="margin-top:16px;text-align:center;">
+        {{> ctaButton url=article.url label=ctaLabel}}
+      </div>
+    </td>
+  </tr>
+</table>

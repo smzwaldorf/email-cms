@@ -1,4 +1,9 @@
 import { getSupabaseClient } from '#/lib/supabase'
+import {
+  buildFallbackArticleImageUrl,
+  extractFirstArticleImageUrl,
+  formatArticleDisplayDate,
+} from '#/services/articleEmailPresentation'
 import { emailContentPreparationService } from '#/services/emailContentPreparationService'
 import { backendEmailPlatformService } from '#/services/emailPlatform/backendEmailPlatformService'
 import { enqueueSyncJob } from '#/services/emailPlatform/runtime'
@@ -107,6 +112,30 @@ function buildPublicArticleUrl(
   } catch {
     return newsletterPath
   }
+}
+
+function buildPublicNewsletterUrl(newsletter: NewsletterRow): string {
+  const newsletterPath = newsletter.week_number
+    ? `/week/${encodeURIComponent(newsletter.week_number)}`
+    : `/newsletter/${encodeURIComponent(newsletter.id)}`
+
+  try {
+    return new URL(newsletterPath, `${getPublicAppBaseUrl()}/`).toString()
+  } catch {
+    return newsletterPath
+  }
+}
+
+/**
+ * Articles carrying this (case-insensitive) tag are routed to the
+ * `weekly-summary-list` repeater instead of the featured article cards.
+ * Admins assign it from the article taxonomy manager (`/admin/articles`).
+ */
+const WEEKLY_SUMMARY_SOURCE_TAG = 'weekly'
+
+interface ArticleTagJoinRow {
+  article_id: string
+  article_tags?: { name?: string | null } | Array<{ name?: string | null }> | null
 }
 
 export interface AudienceCandidateShape {
@@ -631,9 +660,21 @@ class NewsletterDeliveryService {
       throw new Error(`Failed to load newsletter composition for delivery: ${error.message}`)
     }
 
+    const rows = (data ?? []) as unknown as NewsletterArticleJoinRow[]
+    const articleIds = rows
+      .map((row) => asArrayValue(row.articles)[0]?.id)
+      .filter((id): id is string => typeof id === 'string' && id.length > 0)
+    const weeklyTaggedArticleIds = await this.loadWeeklyTaggedArticleIds(articleIds)
+
+    const fallbackImageUrl = buildFallbackArticleImageUrl(getPublicAppBaseUrl())
+    const displayDate = formatArticleDisplayDate({
+      weekNumber: newsletter.week_number ?? null,
+      articleTimestamp: newsletter.release_date ?? newsletter.published_at ?? newsletter.updated_at,
+    })
+
     const sharedBlocks: PersonalizationInputNewsletter['sharedBlocks'] = []
     const classBlocks: PersonalizationInputNewsletter['classBlocks'] = []
-    for (const row of (data ?? []) as unknown as NewsletterArticleJoinRow[]) {
+    for (const row of rows) {
       const article = asArrayValue(row.articles)[0]
       if (!article) continue
       const block = {
@@ -641,6 +682,9 @@ class NewsletterDeliveryService {
         title: article.title ?? null,
         content: article.content,
         url: buildPublicArticleUrl(newsletter, article),
+        imageUrl: extractFirstArticleImageUrl(article.content) ?? fallbackImageUrl,
+        date: displayDate,
+        sourceTag: weeklyTaggedArticleIds.has(article.id) ? WEEKLY_SUMMARY_SOURCE_TAG : null,
         editorialOrder: row.article_order,
         personalizationKey: `article:${article.id}`,
       }
@@ -658,9 +702,35 @@ class NewsletterDeliveryService {
       newsletterId: newsletter.id,
       newsletterRevisionId: newsletter.updated_at,
       title: newsletter.title ?? null,
+      url: buildPublicNewsletterUrl(newsletter),
       sharedBlocks,
       classBlocks,
     }
+  }
+
+  /** IDs of articles carrying the (case-insensitive) `weekly` taxonomy tag. */
+  private async loadWeeklyTaggedArticleIds(articleIds: string[]): Promise<Set<string>> {
+    if (articleIds.length === 0) {
+      return new Set()
+    }
+    const supabase = getSupabaseClient()
+    const { data, error } = await supabase
+      .from('article_tag_assignments')
+      .select('article_id, article_tags!inner(name)')
+      .in('article_id', articleIds)
+
+    if (error) {
+      throw new Error(`Failed to load article tags for delivery: ${error.message}`)
+    }
+
+    const weekly = new Set<string>()
+    for (const row of (data ?? []) as unknown as ArticleTagJoinRow[]) {
+      const tagName = asArrayValue(row.article_tags)[0]?.name ?? ''
+      if (tagName.trim().toLowerCase() === WEEKLY_SUMMARY_SOURCE_TAG) {
+        weekly.add(row.article_id)
+      }
+    }
+    return weekly
   }
 
   private async loadGuardianInputs(recipientRows: NewsletterDeliveryBatchRecipientRow[]): Promise<{

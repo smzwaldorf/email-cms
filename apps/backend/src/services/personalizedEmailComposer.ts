@@ -85,6 +85,9 @@ function toResolvedBlock(
     title: block.title,
     content: block.content,
     url: block.url,
+    imageUrl: block.imageUrl ?? null,
+    date: block.date ?? null,
+    sourceTag: block.sourceTag ?? null,
     editorialOrder: block.editorialOrder,
     personalizationKey: key,
     classId,
@@ -148,8 +151,9 @@ function blockToArticle(block: PersonalizedEmailResolvedBlock): RecipientArticle
     title: toCanonicalString(block.title),
     excerpt: stripHtml(block.content ?? ''),
     url: block.url ?? '',
-    imageUrl: null,
-    sourceTag: null,
+    imageUrl: block.imageUrl ?? null,
+    date: block.date ?? null,
+    sourceTag: block.sourceTag ?? null,
   }
 }
 
@@ -377,6 +381,7 @@ export function composePersonalizedEmails(
             id: input.newsletter.newsletterId,
             title: input.newsletter.title ?? null,
             revisionId: input.newsletter.newsletterRevisionId,
+            url: input.newsletter.url ?? null,
           },
           classes: {
             ids: eligibleClassIds,
@@ -429,6 +434,7 @@ export function composePersonalizedEmails(
             id: input.newsletter.newsletterId,
             title: input.newsletter.title ?? null,
             revisionId: input.newsletter.newsletterRevisionId,
+            url: input.newsletter.url ?? null,
           },
           classes: { ids: eligibleClassIds },
         },

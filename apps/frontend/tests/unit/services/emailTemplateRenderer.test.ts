@@ -86,6 +86,60 @@ describe('renderTemplateForRecipient', () => {
     expect(result.html).toContain('Class Article')
   })
 
+  it('excludes tagged shared articles from shared-article-feature via excludeSourceTag', () => {
+    const blocks: EmailTemplateBlock[] = [
+      {
+        type: 'shared-article-feature',
+        order: 0,
+        visible: true,
+        bodyHtml: '<div>{{article.title}}</div>',
+        config: { maxItems: 5, excludeSourceTag: 'weekly' },
+      },
+    ]
+    const context = baseContext({
+      sharedArticles: [
+        { id: 'sa-1', title: 'Featured Story', excerpt: 'x', url: 'https://example.com/s1' },
+        {
+          id: 'sa-2',
+          title: 'Weekly Notice',
+          excerpt: 'y',
+          url: 'https://example.com/s2',
+          sourceTag: 'weekly',
+        },
+      ],
+    })
+    const result = renderTemplateForRecipient(blocks, context, { wrapInDocumentShell: false })
+    expect(result.html).toContain('Featured Story')
+    expect(result.html).not.toContain('Weekly Notice')
+  })
+
+  it('exposes article.date inside article-scoped blocks', () => {
+    const blocks: EmailTemplateBlock[] = [
+      {
+        type: 'weekly-summary-list',
+        order: 0,
+        visible: true,
+        bodyHtml: '<li>{{article.title}} — {{article.date}}</li>',
+        config: { sourceTag: 'weekly' },
+      },
+    ]
+    const context = baseContext({
+      weeklyItems: [
+        {
+          id: 'w-1',
+          title: 'Weekly bullet',
+          excerpt: 'Weekly excerpt',
+          url: 'https://example.com/w1',
+          date: 'Monday September 2025',
+          sourceTag: 'weekly',
+        },
+      ],
+    })
+    const result = renderTemplateForRecipient(blocks, context, { wrapInDocumentShell: false })
+    expect(result.html).toContain('Monday September 2025')
+    expect(result.missingTokens).toHaveLength(0)
+  })
+
   it('expands weekly-summary-list using weeklyItems filtered by sourceTag', () => {
     const blocks: EmailTemplateBlock[] = [
       {

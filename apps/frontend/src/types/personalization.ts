@@ -34,6 +34,12 @@ export interface PersonalizationInputBlock {
   title?: string | null
   content: string
   url?: string | null
+  /** Hero/thumbnail image for email card layouts (`{{article.image_url}}`). */
+  imageUrl?: string | null
+  /** Display date line for email layouts (`{{article.date}}`). */
+  date?: string | null
+  /** Repeater routing tag (e.g. 'weekly' for the weekly-summary-list block). */
+  sourceTag?: string | null
   editorialOrder: number
   personalizationKey?: string | null
 }
@@ -46,6 +52,8 @@ export interface PersonalizationInputNewsletter {
   newsletterId: string
   newsletterRevisionId: string
   title?: string | null
+  /** Public web URL of this newsletter issue (`{{newsletter.url}}`). */
+  url?: string | null
   sharedBlocks: PersonalizationInputBlock[]
   classBlocks: PersonalizationClassBlock[]
 }
@@ -76,6 +84,9 @@ export interface PersonalizedEmailResolvedBlock {
   title?: string | null
   content: string
   url?: string | null
+  imageUrl?: string | null
+  date?: string | null
+  sourceTag?: string | null
   editorialOrder: number
   personalizationKey: string
   classId?: string

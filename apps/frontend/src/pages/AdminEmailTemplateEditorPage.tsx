@@ -24,6 +24,7 @@ const TOKEN_EXAMPLES = {
   'newsletter.id': 'newsletter-demo',
   'newsletter.title': 'Weekly Newsletter',
   'newsletter.revisionId': 'newsletter-rev-1',
+  'newsletter.url': 'https://example.com/week/2025-W38',
   'classes.count': '2',
   'classes.list': 'A1, B1',
 } as const satisfies Record<(typeof EMAIL_TEMPLATE_TOKENS)[number], string>
@@ -43,6 +44,7 @@ function buildDemoEmailPreviewContext(): EmailTemplateRenderContext {
       id: truncate('newsletter-demo-long-id'),
       title: truncate('Weekly Newsletter Demo'),
       revisionId: truncate('newsletter-revision-long-id'),
+      url: 'https://example.com/week/2025-W38',
     },
     classes: {
       ids: ['A1', 'B1', 'C1'],

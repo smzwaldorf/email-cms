@@ -12,6 +12,8 @@ export interface RecipientArticle {
   excerpt: string
   url: string
   imageUrl?: string | null
+  /** Human-readable date line for email layouts (`{{article.date}}`). */
+  date?: string | null
   /** Optional tag used by `weekly-summary-list` repeater filtering. */
   sourceTag?: string | null
 }
@@ -90,6 +92,7 @@ function articleScope(article: RecipientArticle, excerptLength?: unknown): Recor
     'article.excerpt': excerpt,
     'article.url': article.url ?? '',
     'article.image_url': article.imageUrl ?? '',
+    'article.date': article.date ?? '',
   }
 }
 
@@ -118,7 +121,13 @@ function renderRepeaterBlock(
   const definition = getEmailBlockTypeDefinition(block.type)
   if (definition.repeaterDataSource === 'shared-articles') {
     const max = asPositiveInt(config.maxItems, SHARED_ITEMS_DEFAULT)
-    const items = context.sharedArticles.slice(0, max)
+    // Articles routed to another repeater (e.g. sourceTag 'weekly') can be
+    // excluded from the featured card list via config.excludeSourceTag.
+    const excludeSourceTag = asNullableString(config.excludeSourceTag)
+    const source = excludeSourceTag
+      ? context.sharedArticles.filter((item) => asNullableString(item.sourceTag) !== excludeSourceTag)
+      : context.sharedArticles
+    const items = source.slice(0, max)
     return renderRepeaterItems(items, block, globalScope, (article) => articleScope(article, config.excerptLength))
   }
   if (definition.repeaterDataSource === 'class-articles') {
