@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import type { SupabaseClient } from '@supabase/supabase-js'
-import { HttpError, requireAdmin } from '#/auth'
+import type { SupabaseClient } from '#/lib/supabase'
+import { HttpError, optionalViewer, requireAdmin, requireViewer } from '#/auth'
 import { getSupabaseClient } from '#/lib/supabase'
 import { adminService } from '#/services/adminService'
 import { batchUserImportService } from '#/services/batchUserImportService'
@@ -17,6 +17,8 @@ import {
 import { createDefaultFileEmailTemplateRenderContext } from '#/services/fileEmailTemplatePreviewContext'
 import { newsletterDeliveryService } from '#/services/newsletterDeliveryService'
 import { permissionCheckService, type PermissionAction } from '#/services/permissionCheckService'
+import { readerService } from '#/services/readerService'
+import { runSerializedQuery, type SerializedQuery } from '#/lib/query'
 import type { DeliveryAudienceSelection } from '#/types/emailDelivery'
 
 interface RouteContext {
@@ -251,11 +253,68 @@ export async function handleApiRequest(
       return
     }
 
+    if (method === 'GET' && url.pathname === '/api/auth/session') {
+      const viewer = await requireViewer(request)
+      sendJson(response, 200, {
+        user: {
+          id: viewer.id,
+          email: viewer.email,
+          role: viewer.role,
+          display_name: viewer.displayName,
+        },
+      }, context.corsOrigin)
+      return
+    }
+
+    if (method === 'POST' && url.pathname === '/api/data/query') {
+      const body = await readJson(request)
+      if (!isRecord(body) || typeof body.table !== 'string') {
+        throw new HttpError(400, 'Invalid query body')
+      }
+      if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(body.table)) {
+        throw new HttpError(400, 'Invalid table name')
+      }
+      sendJson(response, 200, await runSerializedQuery(body as SerializedQuery), context.corsOrigin)
+      return
+    }
+
+    if (method === 'GET' && url.pathname.startsWith('/api/reader/')) {
+      const viewer = await optionalViewer(request)
+
+      const weekMatch = url.pathname.match(/^\/api\/reader\/weeks\/([^/]+)$/)
+      if (weekMatch?.[1]) {
+        sendJson(
+          response,
+          200,
+          await readerService.getWeekBundle(decodeURIComponent(weekMatch[1]), viewer),
+          context.corsOrigin,
+        )
+        return
+      }
+
+      const articleMatch = url.pathname.match(/^\/api\/reader\/articles\/([^/]+)$/)
+      if (articleMatch?.[1]) {
+        sendJson(
+          response,
+          200,
+          await readerService.getReaderArticle(
+            decodeURIComponent(articleMatch[1]),
+            url.searchParams.get('newsletterId') ?? undefined,
+            viewer,
+          ),
+          context.corsOrigin,
+        )
+        return
+      }
+
+      throw new HttpError(404, 'Route not found')
+    }
+
     if (!url.pathname.startsWith('/api/admin/')) {
       throw new HttpError(404, 'Route not found')
     }
 
-    await requireAdmin(request, context.supabase)
+    await requireAdmin(request)
 
     if (method === 'POST' && url.pathname === '/api/admin/batch-import-users') {
       const body = await readJson(request)

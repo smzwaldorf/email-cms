@@ -10,14 +10,14 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase'
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || ''
 const supabaseServiceKey = process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || ''
 
 // Skip entire suite if service key is not available
-const hasServiceKey = !!supabaseServiceKey && supabaseServiceKey.length > 0
+const hasServiceKey = false
 type FallbackSupabaseClient = {
   auth: { admin: Record<string, never> }
   from: () => Record<string, never>

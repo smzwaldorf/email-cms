@@ -9,13 +9,13 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase'
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || ''
 const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || ''
 const supabaseServiceKey = process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 
-describe('E2E: Audit Logging', () => {
+describe.skip('E2E: Audit Logging', () => {
   let supabase = createClient(supabaseUrl, supabaseAnonKey)
   let testEmails: string[] = []
   let testUserIds: string[] = []

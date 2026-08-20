@@ -15,7 +15,7 @@
  * - Connection health
  */
 
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from './lib/dbClient.ts'
 import * as fs from 'fs'
 import * as path from 'path'
 
@@ -57,13 +57,13 @@ interface HealthReport {
  * Required tables in the database
  */
 const REQUIRED_TABLES = [
-  'newsletter_weeks',
+  'newsletters',
   'articles',
   'classes',
   'user_roles',
   'families',
   'family_enrollment',
-  'child_class_enrollment',
+  'student_class_enrollment',
   'teacher_class_assignment',
   'article_audit_log',
 ]
@@ -100,17 +100,14 @@ async function runHealthCheck(): Promise<void> {
   console.log(`${colors.blue}${'='.repeat(50)}${colors.reset}\n`)
 
   // Initialize Supabase client
-  const supabaseUrl = process.env.VITE_SUPABASE_URL
-  const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY
-
-  if (!supabaseUrl || !supabaseKey) {
+  if (!process.env.DATABASE_URL) {
     console.error(
-      `${colors.red}Error: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables are required${colors.reset}`
+      `${colors.red}Error: DATABASE_URL is required${colors.reset}`
     )
     process.exit(1)
   }
 
-  const supabase = createClient(supabaseUrl, supabaseKey)
+  const supabase = createClient()
 
   // Perform checks
   checks.push(await checkConnection(supabase))
@@ -139,7 +136,7 @@ async function checkConnection(
 ): Promise<CheckResult> {
   try {
     const { error } = await supabase
-      .from('newsletter_weeks')
+      .from('newsletters')
       .select('id', { count: 'exact', head: true })
 
     if (error) {
@@ -148,14 +145,14 @@ async function checkConnection(
         return {
           name: 'Database Connection',
           status: 'warning',
-          message: 'Connected but newsletter_weeks table missing',
+          message: 'Connected but newsletters table missing',
           details: [error.message],
         }
       }
       return {
         name: 'Database Connection',
         status: 'pass',
-        message: 'Successfully connected to Supabase database',
+        message: 'Successfully connected to Postgres',
         details: ['Connection verified with table query'],
       }
     }
@@ -163,7 +160,7 @@ async function checkConnection(
     return {
       name: 'Database Connection',
       status: 'pass',
-      message: 'Successfully connected to Supabase database',
+      message: 'Successfully connected to Postgres',
       details: ['Connection verified with table query'],
     }
   } catch (error) {
@@ -171,7 +168,7 @@ async function checkConnection(
     return {
       name: 'Database Connection',
       status: 'pass', // If we're using mock data, still consider connection "pass"
-      message: 'Connected to Supabase (mock environment)',
+      message: 'Connected to Postgres (mock environment)',
       details: ['Running in development/test mode'],
     }
   }
@@ -269,18 +266,14 @@ async function checkRLSPolicies(
 ): Promise<CheckResult> {
   try {
     const details: string[] = [
-      'RLS should be enabled per security requirements',
-      'Expected policies:',
-      '- articles: Public read, authenticated write',
-      '- families: User owns family',
-      '- family_enrollment: Parent/child access control',
-      '- child_class_enrollment: Parent/child access control',
+      'RLS was removed from the custom Postgres schema.',
+      'Reader visibility is enforced in the backend (readerVisibility).',
     ]
 
     return {
       name: 'Row-Level Security (RLS)',
       status: 'pass',
-      message: 'RLS policies configured (verify in Supabase console)',
+      message: 'Visibility is enforced in the Node backend, not Postgres RLS',
       details,
     }
   } catch (error) {

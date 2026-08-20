@@ -1,282 +1,33 @@
-/**
- * LoginPage Component Tests
- * Tests for email/password authentication form and quick-fill buttons
- */
+import { render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
+import { describe, expect, it, vi } from 'vitest'
 
-import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { BrowserRouter } from 'react-router-dom'
-import { LoginPage } from '@/pages/LoginPage'
-import { useAuth } from '@/context/AuthContext'
-
-type AuthResult = ReturnType<typeof useAuth>
-
-// Mock useAuth hook
 vi.mock('@/context/AuthContext', () => ({
-  useAuth: vi.fn(),
+  useAuth: () => ({ isLoading: false }),
 }))
 
-// Mock useNavigate
-const mockNavigate = vi.fn()
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom')
-  return { ...actual, useNavigate: () => mockNavigate }
-})
-
-// Mock WeekService
-vi.mock('@/services/WeekService', () => ({
-  WeekService: {
-    getLatestPublishedWeek: vi.fn(),
-  },
+vi.mock('@/components/GoogleButton', () => ({
+  GoogleButton: ({ redirectTo }: { redirectTo?: string }) => (
+    <button type="button">SMZ Identity {redirectTo || 'home'}</button>
+  ),
 }))
 
-describe('LoginPage Component', () => {
-  beforeEach(async () => {
-    vi.clearAllMocks()
-    mockNavigate.mockClear()
-    vi.mocked(useAuth).mockReturnValue({
-      signIn: vi.fn().mockResolvedValue(true),
-      isLoading: false,
-    } as AuthResult)
-    // Mock WeekService to return a default latest week
-    const { WeekService } = await import('@/services/WeekService')
-    vi.mocked(WeekService.getLatestPublishedWeek).mockResolvedValue({
-      week_number: '2025-W47',
-      release_date: '2025-11-27',
-      is_published: true,
-      created_at: '2025-11-27T00:00:00Z',
-      updated_at: '2025-11-27T00:00:00Z',
-    })
+import { LoginPage } from '@/pages/LoginPage'
+
+describe('LoginPage', () => {
+  it('offers the central identity login', () => {
+    render(<MemoryRouter initialEntries={['/login']}><LoginPage /></MemoryRouter>)
+    expect(screen.getByRole('button', { name: 'SMZ Identity home' })).toBeInTheDocument()
+    expect(screen.getByText(/Only approved, active parents and teachers/)).toBeInTheDocument()
   })
 
-  it('should render login form with email and password inputs', () => {
-    render(
-      <BrowserRouter>
-        <LoginPage />
-      </BrowserRouter>,
-    )
-
-    expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/password/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '登入' })).toBeInTheDocument()
+  it('passes through a safe requested destination', () => {
+    render(<MemoryRouter initialEntries={['/login?redirect_to=%2Fweek%2F2025-W47']}><LoginPage /></MemoryRouter>)
+    expect(screen.getByRole('button', { name: 'SMZ Identity /week/2025-W47' })).toBeInTheDocument()
   })
 
-  it('should show error when submitting empty form', async () => {
-    render(
-      <BrowserRouter>
-        <LoginPage />
-      </BrowserRouter>,
-    )
-
-    const submitButton = screen.getByRole('button', { name: '登入' })
-    fireEvent.click(submitButton)
-
-    await waitFor(() => {
-      expect(screen.getByText(/please enter both email and password/i)).toBeInTheDocument()
-    })
-  })
-
-  it('should show quick-fill buttons in dev mode', () => {
-    render(
-      <BrowserRouter>
-        <LoginPage />
-      </BrowserRouter>,
-    )
-
-    // Check for test user buttons
-    expect(screen.getByRole('button', { name: /parent 1/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /parent 2/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /teacher/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /admin/i })).toBeInTheDocument()
-  })
-
-  it('should fill credentials when Parent 1 button is clicked', async () => {
-    render(
-      <BrowserRouter>
-        <LoginPage />
-      </BrowserRouter>,
-    )
-
-    const parent1Button = screen.getByRole('button', { name: /parent 1/i })
-    fireEvent.click(parent1Button)
-
-    await waitFor(() => {
-      const emailInput = screen.getByDisplayValue('parent1@example.com')
-      const passwordInput = screen.getByDisplayValue('parent1password123')
-      expect(emailInput).toBeInTheDocument()
-      expect(passwordInput).toBeInTheDocument()
-    })
-  })
-
-  it('should fill credentials when Parent 2 button is clicked', async () => {
-    render(
-      <BrowserRouter>
-        <LoginPage />
-      </BrowserRouter>,
-    )
-
-    const parent2Button = screen.getByRole('button', { name: /parent 2/i })
-    fireEvent.click(parent2Button)
-
-    await waitFor(() => {
-      const emailInput = screen.getByDisplayValue('parent2@example.com')
-      const passwordInput = screen.getByDisplayValue('parent2password123')
-      expect(emailInput).toBeInTheDocument()
-      expect(passwordInput).toBeInTheDocument()
-    })
-  })
-
-  it('should fill credentials when Teacher button is clicked', async () => {
-    render(
-      <BrowserRouter>
-        <LoginPage />
-      </BrowserRouter>,
-    )
-
-    const teacherButton = screen.getByRole('button', { name: /teacher/i })
-    fireEvent.click(teacherButton)
-
-    await waitFor(() => {
-      const emailInput = screen.getByDisplayValue('teacher@example.com')
-      const passwordInput = screen.getByDisplayValue('teacher123456')
-      expect(emailInput).toBeInTheDocument()
-      expect(passwordInput).toBeInTheDocument()
-    })
-  })
-
-  it('should fill credentials when Admin button is clicked', async () => {
-    render(
-      <BrowserRouter>
-        <LoginPage />
-      </BrowserRouter>,
-    )
-
-    const adminButton = screen.getByRole('button', { name: /admin/i })
-    fireEvent.click(adminButton)
-
-    await waitFor(() => {
-      const emailInput = screen.getByDisplayValue('admin@example.com')
-      const passwordInput = screen.getByDisplayValue('admin123456')
-      expect(emailInput).toBeInTheDocument()
-      expect(passwordInput).toBeInTheDocument()
-    })
-  })
-
-  it('should submit form after 1 second delay when quick-fill button is clicked', async () => {
-    const mockSignIn = vi.fn().mockResolvedValue(true)
-    vi.mocked(useAuth).mockReturnValue({
-      signIn: mockSignIn,
-      isLoading: false,
-    } as AuthResult)
-
-    render(
-      <BrowserRouter>
-        <LoginPage />
-      </BrowserRouter>,
-    )
-
-    const parent1Button = screen.getByRole('button', { name: /parent 1/i })
-    fireEvent.click(parent1Button)
-
-    // Wait for the 1 second delay + form submission
-    await waitFor(
-      () => {
-        expect(mockSignIn).toHaveBeenCalledWith('parent1@example.com', 'parent1password123')
-      },
-      { timeout: 2000 },
-    )
-  })
-
-  it('should clear error message when quick-fill button is clicked', async () => {
-    render(
-      <BrowserRouter>
-        <LoginPage />
-      </BrowserRouter>,
-    )
-
-    // First, create an error
-    const submitButton = screen.getByRole('button', { name: '登入' })
-    fireEvent.click(submitButton)
-
-    await waitFor(() => {
-      expect(screen.getByText(/please enter both email and password/i)).toBeInTheDocument()
-    })
-
-    // Now click quick-fill button
-    const parent1Button = screen.getByRole('button', { name: /parent 1/i })
-    fireEvent.click(parent1Button)
-
-    // Error should be cleared
-    await waitFor(() => {
-      expect(screen.queryByText(/please enter both email and password/i)).not.toBeInTheDocument()
-    })
-  })
-
-  it('should disable quick-fill buttons when sign-in is in progress', () => {
-    vi.mocked(useAuth).mockReturnValue({
-      signIn: vi.fn(),
-      isLoading: true,
-    } as AuthResult)
-
-    render(
-      <BrowserRouter>
-        <LoginPage />
-      </BrowserRouter>,
-    )
-
-    const parent1Button = screen.getByRole('button', { name: /parent 1/i })
-    expect(parent1Button).toBeDisabled()
-  })
-
-  it('should navigate to latest published week on successful login', async () => {
-    const mockSignIn = vi.fn().mockResolvedValue(true)
-    vi.mocked(useAuth).mockReturnValue({
-      signIn: mockSignIn,
-      isLoading: false,
-    } as AuthResult)
-
-    render(
-      <BrowserRouter>
-        <LoginPage />
-      </BrowserRouter>,
-    )
-
-    const emailInput = screen.getByLabelText(/email/i)
-    const passwordInput = screen.getByLabelText(/password/i)
-    const submitButton = screen.getByRole('button', { name: '登入' })
-
-    fireEvent.change(emailInput, { target: { value: 'parent1@example.com' } })
-    fireEvent.change(passwordInput, { target: { value: 'parent1password123' } })
-    fireEvent.click(submitButton)
-
-    await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/week/2025-W47')
-    }, { timeout: 2000 })
-  })
-
-  it('should show error message on failed login', async () => {
-    const mockSignIn = vi.fn().mockResolvedValue(false)
-    vi.mocked(useAuth).mockReturnValue({
-      signIn: mockSignIn,
-      isLoading: false,
-    } as AuthResult)
-
-    render(
-      <BrowserRouter>
-        <LoginPage />
-      </BrowserRouter>,
-    )
-
-    const emailInput = screen.getByLabelText(/email/i)
-    const passwordInput = screen.getByLabelText(/password/i)
-    const submitButton = screen.getByRole('button', { name: '登入' })
-
-    fireEvent.change(emailInput, { target: { value: 'invalid@example.com' } })
-    fireEvent.change(passwordInput, { target: { value: 'wrongpassword' } })
-    fireEvent.click(submitButton)
-
-    await waitFor(() => {
-      expect(screen.getByText(/invalid email or password/i)).toBeInTheDocument()
-    })
+  it('drops an external requested destination', () => {
+    render(<MemoryRouter initialEntries={['/login?redirect_to=https%3A%2F%2Fevil.example']}><LoginPage /></MemoryRouter>)
+    expect(screen.getByRole('button', { name: 'SMZ Identity home' })).toBeInTheDocument()
   })
 })

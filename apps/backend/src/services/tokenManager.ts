@@ -10,7 +10,7 @@
  */
 
 import { getSupabaseClient } from '#/lib/supabase'
-import type { AuthSession } from '@supabase/supabase-js'
+import type { AuthSession } from '#/lib/supabase'
 
 export interface TokenInfo {
   accessToken: string

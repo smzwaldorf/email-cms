@@ -24,7 +24,7 @@ import PermissionService from '@/services/PermissionService'
 import ArticleService from '@/services/ArticleService'
 import { getAdminNewsletterPath } from '@/utils/adminNewsletterRoutes'
 
-import WeekService from '@/services/WeekService'
+import { readerApi } from '@/services/backendApi'
 
 type WeeklyReaderLocationState = {
   focusArticleId?: string
@@ -63,7 +63,7 @@ export function WeeklyReaderPage() {
       // /newsletter/:newsletterId route - use directly
       setResolvedNewsletterId(newsletterId)
     } else if (articleId) {
-      ArticleService.getArticleWithNewsletter(articleId)
+      readerApi.getArticle(articleId)
         .then((articleWithContext) => {
           if (articleWithContext.newsletter_id) {
             setResolvedNewsletterId(articleWithContext.newsletter_id)
@@ -74,8 +74,8 @@ export function WeeklyReaderPage() {
         })
     } else if (weekNumber) {
       // /week/:weekNumber route - look up newsletter UUID from week_number
-      WeekService.getWeek(weekNumber)
-        .then(newsletter => {
+      readerApi.getWeek(weekNumber)
+        .then(({ newsletter }) => {
           setResolvedNewsletterId(newsletter.id)
         })
         .catch(err => {

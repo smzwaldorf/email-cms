@@ -28,19 +28,10 @@
  */
 
 import 'dotenv/config'
-import { createClient } from '@supabase/supabase-js'
-
-const supabaseUrl = process.env.VITE_SUPABASE_URL
-const supabaseServiceRoleKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.VITE_SUPABASE_SERVICE_ROLE_KEY
-
-if (!supabaseUrl || !supabaseServiceRoleKey) {
-  console.error('❌ Error: VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in .env')
-  console.error('Service role key is required for auth user creation and database writes')
-  process.exit(1)
-}
-
-const supabase = createClient(supabaseUrl, supabaseServiceRoleKey)
+console.error('This script created Supabase Auth users and is retired.')
+console.error('Start custom Postgres and load schema/data with:')
+console.error('  npm run db:up && npm run seed')
+process.exit(1)
 
 // ============================================================================
 // Test Data Definitions

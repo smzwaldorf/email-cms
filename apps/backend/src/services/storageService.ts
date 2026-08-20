@@ -11,7 +11,6 @@ import type {
   UploadOptions,
   UploadProgressCallback,
 } from '#/types/storage'
-import { SupabaseStorageAdapter } from '#/adapters/SupabaseStorageAdapter'
 import { MockStorageAdapter } from '#/adapters/MockStorageAdapter'
 
 /**
@@ -32,11 +31,7 @@ export function createStorageProvider(
   if (_storageProvider) {
     const providerName = _storageProvider.getProviderName()
     const expectedName =
-      options.provider === 'supabase'
-        ? 'SupabaseStorage'
-        : options.provider === 'mock'
-          ? 'MockStorage'
-          : 'S3Storage'
+      options.provider === 's3' ? 'S3Storage' : 'MockStorage'
 
     if (providerName === expectedName) {
       return _storageProvider
@@ -60,17 +55,8 @@ function _createStorageProvider(
 ): StorageProvider {
   switch (options.provider) {
     case 'supabase': {
-      const supabaseUrl = process.env.VITE_SUPABASE_URL
-      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.VITE_SUPABASE_ANON_KEY
-
-      if (!supabaseUrl || !supabaseKey) {
-        console.warn(
-          'Supabase 環境變數未設定，使用 Mock 適配器 / Supabase env vars not set, using Mock adapter'
-        )
-        return new MockStorageAdapter()
-      }
-
-      return new SupabaseStorageAdapter(supabaseUrl, supabaseKey)
+      console.warn('Supabase Storage was removed. Using the mock storage adapter.')
+      return new MockStorageAdapter()
     }
 
     case 'mock': {
@@ -103,7 +89,7 @@ export function getStorageProvider(): StorageProvider {
     return _storageProvider
   }
 
-  const provider = (process.env.VITE_STORAGE_PROVIDER as StorageProviderType) || 'supabase'
+  const provider = (process.env.VITE_STORAGE_PROVIDER as StorageProviderType) || 'mock'
 
   return createStorageProvider({ provider })
 }
@@ -143,7 +129,7 @@ export function getCurrentStorageProviderName(): string {
 export async function verifyStorageConnection(): Promise<boolean> {
   try {
     const provider = getStorageProvider()
-    const testBucket = process.env.VITE_SUPABASE_MEDIA_BUCKET || 'media'
+    const testBucket = process.env.VITE_MEDIA_BUCKET || 'media'
 
     // 嘗試列出檔案以驗證連線
     // Try listing files to verify connection

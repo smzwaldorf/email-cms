@@ -75,8 +75,7 @@ export const CSP_DEVELOPMENT: CSPPolicy = {
     // Connect sources (fetch, xhr, websocket)
     'connect-src': [
       "'self'",
-      'http://localhost:54321', // Supabase local dev
-      'https://*.supabase.co',
+      'http://localhost:8787',
       'https://api.github.com',
     ],
 
@@ -153,7 +152,6 @@ export const CSP_PRODUCTION: CSPPolicy = {
 
     'connect-src': [
       "'self'",
-      'https://*.supabase.co',
       'https://api.github.com',
     ],
 

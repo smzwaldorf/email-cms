@@ -26,10 +26,6 @@ export default defineConfig({
       output: {
         // Manual code splitting strategy for better optimization
         manualChunks: (id) => {
-          // Vendor chunks: Supabase and other large dependencies
-          if (id.includes('node_modules/supabase')) {
-            return 'supabase'
-          }
           if (id.includes('node_modules')) {
             return 'vendor'
           }

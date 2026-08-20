@@ -1,4 +1,5 @@
-import { getSupabaseClient } from '@/lib/supabase'
+import { requestBackend, getAccessTokenOrNull, BackendApiError } from '@/services/backendClient'
+import type { ArticleRow, NewsletterRow } from '@/types/database'
 import type {
   DeliveryAudienceSelection,
   NewsletterDeliveryBatch,
@@ -20,66 +21,55 @@ export interface BackendBatchImportResult {
   importedUserEmails: string[]
 }
 
-export class BackendApiError extends Error {
-  constructor(
-    message: string,
-    public status: number,
-    public details?: unknown,
-  ) {
-    super(message)
-    this.name = 'BackendApiError'
-  }
-}
+export { BackendApiError }
 
-function backendBaseUrl(): string {
-  const configured = import.meta.env.VITE_BACKEND_URL
-  return (configured && configured.replace(/\/+$/, '')) || 'http://localhost:8787'
-}
-
-async function getAccessToken(): Promise<string> {
-  const supabase = getSupabaseClient()
-  const { data, error } = await supabase.auth.getSession()
-  if (error) {
-    throw new BackendApiError(`Failed to read session: ${error.message}`, 401, error)
-  }
-  const token = data.session?.access_token
+function requireAccessToken(): string {
+  const token = getAccessTokenOrNull()
   if (!token) {
     throw new BackendApiError('Admin API requires an authenticated session.', 401)
   }
   return token
 }
 
-async function parseResponseBody(response: Response): Promise<unknown> {
-  const text = await response.text()
-  if (!text.trim()) return null
-  try {
-    return JSON.parse(text) as unknown
-  } catch {
-    return text
-  }
-}
-
 export async function backendRequest<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
-  const token = await getAccessToken()
-  const response = await fetch(`${backendBaseUrl()}${path}`, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-      ...init.headers,
-    },
-  })
-  const body = await parseResponseBody(response)
-  if (!response.ok) {
-    const message = body && typeof body === 'object' && 'error' in body
-      ? String((body as { error: unknown }).error)
-      : `Backend API request failed with status ${response.status}`
-    throw new BackendApiError(message, response.status, body)
-  }
-  return body as T
+  return requestBackend<T>(path, init, requireAccessToken())
+}
+
+export async function backendRequestOptional<T>(
+  path: string,
+  init: RequestInit = {},
+): Promise<T> {
+  return requestBackend<T>(path, init, getAccessTokenOrNull())
+}
+
+export interface ReaderWeekBundle {
+  newsletter: NewsletterRow
+  articles: ArticleRow[]
+}
+
+export type ReaderArticle = ArticleRow & {
+  newsletter_id?: string
+  week_number?: string
+}
+
+export const readerApi = {
+  getWeek(idOrWeek: string): Promise<ReaderWeekBundle> {
+    return backendRequestOptional<ReaderWeekBundle>(
+      `/api/reader/weeks/${encodeURIComponent(idOrWeek)}`,
+    )
+  },
+
+  getArticle(articleId: string, newsletterId?: string): Promise<ReaderArticle> {
+    const search = new URLSearchParams()
+    if (newsletterId) search.set('newsletterId', newsletterId)
+    const query = search.toString()
+    return backendRequestOptional<ReaderArticle>(
+      `/api/reader/articles/${encodeURIComponent(articleId)}${query ? `?${query}` : ''}`,
+    )
+  },
 }
 
 export async function adminRpc<T>(

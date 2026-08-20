@@ -11,7 +11,7 @@
  * for user roles and teacher class assignments during a single page load.
  */
 
-import type { PostgrestError } from '@supabase/supabase-js'
+import type { PostgrestError } from '#/lib/supabase'
 
 import { table } from '#/lib/supabase'
 import type { ArticleRow, UserRoleRow, TeacherClassAssignmentRow } from '#/types/database'

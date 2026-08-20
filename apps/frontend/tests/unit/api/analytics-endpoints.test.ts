@@ -1,6 +1,6 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase'
 
 type DenoEnv = { env: { get: (key: string) => string | undefined } }
 type CountResult = { count: number; error: null }
@@ -20,7 +20,7 @@ type RedirectResponse = { status: number; headers: { Location: string } } | { st
 }
 
 // Mock dependencies
-vi.mock('@supabase/supabase-js', () => ({
+vi.mock('@/lib/supabase', () => ({
   createClient: vi.fn()
 }))
 

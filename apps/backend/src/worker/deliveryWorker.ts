@@ -1,4 +1,4 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { SupabaseClient } from '#/lib/supabase'
 import type { BackendConfig } from '#/config'
 import { newsletterDeliveryService } from '#/services/newsletterDeliveryService'
 

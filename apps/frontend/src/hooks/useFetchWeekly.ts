@@ -1,13 +1,12 @@
 /**
  * 自定義 Hook - 取得週報及其文章清單
- * Uses real Supabase services instead of mock data
+ * Loads the week bundle from the backend reader API instead of querying Supabase from the browser.
  * Supports both week_number (e.g., "2025-W47") and newsletter UUID for newsletters without week_number
  */
 
 import { useState, useEffect } from 'react'
 import { Article, NewsletterWeek } from '@/types'
-import WeekService from '@/services/WeekService'
-import ArticleService from '@/services/ArticleService'
+import { readerApi } from '@/services/backendApi'
 import type { ArticleRow, NewsletterRow } from '@/types/database'
 
 interface UseFetchWeeklyResult {
@@ -77,13 +76,13 @@ export function useFetchWeekly(newsletterId: string): UseFetchWeeklyResult {
     setIsLoading(true)
     setError(null)
     try {
-      // Fetch the week from Supabase (supports both week_number and UUID)
-      const weekData = await WeekService.getWeek(newsletterId)
+      if (!newsletterId) {
+        setNewsletter(null)
+        setArticles([])
+        return
+      }
 
-      // Fetch articles for the newsletter (supports both week_number and UUID)
-      const articlesData = await ArticleService.getArticlesByWeek(newsletterId, {
-        excludeDeleted: true,
-      })
+      const { newsletter: weekData, articles: articlesData } = await readerApi.getWeek(newsletterId)
       
       // Convert to UI types - pass weekNumber from newsletter data
       const convertedArticles = articlesData.map((row, index) =>

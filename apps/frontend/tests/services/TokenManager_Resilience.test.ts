@@ -1,70 +1,31 @@
+import { describe, expect, it, vi } from 'vitest'
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { TokenManager } from '../../src/services/tokenManager'
-
-// Mock Supabase
-const mockSupabase = {
-  auth: {
-    refreshSession: vi.fn(),
-    getSession: vi.fn(),
-  },
-}
-
-vi.mock('@/lib/supabase', () => ({
-  getSupabaseClient: () => mockSupabase,
+const mocks = vi.hoisted(() => ({
+  signinSilent: vi.fn(),
+  removeUser: vi.fn(),
+  setAccessToken: vi.fn(),
 }))
 
-describe('TokenManager Resilience', () => {
-  let tokenManager: TokenManager
+vi.mock('@/services/smzAuth', () => ({
+  refreshSmzUser: vi.fn(),
+  smzAuth: {
+    signinSilent: mocks.signinSilent,
+    removeUser: mocks.removeUser,
+  },
+}))
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-    tokenManager = new TokenManager()
-    // Manually set an existing token
-    tokenManager.setAccessToken('initial-token', 3600)
-    
-    // Silence console warnings for test
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
-    vi.spyOn(console, 'error').mockImplementation(() => {})
-  })
+vi.mock('@/services/backendClient', () => ({ setAccessToken: mocks.setAccessToken }))
 
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
+import { TokenManager } from '@/services/tokenManager'
 
-  it('should NOT clear tokens on refresh timeout', async () => {
-    // Mock refreshSession to throw timeout error
-    mockSupabase.auth.refreshSession.mockRejectedValue(new Error('Token refresh timeout'))
+describe('TokenManager refresh failure', () => {
+  it('fails closed when the central refresh token is rejected', async () => {
+    const manager = new TokenManager()
+    manager.setAccessToken('expired-token', 0)
+    mocks.signinSilent.mockRejectedValue(new Error('invalid_grant'))
 
-    // Trigger refresh
-    const result = await tokenManager.refreshAccessToken()
-
-    // Assertions
-    expect(result).toBe(false)
-    expect(await tokenManager.getAccessToken()).toBe('initial-token')
-  })
-
-  it('should clear tokens on Fatal auth error (Invalid Refresh Token)', async () => {
-    // Mock refreshSession to throw fatal error
-    mockSupabase.auth.refreshSession.mockRejectedValue(new Error('Invalid Refresh Token'))
-
-    // Trigger refresh
-    const result = await tokenManager.refreshAccessToken()
-
-    // Assertions
-    expect(result).toBe(false)
-    expect(await tokenManager.getAccessToken()).toBeNull()
-  })
-
-  it('should clear tokens on Fatal auth error (refresh_token_not_found)', async () => {
-    // Mock refreshSession to throw fatal error
-    mockSupabase.auth.refreshSession.mockRejectedValue(new Error('refresh_token_not_found'))
-
-    // Trigger refresh
-    const result = await tokenManager.refreshAccessToken()
-
-    // Assertions
-    expect(result).toBe(false)
-    expect(await tokenManager.getAccessToken()).toBeNull()
+    await expect(manager.forceRefresh()).resolves.toBe(false)
+    expect(manager.getTokenInfo()).toBeNull()
+    expect(mocks.removeUser).toHaveBeenCalled()
   })
 })

@@ -5,17 +5,14 @@
  * Usage: npx ts-node scripts/verify-schema.ts
  */
 
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from './lib/dbClient.ts'
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY
-
-if (!supabaseUrl || !supabaseKey) {
-  console.error('❌ Error: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY must be set in .env.local')
+if (!process.env.DATABASE_URL) {
+  console.error('❌ Error: DATABASE_URL must be set in .env.local')
   process.exit(1)
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey)
+const supabase = createClient()
 
 interface SchemaVerificationResult {
   name: string
@@ -34,13 +31,13 @@ interface VerificationSummary {
  */
 async function verifyTables(): Promise<SchemaVerificationResult[]> {
   const requiredTables = [
-    'newsletter_weeks',
+    'newsletters',
     'articles',
     'classes',
     'user_roles',
     'families',
     'family_enrollment',
-    'child_class_enrollment',
+    'student_class_enrollment',
     'teacher_class_assignment',
     'article_audit_log',
   ]
@@ -105,8 +102,8 @@ async function verifyIndexes(): Promise<SchemaVerificationResult[]> {
  * Main verification routine
  */
 async function verifySchema(): Promise<void> {
-  console.log('🔍 Verifying Supabase Database Schema...\n')
-  console.log(`Database URL: ${supabaseUrl}`)
+  console.log('🔍 Verifying Postgres schema...\n')
+  console.log(`Database URL: ${process.env.DATABASE_URL}`)
   console.log('━'.repeat(80))
 
   const tables = await verifyTables()
@@ -144,20 +141,12 @@ async function verifySchema(): Promise<void> {
     console.log('✅ All required tables are present')
     console.log('✅ All required indexes are configured')
     console.log(
-      '\n✨ Your Supabase database is ready for use!\n',
+      '\n✨ Custom Postgres is ready for use!\n',
     )
   } else {
     console.log('❌ Schema verification FAILED')
-    console.log('\nTo fix this, run the schema initialization:')
-    console.log('1. Open Supabase Dashboard: https://app.supabase.com')
-    console.log('2. Select your project')
-    console.log('3. Navigate to SQL Editor')
-    console.log('4. Create a new query')
-    console.log('5. Copy the contents of: specs/002-database-structure/contracts/schema.sql')
-    console.log('6. Execute the query')
-    console.log(
-      '7. Run this script again to verify\n',
-    )
+    console.log('\nTo fix this, apply the vanilla schema:')
+    console.log('  npm run db:up && npm run db:schema && npm run db:copy-data')
     process.exit(1)
   }
 }

@@ -4,7 +4,7 @@
  * Usage: npx ts-node scripts/test-article-visibility.ts
  */
 
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from './lib/dbClient.ts'
 
 import * as fs from 'fs'
 import * as path from 'path'

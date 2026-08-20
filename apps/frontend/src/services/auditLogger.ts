@@ -32,7 +32,7 @@ export type AuthEventType =
 /**
  * Supported authentication methods
  */
-export type AuthMethod = 'google_oauth' | 'magic_link' | 'email_password'
+export type AuthMethod = 'google_oauth' | 'magic_link' | 'email_password' | 'smz_oidc'
 
 /**
  * Options for logging an authentication event

@@ -1,10 +1,5 @@
-/**
- * Supabase Client Factory
- * Initializes and provides singleton Supabase client instance
- */
-
-import { createClient, SupabaseClient } from '@supabase/supabase-js'
-
+import { from, type HttpQueryBuilder } from '@/lib/dataQuery'
+import { getAccessTokenOrNull, getStoredAuthUser, setAccessToken, setStoredAuthUser } from '@/services/backendClient'
 import type {
   ArticleAuditLogRow,
   ArticleRow,
@@ -25,156 +20,166 @@ import type {
   UserRoleRow,
 } from '@/types/database'
 
-/** Row shape for tables not yet modeled in database.ts (admin-only / audit). */
 type UntypedTableRow = Record<string, unknown>
 
-/**
- * Validate that required environment variables are set
- */
-/**
- * Helper to get environment variables across Vite and Node.js
- */
-function getEnvVar(key: string): string | undefined {
-  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) {
-      return import.meta.env[key];
-  }
-  return undefined;
+export interface AuthUser {
+  id: string
+  email: string | null
 }
 
-/**
- * Validate that required environment variables are set
- */
-function validateEnvironment(): void {
-  const url = getEnvVar('VITE_SUPABASE_URL')
-  const key = getEnvVar('VITE_SUPABASE_ANON_KEY')
-
-  if (!url) {
-    throw new Error(
-      'Missing VITE_SUPABASE_URL environment variable. ' +
-      'Please ensure it is set in .env.local. ' +
-      'See SETUP.md for configuration instructions.',
-    )
-  }
-
-  if (!key) {
-    throw new Error(
-      'Missing VITE_SUPABASE_ANON_KEY environment variable. ' +
-      'Please ensure it is set in .env.local. ' +
-      'See SETUP.md for configuration instructions.',
-    )
-  }
+export interface AuthSession {
+  access_token: string
+  refresh_token?: string
+  expires_in?: number
+  user: AuthUser
 }
 
-function isLoopbackHost(hostname: string): boolean {
-  return hostname === 'localhost' || hostname === '127.0.0.1'
+export interface PostgrestError {
+  message: string
+  code?: string
 }
 
-/**
- * When the app is visited from another device (LAN/Tailscale),
- * "localhost" in frontend env vars points to that device itself.
- * Rewrite loopback Supabase URLs to the current page host so auth/API calls
- * still target the development machine that serves this app.
- */
-function resolveSupabaseUrl(rawUrl: string): string {
-  if (typeof window === 'undefined') {
-    return rawUrl
-  }
+function authNotMigrated(): never {
+  throw new Error('Auth is not migrated yet. OCID will replace Supabase Auth.')
+}
 
-  try {
-    const parsed = new URL(rawUrl)
-    const pageHost = window.location.hostname
-
-    if (isLoopbackHost(parsed.hostname) && !isLoopbackHost(pageHost)) {
-      parsed.hostname = pageHost
-      console.info(
-        `🌐 Rewriting Supabase URL host for remote access: ${rawUrl} -> ${parsed.toString()}`,
-      )
-      return parsed.toString()
+const storageStub = {
+  from(_bucket: string) {
+    return {
+      async upload(..._args: unknown[]) {
+        return { data: null, error: { message: 'Storage is not using Supabase. Use the mock/local provider.' } }
+      },
+      async download(..._args: unknown[]) {
+        return { data: null as Blob | null, error: { message: 'Storage is not using Supabase.' } }
+      },
+      async remove(..._args: unknown[]) {
+        return { data: null, error: { message: 'Storage is not using Supabase.' } }
+      },
+      async list(..._args: unknown[]) {
+        return {
+          data: [] as Array<{ name: string; metadata?: { size?: number }; created_at?: string; updated_at?: string }>,
+          error: null,
+        }
+      },
+      async createSignedUrl(..._args: unknown[]) {
+        return { data: { signedUrl: '' }, error: { message: 'Storage is not using Supabase.' } }
+      },
+      getPublicUrl(path: string) {
+        return { data: { publicUrl: path } }
+      },
     }
-  } catch (error) {
-    console.warn('⚠️ Failed to parse VITE_SUPABASE_URL:', error)
-  }
-
-  return rawUrl
+  },
 }
 
-/**
- * Create and configure Supabase client
- */
-function createSupabaseClient(): SupabaseClient {
-  validateEnvironment()
+export interface PostgresClient {
+  from: {
+    <T extends keyof DatabaseTables>(tableName: T): HttpQueryBuilder<DatabaseTables[T]>
+    <T = Record<string, unknown>>(tableName: string): HttpQueryBuilder<T>
+  }
+  auth: {
+    getSession(): Promise<{ data: { session: AuthSession | null }; error: null }>
+    getUser(): Promise<{ data: { user: AuthUser | null }; error: { message: string } | null }>
+    refreshSession(): Promise<{ data: { session: AuthSession | null }; error: { message: string } }>
+    signInWithPassword(_input: unknown): Promise<{ data: { user: AuthUser | null }; error: { message: string } }>
+    signInWithOAuth(_input: unknown): Promise<{ data: unknown; error: { message: string } }>
+    signInWithOtp(_input: unknown): Promise<{ data: unknown; error: { message: string } }>
+    verifyOtp(_input: unknown): Promise<{ data: { user: AuthUser | null }; error: { message: string } }>
+    signOut(): Promise<{ error: null }>
+    onAuthStateChange(_callback: (event: string, session: AuthSession | null) => void): {
+      data: { subscription: { unsubscribe: () => void } }
+    }
+  }
+  storage: typeof storageStub
+  channel(_name: string): {
+    on(..._args: unknown[]): {
+      on(..._args: unknown[]): unknown
+      subscribe(): { unsubscribe(): void }
+    }
+    subscribe(): { unsubscribe(): void }
+    unsubscribe(): void
+  }
+  rpc(_fn: string, _args?: unknown): Promise<{ data: null; error: { message: string } }>
+}
 
-  const rawUrl = getEnvVar('VITE_SUPABASE_URL') as string
-  const url = resolveSupabaseUrl(rawUrl)
-  const key = getEnvVar('VITE_SUPABASE_ANON_KEY') as string
-
-  const client = createClient(url, key, {
+function createClient(..._args: unknown[]): PostgresClient {
+  return {
+    from,
     auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      // Explicitly use PKCE flow for OAuth (required for Google sign-in)
-      flowType: 'pkce',
-      // Ensure localStorage is used for storing PKCE code verifier
-      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-      // Detect session from URL on page load (important for OAuth callbacks)
-      detectSessionInUrl: true,
-      // Storage key for session data
-      storageKey: 'supabase.auth.token',
-    },
-    global: {
-      headers: {
-        // Optional: Add custom headers for debugging or tracking
-        // 'X-App-Name': import.meta.env.VITE_APP_NAME || 'Email CMS',
+      async getSession() {
+        const token = getAccessTokenOrNull()
+        const user = getStoredAuthUser()
+        if (!token || !user) return { data: { session: null }, error: null }
+        return {
+          data: {
+            session: {
+              access_token: token,
+              user,
+            },
+          },
+          error: null,
+        }
+      },
+      async getUser() {
+        const token = getAccessTokenOrNull()
+        const user = getStoredAuthUser()
+        if (!token || !user) return { data: { user: null }, error: { message: 'Not authenticated' } }
+        return { data: { user }, error: null }
+      },
+      async refreshSession() {
+        return authNotMigrated()
+      },
+      async signInWithPassword() {
+        return authNotMigrated()
+      },
+      async signInWithOAuth() {
+        return authNotMigrated()
+      },
+      async signInWithOtp() {
+        return authNotMigrated()
+      },
+      async verifyOtp() {
+        return authNotMigrated()
+      },
+      async signOut() {
+        setAccessToken(null)
+        setStoredAuthUser(null)
+        return { error: null }
+      },
+      onAuthStateChange() {
+        return { data: { subscription: { unsubscribe() {} } } }
       },
     },
-  })
-
-  // Log successful initialization in development
-  if (getEnvVar('DEV')) {
-    console.log('✅ Supabase client initialized successfully')
-    console.log(`   Project URL: ${url}`)
+    storage: storageStub,
+    channel() {
+      const subscription = { unsubscribe() {} }
+      const chain = {
+        on(..._args: unknown[]) {
+          return chain
+        },
+        subscribe: () => subscription,
+        unsubscribe() {},
+      }
+      return chain
+    },
+    async rpc() {
+      return { data: null, error: { message: 'Database RPCs that depended on Supabase Auth were removed.' } }
+    },
   }
+}
 
+export type SupabaseClient = PostgresClient
+
+let client: PostgresClient | null = null
+
+export function getSupabaseClient(): PostgresClient {
+  if (!client) client = createClient()
   return client
 }
 
-/**
- * Singleton Supabase client instance
- * Initialize lazily on first access
- */
-/**
- * Singleton Supabase client instance
- * Initialize lazily on first access
- */
-let supabaseClient: SupabaseClient | null = null
-
-/**
- * Get the singleton Supabase client instance
- * Initializes on first call
- */
-export function getSupabaseClient(): SupabaseClient {
-  if (!supabaseClient) {
-    try {
-      supabaseClient = createSupabaseClient()
-    } catch (error) {
-      console.error('Failed to initialize Supabase client:', error)
-      throw error
-    }
-  }
-  return supabaseClient
-}
-
-/**
- * Reset the Supabase client (useful for testing)
- */
 export function resetSupabaseClient(): void {
-  supabaseClient = null
+  client = null
 }
 
-/**
- * Type-safe database table accessor
- * Provides autocomplete for available tables
- */
 export interface DatabaseTables {
   newsletters: NewsletterRow
   articles: ArticleRow
@@ -184,11 +189,19 @@ export interface DatabaseTables {
   families: FamilyRow
   family_enrollment: FamilyEnrollmentRow
   students: StudentRow
-  /** Renamed from child_class_enrollment; same row shape as ChildClassEnrollmentRow */
   student_class_enrollment: ChildClassEnrollmentRow
   child_class_enrollment: ChildClassEnrollmentRow
   teacher_class_assignment: TeacherClassAssignmentRow
   article_audit_log: ArticleAuditLogRow
+  auth_events: UntypedTableRow
+  analytics_events: UntypedTableRow
+  analytics_snapshots: UntypedTableRow
+  media_files: UntypedTableRow
+  media_usage: UntypedTableRow
+  media_variants: UntypedTableRow
+  media_deletion_audit: UntypedTableRow
+  article_media_references: UntypedTableRow
+  tracking_tokens: UntypedTableRow
   user_role_assignments: UntypedTableRow
   permission_mutation_audit_log: UntypedTableRow
   authorization_decision_trace: UntypedTableRow
@@ -200,17 +213,10 @@ export interface DatabaseTables {
   newsletter_delivery_batch_recipients: NewsletterDeliveryBatchRecipientRow
 }
 
-/**
- * Helper function to access a specific table with type safety
- */
 export function table<T extends keyof DatabaseTables>(
   tableName: T,
-): ReturnType<SupabaseClient['from']> {
+): HttpQueryBuilder<DatabaseTables[T]> {
   return getSupabaseClient().from(tableName)
 }
 
-/**
- * Re-export Supabase types for convenience
- */
-export type { SupabaseClient } from '@supabase/supabase-js'
-export { createClient } from '@supabase/supabase-js'
+export { createClient }

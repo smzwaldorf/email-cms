@@ -1,189 +1,73 @@
-/**
- * Auth Callback Handler Page
- * Handles OAuth redirects and magic link verification
- * Processes authentication callbacks from Supabase
- */
-
 import React, { useEffect, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useAuth } from '@/context/AuthContext'
+import { useNavigate } from 'react-router-dom'
+import { authService } from '@/services/authService'
 import WeekService from '@/services/WeekService'
-import { isSafeAppRedirectPath } from '@/utils/urlUtils'
+
+type CallbackStatus = 'processing' | 'success' | 'error'
+
+async function defaultDestination(): Promise<string> {
+  const latestWeek = await WeekService.getLatestPublishedWeek()
+  if (latestWeek) {
+    const routeKey = latestWeek.week_number || latestWeek.id
+    return latestWeek.week_number && /^\d{4}-W\d{2}$/.test(latestWeek.week_number)
+      ? `/week/${routeKey}`
+      : `/newsletter/${routeKey}`
+  }
+  return '/'
+}
 
 export const AuthCallbackPage: React.FC = () => {
   const navigate = useNavigate()
-  const { user, isLoading, verifyMagicLink } = useAuth()
-  const [searchParams] = useSearchParams()
+  const [status, setStatus] = useState<CallbackStatus>('processing')
   const [error, setError] = useState<string | null>(null)
-  const [status, setStatus] = useState('processing')
 
   useEffect(() => {
-    const handleCallback = async () => {
+    let active = true
+    void (async () => {
       try {
-        setStatus('processing')
-        console.log('🔄 Auth callback handler initiated')
-
-        // Check for magic link token in URL hash
-        // Supabase returns the token in the URL fragment: #access_token=...
-        const hash = window.location.hash
-        console.log('📍 URL hash:', hash ? hash.substring(0, 50) + '...' : 'none')
-
-        // Check for error in query params
-        const errorParam = searchParams.get('error')
-        if (errorParam) {
-          setError(errorParam)
-          setStatus('error')
-          console.error('❌ Auth error:', errorParam)
-          return
-        }
-
-        // Get redirect destination from query params
-        const redirectUrl = searchParams.get('redirect_to')
-        const safeRedirectUrl = isSafeAppRedirectPath(redirectUrl) ? redirectUrl : null
-        console.log('📍 Redirect destination from params:', safeRedirectUrl || 'none')
-
-        // Supabase handles OAuth and Magic Link callbacks automatically
-        // The user session is established when the auth state changes
-        // We just need to wait for the user to be set by AuthContext
-
-        // Wait for auth to be initialized and user to be set
-        let attempts = 0
-        const maxAttempts = 20 // 10 seconds with 500ms checks
-
-        const checkUser = setInterval(() => {
-          attempts++
-
-          if (!isLoading && user) {
-            clearInterval(checkUser)
-            console.log('✅ User authenticated:', user.email)
-
-            // Redirect to original article link or latest week
-            setTimeout(async () => {
-              try {
-                if (safeRedirectUrl) {
-                  console.log('🔄 Redirecting to original article:', safeRedirectUrl)
-                  setStatus('success')
-                  navigate(safeRedirectUrl, { replace: true })
-                } else {
-                  // Fetch latest published week from database
-                  const latestWeek = await WeekService.getLatestPublishedWeek()
-                  if (latestWeek) {
-                    // Use /week for week_number format, /newsletter for UUIDs
-                    const routeKey = latestWeek.week_number || latestWeek.id
-                    const isWeekNumber = latestWeek.week_number && /^\d{4}-W\d{2}$/.test(latestWeek.week_number)
-                    const route = isWeekNumber ? `/week/${routeKey}` : `/newsletter/${routeKey}`
-                    console.log('🔄 Redirecting to latest newsletter:', routeKey)
-                    setStatus('success')
-                    navigate(route)
-                  } else {
-                    // Fallback: if no published weeks, fetch all weeks and get the latest
-                    console.warn('⚠️ No published weeks found, fetching all weeks')
-                    const allWeeks = await WeekService.getAllWeeks({ sortBy: 'week', sortOrder: 'desc', limit: 1 })
-                    if (allWeeks.length > 0) {
-                      // Use /week for week_number format, /newsletter for UUIDs
-                      const week = allWeeks[0]
-                      const routeKey = week.week_number || week.id
-                      const isWeekNumber = week.week_number && /^\d{4}-W\d{2}$/.test(week.week_number)
-                      const route = isWeekNumber ? `/week/${routeKey}` : `/newsletter/${routeKey}`
-                      console.log('🔄 Redirecting to latest available newsletter:', routeKey)
-                      setStatus('success')
-                      navigate(route)
-                    } else {
-                      // No weeks available in database
-                      console.error('❌ No weeks found in database')
-                      setStatus('error')
-                      setError('No newsletter weeks available. Please contact the administrator.')
-                    }
-                  }
-                }
-              } catch (err) {
-                console.error('❌ Error fetching latest week:', err)
-                setStatus('error')
-                setError('Failed to load newsletter weeks. Please try logging in again.')
-              }
-            }, 500)
-          } else if (attempts >= maxAttempts) {
-            clearInterval(checkUser)
-            console.warn('⚠️ Auth callback timeout - no user after 10 seconds')
-            setStatus('timeout')
-            setError('Authentication verification took too long. Please try logging in again.')
-          }
-        }, 500)
-
-        return () => clearInterval(checkUser)
-      } catch (err) {
-        console.error('❌ Auth callback error:', err)
-        setError((err as Error).message || 'An error occurred during authentication')
+        const result = await authService.completeSignIn()
+        if (!active) return
+        setStatus('success')
+        navigate(result.redirectTo || await defaultDestination(), { replace: true })
+      } catch (caught) {
+        if (!active) return
+        console.error('SMZ Identity callback failed', caught)
+        setError(caught instanceof Error ? caught.message : 'Authentication could not be completed.')
         setStatus('error')
       }
+    })()
+    return () => {
+      active = false
     }
-
-    handleCallback()
-  }, [user, isLoading, navigate, searchParams, verifyMagicLink])
+  }, [navigate])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-waldorf-sage to-waldorf-cream flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md text-center">
         {status === 'processing' && (
           <>
-            <div className="flex justify-center mb-4">
-              <div className="relative w-12 h-12">
-                <div className="absolute inset-0 border-4 border-gray-200 rounded-full"></div>
-                <div className="absolute inset-0 border-4 border-transparent border-t-blue-600 border-r-blue-600 rounded-full animate-spin"></div>
-              </div>
-            </div>
+            <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600" />
             <h1 className="text-2xl font-bold text-gray-900 mb-2">正在驗證</h1>
-            <p className="text-gray-600">Processing your authentication...</p>
+            <p className="text-gray-600">Completing your SMZ Identity sign-in...</p>
           </>
         )}
 
         {status === 'success' && (
           <>
-            <div className="flex justify-center mb-4">
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-            </div>
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-700">✓</div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">登入成功！</h1>
-            <p className="text-gray-600">Redirecting to newsletter viewer...</p>
+            <p className="text-gray-600">Redirecting to the newsletter...</p>
           </>
         )}
 
         {status === 'error' && (
           <>
-            <div className="flex justify-center mb-4">
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </div>
-            </div>
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-700">!</div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">驗證失敗</h1>
-            <p className="text-red-600 mb-4">{error || 'An error occurred during authentication'}</p>
+            <p className="text-red-600 mb-4">{error}</p>
             <button
-              onClick={() => navigate('/login')}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-150"
-            >
-              返回登入
-            </button>
-          </>
-        )}
-
-        {status === 'timeout' && (
-          <>
-            <div className="flex justify-center mb-4">
-              <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
-                <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">驗證逾時</h1>
-            <p className="text-gray-600 mb-4">{error || 'Authentication verification took too long'}</p>
-            <button
-              onClick={() => navigate('/login')}
+              type="button"
+              onClick={() => navigate('/login', { replace: true })}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-150"
             >
               返回登入

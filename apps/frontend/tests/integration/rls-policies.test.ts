@@ -504,7 +504,7 @@ describe('RLS Policies', () => {
  *
  * 範例測試（偽代碼）：
  *
- * const { createClient } = require('@supabase/supabase-js')
+ * const { createClient } = require('@/lib/supabase')
  *
  * describe('RLS Integration Tests', () => {
  *   const url = process.env.SUPABASE_URL

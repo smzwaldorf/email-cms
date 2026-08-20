@@ -177,6 +177,8 @@ export interface UserRoleRow {
   email: string;
   /** Enum: 'admin' | 'teacher' | 'parent' | 'student' */
   role: 'admin' | 'teacher' | 'parent' | 'student';
+  /** Optional display name */
+  display_name?: string | null;
   /** Creation timestamp */
   created_at: string; // TIMESTAMP WITH TIME ZONE
   /** Last update timestamp */

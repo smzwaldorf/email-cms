@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: email-cms-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: email_cms
+      POSTGRES_PASSWORD: email_cms
+      POSTGRES_DB: email_cms
+    ports:
+      - "55432:5432"
+    volumes:
+      - email-cms-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U email_cms -d email_cms"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  email-cms-postgres-data:

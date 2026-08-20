@@ -56,7 +56,7 @@ type VariantBlueprint = {
 
 export class MediaGovernanceService {
   private getMediaBucket(): string {
-    return process.env.VITE_SUPABASE_MEDIA_BUCKET || 'media'
+    return process.env.VITE_MEDIA_BUCKET || 'media'
   }
 
   private getFileExtension(format: string): string {

@@ -1,4 +1,4 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { SupabaseClient } from '#/lib/supabase'
 
 import type { EmailPlatformSyncJobRow, EmailPlatformWebhookEventRow, FamilyRow } from '../../types/database'
 

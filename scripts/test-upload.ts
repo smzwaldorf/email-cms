@@ -1,5 +1,5 @@
 
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from './lib/dbClient.ts'
 import dotenv from 'dotenv'
 import fs from 'fs'
 import path from 'path'

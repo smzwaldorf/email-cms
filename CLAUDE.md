@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Email CMS Newsletter Viewer** - A React 18 + TypeScript monorepo for reading and managing email newsletters organized by week, plus a Node backend that owns admin/business logic, email delivery, and tracking endpoints.
 
-- **Tech Stack**: React 18, TypeScript 5, Vite 5, Tailwind CSS 3, Vitest, React Router v6, Supabase, PostgreSQL, Handlebars (email templates)
+- **Tech Stack**: React 18, TypeScript 5, Vite 5, Tailwind CSS 3, Vitest, React Router v6, PostgreSQL, Handlebars (email templates)
 - **Workspaces**: `apps/frontend` (React app), `apps/backend` (Node HTTP service + delivery worker), `packages/shared` (shared types)
 
 ## Monorepo Layout
@@ -49,28 +49,24 @@ npx vitest --run -t "should render"                      # Tests matching patter
 - Do not weaken the frontend/backend import boundary override in `.eslintrc.cjs`.
 - The repo currently uses legacy ESLint config via `.eslintrc.cjs`, so do not upgrade ESLint to v9+ without also migrating to flat config (`eslint.config.js`). Upgrading `@typescript-eslint/*` is fine, but keep ESLint on a compatible v8 release unless you are doing the config migration in the same change.
 - After lint/tooling upgrades, re-run `npm run lint` and watch for newly surfaced rules (for example unused catch variables) rather than suppressing them.
-- For Supabase query typing, prefer existing row types in `src/types/database.ts` and small local query result interfaces over `as any`.
+- For Postgres query typing, prefer existing row types in `src/types/database.ts` and small local query result interfaces over `as any`.
 
 ### Reset Local Development Environment
-When you need to fully reset local Supabase data and recreate development seed data:
+When you need to fully reset local Postgres and recreate development seed data:
 
-1. Reset the local database and re-run migrations:
+1. Start custom Postgres and apply the vanilla schema plus seed snapshot:
 ```bash
-supabase db reset
+npm run db:up
+npm run seed
 ```
 
-2. Extract the local Supabase keys into `.env` from the local Supabase output (for example via `supabase status`). At minimum, store:
+2. Store the connection string in `.env.local` (see `.env.example`):
 ```bash
-.env
-VITE_SUPABASE_URL=http://127.0.0.1:54321
-VITE_SUPABASE_ANON_KEY=your-local-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-local-service-role-key
+DATABASE_URL=postgresql://email_cms:email_cms@127.0.0.1:55432/email_cms
+VITE_BACKEND_URL=http://localhost:8787
 ```
 
-3. Recreate development seed data. The script reads `VITE_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` from `.env` at runtime, so no inline environment variables are needed:
-```bash
-npx tsx scripts/setup-development.ts
-```
+Auth/OCID is not migrated yet. A Bearer token equal to a `user_roles.id` UUID is the temporary identity.
 
 ### Path Aliases
 Each workspace aliases `@` to its own `src/` directory:
@@ -89,7 +85,7 @@ Pages (WeeklyReaderPage)
 Components (ArticleListView, ArticleContent, NavigationBar, SideButton)
     ↓ (rendering, props-based logic)
 Services & Context (backendApi, thin service proxies, NavigationContext)
-    ↓ (reader queries via Supabase RLS; admin operations via backend HTTP API)
+    ↓ (reader queries via backend HTTP API; admin operations via /api/admin/rpc)
 Backend (apps/backend routes.ts -> services)
     ↓ (business logic, RBAC, Supabase service-role access, Kit sync, tracking)
 ```

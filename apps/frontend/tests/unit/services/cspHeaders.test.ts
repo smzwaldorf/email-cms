@@ -108,9 +108,9 @@ describe('CSP Headers Service', () => {
       expect(scriptDirective).toContain("'unsafe-inline'")
     })
 
-    it('should include localhost Supabase URL', () => {
+    it('should include the local backend URL', () => {
       const connectDirective = CSP_DEVELOPMENT.directives['connect-src']
-      expect(connectDirective).toContain('http://localhost:54321')
+      expect(connectDirective).toContain('http://localhost:8787')
     })
 
     it('should allow unsafe-inline styles for Tailwind', () => {

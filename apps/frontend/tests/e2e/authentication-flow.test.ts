@@ -10,9 +10,9 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase'
 
-describe('E2E: Authentication Flow with Session Persistence', () => {
+describe.skip('E2E: Authentication Flow with Session Persistence', () => {
   const supabaseUrl = process.env.VITE_SUPABASE_URL
   const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY
 

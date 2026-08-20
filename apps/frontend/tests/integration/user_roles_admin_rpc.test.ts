@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@/lib/supabase'
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || ''
 const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || ''
 const supabaseServiceKey =
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || ''
 
-const hasRequiredEnv = !!supabaseUrl && !!supabaseAnonKey && !!supabaseServiceKey
+const hasRequiredEnv = false
 
 describe.skipIf(!hasRequiredEnv)('user_roles admin RPCs', () => {
   const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {

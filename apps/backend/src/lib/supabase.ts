@@ -1,58 +1,117 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { query } from '#/lib/db'
+import { from, type QueryBuilder, type QueryError } from '#/lib/query'
 
-let supabaseClient: SupabaseClient | null = null
-let supabaseClientOverride: (() => SupabaseClient) | null = null
+export type PostgrestError = QueryError
 
-function requireEnv(key: string): string {
-  const value = process.env[key]
-  if (!value) {
-    throw new Error(`Missing required backend environment variable: ${key}`)
-  }
-  return value
+export interface AuthSession {
+  access_token: string
+  refresh_token?: string
+  expires_in?: number
+  expires_at?: number
+  user: AuthUser
 }
 
-function createBackendSupabaseClient(): SupabaseClient {
-  return createClient(
-    requireEnv('VITE_SUPABASE_URL'),
-    requireEnv('SUPABASE_SERVICE_ROLE_KEY'),
-    {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-      },
-    },
+export interface AuthUser {
+  id: string
+  email: string | null
+}
+
+function authNotMigrated(): never {
+  throw new Error('Auth is not migrated yet. OCID will replace Supabase Auth.')
+}
+
+export interface PostgresClient {
+  from: <T = unknown>(tableName: string) => QueryBuilder<T>
+  auth: {
+    getUser(token?: string): Promise<{
+      data: { user: AuthUser | null }
+      error: { message: string } | null
+    }>
+    getSession(): Promise<{ data: { session: AuthSession | null }; error: { message: string } | null }>
+    refreshSession(): Promise<{ data: { session: AuthSession | null }; error: { message: string } | null }>
+    signInWithPassword(_input: unknown): Promise<{ data: { session: AuthSession | null }; error: { message: string } | null }>
+    signInWithOAuth(_input: unknown): Promise<{ data: unknown; error: { message: string } | null }>
+    signInWithOtp(_input: unknown): Promise<{ data: unknown; error: { message: string } | null }>
+    verifyOtp(_input: unknown): Promise<{ data: { session: AuthSession | null }; error: { message: string } | null }>
+    signOut(): Promise<{ error: { message: string } | null }>
+    onAuthStateChange(_callback: (event: string, session: AuthSession | null) => void): { data: { subscription: { unsubscribe: () => void } } }
+  }
+}
+
+export type SupabaseClient = PostgresClient
+
+let client: PostgresClient | null = null
+let clientOverride: (() => PostgresClient) | null = null
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+async function getUserByDevToken(token?: string): Promise<{
+  data: { user: AuthUser | null }
+  error: { message: string } | null
+}> {
+  if (!token) {
+    return { data: { user: null }, error: { message: 'Missing bearer token' } }
+  }
+  // Auth/OCID is not migrated yet. Accept a user_roles.id UUID as a temporary identity.
+  if (!UUID_RE.test(token)) {
+    return { data: { user: null }, error: { message: 'Invalid bearer token' } }
+  }
+  const result = await query<{ id: string; email: string | null }>(
+    'SELECT id, email FROM user_roles WHERE id = $1',
+    [token],
   )
-}
-
-export function configureSupabaseClientOverride(factory: (() => SupabaseClient) | null): void {
-  supabaseClientOverride = factory
-  supabaseClient = null
-}
-
-export function getSupabaseClient(): SupabaseClient {
-  if (supabaseClientOverride) {
-    return supabaseClientOverride()
+  const row = result.rows[0]
+  if (!row) {
+    return { data: { user: null }, error: { message: 'Invalid bearer token' } }
   }
-
-  if (!supabaseClient) {
-    supabaseClient = createBackendSupabaseClient()
-  }
-
-  return supabaseClient
+  return { data: { user: { id: row.id, email: row.email } }, error: null }
 }
 
-export function getSupabaseServiceClient(): SupabaseClient {
+function createPostgresClient(): PostgresClient {
+  return {
+    from,
+    auth: {
+      getUser: getUserByDevToken,
+      getSession: async () => ({ data: { session: null }, error: null }),
+      refreshSession: async () => authNotMigrated(),
+      signInWithPassword: async () => authNotMigrated(),
+      signInWithOAuth: async () => authNotMigrated(),
+      signInWithOtp: async () => authNotMigrated(),
+      verifyOtp: async () => authNotMigrated(),
+      signOut: async () => authNotMigrated(),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
+    },
+  }
+}
+
+export function configureSupabaseClientOverride(factory: (() => PostgresClient) | null): void {
+  clientOverride = factory
+  client = null
+}
+
+export function getSupabaseClient(): PostgresClient {
+  if (clientOverride) {
+    return clientOverride()
+  }
+  if (!client) {
+    client = createPostgresClient()
+  }
+  return client
+}
+
+export function getSupabaseServiceClient(): PostgresClient {
   return getSupabaseClient()
 }
 
 export function resetSupabaseClient(): void {
-  supabaseClient = null
-  supabaseClientOverride = null
+  client = null
+  clientOverride = null
 }
 
-export function table(tableName: string): ReturnType<SupabaseClient['from']> {
-  return getSupabaseClient().from(tableName)
+export function table<T = unknown>(tableName: string): QueryBuilder<T> {
+  return getSupabaseClient().from<T>(tableName)
 }
 
-export type { SupabaseClient } from '@supabase/supabase-js'
-export { createClient } from '@supabase/supabase-js'
+export function createClient(..._args: unknown[]): PostgresClient {
+  return createPostgresClient()
+}

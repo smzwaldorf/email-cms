@@ -7,11 +7,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { authService } from '@/services/authService'
 import { tokenManager } from '@/services/tokenManager'
-import { getSupabaseClient } from '@/lib/supabase'
 import { clearPermissionCache } from '@/services/PermissionService'
 import type { AuthUser } from '@/types/auth'
-import type { AuthEventRow } from '@/types/database'
-import type { RealtimePostgresInsertPayload } from '@supabase/supabase-js'
 
 export interface AuthContextType {
   user: AuthUser | null
@@ -42,12 +39,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
         console.log('🔄 AuthContext: Initializing auth state...')
 
-        // Initialize tokenManager with existing session (if any)
-        await tokenManager.initializeFromSession()
-        console.log('🔄 AuthContext: TokenManager initialization complete')
-
-        // Ensure authService is initialized first
-        // This will check for existing Supabase session and set up listeners
+        // Restore the central OIDC session and resolve the local application user.
         await authService.ensureInitialized()
         console.log('🔄 AuthContext: AuthService initialization complete')
 
@@ -82,7 +74,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     initializeAuth().then((fn) => {
       unsubscribe = fn
-      // Realtime listener will be set up in the user change effect below
     })
 
     return () => {
@@ -92,93 +83,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     }
   }, [])
-
-  // Keep-alive: Ping Supabase every 5 minutes while tab is visible
-  // This prevents the connection from going completely stale after idle
-  useEffect(() => {
-    const KEEP_ALIVE_INTERVAL = 5 * 60 * 1000 // 5 minutes
-    let intervalId: NodeJS.Timeout | null = null
-
-    const pingSupabase = async () => {
-      // Allow background pings to keep TCP connection alive
-      // if (!isTabVisible) return
-      
-      const startTime = performance.now()
-      try {
-        const supabase = getSupabaseClient()
-        // Use getUser() instead of getSession() because getSession() often hits local cache (0-1ms)
-        // and fails to keep the TCP connection warm. getUser() forces a network request.
-        const { error } = await supabase.auth.getUser()
-        
-        if (error) {
-           // If 401, it means token expired, which is fine (TokenManager will handle it), 
-           // but at least we touched the network.
-           console.log(`💓 Keep-alive ping network check (${(performance.now() - startTime).toFixed(0)}ms) - Status: ${error.status || 'Error'}`)
-        } else {
-           console.log(`💓 Keep-alive ping network check successful (${(performance.now() - startTime).toFixed(0)}ms)`)
-        }
-      } catch (err) {
-        console.warn('⚠️ Keep-alive ping failed:', err)
-      }
-    }
-
-    const handleVisibilityChange = () => {
-      const isVisible = !document.hidden
-      
-      if (isVisible) {
-        // Tab became visible - ping immediately for responsiveness
-        console.log('👁️ Tab visible, checking connection...')
-        pingSupabase()
-      } else {
-        console.log('🙈 Tab hidden, keep-alive continuing in background')
-      }
-    }
-
-    // Start keep-alive immediately
-    intervalId = setInterval(pingSupabase, KEEP_ALIVE_INTERVAL)
-    // Initial ping
-    pingSupabase()
-
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-
-    return () => {
-      if (intervalId) clearInterval(intervalId)
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-    }
-  }, [])
-
-  // Re-subscribe when user changes (e.g. login)
-  useEffect(() => {
-    if (!user) return
-
-    console.log(`🔌 Setting up Realtime listener for user ${user.id} (user changed)`)
-    const supabase = getSupabaseClient()
-    
-    const channel = supabase
-      .channel(`auth_events_${user.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'auth_events',
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload: RealtimePostgresInsertPayload<AuthEventRow>) => {
-          const event = payload.new
-          if (event.event_type === 'logout') {
-            console.warn('⚠️ Received force logout event from server. Signing out...')
-            signOut()
-          }
-        }
-      )
-      .subscribe()
-
-    return () => {
-      console.log(`🔌 Cleaning up Realtime listener for user ${user.id}`)
-      channel.unsubscribe()
-    }
-  }, [user?.id])
 
   const signIn = async (email: string, password: string): Promise<boolean> => {
     try {

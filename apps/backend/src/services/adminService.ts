@@ -10,7 +10,7 @@
  * - Relationship management for parent-student connections
  */
 
-import type { PostgrestError } from '@supabase/supabase-js'
+import type { PostgrestError } from '#/lib/supabase'
 
 import { getSupabaseClient } from '#/lib/supabase'
 import { articleMediaManager } from '#/services/articleMediaManager'

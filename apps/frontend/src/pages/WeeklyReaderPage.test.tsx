@@ -38,6 +38,19 @@ vi.mock('@/services/PermissionService', () => ({
   }
 }))
 
+vi.mock('@/services/backendApi', () => ({
+  readerApi: {
+    getWeek: vi.fn(async (idOrWeek: string) => ({
+      newsletter: { id: '11111111-1111-1111-1111-111111111111', week_number: idOrWeek },
+      articles: [],
+    })),
+    getArticle: vi.fn(async () => ({
+      id: 'article-1',
+      newsletter_id: '11111111-1111-1111-1111-111111111111',
+    })),
+  },
+}))
+
 const mockNavigate = vi.fn()
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom')

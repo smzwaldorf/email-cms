@@ -1,12 +1,12 @@
 /**
  * 自定義 Hook - 取得文章內容
- * Uses Supabase ArticleService for consistency with article list data
+ * Loads the article from the backend reader API so visibility matches the week list.
  * 優化：使用 useCallback 避免不必要的函數重新建立
  */
 
 import { useState, useEffect, useCallback } from 'react'
 import { Article } from '@/types'
-import ArticleService from '@/services/ArticleService'
+import { readerApi } from '@/services/backendApi'
 import type { ArticleRow } from '@/types/database'
 
 interface UseFetchArticleResult {
@@ -69,9 +69,7 @@ export function useFetchArticle(articleId: string, weekNumber?: string): UseFetc
     setArticle(null)
 
     try {
-      // Use getArticleWithNewsletter to also fetch the associated newsletter ID
-      // Pass weekNumber context to resolve the correct newsletter for shared articles
-      const articleRow = await ArticleService.getArticleWithNewsletter(articleId, weekNumber)
+      const articleRow = await readerApi.getArticle(articleId, weekNumber)
       console.log('[useFetchArticle] Got article:', articleRow?.id, 'newsletter_id:', articleRow?.newsletter_id, 'week_number:', articleRow?.week_number)
       
       if (articleRow) {

@@ -1,0 +1,646 @@
+--
+-- PostgreSQL database dump
+--
+
+\restrict X1fCMPSvP69sRT1fyPtewbSDJh69zmtKaVYjXtXRkKi0iYzPCPw5bgP0Vidtark
+
+-- Dumped from database version 17.11 (Debian 17.11-1.pgdg13+2)
+-- Dumped by pg_dump version 17.11 (Debian 17.11-1.pgdg13+2)
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+--
+-- Data for Name: newsletters; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+SET SESSION AUTHORIZATION DEFAULT;
+
+ALTER TABLE public.newsletters DISABLE TRIGGER ALL;
+
+COPY public.newsletters (id, week_number, title, description, release_date, status, published_at, created_at, updated_at, is_template) FROM stdin;
+f0470000-0000-0000-0000-000000000047	2025-W47	Week 47 Newsletter	\N	2025-11-17	published	\N	2026-06-17 02:01:41.874901+00	2026-06-17 02:01:41.874901+00	f
+f0480000-0000-0000-0000-000000000048	2025-W48	Week 48 Newsletter	\N	2025-11-24	published	\N	2026-06-17 02:01:41.884605+00	2026-06-17 02:01:41.884605+00	f
+f0000000-0000-0000-0000-000000000001	\N	Holiday Special Edition 2025	\N	2025-12-15	published	\N	2026-06-17 02:01:41.891956+00	2026-06-17 02:01:41.891956+00	f
+f0490000-0000-0000-0000-000000000049	2025-W49	Week 49 Newsletter (Draft)	\N	2025-12-01	published	2026-06-17 16:12:44.949+00	2026-06-17 02:01:41.888296+00	2026-06-17 16:12:44.960216+00	f
+de71b602-caf3-4957-9d21-0c635eca0bb0	2026-W02	Test	\N	2026-07-04	draft	\N	2026-07-02 23:23:35.035026+00	2026-07-02 23:23:35.035026+00	f
+\.
+
+
+ALTER TABLE public.newsletters ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: user_roles; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.user_roles DISABLE TRIGGER ALL;
+
+COPY public.user_roles (id, email, role, created_at, updated_at, display_name) FROM stdin;
+cc6458b6-dfe9-445e-9c61-415626a243fc	parent1@example.com	parent	2026-06-17 02:01:42.109564+00	2026-06-17 02:01:42.109564+00	\N
+36670ae6-960e-457a-aa5e-a89ffa944e1d	parent2@example.com	parent	2026-06-17 02:01:42.215205+00	2026-06-17 02:01:42.215205+00	\N
+9faddd05-0cab-4b63-b364-cacbccbad936	teacher@example.com	teacher	2026-06-17 02:01:42.319566+00	2026-06-17 02:01:42.319566+00	\N
+fcc5f10f-4297-496a-9759-a7ff55436367	admin@example.com	admin	2026-06-17 02:01:42.424945+00	2026-06-17 02:01:42.424945+00	\N
+892b058d-064f-4711-9b8f-782d7f2cbf49	harryworld@gmail.com	parent	2026-06-17 02:01:42.533547+00	2026-06-17 02:01:42.533547+00	\N
+e997d6c9-9be8-4196-9723-9866a0ad0f40	hacktofire@gmail.com	parent	2026-06-17 02:01:42.668621+00	2026-06-17 02:01:42.668621+00	\N
+\.
+
+
+ALTER TABLE public.user_roles ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: articles; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.articles DISABLE TRIGGER ALL;
+
+COPY public.articles (id, title, content, author_id, status, visibility_type, restricted_to_classes, created_by, created_at, updated_at, deleted_at, short_id, week_number, author, summary, article_order, class_ids, family_ids, published_at, edited_at, last_edited_by, deleted_by, purge_scheduled_at) FROM stdin;
+a0470001-0001-0001-0001-000000000001	週報開刊致詞 (Weekly Opening)	<h1>歡迎閱讀本週電子報</h1>\n<p>Dear Parents and Students,</p>\n<p>Welcome to Week 47 of our newsletter. This week we have exciting updates from all classes.</p>\n<h2>Highlights</h2>\n<ul>\n<li>School event announcements</li>\n<li>Academic updates</li>\n<li>Upcoming activities</li>\n</ul>\n<hr>\n<p><strong>Published on:</strong> 2025-11-17<br>\n<strong>Week:</strong> 2025-W47</p>	\N	published	public	\N	\N	2026-06-17 02:01:41.930934+00	2026-06-17 02:01:41.930934+00	\N	a00001	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N
+a0470002-0002-0002-0002-000000000002	Grade 1A Class Updates (一年級甲班班級大小事)	<h1>一年級甲班班級大小事</h1>\n<p>This week in Grade 1A:</p>\n<h2>Academic Updates</h2>\n<ul>\n<li><strong>Math:</strong> Introduction to addition and subtraction</li>\n<li><strong>Reading:</strong> New story time sessions every afternoon</li>\n<li><strong>Art:</strong> Seasonal craft projects with fall themes</li>\n</ul>\n<h2>Activities</h2>\n<ul>\n<li>Class field trip to local museum (Nov 22)</li>\n<li>Show and tell event (Nov 24)</li>\n<li>Parent-teacher conference (Nov 23 at 3:00 PM)</li>\n</ul>\n<h2>Homework</h2>\n<ul>\n<li>Math worksheets (30 minutes)</li>\n<li>Reading journal entries (2 pages)</li>\n</ul>\n<p><strong>Note:</strong> This article is visible only to parents with children in Grade 1A.</p>	\N	published	class_restricted	["A1"]	\N	2026-06-17 02:01:41.935362+00	2026-06-17 02:01:41.935362+00	\N	a00002	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N
+a0470003-0003-0003-0003-000000000003	Grade 1B Class Updates (一年級乙班班級大小事)	<h1>一年級乙班班級大小事</h1>\n<p>This week in Grade 1B:</p>\n<h2>Academic Updates</h2>\n<ul>\n<li><strong>Music:</strong> Learning new songs and instruments</li>\n<li><strong>PE:</strong> Team sports activities and cooperative games</li>\n<li><strong>Science:</strong> Exploring nature and seasons</li>\n</ul>\n<h2>Class Events</h2>\n<ul>\n<li>Music performance practice (Friday)</li>\n<li>Sports day competition (upcoming)</li>\n<li>Class election for student council</li>\n</ul>\n<h2>Important Dates</h2>\n<ul>\n<li>Parent conference: Nov 23 at 2:00 PM</li>\n<li>Holiday celebration: Dec 15</li>\n</ul>\n<p><strong>Note:</strong> This article is visible only to parents with children in Grade 1B.</p>	\N	published	class_restricted	["A2"]	\N	2026-06-17 02:01:41.938634+00	2026-06-17 02:01:41.938634+00	\N	a00003	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N
+a0470004-0004-0004-0004-000000000004	Grade 2A Class Updates (二年級甲班班級大小事)	<h1>二年級甲班班級大小事</h1>\n<p>This week in Grade 2A:</p>\n<h2>Learning Highlights</h2>\n<ul>\n<li><strong>Mathematics:</strong> Multiplication basics and strategies</li>\n<li><strong>Literature:</strong> Classic story appreciation and discussion</li>\n<li><strong>Social Studies:</strong> Community helpers and professions</li>\n</ul>\n<h2>Field Trip</h2>\n<ul>\n<li>Planned for Dec 5</li>\n<li>Destination: Local nature preserve</li>\n<li>Permission slips due: Nov 30</li>\n</ul>\n<h2>Student Achievements</h2>\n<ul>\n<li>Math competition scores announced</li>\n<li>Science fair projects starting</li>\n<li>Reading club selections announced</li>\n</ul>\n<p><strong>Note:</strong> This article is visible only to parents with children in Grade 2A.</p>	\N	published	class_restricted	["B1"]	\N	2026-06-17 02:01:41.94142+00	2026-06-17 02:01:41.94142+00	\N	a00004	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N
+a0470005-0005-0005-0005-000000000005	Grade 2B Class Updates (二年級乙班班級大小事)	<h1>二年級乙班班級大小事</h1>\n<p>This week in Grade 2B:</p>\n<h2>Academic Focus</h2>\n<ul>\n<li><strong>Division Practice:</strong> Solving word problems</li>\n<li><strong>Writing:</strong> Short story composition and editing</li>\n<li><strong>Computer Lab:</strong> Introduction to typing and digital literacy</li>\n</ul>\n<h2>Upcoming Events</h2>\n<ul>\n<li>Technology showcase (Dec 10)</li>\n<li>Writing workshop with guest author (Nov 28)</li>\n<li>Computer skills assessment (Dec 1-5)</li>\n</ul>\n<h2>Reminders</h2>\n<ul>\n<li>Library books due Friday</li>\n<li>Project submission deadline: next Thursday</li>\n<li>Parent volunteer sign-up: please help with field trip</li>\n</ul>\n<p><strong>Note:</strong> This article is visible only to parents with children in Grade 2B.</p>	\N	published	class_restricted	["B2"]	\N	2026-06-17 02:01:41.944246+00	2026-06-17 02:01:41.944246+00	\N	a00005	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N
+a0470006-0006-0006-0006-000000000006	Important Announcements (重要公告)	<h1>重要公告 - Important Announcements</h1>\n<h2>School-Wide Updates</h2>\n<h3>Parent-Teacher Conferences</h3>\n<ul>\n<li><strong>Dates:</strong> November 22-24, 2025</li>\n<li><strong>Time:</strong> 1:00 PM - 5:00 PM each day</li>\n<li><strong>Sign-up:</strong> See class teachers for time slots</li>\n<li><strong>Location:</strong> Classroom and multipurpose room</li>\n</ul>\n<h3>School Assembly</h3>\n<ul>\n<li><strong>When:</strong> Monday, November 17 at 8:30 AM</li>\n<li><strong>Where:</strong> Gymnasium</li>\n<li><strong>Topic:</strong> Annual awards and recognition ceremony</li>\n</ul>\n<h3>Field Trip Permission Slips</h3>\n<ul>\n<li><strong>Deadline:</strong> November 19, 2025</li>\n<li><strong>Details:</strong> Check your child's backpack for forms</li>\n<li><strong>Questions:</strong> Contact the main office</li>\n</ul>\n<h3>Holiday Celebration Planning</h3>\n<ul>\n<li>School holiday party: December 19</li>\n<li>Student performances, games, and refreshments</li>\n<li>Family invitation event</li>\n</ul>\n<hr>\n<p><strong>Visibility:</strong> This article is visible to all parents and visitors.</p>	\N	published	public	\N	\N	2026-06-17 02:01:41.947209+00	2026-06-17 02:01:41.947209+00	\N	a00006	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N
+a0480001-0001-0001-0001-000000000001	週報開刊致詞 (Weekly Opening - Week 48)	<h1>歡迎閱讀第 48 週電子報</h1>\n<p>Dear Parents and Students,</p>\n<p>Welcome to Week 48 of our newsletter. As we enter the final stretch before the holiday season, we want to share exciting updates from our school community.</p>\n<h2>Holiday Season Planning</h2>\n<ul>\n<li>Thanksgiving celebration week (Nov 24-28)</li>\n<li>Holiday performances planning (upcoming)</li>\n<li>Winter break schedule announcement</li>\n</ul>\n<h2>Academic Updates</h2>\n<ul>\n<li>End of quarter assessments</li>\n<li>Progress reports distribution</li>\n<li>Achievement recognitions</li>\n</ul>\n<hr>\n<p><strong>Published on:</strong> 2025-11-24<br>\n<strong>Week:</strong> 2025-W48</p>	\N	published	public	\N	\N	2026-06-17 02:01:41.950238+00	2026-06-17 02:01:41.950238+00	\N	a00007	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N
+a0480002-0002-0002-0002-000000000002	Thanksgiving Activities & Gratitude (感恩節活動)	<h1>感恩節特別活動</h1>\n<p>Dear Families,</p>\n<p>This week we celebrate gratitude and thankfulness with special activities across all grades.</p>\n<h2>Grade 1 Activities</h2>\n<ul>\n<li>Gratitude chain craft project</li>\n<li>Thanksgiving story time</li>\n<li>Food sharing day preparation</li>\n</ul>\n<h2>Grade 2 Activities</h2>\n<ul>\n<li>Community helpers appreciation event</li>\n<li>Gratitude journal writing</li>\n<li>Potluck celebration planning</li>\n</ul>\n<h2>Family Engagement</h2>\n<ul>\n<li>Share your gratitude: Send us your family's thankfulness message</li>\n<li>Join us for the school-wide gratitude assembly on Friday at 10:00 AM</li>\n<li>Bring dishes for the potluck: Sign-up sheet sent separately</li>\n</ul>\n<hr>\n<p><strong>Note:</strong> All grades participating in special Thanksgiving programming.</p>	\N	published	public	\N	\N	2026-06-17 02:01:41.953673+00	2026-06-17 02:01:41.953673+00	\N	a00008	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N
+a0480003-0003-0003-0003-000000000003	Winter Break Logistics & Holiday Closure	<h1>冬季假期說明與校園關閉</h1>\n<p>Dear Parents,</p>\n<h2>Winter Break Schedule</h2>\n<ul>\n<li><strong>Last day of school:</strong> December 19, 2025</li>\n<li><strong>Winter break:</strong> December 20, 2025 - January 4, 2026</li>\n<li><strong>School resumes:</strong> January 5, 2026 (Monday)</li>\n</ul>\n<h2>Campus Closure</h2>\n<ul>\n<li>Administrative offices closed Dec 20 - Jan 4</li>\n<li>Emergency contact for urgent matters: (123) 456-7890</li>\n<li>All facilities closed except for scheduled maintenance</li>\n</ul>\n<h2>Before Holiday Break</h2>\n<ul>\n<li>Return all borrowed books and materials</li>\n<li>Clear out lockers and cubbies</li>\n<li>Take home all seasonal decorations and projects</li>\n</ul>\n<h2>Winter Break Activities (Optional)</h2>\n<ul>\n<li>Reading challenge: Log 10 hours of reading</li>\n<li>Math practice: Complete learning packets (available online)</li>\n<li>Art project: Create holiday greeting card for classmates</li>\n</ul>\n<hr>\n<p><strong>Questions?</strong> Contact the main office by December 12.</p>	\N	published	public	\N	\N	2026-06-17 02:01:41.956387+00	2026-06-17 02:01:41.956387+00	\N	a00009	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N
+fa000001-0001-0001-0001-000000000001	School Calendar & Key Dates (學校行事曆與重要日期)	<h1>🗓️ School Calendar & Key Dates</h1>\n<p>Dear Parents and Community Members,</p>\n<p>This is a recurring article that provides important school calendar information. It appears in multiple weekly newsletters for your convenience.</p>\n<h2>November 2025</h2>\n<ul>\n<li><strong>Nov 17-21:</strong> Parent-Teacher Conference Week</li>\n<li><strong>Nov 24:</strong> Thanksgiving Celebration</li>\n<li><strong>Nov 27-28:</strong> Thanksgiving Holiday (No School)</li>\n</ul>\n<h2>December 2025</h2>\n<ul>\n<li><strong>Dec 5:</strong> Winter Concert</li>\n<li><strong>Dec 12:</strong> Last day for After-School Programs</li>\n<li><strong>Dec 15:</strong> Holiday Art Show</li>\n<li><strong>Dec 19:</strong> Last Day of School (Early Dismissal 12:00 PM)</li>\n<li><strong>Dec 20 - Jan 4:</strong> Winter Break</li>\n</ul>\n<h2>January 2026</h2>\n<ul>\n<li><strong>Jan 5:</strong> School Resumes</li>\n<li><strong>Jan 19:</strong> Martin Luther King Jr. Day (No School)</li>\n<li><strong>Jan 26-30:</strong> International Week</li>\n</ul>\n<h2>Contact Information</h2>\n<ul>\n<li><strong>Main Office:</strong> (123) 456-7890</li>\n<li><strong>Email:</strong> office@waldorf-school.edu</li>\n<li><strong>Office Hours:</strong> Mon-Fri, 8:00 AM - 4:00 PM</li>\n</ul>\n<hr>\n<p><em>This calendar is updated regularly. Check back each week for the latest information.</em></p>	\N	published	public	\N	\N	2026-06-17 02:01:41.960191+00	2026-06-17 02:01:41.960191+00	\N	fa0001	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N
+\.
+
+
+ALTER TABLE public.articles ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: analytics_events; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.analytics_events DISABLE TRIGGER ALL;
+
+COPY public.analytics_events (id, user_id, newsletter_id, article_id, session_id, event_type, metadata, created_at) FROM stdin;
+24a78486-2bcd-4444-955d-a63428878bce	fcc5f10f-4297-496a-9759-a7ff55436367	f0000000-0000-0000-0000-000000000001	fa000001-0001-0001-0001-000000000001	a6960d59-009f-4507-a25a-39fa6e46ce5d	page_view	{"path": "/newsletter/f0000000-0000-0000-0000-000000000001", "search": "", "journey_correlation_id": null}	2026-06-17 02:02:28.048204+00
+1a6c1708-d874-4fbb-a69d-52dfd0d24d7c	fcc5f10f-4297-496a-9759-a7ff55436367	f0000000-0000-0000-0000-000000000001	fa000001-0001-0001-0001-000000000001	a6960d59-009f-4507-a25a-39fa6e46ce5d	session_end	{"path": "/week/2025-W47", "time_spent_seconds": 3, "journey_correlation_id": null}	2026-06-17 02:02:30.821518+00
+0103a7d6-dbc3-4dfe-b6f2-49b06e6e447f	fcc5f10f-4297-496a-9759-a7ff55436367	f0470000-0000-0000-0000-000000000047	a0470001-0001-0001-0001-000000000001	a6960d59-009f-4507-a25a-39fa6e46ce5d	page_view	{"path": "/week/2025-W47", "search": "", "journey_correlation_id": null}	2026-06-17 02:02:30.896155+00
+f87b2168-05de-4344-a887-382f3cd179a9	fcc5f10f-4297-496a-9759-a7ff55436367	f0470000-0000-0000-0000-000000000047	a0470001-0001-0001-0001-000000000001	a6960d59-009f-4507-a25a-39fa6e46ce5d	session_end	{"path": "/week/2025-W47", "time_spent_seconds": 3, "journey_correlation_id": null}	2026-06-17 02:02:34.059524+00
+75cc6377-cdba-40a5-9ffc-5ba6e4df52bc	fcc5f10f-4297-496a-9759-a7ff55436367	f0470000-0000-0000-0000-000000000047	a0470002-0002-0002-0002-000000000002	a6960d59-009f-4507-a25a-39fa6e46ce5d	page_view	{"path": "/week/2025-W47", "search": "", "journey_correlation_id": null}	2026-06-17 02:02:34.106343+00
+7de2aac1-dbfd-43ea-80e3-822bb49b8367	fcc5f10f-4297-496a-9759-a7ff55436367	f0470000-0000-0000-0000-000000000047	a0470003-0003-0003-0003-000000000003	a6960d59-009f-4507-a25a-39fa6e46ce5d	page_view	{"path": "/week/2025-W47", "search": "", "journey_correlation_id": null}	2026-06-17 02:02:34.998153+00
+c32cc051-aafc-41ab-a1aa-b757adf99881	fcc5f10f-4297-496a-9759-a7ff55436367	f0000000-0000-0000-0000-000000000001	fa000001-0001-0001-0001-000000000001	bcf2dab7-7633-42d8-8773-7f11baeab466	page_view	{"path": "/newsletter/f0000000-0000-0000-0000-000000000001", "search": "", "journey_correlation_id": null}	2026-06-17 02:17:50.339129+00
+98aecee0-1229-450d-bc5a-6103b89e7c60	fcc5f10f-4297-496a-9759-a7ff55436367	f0000000-0000-0000-0000-000000000001	fa000001-0001-0001-0001-000000000001	bcf2dab7-7633-42d8-8773-7f11baeab466	session_end	{"path": "/newsletter/f0000000-0000-0000-0000-000000000001", "time_spent_seconds": 10, "journey_correlation_id": null}	2026-06-17 02:18:00.415345+00
+6e366aa5-7e83-4757-adb0-5a0ee7ab4630	fcc5f10f-4297-496a-9759-a7ff55436367	f0000000-0000-0000-0000-000000000001	fa000001-0001-0001-0001-000000000001	f8487fc9-d109-4462-b80a-12f0470699b2	page_view	{"path": "/newsletter/f0000000-0000-0000-0000-000000000001", "search": "", "journey_correlation_id": null}	2026-06-17 02:22:14.380766+00
+21b4b9fd-d531-4472-bd63-c3fac91bc7f7	fcc5f10f-4297-496a-9759-a7ff55436367	f0000000-0000-0000-0000-000000000001	fa000001-0001-0001-0001-000000000001	f8487fc9-d109-4462-b80a-12f0470699b2	session_end	{"path": "/newsletter/f0000000-0000-0000-0000-000000000001", "time_spent_seconds": 10, "journey_correlation_id": null}	2026-06-17 02:22:24.50712+00
+ec93aa38-8c81-4b1b-950a-383e896de37a	fcc5f10f-4297-496a-9759-a7ff55436367	f0000000-0000-0000-0000-000000000001	fa000001-0001-0001-0001-000000000001	f8783044-47e6-404b-b717-76614afc34a8	page_view	{"path": "/newsletter/f0000000-0000-0000-0000-000000000001", "search": "", "journey_correlation_id": null}	2026-06-17 15:51:51.041294+00
+c88fc5c8-a934-4061-a050-40db1bacf1a6	fcc5f10f-4297-496a-9759-a7ff55436367	f0000000-0000-0000-0000-000000000001	fa000001-0001-0001-0001-000000000001	f8487fc9-d109-4462-b80a-12f0470699b2	page_view	{"path": "/newsletter/f0000000-0000-0000-0000-000000000001", "search": "", "journey_correlation_id": null}	2026-06-17 15:54:43.352724+00
+8771c599-888a-4cad-8d74-765d5beb9f9c	fcc5f10f-4297-496a-9759-a7ff55436367	f0000000-0000-0000-0000-000000000001	fa000001-0001-0001-0001-000000000001	f8487fc9-d109-4462-b80a-12f0470699b2	session_end	{"path": "/newsletter/f0000000-0000-0000-0000-000000000001", "time_spent_seconds": 4, "journey_correlation_id": null}	2026-06-17 15:54:47.154453+00
+374a9130-788f-46b3-80c2-4eb3a2de1583	fcc5f10f-4297-496a-9759-a7ff55436367	f0000000-0000-0000-0000-000000000001	fa000001-0001-0001-0001-000000000001	f8783044-47e6-404b-b717-76614afc34a8	session_end	{"path": "/newsletter/f0000000-0000-0000-0000-000000000001", "time_spent_seconds": 140, "journey_correlation_id": null}	2026-06-17 16:05:04.998511+00
+53203c68-7610-4fe1-b910-b6679f352193	fcc5f10f-4297-496a-9759-a7ff55436367	f0000000-0000-0000-0000-000000000001	fa000001-0001-0001-0001-000000000001	f8783044-47e6-404b-b717-76614afc34a8	page_view	{"path": "/newsletter/f0000000-0000-0000-0000-000000000001", "search": "", "journey_correlation_id": null}	2026-06-17 16:05:15.233236+00
+73341393-25d1-4d4c-95c6-fb87b8498ed3	fcc5f10f-4297-496a-9759-a7ff55436367	f0000000-0000-0000-0000-000000000001	fa000001-0001-0001-0001-000000000001	f8783044-47e6-404b-b717-76614afc34a8	page_view	{"path": "/newsletter/f0000000-0000-0000-0000-000000000001", "search": "", "journey_correlation_id": null}	2026-06-17 16:15:31.034964+00
+e7411e7a-2385-4d62-b85b-ab85b250843f	fcc5f10f-4297-496a-9759-a7ff55436367	f0000000-0000-0000-0000-000000000001	fa000001-0001-0001-0001-000000000001	f8783044-47e6-404b-b717-76614afc34a8	page_view	{"path": "/newsletter/f0000000-0000-0000-0000-000000000001", "search": "", "journey_correlation_id": null}	2026-06-17 16:15:45.126677+00
+c175de97-bc1f-408a-8488-8f0429c7e291	fcc5f10f-4297-496a-9759-a7ff55436367	f0000000-0000-0000-0000-000000000001	fa000001-0001-0001-0001-000000000001	f8783044-47e6-404b-b717-76614afc34a8	session_end	{"path": "/newsletter/f0000000-0000-0000-0000-000000000001", "time_spent_seconds": 5, "journey_correlation_id": null}	2026-06-17 16:33:12.176639+00
+ca596e9e-6af8-4a8f-bf5a-3dd579752f7f	fcc5f10f-4297-496a-9759-a7ff55436367	f0000000-0000-0000-0000-000000000001	fa000001-0001-0001-0001-000000000001	1ae3a5fe-07aa-4de8-a16f-6188713facd6	page_view	{"path": "/newsletter/f0000000-0000-0000-0000-000000000001", "search": "", "journey_correlation_id": null}	2026-07-02 04:43:31.819493+00
+9b360674-deb8-4349-8b08-868a309b8c86	fcc5f10f-4297-496a-9759-a7ff55436367	f0000000-0000-0000-0000-000000000001	fa000001-0001-0001-0001-000000000001	1ae3a5fe-07aa-4de8-a16f-6188713facd6	session_end	{"path": "/newsletter/f0000000-0000-0000-0000-000000000001", "time_spent_seconds": 4, "journey_correlation_id": null}	2026-07-02 04:43:36.297856+00
+fa0784a7-11fa-47d9-b9ce-0d93cd181247	fcc5f10f-4297-496a-9759-a7ff55436367	f0000000-0000-0000-0000-000000000001	fa000001-0001-0001-0001-000000000001	1ae3a5fe-07aa-4de8-a16f-6188713facd6	page_view	{"path": "/newsletter/f0000000-0000-0000-0000-000000000001", "search": "", "journey_correlation_id": null}	2026-07-02 23:21:24.031094+00
+4d131490-de8b-4af8-8da0-314f679d3315	fcc5f10f-4297-496a-9759-a7ff55436367	f0000000-0000-0000-0000-000000000001	fa000001-0001-0001-0001-000000000001	1ae3a5fe-07aa-4de8-a16f-6188713facd6	session_end	{"path": "/newsletter/f0000000-0000-0000-0000-000000000001", "time_spent_seconds": 5, "journey_correlation_id": null}	2026-07-02 23:21:29.442675+00
+4199b50a-4f83-4bd9-9c94-f303480c897d	36670ae6-960e-457a-aa5e-a89ffa944e1d	f0000000-0000-0000-0000-000000000001	fa000001-0001-0001-0001-000000000001	14d34619-8a97-497d-b775-1812d9ce5730	page_view	{"path": "/newsletter/f0000000-0000-0000-0000-000000000001", "search": "", "journey_correlation_id": null}	2026-07-13 22:46:46.561065+00
+ac18d818-0639-4a68-9c05-04dc2df80598	36670ae6-960e-457a-aa5e-a89ffa944e1d	f0000000-0000-0000-0000-000000000001	fa000001-0001-0001-0001-000000000001	14d34619-8a97-497d-b775-1812d9ce5730	session_end	{"path": "/newsletter/f0000000-0000-0000-0000-000000000001", "time_spent_seconds": 125, "journey_correlation_id": null}	2026-07-13 22:48:51.745595+00
+57644556-7c2a-467b-97f9-112876237538	fcc5f10f-4297-496a-9759-a7ff55436367	f0000000-0000-0000-0000-000000000001	fa000001-0001-0001-0001-000000000001	a9464203-5f9a-4c0f-bc32-edc97f40524e	page_view	{"path": "/newsletter/f0000000-0000-0000-0000-000000000001", "search": "", "journey_correlation_id": null}	2026-08-07 04:16:26.753492+00
+91dd2406-1655-45bf-8762-f613a5e404c0	fcc5f10f-4297-496a-9759-a7ff55436367	f0000000-0000-0000-0000-000000000001	fa000001-0001-0001-0001-000000000001	a9464203-5f9a-4c0f-bc32-edc97f40524e	session_end	{"path": "/week/2025-W49", "time_spent_seconds": 3, "journey_correlation_id": null}	2026-08-07 04:16:29.893431+00
+5ae33860-a861-4133-9f92-d105c4676f37	fcc5f10f-4297-496a-9759-a7ff55436367	f0490000-0000-0000-0000-000000000049	a0470001-0001-0001-0001-000000000001	a9464203-5f9a-4c0f-bc32-edc97f40524e	page_view	{"path": "/week/2025-W49", "search": "", "journey_correlation_id": null}	2026-08-07 04:16:29.98172+00
+22962d05-45de-4860-9b8a-adb4231dcbd0	fcc5f10f-4297-496a-9759-a7ff55436367	f0000000-0000-0000-0000-000000000001	fa000001-0001-0001-0001-000000000001	ae6b3614-20e6-4271-acd6-0338a90a479a	page_view	{"path": "/newsletter/f0000000-0000-0000-0000-000000000001", "search": "", "journey_correlation_id": null}	2026-08-14 16:08:27.69249+00
+04353450-d9a7-4243-bf08-2400ff61d9e4	fcc5f10f-4297-496a-9759-a7ff55436367	f0000000-0000-0000-0000-000000000001	fa000001-0001-0001-0001-000000000001	ae6b3614-20e6-4271-acd6-0338a90a479a	session_end	{"path": "/newsletter/f0000000-0000-0000-0000-000000000001", "time_spent_seconds": 16693, "journey_correlation_id": null}	2026-08-15 08:14:16.889152+00
+7c069a85-1520-404d-b8cd-e9eca16554f6	fcc5f10f-4297-496a-9759-a7ff55436367	f0000000-0000-0000-0000-000000000001	fa000001-0001-0001-0001-000000000001	ae6b3614-20e6-4271-acd6-0338a90a479a	page_view	{"path": "/newsletter/f0000000-0000-0000-0000-000000000001", "search": "", "journey_correlation_id": null}	2026-08-15 08:14:20.889538+00
+0472b4a9-89ed-4501-8c13-be964937bbb9	fcc5f10f-4297-496a-9759-a7ff55436367	f0000000-0000-0000-0000-000000000001	fa000001-0001-0001-0001-000000000001	ae6b3614-20e6-4271-acd6-0338a90a479a	page_view	{"path": "/newsletter/f0000000-0000-0000-0000-000000000001", "search": "", "journey_correlation_id": null}	2026-08-15 08:14:40.050414+00
+664b5e27-4fbc-48ce-96f5-fcc1753c2c5c	fcc5f10f-4297-496a-9759-a7ff55436367	f0000000-0000-0000-0000-000000000001	fa000001-0001-0001-0001-000000000001	ae6b3614-20e6-4271-acd6-0338a90a479a	page_view	{"path": "/newsletter/f0000000-0000-0000-0000-000000000001", "search": "", "journey_correlation_id": null}	2026-08-15 12:29:56.601883+00
+\.
+
+
+ALTER TABLE public.analytics_events ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: classes; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.classes DISABLE TRIGGER ALL;
+
+COPY public.classes (id, class_name, class_grade_year, created_at, class_code, description, is_active, updated_at, deactivated_at) FROM stdin;
+A1	Grade 1A (一年級甲班)	1	2026-06-17 02:01:41.895794+00	A1	\N	t	2026-06-17 02:01:41.895794+00	\N
+A2	Grade 1B (一年級乙班)	1	2026-06-17 02:01:41.901844+00	A2	\N	t	2026-06-17 02:01:41.901844+00	\N
+B1	Grade 2A (二年級甲班)	2	2026-06-17 02:01:41.906482+00	B1	\N	t	2026-06-17 02:01:41.906482+00	\N
+B2	Grade 2B (二年級乙班)	2	2026-06-17 02:01:41.909595+00	B2	\N	t	2026-06-17 02:01:41.909595+00	\N
+XCYB	辛丑乙	5	2026-06-17 02:01:41.912958+00	辛丑乙	\N	t	2026-06-17 02:01:41.912958+00	\N
+JIACHEN	甲辰	2	2026-06-17 02:01:41.917205+00	甲辰	\N	t	2026-06-17 02:01:41.917205+00	\N
+\.
+
+
+ALTER TABLE public.classes ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: analytics_snapshots; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.analytics_snapshots DISABLE TRIGGER ALL;
+
+COPY public.analytics_snapshots (id, snapshot_date, newsletter_id, article_id, class_id, metric_name, metric_value, created_at) FROM stdin;
+\.
+
+
+ALTER TABLE public.analytics_snapshots ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: article_audit_log; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.article_audit_log DISABLE TRIGGER ALL;
+
+COPY public.article_audit_log (id, article_id, action, changed_by, old_values, new_values, changed_at) FROM stdin;
+8974716f-c592-45f0-a372-ef88bbd3b7df	a0470001-0001-0001-0001-000000000001	create	\N	\N	{"id": "a0470001-0001-0001-0001-000000000001", "title": "週報開刊致詞 (Weekly Opening)", "author": null, "status": "published", "content": "<h1>歡迎閱讀本週電子報</h1>\\n<p>Dear Parents and Students,</p>\\n<p>Welcome to Week 47 of our newsletter. This week we have exciting updates from all classes.</p>\\n<h2>Highlights</h2>\\n<ul>\\n<li>School event announcements</li>\\n<li>Academic updates</li>\\n<li>Upcoming activities</li>\\n</ul>\\n<hr>\\n<p><strong>Published on:</strong> 2025-11-17<br>\\n<strong>Week:</strong> 2025-W47</p>", "summary": null, "short_id": "a00001", "author_id": null, "class_ids": null, "edited_at": null, "created_at": "2026-06-17T02:01:41.930934+00:00", "created_by": null, "deleted_at": null, "deleted_by": null, "family_ids": null, "updated_at": "2026-06-17T02:01:41.930934+00:00", "week_number": null, "published_at": null, "article_order": null, "last_edited_by": null, "visibility_type": "public", "purge_scheduled_at": null, "restricted_to_classes": null}	2026-06-17 02:01:41.930934+00
+1c7617b9-d76b-4291-8b23-1213bf90cb48	a0470002-0002-0002-0002-000000000002	create	\N	\N	{"id": "a0470002-0002-0002-0002-000000000002", "title": "Grade 1A Class Updates (一年級甲班班級大小事)", "author": null, "status": "published", "content": "<h1>一年級甲班班級大小事</h1>\\n<p>This week in Grade 1A:</p>\\n<h2>Academic Updates</h2>\\n<ul>\\n<li><strong>Math:</strong> Introduction to addition and subtraction</li>\\n<li><strong>Reading:</strong> New story time sessions every afternoon</li>\\n<li><strong>Art:</strong> Seasonal craft projects with fall themes</li>\\n</ul>\\n<h2>Activities</h2>\\n<ul>\\n<li>Class field trip to local museum (Nov 22)</li>\\n<li>Show and tell event (Nov 24)</li>\\n<li>Parent-teacher conference (Nov 23 at 3:00 PM)</li>\\n</ul>\\n<h2>Homework</h2>\\n<ul>\\n<li>Math worksheets (30 minutes)</li>\\n<li>Reading journal entries (2 pages)</li>\\n</ul>\\n<p><strong>Note:</strong> This article is visible only to parents with children in Grade 1A.</p>", "summary": null, "short_id": "a00002", "author_id": null, "class_ids": null, "edited_at": null, "created_at": "2026-06-17T02:01:41.935362+00:00", "created_by": null, "deleted_at": null, "deleted_by": null, "family_ids": null, "updated_at": "2026-06-17T02:01:41.935362+00:00", "week_number": null, "published_at": null, "article_order": null, "last_edited_by": null, "visibility_type": "class_restricted", "purge_scheduled_at": null, "restricted_to_classes": ["A1"]}	2026-06-17 02:01:41.935362+00
+20f20e41-7b42-4347-bcb9-90886e5fa11f	a0470003-0003-0003-0003-000000000003	create	\N	\N	{"id": "a0470003-0003-0003-0003-000000000003", "title": "Grade 1B Class Updates (一年級乙班班級大小事)", "author": null, "status": "published", "content": "<h1>一年級乙班班級大小事</h1>\\n<p>This week in Grade 1B:</p>\\n<h2>Academic Updates</h2>\\n<ul>\\n<li><strong>Music:</strong> Learning new songs and instruments</li>\\n<li><strong>PE:</strong> Team sports activities and cooperative games</li>\\n<li><strong>Science:</strong> Exploring nature and seasons</li>\\n</ul>\\n<h2>Class Events</h2>\\n<ul>\\n<li>Music performance practice (Friday)</li>\\n<li>Sports day competition (upcoming)</li>\\n<li>Class election for student council</li>\\n</ul>\\n<h2>Important Dates</h2>\\n<ul>\\n<li>Parent conference: Nov 23 at 2:00 PM</li>\\n<li>Holiday celebration: Dec 15</li>\\n</ul>\\n<p><strong>Note:</strong> This article is visible only to parents with children in Grade 1B.</p>", "summary": null, "short_id": "a00003", "author_id": null, "class_ids": null, "edited_at": null, "created_at": "2026-06-17T02:01:41.938634+00:00", "created_by": null, "deleted_at": null, "deleted_by": null, "family_ids": null, "updated_at": "2026-06-17T02:01:41.938634+00:00", "week_number": null, "published_at": null, "article_order": null, "last_edited_by": null, "visibility_type": "class_restricted", "purge_scheduled_at": null, "restricted_to_classes": ["A2"]}	2026-06-17 02:01:41.938634+00
+8065084f-f06e-4254-9fe5-7ee9eb405816	a0470004-0004-0004-0004-000000000004	create	\N	\N	{"id": "a0470004-0004-0004-0004-000000000004", "title": "Grade 2A Class Updates (二年級甲班班級大小事)", "author": null, "status": "published", "content": "<h1>二年級甲班班級大小事</h1>\\n<p>This week in Grade 2A:</p>\\n<h2>Learning Highlights</h2>\\n<ul>\\n<li><strong>Mathematics:</strong> Multiplication basics and strategies</li>\\n<li><strong>Literature:</strong> Classic story appreciation and discussion</li>\\n<li><strong>Social Studies:</strong> Community helpers and professions</li>\\n</ul>\\n<h2>Field Trip</h2>\\n<ul>\\n<li>Planned for Dec 5</li>\\n<li>Destination: Local nature preserve</li>\\n<li>Permission slips due: Nov 30</li>\\n</ul>\\n<h2>Student Achievements</h2>\\n<ul>\\n<li>Math competition scores announced</li>\\n<li>Science fair projects starting</li>\\n<li>Reading club selections announced</li>\\n</ul>\\n<p><strong>Note:</strong> This article is visible only to parents with children in Grade 2A.</p>", "summary": null, "short_id": "a00004", "author_id": null, "class_ids": null, "edited_at": null, "created_at": "2026-06-17T02:01:41.94142+00:00", "created_by": null, "deleted_at": null, "deleted_by": null, "family_ids": null, "updated_at": "2026-06-17T02:01:41.94142+00:00", "week_number": null, "published_at": null, "article_order": null, "last_edited_by": null, "visibility_type": "class_restricted", "purge_scheduled_at": null, "restricted_to_classes": ["B1"]}	2026-06-17 02:01:41.94142+00
+d1dde559-0766-40f1-9215-503297e6d929	a0470005-0005-0005-0005-000000000005	create	\N	\N	{"id": "a0470005-0005-0005-0005-000000000005", "title": "Grade 2B Class Updates (二年級乙班班級大小事)", "author": null, "status": "published", "content": "<h1>二年級乙班班級大小事</h1>\\n<p>This week in Grade 2B:</p>\\n<h2>Academic Focus</h2>\\n<ul>\\n<li><strong>Division Practice:</strong> Solving word problems</li>\\n<li><strong>Writing:</strong> Short story composition and editing</li>\\n<li><strong>Computer Lab:</strong> Introduction to typing and digital literacy</li>\\n</ul>\\n<h2>Upcoming Events</h2>\\n<ul>\\n<li>Technology showcase (Dec 10)</li>\\n<li>Writing workshop with guest author (Nov 28)</li>\\n<li>Computer skills assessment (Dec 1-5)</li>\\n</ul>\\n<h2>Reminders</h2>\\n<ul>\\n<li>Library books due Friday</li>\\n<li>Project submission deadline: next Thursday</li>\\n<li>Parent volunteer sign-up: please help with field trip</li>\\n</ul>\\n<p><strong>Note:</strong> This article is visible only to parents with children in Grade 2B.</p>", "summary": null, "short_id": "a00005", "author_id": null, "class_ids": null, "edited_at": null, "created_at": "2026-06-17T02:01:41.944246+00:00", "created_by": null, "deleted_at": null, "deleted_by": null, "family_ids": null, "updated_at": "2026-06-17T02:01:41.944246+00:00", "week_number": null, "published_at": null, "article_order": null, "last_edited_by": null, "visibility_type": "class_restricted", "purge_scheduled_at": null, "restricted_to_classes": ["B2"]}	2026-06-17 02:01:41.944246+00
+6bb9298e-5e4b-4de1-ace0-0d4b554dc297	a0470006-0006-0006-0006-000000000006	create	\N	\N	{"id": "a0470006-0006-0006-0006-000000000006", "title": "Important Announcements (重要公告)", "author": null, "status": "published", "content": "<h1>重要公告 - Important Announcements</h1>\\n<h2>School-Wide Updates</h2>\\n<h3>Parent-Teacher Conferences</h3>\\n<ul>\\n<li><strong>Dates:</strong> November 22-24, 2025</li>\\n<li><strong>Time:</strong> 1:00 PM - 5:00 PM each day</li>\\n<li><strong>Sign-up:</strong> See class teachers for time slots</li>\\n<li><strong>Location:</strong> Classroom and multipurpose room</li>\\n</ul>\\n<h3>School Assembly</h3>\\n<ul>\\n<li><strong>When:</strong> Monday, November 17 at 8:30 AM</li>\\n<li><strong>Where:</strong> Gymnasium</li>\\n<li><strong>Topic:</strong> Annual awards and recognition ceremony</li>\\n</ul>\\n<h3>Field Trip Permission Slips</h3>\\n<ul>\\n<li><strong>Deadline:</strong> November 19, 2025</li>\\n<li><strong>Details:</strong> Check your child's backpack for forms</li>\\n<li><strong>Questions:</strong> Contact the main office</li>\\n</ul>\\n<h3>Holiday Celebration Planning</h3>\\n<ul>\\n<li>School holiday party: December 19</li>\\n<li>Student performances, games, and refreshments</li>\\n<li>Family invitation event</li>\\n</ul>\\n<hr>\\n<p><strong>Visibility:</strong> This article is visible to all parents and visitors.</p>", "summary": null, "short_id": "a00006", "author_id": null, "class_ids": null, "edited_at": null, "created_at": "2026-06-17T02:01:41.947209+00:00", "created_by": null, "deleted_at": null, "deleted_by": null, "family_ids": null, "updated_at": "2026-06-17T02:01:41.947209+00:00", "week_number": null, "published_at": null, "article_order": null, "last_edited_by": null, "visibility_type": "public", "purge_scheduled_at": null, "restricted_to_classes": null}	2026-06-17 02:01:41.947209+00
+74c275bc-17af-4858-9d7b-0d5eb932fd9d	a0480001-0001-0001-0001-000000000001	create	\N	\N	{"id": "a0480001-0001-0001-0001-000000000001", "title": "週報開刊致詞 (Weekly Opening - Week 48)", "author": null, "status": "published", "content": "<h1>歡迎閱讀第 48 週電子報</h1>\\n<p>Dear Parents and Students,</p>\\n<p>Welcome to Week 48 of our newsletter. As we enter the final stretch before the holiday season, we want to share exciting updates from our school community.</p>\\n<h2>Holiday Season Planning</h2>\\n<ul>\\n<li>Thanksgiving celebration week (Nov 24-28)</li>\\n<li>Holiday performances planning (upcoming)</li>\\n<li>Winter break schedule announcement</li>\\n</ul>\\n<h2>Academic Updates</h2>\\n<ul>\\n<li>End of quarter assessments</li>\\n<li>Progress reports distribution</li>\\n<li>Achievement recognitions</li>\\n</ul>\\n<hr>\\n<p><strong>Published on:</strong> 2025-11-24<br>\\n<strong>Week:</strong> 2025-W48</p>", "summary": null, "short_id": "a00007", "author_id": null, "class_ids": null, "edited_at": null, "created_at": "2026-06-17T02:01:41.950238+00:00", "created_by": null, "deleted_at": null, "deleted_by": null, "family_ids": null, "updated_at": "2026-06-17T02:01:41.950238+00:00", "week_number": null, "published_at": null, "article_order": null, "last_edited_by": null, "visibility_type": "public", "purge_scheduled_at": null, "restricted_to_classes": null}	2026-06-17 02:01:41.950238+00
+68441505-7bc0-4b9d-9e88-6032ab62a909	a0480002-0002-0002-0002-000000000002	create	\N	\N	{"id": "a0480002-0002-0002-0002-000000000002", "title": "Thanksgiving Activities & Gratitude (感恩節活動)", "author": null, "status": "published", "content": "<h1>感恩節特別活動</h1>\\n<p>Dear Families,</p>\\n<p>This week we celebrate gratitude and thankfulness with special activities across all grades.</p>\\n<h2>Grade 1 Activities</h2>\\n<ul>\\n<li>Gratitude chain craft project</li>\\n<li>Thanksgiving story time</li>\\n<li>Food sharing day preparation</li>\\n</ul>\\n<h2>Grade 2 Activities</h2>\\n<ul>\\n<li>Community helpers appreciation event</li>\\n<li>Gratitude journal writing</li>\\n<li>Potluck celebration planning</li>\\n</ul>\\n<h2>Family Engagement</h2>\\n<ul>\\n<li>Share your gratitude: Send us your family's thankfulness message</li>\\n<li>Join us for the school-wide gratitude assembly on Friday at 10:00 AM</li>\\n<li>Bring dishes for the potluck: Sign-up sheet sent separately</li>\\n</ul>\\n<hr>\\n<p><strong>Note:</strong> All grades participating in special Thanksgiving programming.</p>", "summary": null, "short_id": "a00008", "author_id": null, "class_ids": null, "edited_at": null, "created_at": "2026-06-17T02:01:41.953673+00:00", "created_by": null, "deleted_at": null, "deleted_by": null, "family_ids": null, "updated_at": "2026-06-17T02:01:41.953673+00:00", "week_number": null, "published_at": null, "article_order": null, "last_edited_by": null, "visibility_type": "public", "purge_scheduled_at": null, "restricted_to_classes": null}	2026-06-17 02:01:41.953673+00
+ec192c91-1119-4756-a6c3-79360513dca9	a0480003-0003-0003-0003-000000000003	create	\N	\N	{"id": "a0480003-0003-0003-0003-000000000003", "title": "Winter Break Logistics & Holiday Closure", "author": null, "status": "published", "content": "<h1>冬季假期說明與校園關閉</h1>\\n<p>Dear Parents,</p>\\n<h2>Winter Break Schedule</h2>\\n<ul>\\n<li><strong>Last day of school:</strong> December 19, 2025</li>\\n<li><strong>Winter break:</strong> December 20, 2025 - January 4, 2026</li>\\n<li><strong>School resumes:</strong> January 5, 2026 (Monday)</li>\\n</ul>\\n<h2>Campus Closure</h2>\\n<ul>\\n<li>Administrative offices closed Dec 20 - Jan 4</li>\\n<li>Emergency contact for urgent matters: (123) 456-7890</li>\\n<li>All facilities closed except for scheduled maintenance</li>\\n</ul>\\n<h2>Before Holiday Break</h2>\\n<ul>\\n<li>Return all borrowed books and materials</li>\\n<li>Clear out lockers and cubbies</li>\\n<li>Take home all seasonal decorations and projects</li>\\n</ul>\\n<h2>Winter Break Activities (Optional)</h2>\\n<ul>\\n<li>Reading challenge: Log 10 hours of reading</li>\\n<li>Math practice: Complete learning packets (available online)</li>\\n<li>Art project: Create holiday greeting card for classmates</li>\\n</ul>\\n<hr>\\n<p><strong>Questions?</strong> Contact the main office by December 12.</p>", "summary": null, "short_id": "a00009", "author_id": null, "class_ids": null, "edited_at": null, "created_at": "2026-06-17T02:01:41.956387+00:00", "created_by": null, "deleted_at": null, "deleted_by": null, "family_ids": null, "updated_at": "2026-06-17T02:01:41.956387+00:00", "week_number": null, "published_at": null, "article_order": null, "last_edited_by": null, "visibility_type": "public", "purge_scheduled_at": null, "restricted_to_classes": null}	2026-06-17 02:01:41.956387+00
+82d0fa45-0abe-47e6-a70e-0eb65e729ffc	fa000001-0001-0001-0001-000000000001	create	\N	\N	{"id": "fa000001-0001-0001-0001-000000000001", "title": "School Calendar & Key Dates (學校行事曆與重要日期)", "author": null, "status": "published", "content": "<h1>🗓️ School Calendar & Key Dates</h1>\\n<p>Dear Parents and Community Members,</p>\\n<p>This is a recurring article that provides important school calendar information. It appears in multiple weekly newsletters for your convenience.</p>\\n<h2>November 2025</h2>\\n<ul>\\n<li><strong>Nov 17-21:</strong> Parent-Teacher Conference Week</li>\\n<li><strong>Nov 24:</strong> Thanksgiving Celebration</li>\\n<li><strong>Nov 27-28:</strong> Thanksgiving Holiday (No School)</li>\\n</ul>\\n<h2>December 2025</h2>\\n<ul>\\n<li><strong>Dec 5:</strong> Winter Concert</li>\\n<li><strong>Dec 12:</strong> Last day for After-School Programs</li>\\n<li><strong>Dec 15:</strong> Holiday Art Show</li>\\n<li><strong>Dec 19:</strong> Last Day of School (Early Dismissal 12:00 PM)</li>\\n<li><strong>Dec 20 - Jan 4:</strong> Winter Break</li>\\n</ul>\\n<h2>January 2026</h2>\\n<ul>\\n<li><strong>Jan 5:</strong> School Resumes</li>\\n<li><strong>Jan 19:</strong> Martin Luther King Jr. Day (No School)</li>\\n<li><strong>Jan 26-30:</strong> International Week</li>\\n</ul>\\n<h2>Contact Information</h2>\\n<ul>\\n<li><strong>Main Office:</strong> (123) 456-7890</li>\\n<li><strong>Email:</strong> office@waldorf-school.edu</li>\\n<li><strong>Office Hours:</strong> Mon-Fri, 8:00 AM - 4:00 PM</li>\\n</ul>\\n<hr>\\n<p><em>This calendar is updated regularly. Check back each week for the latest information.</em></p>", "summary": null, "short_id": "fa0001", "author_id": null, "class_ids": null, "edited_at": null, "created_at": "2026-06-17T02:01:41.960191+00:00", "created_by": null, "deleted_at": null, "deleted_by": null, "family_ids": null, "updated_at": "2026-06-17T02:01:41.960191+00:00", "week_number": null, "published_at": null, "article_order": null, "last_edited_by": null, "visibility_type": "public", "purge_scheduled_at": null, "restricted_to_classes": null}	2026-06-17 02:01:41.960191+00
+\.
+
+
+ALTER TABLE public.article_audit_log ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: article_categories; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.article_categories DISABLE TRIGGER ALL;
+
+COPY public.article_categories (id, name, description, is_active, created_at, updated_at, deactivated_at) FROM stdin;
+\.
+
+
+ALTER TABLE public.article_categories ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: article_category_assignments; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.article_category_assignments DISABLE TRIGGER ALL;
+
+COPY public.article_category_assignments (article_id, category_id, assigned_at) FROM stdin;
+\.
+
+
+ALTER TABLE public.article_category_assignments ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: media_files; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.media_files DISABLE TRIGGER ALL;
+
+COPY public.media_files (id, filename, file_type, mime_type, file_size, storage_path, storage_provider, public_url, width, height, alt_text, caption, duration, usage_count, referenced_articles, uploaded_by, uploaded_at, updated_at) FROM stdin;
+\.
+
+
+ALTER TABLE public.media_files ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: article_media_references; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.article_media_references DISABLE TRIGGER ALL;
+
+COPY public.article_media_references (article_id, media_id, reference_type, "position", created_at) FROM stdin;
+\.
+
+
+ALTER TABLE public.article_media_references ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: article_tags; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.article_tags DISABLE TRIGGER ALL;
+
+COPY public.article_tags (id, name, description, is_active, created_at, updated_at, deactivated_at) FROM stdin;
+\.
+
+
+ALTER TABLE public.article_tags ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: article_tag_assignments; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.article_tag_assignments DISABLE TRIGGER ALL;
+
+COPY public.article_tag_assignments (article_id, tag_id, assigned_at) FROM stdin;
+\.
+
+
+ALTER TABLE public.article_tag_assignments ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: auth_events; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.auth_events DISABLE TRIGGER ALL;
+
+COPY public.auth_events (id, user_id, event_type, auth_method, ip_address, user_agent, metadata, created_at) FROM stdin;
+77d40d08-5720-44bb-ad89-3df7c94d6021	fcc5f10f-4297-496a-9759-a7ff55436367	login_success	email_password	\N	Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Cursor/3.14.27 Chrome/144.0.7559.236 Electron/40.10.3 Safari/537.36	\N	2026-08-07 04:16:26.40332+00
+47215003-dbf9-410a-bbcb-6186b992fbba	fcc5f10f-4297-496a-9759-a7ff55436367	login_success	email_password	\N	Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36	\N	2026-08-14 16:08:27.466093+00
+\.
+
+
+ALTER TABLE public.auth_events ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: authorization_decision_trace; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.authorization_decision_trace DISABLE TRIGGER ALL;
+
+COPY public.authorization_decision_trace (id, actor_id, action, winning_role, resolved_scope, granted, reason, policy_version, metadata, created_at) FROM stdin;
+\.
+
+
+ALTER TABLE public.authorization_decision_trace ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: class_audit_log; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.class_audit_log DISABLE TRIGGER ALL;
+
+COPY public.class_audit_log (id, class_id, action, actor_id, prior_state, new_state, changed_at) FROM stdin;
+\.
+
+
+ALTER TABLE public.class_audit_log ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: families; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.families DISABLE TRIGGER ALL;
+
+COPY public.families (id, family_code, created_at, family_name, guardian_email, description, related_topics, is_active, updated_at, deactivated_at, newsletter_subscription_status, newsletter_subscription_source, newsletter_subscription_updated_at, newsletter_subscribed_at, newsletter_unsubscribed_at) FROM stdin;
+f1111111-1111-1111-1111-111111111111	FAMILY001	2026-06-17 02:01:41.921285+00	Family 001	guardian1@example.com	\N	[]	t	2026-06-17 02:01:41.921285+00	\N	pending	\N	\N	\N	\N
+f2222222-2222-2222-2222-222222222222	FAMILY002	2026-06-17 02:01:41.924926+00	Family 002	guardian2@example.com	\N	[]	t	2026-06-17 02:01:41.924926+00	\N	pending	\N	\N	\N	\N
+eebe9de9-4fa8-46d6-a6ca-5bff46d072a3	BB	2026-06-17 02:01:41.927838+00	HACK Family	harryworld@gmail.com	\N	[]	t	2026-06-17 02:01:41.927838+00	\N	pending	\N	\N	\N	\N
+\.
+
+
+ALTER TABLE public.families ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: email_platform_subscriber_mappings; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.email_platform_subscriber_mappings DISABLE TRIGGER ALL;
+
+COPY public.email_platform_subscriber_mappings (id, family_id, provider, external_identity_key, external_subscriber_id, external_email_address, provider_state, last_synced_at, last_payload_fingerprint, last_provider_version_marker, last_reconciled_at, last_drift_reason, sync_metadata, created_at, updated_at) FROM stdin;
+\.
+
+
+ALTER TABLE public.email_platform_subscriber_mappings ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: email_platform_webhook_events; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.email_platform_webhook_events DISABLE TRIGGER ALL;
+
+COPY public.email_platform_webhook_events (id, provider, provider_event_id, event_type, delivery_key, signature_valid, signature_failure_reason, payload, payload_hash, occurred_at, received_at, status, attempt_count, max_attempts, next_retry_at, processing_started_at, processed_at, dead_lettered_at, resolved_family_id, resolved_mapping_id, unresolved_reason, last_error_code, last_error_message, metrics, created_at, updated_at) FROM stdin;
+\.
+
+
+ALTER TABLE public.email_platform_webhook_events ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: email_platform_subscription_audit; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.email_platform_subscription_audit DISABLE TRIGGER ALL;
+
+COPY public.email_platform_subscription_audit (id, family_id, provider, mapping_id, webhook_event_id, old_status, new_status, source, event_type, occurred_at, metadata, created_at) FROM stdin;
+\.
+
+
+ALTER TABLE public.email_platform_subscription_audit ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: email_platform_sync_jobs; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.email_platform_sync_jobs DISABLE TRIGGER ALL;
+
+COPY public.email_platform_sync_jobs (id, family_id, mapping_id, provider, job_type, status, enqueue_reason, payload, payload_fingerprint, attempt_count, max_attempts, next_retry_at, processing_started_at, completed_at, dead_lettered_at, mismatch_reason, last_error_code, last_error_message, metrics, created_at, updated_at) FROM stdin;
+36b3e2af-52c7-412c-abeb-6632904e13f0	f1111111-1111-1111-1111-111111111111	\N	kit	upsert_subscriber	pending	newsletter_delivery_batch	{"source": "newsletter_delivery_batch", "batch_id": "93ff789d-f7c3-4bbe-88e4-069cbe10cb3e", "family_id": "f1111111-1111-1111-1111-111111111111"}	\N	0	5	2026-06-17 16:00:07.969216+00	\N	\N	\N	\N	\N	\N	{}	2026-06-17 16:00:07.969216+00	2026-06-17 16:00:07.969216+00
+2169e9af-b388-471c-8018-63df1c6a7fc4	eebe9de9-4fa8-46d6-a6ca-5bff46d072a3	\N	kit	upsert_subscriber	pending	newsletter_delivery_batch	{"source": "newsletter_delivery_batch", "batch_id": "e07f0e97-fdf3-458c-a2ba-1252cdbf4b4c", "family_id": "eebe9de9-4fa8-46d6-a6ca-5bff46d072a3"}	\N	0	5	2026-06-17 16:12:45.058632+00	\N	\N	\N	\N	\N	\N	{}	2026-06-17 16:12:45.058632+00	2026-06-17 16:12:45.058632+00
+\.
+
+
+ALTER TABLE public.email_platform_sync_jobs ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: email_template_revisions; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.email_template_revisions DISABLE TRIGGER ALL;
+
+COPY public.email_template_revisions (id, template_id, revision_number, subject_template, body_template, created_by, created_at, blocks) FROM stdin;
+f21cd3ad-78fc-4d64-ba0c-4ed13af1ceac	6847fdb7-9d27-4a02-b64f-17af483cfe78	1	SMZ Waldorf Weekly - {{newsletter.title}}	<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f7ead7;">\n  <tr>\n    <td style="padding:28px 24px;text-align:center;font-family:Georgia,'Times New Roman',serif;color:#5a3f2b;">\n      <div style="font-size:28px;font-weight:700;">善美真華德福教育</div>\n      <div style="margin-top:8px;font-size:15px;letter-spacing:0.04em;">Weekly community notes</div>\n    </td>\n  </tr>\n</table>\n\n<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fffaf2;border:1px solid #ead8bf;margin:18px 0;">\n  <tr>\n    <td style="padding:22px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#2f241d;">\n      <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.12em;color:#8b5a3c;">School News</div>\n      <h3 style="margin:8px 0 10px;font-size:21px;line-height:1.3;color:#3c2a1f;">Demo shared article</h3>\n      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#5c5149;">Sample excerpt for preview.</p>\n      <a href="https://example.com/a1" style="display:inline-block;padding:10px 16px;background:#8b5a3c;color:#ffffff;text-decoration:none;border-radius:999px;font-size:14px;font-weight:600;">Read the story</a>\n    </td>\n  </tr>\n</table>\n\n<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f2f6ee;border-left:5px solid #789262;margin:18px 0;">\n  <tr>\n    <td style="padding:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#25301f;">\n      <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.12em;color:#5d754c;">Class Notes - Grade 1A</div>\n      <h3 style="margin:8px 0 10px;font-size:19px;line-height:1.3;color:#25301f;">Demo class article</h3>\n      <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#4f5d46;">Class excerpt for preview.</p>\n      <a href="https://example.com/c1" style="display:inline-block;padding:10px 16px;background:#8b5a3c;color:#ffffff;text-decoration:none;border-radius:999px;font-size:14px;font-weight:600;">Open class article</a>\n    </td>\n  </tr>\n</table>\n\n<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:12px 0;">\n  <tr>\n    <td style="padding:14px 18px;background:#f8f4ea;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#3c2f24;">\n      <h2 style="margin:0 0 12px;font-family:Georgia,'Times New Roman',serif;font-size:22px;line-height:1.25;color:#5a3f2b;">This Week</h2>\n      <div style="font-size:15px;line-height:1.6;">\n        <a href="https://example.com/w1" style="color:#8b5a3c;text-decoration:none;font-weight:600;">Weekly item</a>\n        <span style="color:#67594e;"> - Weekly excerpt.</span>\n      </div>\n    </td>\n  </tr>\n</table>\n\n<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:20px 0;background:#fff7ed;">\n  <tr>\n    <td style="padding:22px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#3c2a1f;">\n      <p style="margin:0;">This is sample injected HTML for file-template preview and sync.</p>\n    </td>\n  </tr>\n</table>\n\n<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#3c2a1f;color:#f7ead7;margin-top:24px;">\n  <tr>\n    <td style="padding:22px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;line-height:1.7;">\n      <div></div>\n      <div>TEL: +886-2-0000-0000 - FAX: +886-2-0000-0001</div>\n      <div>善美真華德福教育園區</div>\n    </td>\n  </tr>\n</table>\n	\N	2026-06-17 02:22:34.165878+00	[{"type": "header", "order": 0, "config": {"tagline": "Weekly community notes", "brandName": "善美真華德福教育", "fileTemplateMode": "static", "fileTemplateBlockId": "header"}, "visible": true, "bodyHtml": "<table role=\\"presentation\\" width=\\"100%\\" cellpadding=\\"0\\" cellspacing=\\"0\\" border=\\"0\\" style=\\"background:#f7ead7;\\">\\n  <tr>\\n    <td style=\\"padding:28px 24px;text-align:center;font-family:Georgia,'Times New Roman',serif;color:#5a3f2b;\\">\\n      <div style=\\"font-size:28px;font-weight:700;\\">善美真華德福教育</div>\\n      <div style=\\"margin-top:8px;font-size:15px;letter-spacing:0.04em;\\">Weekly community notes</div>\\n    </td>\\n  </tr>\\n</table>\\n"}, {"type": "shared-article-feature", "order": 1, "config": {"eyebrow": "School News", "ctaLabel": "Read the story", "maxItems": 3, "excerptLength": 220, "fileTemplateMode": "article-repeat", "fileTemplateBlockId": "featured-shared-articles"}, "visible": true, "bodyHtml": "<table role=\\"presentation\\" width=\\"100%\\" cellpadding=\\"0\\" cellspacing=\\"0\\" border=\\"0\\" style=\\"background:#fffaf2;border:1px solid #ead8bf;margin:18px 0;\\">\\n  <tr>\\n    <td style=\\"padding:22px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#2f241d;\\">\\n      <div style=\\"font-size:12px;text-transform:uppercase;letter-spacing:0.12em;color:#8b5a3c;\\">School News</div>\\n      <h3 style=\\"margin:8px 0 10px;font-size:21px;line-height:1.3;color:#3c2a1f;\\">{{article.title}}</h3>\\n      <p style=\\"margin:0 0 16px;font-size:15px;line-height:1.6;color:#5c5149;\\">{{article.excerpt}}</p>\\n      <a href=\\"{{article.url}}\\" style=\\"display:inline-block;padding:10px 16px;background:#8b5a3c;color:#ffffff;text-decoration:none;border-radius:999px;font-size:14px;font-weight:600;\\">Read the story</a>\\n    </td>\\n  </tr>\\n</table>\\n"}, {"type": "class-article-feature", "order": 2, "config": {"eyebrow": "Class Notes", "ctaLabel": "Open class article", "excerptLength": 180, "fileTemplateMode": "class-article-repeat", "maxItemsPerClass": 2, "fileTemplateBlockId": "class-news"}, "visible": true, "bodyHtml": "<table role=\\"presentation\\" width=\\"100%\\" cellpadding=\\"0\\" cellspacing=\\"0\\" border=\\"0\\" style=\\"background:#f2f6ee;border-left:5px solid #789262;margin:18px 0;\\">\\n  <tr>\\n    <td style=\\"padding:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#25301f;\\">\\n      <div style=\\"font-size:12px;text-transform:uppercase;letter-spacing:0.12em;color:#5d754c;\\">Class Notes - {{class.name}}</div>\\n      <h3 style=\\"margin:8px 0 10px;font-size:19px;line-height:1.3;color:#25301f;\\">{{article.title}}</h3>\\n      <p style=\\"margin:0 0 16px;font-size:15px;line-height:1.6;color:#4f5d46;\\">{{article.excerpt}}</p>\\n      <a href=\\"{{article.url}}\\" style=\\"display:inline-block;padding:10px 16px;background:#8b5a3c;color:#ffffff;text-decoration:none;border-radius:999px;font-size:14px;font-weight:600;\\">Open class article</a>\\n    </td>\\n  </tr>\\n</table>\\n"}, {"type": "weekly-summary-list", "order": 3, "config": {"sourceTag": "weekly", "sectionTitle": "This Week", "excerptLength": 120, "fileTemplateMode": "weekly-repeat", "fileTemplateBlockId": "weekly-items"}, "visible": true, "bodyHtml": "<table role=\\"presentation\\" width=\\"100%\\" cellpadding=\\"0\\" cellspacing=\\"0\\" border=\\"0\\" style=\\"margin:12px 0;\\">\\n  <tr>\\n    <td style=\\"padding:14px 18px;background:#f8f4ea;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#3c2f24;\\">\\n      <h2 style=\\"margin:0 0 12px;font-family:Georgia,'Times New Roman',serif;font-size:22px;line-height:1.25;color:#5a3f2b;\\">This Week</h2>\\n      <div style=\\"font-size:15px;line-height:1.6;\\">\\n        <a href=\\"{{article.url}}\\" style=\\"color:#8b5a3c;text-decoration:none;font-weight:600;\\">{{article.title}}</a>\\n        <span style=\\"color:#67594e;\\"> - {{article.excerpt}}</span>\\n      </div>\\n    </td>\\n  </tr>\\n</table>\\n"}, {"type": "custom-html", "order": 4, "config": {"htmlSlot": "communityAnnouncement", "fileTemplateMode": "custom-html", "fileTemplateBlockId": "community-html"}, "visible": true, "bodyHtml": "<table role=\\"presentation\\" width=\\"100%\\" cellpadding=\\"0\\" cellspacing=\\"0\\" border=\\"0\\" style=\\"margin:20px 0;background:#fff7ed;\\">\\n  <tr>\\n    <td style=\\"padding:22px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#3c2a1f;\\">\\n      <p style=\\"margin:0;\\">This is sample injected HTML for file-template preview and sync.</p>\\n    </td>\\n  </tr>\\n</table>\\n"}, {"type": "footer", "order": 5, "config": {"fax": "+886-2-0000-0001", "tel": "+886-2-0000-0000", "address": "善美真華德福教育園區", "fileTemplateMode": "static", "fileTemplateBlockId": "footer"}, "visible": true, "bodyHtml": "<table role=\\"presentation\\" width=\\"100%\\" cellpadding=\\"0\\" cellspacing=\\"0\\" border=\\"0\\" style=\\"background:#3c2a1f;color:#f7ead7;margin-top:24px;\\">\\n  <tr>\\n    <td style=\\"padding:22px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;line-height:1.7;\\">\\n      <div></div>\\n      <div>TEL: +886-2-0000-0000 - FAX: +886-2-0000-0001</div>\\n      <div>善美真華德福教育園區</div>\\n    </td>\\n  </tr>\\n</table>\\n"}]
+\.
+
+
+ALTER TABLE public.email_template_revisions ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: email_templates; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.email_templates DISABLE TRIGGER ALL;
+
+COPY public.email_templates (id, name, description, state, current_revision_id, deactivated_at, created_at, updated_at) FROM stdin;
+6847fdb7-9d27-4a02-b64f-17af483cfe78	SMZ Waldorf Weekly	Bundled filesystem-authored newsletter template for admin preview and sync.	active	f21cd3ad-78fc-4d64-ba0c-4ed13af1ceac	\N	2026-06-17 02:22:34.156839+00	2026-06-17 02:22:43.464308+00
+\.
+
+
+ALTER TABLE public.email_templates ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: family_audit_log; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.family_audit_log DISABLE TRIGGER ALL;
+
+COPY public.family_audit_log (id, family_id, action, actor_id, prior_state, new_state, changed_at) FROM stdin;
+\.
+
+
+ALTER TABLE public.family_audit_log ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: students; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.students DISABLE TRIGGER ALL;
+
+COPY public.students (id, name, created_at, updated_at, student_code, is_active, deactivated_at) FROM stdin;
+c1111111-1111-1111-1111-111111111111	Child One	2026-06-17 02:01:42.679987+00	2026-06-17 02:01:42.679987+00	CHILD-ONE-C1111111	t	\N
+c2222222-2222-2222-2222-222222222222	Child Two	2026-06-17 02:01:42.701158+00	2026-06-17 02:01:42.701158+00	CHILD-TWO-C2222222	t	\N
+c3333333-3333-3333-3333-333333333333	Child Three	2026-06-17 02:01:42.714531+00	2026-06-17 02:01:42.714531+00	CHILD-THREE-C3333333	t	\N
+278f016a-68f9-48fc-a3de-9ad25915bba3	Alton	2026-06-17 02:01:42.732001+00	2026-06-17 02:01:42.732001+00	ALTON-278F016A	t	\N
+b9f9f6c4-c31c-4cd5-9f9d-0f8206a6b7d1	Caton	2026-06-17 02:01:42.743502+00	2026-06-17 02:01:42.743502+00	CATON-B9F9F6C4	t	\N
+\.
+
+
+ALTER TABLE public.students ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: family_enrollment; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.family_enrollment DISABLE TRIGGER ALL;
+
+COPY public.family_enrollment (id, family_id, parent_id, relationship, enrolled_at, student_id) FROM stdin;
+2282577e-e594-4eba-bebf-3903f5bb3489	f1111111-1111-1111-1111-111111111111	cc6458b6-dfe9-445e-9c61-415626a243fc	mother	2026-06-17 02:01:42.112942+00	\N
+9a10690a-42dd-45dc-aed4-f987088c3971	f2222222-2222-2222-2222-222222222222	36670ae6-960e-457a-aa5e-a89ffa944e1d	mother	2026-06-17 02:01:42.218995+00	\N
+9f668b1c-9daa-4c13-83c9-d35ac9eb2eed	eebe9de9-4fa8-46d6-a6ca-5bff46d072a3	892b058d-064f-4711-9b8f-782d7f2cbf49	father	2026-06-17 02:01:42.536901+00	\N
+4983a9e3-fd15-42ef-93df-1cb8c3ce66ba	eebe9de9-4fa8-46d6-a6ca-5bff46d072a3	e997d6c9-9be8-4196-9723-9866a0ad0f40	mother	2026-06-17 02:01:42.673339+00	\N
+0073913d-c9de-4e37-9ba9-b94838d2db5a	f1111111-1111-1111-1111-111111111111	\N	child	2026-06-17 02:01:42.687751+00	c1111111-1111-1111-1111-111111111111
+f14d3757-246a-47cc-a90b-038b2a2c4326	f1111111-1111-1111-1111-111111111111	\N	child	2026-06-17 02:01:42.705818+00	c2222222-2222-2222-2222-222222222222
+f237a533-f542-48ad-bd1d-d5eb15ddc7b3	f2222222-2222-2222-2222-222222222222	\N	child	2026-06-17 02:01:42.718407+00	c3333333-3333-3333-3333-333333333333
+98a19869-6b62-44d6-be4c-c98b0f15cff0	eebe9de9-4fa8-46d6-a6ca-5bff46d072a3	\N	child	2026-06-17 02:01:42.736189+00	278f016a-68f9-48fc-a3de-9ad25915bba3
+04c9c48d-3c77-4e7c-a1d1-756cdd26d1d2	eebe9de9-4fa8-46d6-a6ca-5bff46d072a3	\N	child	2026-06-17 02:01:42.74775+00	b9f9f6c4-c31c-4cd5-9f9d-0f8206a6b7d1
+\.
+
+
+ALTER TABLE public.family_enrollment ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: media_deletion_audit; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.media_deletion_audit DISABLE TRIGGER ALL;
+
+COPY public.media_deletion_audit (id, media_id, deleted_by, deleted_at, reason, preflight_usage_count, metadata) FROM stdin;
+\.
+
+
+ALTER TABLE public.media_deletion_audit ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: media_usage; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.media_usage DISABLE TRIGGER ALL;
+
+COPY public.media_usage (id, media_id, target_type, target_id, context_key, active, created_by, created_at, updated_at, deactivated_at) FROM stdin;
+\.
+
+
+ALTER TABLE public.media_usage ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: media_variants; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.media_variants DISABLE TRIGGER ALL;
+
+COPY public.media_variants (id, media_id, variant_type, format, storage_path, file_size, width, height, duration, status, retry_count, error_message, last_processed_at, created_at, updated_at) FROM stdin;
+\.
+
+
+ALTER TABLE public.media_variants ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: newsletter_articles; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.newsletter_articles DISABLE TRIGGER ALL;
+
+COPY public.newsletter_articles (id, newsletter_id, article_id, article_order, added_at, added_by, targeting_mode, target_class_ids) FROM stdin;
+54ca71d4-9803-4a73-8907-1a232ebfb7eb	f0470000-0000-0000-0000-000000000047	a0470001-0001-0001-0001-000000000001	1	2026-06-17 02:01:41.963947+00	\N	shared	{}
+78e4d7b7-ea0a-44b5-b391-90794558041a	f0470000-0000-0000-0000-000000000047	a0470002-0002-0002-0002-000000000002	2	2026-06-17 02:01:41.967964+00	\N	shared	{}
+be60ffab-bc43-45ee-ae60-927acf6905ac	f0470000-0000-0000-0000-000000000047	a0470003-0003-0003-0003-000000000003	3	2026-06-17 02:01:41.971148+00	\N	shared	{}
+4b605702-9d9d-4450-814d-ac1ed46fe195	f0470000-0000-0000-0000-000000000047	a0470004-0004-0004-0004-000000000004	4	2026-06-17 02:01:41.973912+00	\N	shared	{}
+65401c2d-f06a-4e74-8f19-4fc143f1ae4c	f0470000-0000-0000-0000-000000000047	a0470005-0005-0005-0005-000000000005	5	2026-06-17 02:01:41.977059+00	\N	shared	{}
+e70601fa-f479-4a0a-9b3e-77a21e9d2ff9	f0470000-0000-0000-0000-000000000047	a0470006-0006-0006-0006-000000000006	6	2026-06-17 02:01:41.980397+00	\N	shared	{}
+0574593c-1bfd-476d-9751-2be161dccc4a	f0480000-0000-0000-0000-000000000048	a0480001-0001-0001-0001-000000000001	1	2026-06-17 02:01:41.983334+00	\N	shared	{}
+0d72b160-58c9-4c07-a86b-542e4e585d9e	f0480000-0000-0000-0000-000000000048	a0480002-0002-0002-0002-000000000002	2	2026-06-17 02:01:41.986375+00	\N	shared	{}
+c720990d-2586-487f-ae9e-9e01087e19a1	f0480000-0000-0000-0000-000000000048	a0480003-0003-0003-0003-000000000003	3	2026-06-17 02:01:41.989087+00	\N	shared	{}
+a1e4a395-1c33-4c87-a011-9817a6075940	f0470000-0000-0000-0000-000000000047	fa000001-0001-0001-0001-000000000001	7	2026-06-17 02:01:41.991848+00	\N	shared	{}
+32ccf555-40a3-41df-954c-3f8a8c7fe7f6	f0480000-0000-0000-0000-000000000048	fa000001-0001-0001-0001-000000000001	4	2026-06-17 02:01:41.99496+00	\N	shared	{}
+a1765251-6f96-4842-b900-92b5a9e43e22	f0000000-0000-0000-0000-000000000001	fa000001-0001-0001-0001-000000000001	1	2026-06-17 02:01:42.000494+00	\N	shared	{}
+63a63b57-ec93-44f0-b24d-280db2ef80aa	f0490000-0000-0000-0000-000000000049	a0470001-0001-0001-0001-000000000001	1	2026-06-17 02:23:18.870058+00	\N	shared	{}
+958fec32-29ba-4f55-ac24-34809ccf2310	f0490000-0000-0000-0000-000000000049	a0470002-0002-0002-0002-000000000002	2	2026-06-17 02:23:20.049973+00	\N	targeted	{A1}
+b9b1e1fd-3a13-4d9b-91d9-4c23f39a8436	f0490000-0000-0000-0000-000000000049	a0470004-0004-0004-0004-000000000004	3	2026-06-17 02:23:21.190075+00	\N	targeted	{B1}
+ad032312-69f3-4550-849a-ef4f652acdf8	de71b602-caf3-4957-9d21-0c635eca0bb0	a0480001-0001-0001-0001-000000000001	1	2026-07-02 23:24:12.590577+00	\N	shared	{}
+e1b77e27-c6fb-4420-b92e-3cc4fd231ecd	de71b602-caf3-4957-9d21-0c635eca0bb0	a0470002-0002-0002-0002-000000000002	2	2026-07-02 23:24:19.131078+00	\N	shared	{}
+\.
+
+
+ALTER TABLE public.newsletter_articles ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: newsletter_delivery_batches; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.newsletter_delivery_batches DISABLE TRIGGER ALL;
+
+COPY public.newsletter_delivery_batches (id, newsletter_id, trigger, audience_mode, selected_class_ids, selected_family_ids, parent_batch_id, state, pinned_newsletter_revision_id, pinned_template_id, pinned_template_revision_id, recipient_snapshot_captured_at, rules_version, preparation_job_id, total_recipients, eligible_recipients, ready_recipients, sent_recipients, failed_recipients, invalid_recipients, metadata, created_by, created_at, updated_at) FROM stdin;
+93ff789d-f7c3-4bbe-88e4-069cbe10cb3e	f0490000-0000-0000-0000-000000000049	publish	family	{}	{f1111111-1111-1111-1111-111111111111}	\N	failed	2026-06-17T16:00:07.783706+00:00	6847fdb7-9d27-4a02-b64f-17af483cfe78	f21cd3ad-78fc-4d64-ba0c-4ed13af1ceac	2026-06-17 16:00:07.858+00	v1	delivery-93ff789d-f7c3-4bbe-88e4-069cbe10cb3e	1	1	1	0	1	0	{}	\N	2026-06-17 16:00:07.861365+00	2026-06-17 16:00:14.102643+00
+51faca0e-9e40-4223-989d-a05dad9360cc	f0490000-0000-0000-0000-000000000049	publish	family	{}	{f1111111-1111-1111-1111-111111111111}	\N	failed	2026-06-17T16:00:44.715023+00:00	6847fdb7-9d27-4a02-b64f-17af483cfe78	f21cd3ad-78fc-4d64-ba0c-4ed13af1ceac	2026-06-17 16:00:45.081+00	v1	delivery-51faca0e-9e40-4223-989d-a05dad9360cc	1	1	1	0	1	0	{}	\N	2026-06-17 16:00:45.00543+00	2026-06-17 16:03:56.730332+00
+e07f0e97-fdf3-458c-a2ba-1252cdbf4b4c	f0490000-0000-0000-0000-000000000049	publish	family	{}	{eebe9de9-4fa8-46d6-a6ca-5bff46d072a3}	\N	completed	2026-06-17T16:12:44.960216+00:00	6847fdb7-9d27-4a02-b64f-17af483cfe78	f21cd3ad-78fc-4d64-ba0c-4ed13af1ceac	2026-06-17 16:12:45+00	v1	delivery-e07f0e97-fdf3-458c-a2ba-1252cdbf4b4c	2	2	2	2	0	0	{}	\N	2026-06-17 16:12:45.001368+00	2026-06-17 16:12:52.122027+00
+\.
+
+
+ALTER TABLE public.newsletter_delivery_batches ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: newsletter_delivery_batch_recipients; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.newsletter_delivery_batch_recipients DISABLE TRIGGER ALL;
+
+COPY public.newsletter_delivery_batch_recipients (id, batch_id, family_id, guardian_email, eligibility_status, preparation_status, send_status, failure_reason, prepared_payload, provider_message_id, provider_error, last_attempted_at, sent_at, created_at, updated_at, parent_id, parent_email, journey_correlation_id, preparation_findings, kit_merge_sync_status, kit_merge_payload, kit_merge_payload_fingerprint, kit_merge_provider_field_ids, kit_merge_last_synced_at, kit_merge_provider_error, campaign_ready) FROM stdin;
+336574e0-edd4-48e3-8cbb-dc1d6dbf4dd6	93ff789d-f7c3-4bbe-88e4-069cbe10cb3e	f1111111-1111-1111-1111-111111111111	\N	eligible	ready	failed	inactive_or_unconfirmed:inactive	{"familyId": "f1111111-1111-1111-1111-111111111111", "guardianId": "336574e0-edd4-48e3-8cbb-dc1d6dbf4dd6", "templateId": "6847fdb7-9d27-4a02-b64f-17af483cfe78", "classBlocks": [{"url": "http://localhost:5173/week/2025-W49/a00002", "title": "Grade 1A Class Updates (一年級甲班班級大小事)", "blockId": "a0470002-0002-0002-0002-000000000002", "classId": "A1", "content": "<h1>一年級甲班班級大小事</h1>\\n<p>This week in Grade 1A:</p>\\n<h2>Academic Updates</h2>\\n<ul>\\n<li><strong>Math:</strong> Introduction to addition and subtraction</li>\\n<li><strong>Reading:</strong> New story time sessions every afternoon</li>\\n<li><strong>Art:</strong> Seasonal craft projects with fall themes</li>\\n</ul>\\n<h2>Activities</h2>\\n<ul>\\n<li>Class field trip to local museum (Nov 22)</li>\\n<li>Show and tell event (Nov 24)</li>\\n<li>Parent-teacher conference (Nov 23 at 3:00 PM)</li>\\n</ul>\\n<h2>Homework</h2>\\n<ul>\\n<li>Math worksheets (30 minutes)</li>\\n<li>Reading journal entries (2 pages)</li>\\n</ul>\\n<p><strong>Note:</strong> This article is visible only to parents with children in Grade 1A.</p>", "editorialOrder": 2, "personalizationKey": "article:a0470002-0002-0002-0002-000000000002"}, {"url": "http://localhost:5173/week/2025-W49/a00004", "title": "Grade 2A Class Updates (二年級甲班班級大小事)", "blockId": "a0470004-0004-0004-0004-000000000004", "classId": "B1", "content": "<h1>二年級甲班班級大小事</h1>\\n<p>This week in Grade 2A:</p>\\n<h2>Learning Highlights</h2>\\n<ul>\\n<li><strong>Mathematics:</strong> Multiplication basics and strategies</li>\\n<li><strong>Literature:</strong> Classic story appreciation and discussion</li>\\n<li><strong>Social Studies:</strong> Community helpers and professions</li>\\n</ul>\\n<h2>Field Trip</h2>\\n<ul>\\n<li>Planned for Dec 5</li>\\n<li>Destination: Local nature preserve</li>\\n<li>Permission slips due: Nov 30</li>\\n</ul>\\n<h2>Student Achievements</h2>\\n<ul>\\n<li>Math competition scores announced</li>\\n<li>Science fair projects starting</li>\\n<li>Reading club selections announced</li>\\n</ul>\\n<p><strong>Note:</strong> This article is visible only to parents with children in Grade 2A.</p>", "editorialOrder": 3, "personalizationKey": "article:a0470004-0004-0004-0004-000000000004"}], "newsletterId": "f0490000-0000-0000-0000-000000000049", "renderedBody": "<!doctype html>\\n<html lang=\\"zh-Hant\\">\\n<head>\\n<meta charset=\\"utf-8\\">\\n<meta name=\\"viewport\\" content=\\"width=device-width,initial-scale=1\\">\\n<title>Weekly newsletter f0490000-0000-0000-0000-000000000049 for parent1@example.com\\n</title>\\n</head>\\n<body style=\\"margin:0;padding:0;background:#f1f5f9;\\">\\n<table role=\\"presentation\\" width=\\"100%\\" cellpadding=\\"0\\" cellspacing=\\"0\\" border=\\"0\\" style=\\"background:#f1f5f9;\\">\\n<tr><td align=\\"center\\">\\n<table role=\\"presentation\\" width=\\"640\\" cellpadding=\\"0\\" cellspacing=\\"0\\" border=\\"0\\" style=\\"max-width:640px;width:100%;background:#ffffff;\\">\\n<tr><td>\\n<table role=\\"presentation\\" width=\\"100%\\" cellpadding=\\"0\\" cellspacing=\\"0\\" border=\\"0\\" style=\\"background:#f7ead7;\\">\\n  <tr>\\n    <td style=\\"padding:28px 24px;text-align:center;font-family:Georgia,'Times New Roman',serif;color:#5a3f2b;\\">\\n      <div style=\\"font-size:28px;font-weight:700;\\">善美真華德福教育</div>\\n      <div style=\\"margin-top:8px;font-size:15px;letter-spacing:0.04em;\\">Weekly community notes</div>\\n    </td>\\n  </tr>\\n</table>\\n\\n<table role=\\"presentation\\" width=\\"100%\\" cellpadding=\\"0\\" cellspacing=\\"0\\" border=\\"0\\" style=\\"background:#fffaf2;border:1px solid #ead8bf;margin:18px 0;\\">\\n  <tr>\\n    <td style=\\"padding:22px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#2f241d;\\">\\n      <div style=\\"font-size:12px;text-transform:uppercase;letter-spacing:0.12em;color:#8b5a3c;\\">School News</div>\\n      <h3 style=\\"margin:8px 0 10px;font-size:21px;line-height:1.3;color:#3c2a1f;\\">週報開刊致詞 (Weekly Opening)</h3>\\n      <p style=\\"margin:0 0 16px;font-size:15px;line-height:1.6;color:#5c5149;\\">歡迎閱讀本週電子報 Dear Parents and Students, Welcome to Week 47 of our newsletter. This week we have exciting updates from all classes. Highlights School event announcements Academic updates Upcoming activities Published on: 20…</p>\\n      <a href=\\"http://localhost:5173/week/2025-W49/a00001\\" style=\\"display:inline-block;padding:10px 16px;background:#8b5a3c;color:#ffffff;text-decoration:none;border-radius:999px;font-size:14px;font-weight:600;\\">Read the story</a>\\n    </td>\\n  </tr>\\n</table>\\n\\n<table role=\\"presentation\\" width=\\"100%\\" cellpadding=\\"0\\" cellspacing=\\"0\\" border=\\"0\\" style=\\"background:#f2f6ee;border-left:5px solid #789262;margin:18px 0;\\">\\n  <tr>\\n    <td style=\\"padding:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#25301f;\\">\\n      <div style=\\"font-size:12px;text-transform:uppercase;letter-spacing:0.12em;color:#5d754c;\\">Class Notes - Grade 1A (一年級甲班)</div>\\n      <h3 style=\\"margin:8px 0 10px;font-size:19px;line-height:1.3;color:#25301f;\\">Grade 1A Class Updates (一年級甲班班級大小事)</h3>\\n      <p style=\\"margin:0 0 16px;font-size:15px;line-height:1.6;color:#4f5d46;\\">一年級甲班班級大小事 This week in Grade 1A: Academic Updates Math: Introduction to addition and subtraction Reading: New story time sessions every afternoon Art: Seasonal craft projects wit…</p>\\n      <a href=\\"http://localhost:5173/week/2025-W49/a00002\\" style=\\"display:inline-block;padding:10px 16px;background:#8b5a3c;color:#ffffff;text-decoration:none;border-radius:999px;font-size:14px;font-weight:600;\\">Open class article</a>\\n    </td>\\n  </tr>\\n</table>\\n\\n<table role=\\"presentation\\" width=\\"100%\\" cellpadding=\\"0\\" cellspacing=\\"0\\" border=\\"0\\" style=\\"background:#f2f6ee;border-left:5px solid #789262;margin:18px 0;\\">\\n  <tr>\\n    <td style=\\"padding:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#25301f;\\">\\n      <div style=\\"font-size:12px;text-transform:uppercase;letter-spacing:0.12em;color:#5d754c;\\">Class Notes - Grade 2A (二年級甲班)</div>\\n      <h3 style=\\"margin:8px 0 10px;font-size:19px;line-height:1.3;color:#25301f;\\">Grade 2A Class Updates (二年級甲班班級大小事)</h3>\\n      <p style=\\"margin:0 0 16px;font-size:15px;line-height:1.6;color:#4f5d46;\\">二年級甲班班級大小事 This week in Grade 2A: Learning Highlights Mathematics: Multiplication basics and strategies Literature: Classic story appreciation and discussion Social Studies: Commu…</p>\\n      <a href=\\"http://localhost:5173/week/2025-W49/a00004\\" style=\\"display:inline-block;padding:10px 16px;background:#8b5a3c;color:#ffffff;text-decoration:none;border-radius:999px;font-size:14px;font-weight:600;\\">Open class article</a>\\n    </td>\\n  </tr>\\n</table>\\n\\n<table role=\\"presentation\\" width=\\"100%\\" cellpadding=\\"0\\" cellspacing=\\"0\\" border=\\"0\\" style=\\"margin:20px 0;background:#fff7ed;\\">\\n  <tr>\\n    <td style=\\"padding:22px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#3c2a1f;\\">\\n      <p style=\\"margin:0;\\">This is sample injected HTML for file-template preview and sync.</p>\\n    </td>\\n  </tr>\\n</table>\\n\\n<table role=\\"presentation\\" width=\\"100%\\" cellpadding=\\"0\\" cellspacing=\\"0\\" border=\\"0\\" style=\\"background:#3c2a1f;color:#f7ead7;margin-top:24px;\\">\\n  <tr>\\n    <td style=\\"padding:22px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;line-height:1.7;\\">\\n      <div></div>\\n      <div>TEL: +886-2-0000-0000 - FAX: +886-2-0000-0001</div>\\n      <div>善美真華德福教育園區</div>\\n    </td>\\n  </tr>\\n</table>\\n\\n</td></tr>\\n</table>\\n</td></tr>\\n</table>\\n</body>\\n</html>", "sharedBlocks": [{"url": "http://localhost:5173/week/2025-W49/a00001", "title": "週報開刊致詞 (Weekly Opening)", "blockId": "a0470001-0001-0001-0001-000000000001", "content": "<h1>歡迎閱讀本週電子報</h1>\\n<p>Dear Parents and Students,</p>\\n<p>Welcome to Week 47 of our newsletter. This week we have exciting updates from all classes.</p>\\n<h2>Highlights</h2>\\n<ul>\\n<li>School event announcements</li>\\n<li>Academic updates</li>\\n<li>Upcoming activities</li>\\n</ul>\\n<hr>\\n<p><strong>Published on:</strong> 2025-11-17<br>\\n<strong>Week:</strong> 2025-W47</p>", "editorialOrder": 1, "personalizationKey": "article:a0470001-0001-0001-0001-000000000001"}], "classFallback": "none", "guardianEmail": "parent1@example.com", "rules_version": "v1", "renderedSubject": "Weekly newsletter f0490000-0000-0000-0000-000000000049 for parent1@example.com\\n", "resolvedClassIds": ["A1", "B1"], "input_fingerprint": "p13n-c22a65ca", "templateRevisionId": "f21cd3ad-78fc-4d64-ba0c-4ed13af1ceac", "newsletterRevisionId": "2026-06-17T16:00:07.783706+00:00", "renderedHtmlFingerprint": "html-f3848b0a"}	\N	inactive_or_unconfirmed:inactive	2026-06-17 16:00:14.085+00	\N	2026-06-17 16:00:07.872177+00	2026-06-17 16:00:14.088217+00	cc6458b6-dfe9-445e-9c61-415626a243fc	parent1@example.com	journey-mqi9brul-kpein79d	[]	failed	{"identity": {"lastName": null, "firstName": null}, "sourceBlocks": [{"url": "http://localhost:5173/week/2025-W49/a00002", "title": "Grade 1A Class Updates (一年級甲班班級大小事)", "blockId": "a0470002-0002-0002-0002-000000000002", "classId": "A1", "content": "<h1>一年級甲班班級大小事</h1>\\n<p>This week in Grade 1A:</p>\\n<h2>Academic Updates</h2>\\n<ul>\\n<li><strong>Math:</strong> Introduction to addition and subtraction</li>\\n<li><strong>Reading:</strong> New story time sessions every afternoon</li>\\n<li><strong>Art:</strong> Seasonal craft projects with fall themes</li>\\n</ul>\\n<h2>Activities</h2>\\n<ul>\\n<li>Class field trip to local museum (Nov 22)</li>\\n<li>Show and tell event (Nov 24)</li>\\n<li>Parent-teacher conference (Nov 23 at 3:00 PM)</li>\\n</ul>\\n<h2>Homework</h2>\\n<ul>\\n<li>Math worksheets (30 minutes)</li>\\n<li>Reading journal entries (2 pages)</li>\\n</ul>\\n<p><strong>Note:</strong> This article is visible only to parents with children in Grade 1A.</p>", "editorialOrder": 2, "personalizationKey": "article:a0470002-0002-0002-0002-000000000002"}, {"url": "http://localhost:5173/week/2025-W49/a00004", "title": "Grade 2A Class Updates (二年級甲班班級大小事)", "blockId": "a0470004-0004-0004-0004-000000000004", "classId": "B1", "content": "<h1>二年級甲班班級大小事</h1>\\n<p>This week in Grade 2A:</p>\\n<h2>Learning Highlights</h2>\\n<ul>\\n<li><strong>Mathematics:</strong> Multiplication basics and strategies</li>\\n<li><strong>Literature:</strong> Classic story appreciation and discussion</li>\\n<li><strong>Social Studies:</strong> Community helpers and professions</li>\\n</ul>\\n<h2>Field Trip</h2>\\n<ul>\\n<li>Planned for Dec 5</li>\\n<li>Destination: Local nature preserve</li>\\n<li>Permission slips due: Nov 30</li>\\n</ul>\\n<h2>Student Achievements</h2>\\n<ul>\\n<li>Math competition scores announced</li>\\n<li>Science fair projects starting</li>\\n<li>Reading club selections announced</li>\\n</ul>\\n<p><strong>Note:</strong> This article is visible only to parents with children in Grade 2A.</p>", "editorialOrder": 3, "personalizationKey": "article:a0470004-0004-0004-0004-000000000004"}], "stableMetadata": {"childNames": ["Child One", "Child Two"], "parentType": "guardian", "childClasses": ["Grade 1A (一年級甲班)", "Grade 2A (二年級甲班)"]}, "classArticleExcerptSets": [{"classId": "A1", "excerpts": [{"title": "Grade 1A Class Updates (一年級甲班班級大小事)", "blockId": "a0470002-0002-0002-0002-000000000002", "classId": "A1", "excerpt": "一年級甲班班級大小事 This week in Grade 1A: Academic Updates Math: Introduction to addition and subtraction Reading: New story time sessions every afternoon Art: Seasonal craft projects with fall themes Activities Class field trip to local museum (Nov 22) Show and tell event (Nov 24) Parent-teacher conference (Nov 23 at 3:00 PM) Homework Math worksheets (30 minutes) Reading journal entries (2 pages) Note: This article is visible only to parents with children in Grade 1A.", "editorialOrder": 2, "personalizationKey": "article:a0470002-0002-0002-0002-000000000002"}]}, {"classId": "B1", "excerpts": [{"title": "Grade 2A Class Updates (二年級甲班班級大小事)", "blockId": "a0470004-0004-0004-0004-000000000004", "classId": "B1", "excerpt": "二年級甲班班級大小事 This week in Grade 2A: Learning Highlights Mathematics: Multiplication basics and strategies Literature: Classic story appreciation and discussion Social Studies: Community helpers and professions Field Trip Planned for Dec 5 Destination: Local nature preserve Permission slips due: Nov 30 Student Achievements Math competition scores announced Science fair projects starting Reading club selections announced Note: This article is visible only to parents with children in Grade 2A.", "editorialOrder": 3, "personalizationKey": "article:a0470004-0004-0004-0004-000000000004"}]}]}	p13n-c22a65ca	{}	\N	inactive_or_unconfirmed:inactive	f
+98b83554-8503-442c-9196-8dd8113112d4	51faca0e-9e40-4223-989d-a05dad9360cc	f1111111-1111-1111-1111-111111111111	\N	eligible	ready	failed	inactive_or_unconfirmed:inactive	{"familyId": "f1111111-1111-1111-1111-111111111111", "guardianId": "98b83554-8503-442c-9196-8dd8113112d4", "templateId": "6847fdb7-9d27-4a02-b64f-17af483cfe78", "classBlocks": [{"url": "http://localhost:5173/week/2025-W49/a00002", "title": "Grade 1A Class Updates (一年級甲班班級大小事)", "blockId": "a0470002-0002-0002-0002-000000000002", "classId": "A1", "content": "<h1>一年級甲班班級大小事</h1>\\n<p>This week in Grade 1A:</p>\\n<h2>Academic Updates</h2>\\n<ul>\\n<li><strong>Math:</strong> Introduction to addition and subtraction</li>\\n<li><strong>Reading:</strong> New story time sessions every afternoon</li>\\n<li><strong>Art:</strong> Seasonal craft projects with fall themes</li>\\n</ul>\\n<h2>Activities</h2>\\n<ul>\\n<li>Class field trip to local museum (Nov 22)</li>\\n<li>Show and tell event (Nov 24)</li>\\n<li>Parent-teacher conference (Nov 23 at 3:00 PM)</li>\\n</ul>\\n<h2>Homework</h2>\\n<ul>\\n<li>Math worksheets (30 minutes)</li>\\n<li>Reading journal entries (2 pages)</li>\\n</ul>\\n<p><strong>Note:</strong> This article is visible only to parents with children in Grade 1A.</p>", "editorialOrder": 2, "personalizationKey": "article:a0470002-0002-0002-0002-000000000002"}, {"url": "http://localhost:5173/week/2025-W49/a00004", "title": "Grade 2A Class Updates (二年級甲班班級大小事)", "blockId": "a0470004-0004-0004-0004-000000000004", "classId": "B1", "content": "<h1>二年級甲班班級大小事</h1>\\n<p>This week in Grade 2A:</p>\\n<h2>Learning Highlights</h2>\\n<ul>\\n<li><strong>Mathematics:</strong> Multiplication basics and strategies</li>\\n<li><strong>Literature:</strong> Classic story appreciation and discussion</li>\\n<li><strong>Social Studies:</strong> Community helpers and professions</li>\\n</ul>\\n<h2>Field Trip</h2>\\n<ul>\\n<li>Planned for Dec 5</li>\\n<li>Destination: Local nature preserve</li>\\n<li>Permission slips due: Nov 30</li>\\n</ul>\\n<h2>Student Achievements</h2>\\n<ul>\\n<li>Math competition scores announced</li>\\n<li>Science fair projects starting</li>\\n<li>Reading club selections announced</li>\\n</ul>\\n<p><strong>Note:</strong> This article is visible only to parents with children in Grade 2A.</p>", "editorialOrder": 3, "personalizationKey": "article:a0470004-0004-0004-0004-000000000004"}], "newsletterId": "f0490000-0000-0000-0000-000000000049", "renderedBody": "<!doctype html>\\n<html lang=\\"zh-Hant\\">\\n<head>\\n<meta charset=\\"utf-8\\">\\n<meta name=\\"viewport\\" content=\\"width=device-width,initial-scale=1\\">\\n<title>Weekly newsletter f0490000-0000-0000-0000-000000000049 for parent1@example.com\\n</title>\\n</head>\\n<body style=\\"margin:0;padding:0;background:#f1f5f9;\\">\\n<table role=\\"presentation\\" width=\\"100%\\" cellpadding=\\"0\\" cellspacing=\\"0\\" border=\\"0\\" style=\\"background:#f1f5f9;\\">\\n<tr><td align=\\"center\\">\\n<table role=\\"presentation\\" width=\\"640\\" cellpadding=\\"0\\" cellspacing=\\"0\\" border=\\"0\\" style=\\"max-width:640px;width:100%;background:#ffffff;\\">\\n<tr><td>\\n<table role=\\"presentation\\" width=\\"100%\\" cellpadding=\\"0\\" cellspacing=\\"0\\" border=\\"0\\" style=\\"background:#f7ead7;\\">\\n  <tr>\\n    <td style=\\"padding:28px 24px;text-align:center;font-family:Georgia,'Times New Roman',serif;color:#5a3f2b;\\">\\n      <div style=\\"font-size:28px;font-weight:700;\\">善美真華德福教育</div>\\n      <div style=\\"margin-top:8px;font-size:15px;letter-spacing:0.04em;\\">Weekly community notes</div>\\n    </td>\\n  </tr>\\n</table>\\n\\n<table role=\\"presentation\\" width=\\"100%\\" cellpadding=\\"0\\" cellspacing=\\"0\\" border=\\"0\\" style=\\"background:#fffaf2;border:1px solid #ead8bf;margin:18px 0;\\">\\n  <tr>\\n    <td style=\\"padding:22px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#2f241d;\\">\\n      <div style=\\"font-size:12px;text-transform:uppercase;letter-spacing:0.12em;color:#8b5a3c;\\">School News</div>\\n      <h3 style=\\"margin:8px 0 10px;font-size:21px;line-height:1.3;color:#3c2a1f;\\">週報開刊致詞 (Weekly Opening)</h3>\\n      <p style=\\"margin:0 0 16px;font-size:15px;line-height:1.6;color:#5c5149;\\">歡迎閱讀本週電子報 Dear Parents and Students, Welcome to Week 47 of our newsletter. This week we have exciting updates from all classes. Highlights School event announcements Academic updates Upcoming activities Published on: 20…</p>\\n      <a href=\\"http://localhost:5173/week/2025-W49/a00001\\" style=\\"display:inline-block;padding:10px 16px;background:#8b5a3c;color:#ffffff;text-decoration:none;border-radius:999px;font-size:14px;font-weight:600;\\">Read the story</a>\\n    </td>\\n  </tr>\\n</table>\\n\\n<table role=\\"presentation\\" width=\\"100%\\" cellpadding=\\"0\\" cellspacing=\\"0\\" border=\\"0\\" style=\\"background:#f2f6ee;border-left:5px solid #789262;margin:18px 0;\\">\\n  <tr>\\n    <td style=\\"padding:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#25301f;\\">\\n      <div style=\\"font-size:12px;text-transform:uppercase;letter-spacing:0.12em;color:#5d754c;\\">Class Notes - Grade 1A (一年級甲班)</div>\\n      <h3 style=\\"margin:8px 0 10px;font-size:19px;line-height:1.3;color:#25301f;\\">Grade 1A Class Updates (一年級甲班班級大小事)</h3>\\n      <p style=\\"margin:0 0 16px;font-size:15px;line-height:1.6;color:#4f5d46;\\">一年級甲班班級大小事 This week in Grade 1A: Academic Updates Math: Introduction to addition and subtraction Reading: New story time sessions every afternoon Art: Seasonal craft projects wit…</p>\\n      <a href=\\"http://localhost:5173/week/2025-W49/a00002\\" style=\\"display:inline-block;padding:10px 16px;background:#8b5a3c;color:#ffffff;text-decoration:none;border-radius:999px;font-size:14px;font-weight:600;\\">Open class article</a>\\n    </td>\\n  </tr>\\n</table>\\n\\n<table role=\\"presentation\\" width=\\"100%\\" cellpadding=\\"0\\" cellspacing=\\"0\\" border=\\"0\\" style=\\"background:#f2f6ee;border-left:5px solid #789262;margin:18px 0;\\">\\n  <tr>\\n    <td style=\\"padding:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#25301f;\\">\\n      <div style=\\"font-size:12px;text-transform:uppercase;letter-spacing:0.12em;color:#5d754c;\\">Class Notes - Grade 2A (二年級甲班)</div>\\n      <h3 style=\\"margin:8px 0 10px;font-size:19px;line-height:1.3;color:#25301f;\\">Grade 2A Class Updates (二年級甲班班級大小事)</h3>\\n      <p style=\\"margin:0 0 16px;font-size:15px;line-height:1.6;color:#4f5d46;\\">二年級甲班班級大小事 This week in Grade 2A: Learning Highlights Mathematics: Multiplication basics and strategies Literature: Classic story appreciation and discussion Social Studies: Commu…</p>\\n      <a href=\\"http://localhost:5173/week/2025-W49/a00004\\" style=\\"display:inline-block;padding:10px 16px;background:#8b5a3c;color:#ffffff;text-decoration:none;border-radius:999px;font-size:14px;font-weight:600;\\">Open class article</a>\\n    </td>\\n  </tr>\\n</table>\\n\\n<table role=\\"presentation\\" width=\\"100%\\" cellpadding=\\"0\\" cellspacing=\\"0\\" border=\\"0\\" style=\\"margin:20px 0;background:#fff7ed;\\">\\n  <tr>\\n    <td style=\\"padding:22px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#3c2a1f;\\">\\n      <p style=\\"margin:0;\\">This is sample injected HTML for file-template preview and sync.</p>\\n    </td>\\n  </tr>\\n</table>\\n\\n<table role=\\"presentation\\" width=\\"100%\\" cellpadding=\\"0\\" cellspacing=\\"0\\" border=\\"0\\" style=\\"background:#3c2a1f;color:#f7ead7;margin-top:24px;\\">\\n  <tr>\\n    <td style=\\"padding:22px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;line-height:1.7;\\">\\n      <div></div>\\n      <div>TEL: +886-2-0000-0000 - FAX: +886-2-0000-0001</div>\\n      <div>善美真華德福教育園區</div>\\n    </td>\\n  </tr>\\n</table>\\n\\n</td></tr>\\n</table>\\n</td></tr>\\n</table>\\n</body>\\n</html>", "sharedBlocks": [{"url": "http://localhost:5173/week/2025-W49/a00001", "title": "週報開刊致詞 (Weekly Opening)", "blockId": "a0470001-0001-0001-0001-000000000001", "content": "<h1>歡迎閱讀本週電子報</h1>\\n<p>Dear Parents and Students,</p>\\n<p>Welcome to Week 47 of our newsletter. This week we have exciting updates from all classes.</p>\\n<h2>Highlights</h2>\\n<ul>\\n<li>School event announcements</li>\\n<li>Academic updates</li>\\n<li>Upcoming activities</li>\\n</ul>\\n<hr>\\n<p><strong>Published on:</strong> 2025-11-17<br>\\n<strong>Week:</strong> 2025-W47</p>", "editorialOrder": 1, "personalizationKey": "article:a0470001-0001-0001-0001-000000000001"}], "classFallback": "none", "guardianEmail": "parent1@example.com", "rules_version": "v1", "renderedSubject": "Weekly newsletter f0490000-0000-0000-0000-000000000049 for parent1@example.com\\n", "resolvedClassIds": ["A1", "B1"], "input_fingerprint": "p13n-7b363ccc", "templateRevisionId": "f21cd3ad-78fc-4d64-ba0c-4ed13af1ceac", "newsletterRevisionId": "2026-06-17T16:00:44.715023+00:00", "renderedHtmlFingerprint": "html-f3848b0a"}	\N	inactive_or_unconfirmed:inactive	2026-06-17 16:03:56.715+00	\N	2026-06-17 16:00:45.041232+00	2026-06-17 16:03:56.717329+00	cc6458b6-dfe9-445e-9c61-415626a243fc	parent1@example.com	journey-mqi9ckld-1hl1horr	[]	failed	{"identity": {"lastName": null, "firstName": null}, "sourceBlocks": [{"url": "http://localhost:5173/week/2025-W49/a00002", "title": "Grade 1A Class Updates (一年級甲班班級大小事)", "blockId": "a0470002-0002-0002-0002-000000000002", "classId": "A1", "content": "<h1>一年級甲班班級大小事</h1>\\n<p>This week in Grade 1A:</p>\\n<h2>Academic Updates</h2>\\n<ul>\\n<li><strong>Math:</strong> Introduction to addition and subtraction</li>\\n<li><strong>Reading:</strong> New story time sessions every afternoon</li>\\n<li><strong>Art:</strong> Seasonal craft projects with fall themes</li>\\n</ul>\\n<h2>Activities</h2>\\n<ul>\\n<li>Class field trip to local museum (Nov 22)</li>\\n<li>Show and tell event (Nov 24)</li>\\n<li>Parent-teacher conference (Nov 23 at 3:00 PM)</li>\\n</ul>\\n<h2>Homework</h2>\\n<ul>\\n<li>Math worksheets (30 minutes)</li>\\n<li>Reading journal entries (2 pages)</li>\\n</ul>\\n<p><strong>Note:</strong> This article is visible only to parents with children in Grade 1A.</p>", "editorialOrder": 2, "personalizationKey": "article:a0470002-0002-0002-0002-000000000002"}, {"url": "http://localhost:5173/week/2025-W49/a00004", "title": "Grade 2A Class Updates (二年級甲班班級大小事)", "blockId": "a0470004-0004-0004-0004-000000000004", "classId": "B1", "content": "<h1>二年級甲班班級大小事</h1>\\n<p>This week in Grade 2A:</p>\\n<h2>Learning Highlights</h2>\\n<ul>\\n<li><strong>Mathematics:</strong> Multiplication basics and strategies</li>\\n<li><strong>Literature:</strong> Classic story appreciation and discussion</li>\\n<li><strong>Social Studies:</strong> Community helpers and professions</li>\\n</ul>\\n<h2>Field Trip</h2>\\n<ul>\\n<li>Planned for Dec 5</li>\\n<li>Destination: Local nature preserve</li>\\n<li>Permission slips due: Nov 30</li>\\n</ul>\\n<h2>Student Achievements</h2>\\n<ul>\\n<li>Math competition scores announced</li>\\n<li>Science fair projects starting</li>\\n<li>Reading club selections announced</li>\\n</ul>\\n<p><strong>Note:</strong> This article is visible only to parents with children in Grade 2A.</p>", "editorialOrder": 3, "personalizationKey": "article:a0470004-0004-0004-0004-000000000004"}], "stableMetadata": {"childNames": ["Child One", "Child Two"], "parentType": "guardian", "childClasses": ["Grade 1A (一年級甲班)", "Grade 2A (二年級甲班)"]}, "classArticleExcerptSets": [{"classId": "A1", "excerpts": [{"title": "Grade 1A Class Updates (一年級甲班班級大小事)", "blockId": "a0470002-0002-0002-0002-000000000002", "classId": "A1", "excerpt": "一年級甲班班級大小事 This week in Grade 1A: Academic Updates Math: Introduction to addition and subtraction Reading: New story time sessions every afternoon Art: Seasonal craft projects with fall themes Activities Class field trip to local museum (Nov 22) Show and tell event (Nov 24) Parent-teacher conference (Nov 23 at 3:00 PM) Homework Math worksheets (30 minutes) Reading journal entries (2 pages) Note: This article is visible only to parents with children in Grade 1A.", "editorialOrder": 2, "personalizationKey": "article:a0470002-0002-0002-0002-000000000002"}]}, {"classId": "B1", "excerpts": [{"title": "Grade 2A Class Updates (二年級甲班班級大小事)", "blockId": "a0470004-0004-0004-0004-000000000004", "classId": "B1", "excerpt": "二年級甲班班級大小事 This week in Grade 2A: Learning Highlights Mathematics: Multiplication basics and strategies Literature: Classic story appreciation and discussion Social Studies: Community helpers and professions Field Trip Planned for Dec 5 Destination: Local nature preserve Permission slips due: Nov 30 Student Achievements Math competition scores announced Science fair projects starting Reading club selections announced Note: This article is visible only to parents with children in Grade 2A.", "editorialOrder": 3, "personalizationKey": "article:a0470004-0004-0004-0004-000000000004"}]}]}	p13n-7b363ccc	{}	\N	inactive_or_unconfirmed:inactive	f
+e77d8eb8-5be5-48f4-97ec-36dc1f3e35a1	e07f0e97-fdf3-458c-a2ba-1252cdbf4b4c	eebe9de9-4fa8-46d6-a6ca-5bff46d072a3	\N	eligible	ready	sent	\N	{"familyId": "eebe9de9-4fa8-46d6-a6ca-5bff46d072a3", "guardianId": "e77d8eb8-5be5-48f4-97ec-36dc1f3e35a1", "templateId": "6847fdb7-9d27-4a02-b64f-17af483cfe78", "classBlocks": [], "newsletterId": "f0490000-0000-0000-0000-000000000049", "renderedBody": "<!doctype html>\\n<html lang=\\"zh-Hant\\">\\n<head>\\n<meta charset=\\"utf-8\\">\\n<meta name=\\"viewport\\" content=\\"width=device-width,initial-scale=1\\">\\n<title>Weekly newsletter f0490000-0000-0000-0000-000000000049 for harryworld@gmail.com\\n</title>\\n</head>\\n<body style=\\"margin:0;padding:0;background:#f1f5f9;\\">\\n<table role=\\"presentation\\" width=\\"100%\\" cellpadding=\\"0\\" cellspacing=\\"0\\" border=\\"0\\" style=\\"background:#f1f5f9;\\">\\n<tr><td align=\\"center\\">\\n<table role=\\"presentation\\" width=\\"640\\" cellpadding=\\"0\\" cellspacing=\\"0\\" border=\\"0\\" style=\\"max-width:640px;width:100%;background:#ffffff;\\">\\n<tr><td>\\n<table role=\\"presentation\\" width=\\"100%\\" cellpadding=\\"0\\" cellspacing=\\"0\\" border=\\"0\\" style=\\"background:#f7ead7;\\">\\n  <tr>\\n    <td style=\\"padding:28px 24px;text-align:center;font-family:Georgia,'Times New Roman',serif;color:#5a3f2b;\\">\\n      <div style=\\"font-size:28px;font-weight:700;\\">善美真華德福教育</div>\\n      <div style=\\"margin-top:8px;font-size:15px;letter-spacing:0.04em;\\">Weekly community notes</div>\\n    </td>\\n  </tr>\\n</table>\\n\\n<table role=\\"presentation\\" width=\\"100%\\" cellpadding=\\"0\\" cellspacing=\\"0\\" border=\\"0\\" style=\\"background:#fffaf2;border:1px solid #ead8bf;margin:18px 0;\\">\\n  <tr>\\n    <td style=\\"padding:22px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#2f241d;\\">\\n      <div style=\\"font-size:12px;text-transform:uppercase;letter-spacing:0.12em;color:#8b5a3c;\\">School News</div>\\n      <h3 style=\\"margin:8px 0 10px;font-size:21px;line-height:1.3;color:#3c2a1f;\\">週報開刊致詞 (Weekly Opening)</h3>\\n      <p style=\\"margin:0 0 16px;font-size:15px;line-height:1.6;color:#5c5149;\\">歡迎閱讀本週電子報 Dear Parents and Students, Welcome to Week 47 of our newsletter. This week we have exciting updates from all classes. Highlights School event announcements Academic updates Upcoming activities Published on: 20…</p>\\n      <a href=\\"http://localhost:5173/week/2025-W49/a00001\\" style=\\"display:inline-block;padding:10px 16px;background:#8b5a3c;color:#ffffff;text-decoration:none;border-radius:999px;font-size:14px;font-weight:600;\\">Read the story</a>\\n    </td>\\n  </tr>\\n</table>\\n\\n<table role=\\"presentation\\" width=\\"100%\\" cellpadding=\\"0\\" cellspacing=\\"0\\" border=\\"0\\" style=\\"margin:20px 0;background:#fff7ed;\\">\\n  <tr>\\n    <td style=\\"padding:22px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#3c2a1f;\\">\\n      <p style=\\"margin:0;\\">This is sample injected HTML for file-template preview and sync.</p>\\n    </td>\\n  </tr>\\n</table>\\n\\n<table role=\\"presentation\\" width=\\"100%\\" cellpadding=\\"0\\" cellspacing=\\"0\\" border=\\"0\\" style=\\"background:#3c2a1f;color:#f7ead7;margin-top:24px;\\">\\n  <tr>\\n    <td style=\\"padding:22px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;line-height:1.7;\\">\\n      <div></div>\\n      <div>TEL: +886-2-0000-0000 - FAX: +886-2-0000-0001</div>\\n      <div>善美真華德福教育園區</div>\\n    </td>\\n  </tr>\\n</table>\\n\\n</td></tr>\\n</table>\\n</td></tr>\\n</table>\\n</body>\\n</html>", "sharedBlocks": [{"url": "http://localhost:5173/week/2025-W49/a00001", "title": "週報開刊致詞 (Weekly Opening)", "blockId": "a0470001-0001-0001-0001-000000000001", "content": "<h1>歡迎閱讀本週電子報</h1>\\n<p>Dear Parents and Students,</p>\\n<p>Welcome to Week 47 of our newsletter. This week we have exciting updates from all classes.</p>\\n<h2>Highlights</h2>\\n<ul>\\n<li>School event announcements</li>\\n<li>Academic updates</li>\\n<li>Upcoming activities</li>\\n</ul>\\n<hr>\\n<p><strong>Published on:</strong> 2025-11-17<br>\\n<strong>Week:</strong> 2025-W47</p>", "editorialOrder": 1, "personalizationKey": "article:a0470001-0001-0001-0001-000000000001"}], "classFallback": "no_eligible_class_blocks", "guardianEmail": "harryworld@gmail.com", "rules_version": "v1", "renderedSubject": "Weekly newsletter f0490000-0000-0000-0000-000000000049 for harryworld@gmail.com\\n", "resolvedClassIds": ["JIACHEN", "XCYB"], "input_fingerprint": "p13n-99c00f16", "templateRevisionId": "f21cd3ad-78fc-4d64-ba0c-4ed13af1ceac", "newsletterRevisionId": "2026-06-17T16:12:44.960216+00:00", "renderedHtmlFingerprint": "html-435cf3cd"}	kit-broadcast-24608562	\N	2026-06-17 16:12:52.095+00	2026-06-17 16:12:52.095+00	2026-06-17 16:12:45.005922+00	2026-06-17 16:12:52.097946+00	892b058d-064f-4711-9b8f-782d7f2cbf49	harryworld@gmail.com	journey-mqi9s025-pp5u61jb	[]	synced	{"identity": {"lastName": null, "firstName": null}, "sourceBlocks": [], "stableMetadata": {"childNames": ["Alton", "Caton"], "parentType": "guardian", "childClasses": ["辛丑乙", "甲辰"]}, "classArticleExcerptSets": [{"classId": "JIACHEN", "excerpts": []}, {"classId": "XCYB", "excerpts": []}]}	p13n-99c00f16	{}	2026-06-17 16:12:52.095+00	\N	t
+f651fad4-b008-405d-9c19-5f4c8b529f73	e07f0e97-fdf3-458c-a2ba-1252cdbf4b4c	eebe9de9-4fa8-46d6-a6ca-5bff46d072a3	\N	eligible	ready	sent	\N	{"familyId": "eebe9de9-4fa8-46d6-a6ca-5bff46d072a3", "guardianId": "f651fad4-b008-405d-9c19-5f4c8b529f73", "templateId": "6847fdb7-9d27-4a02-b64f-17af483cfe78", "classBlocks": [], "newsletterId": "f0490000-0000-0000-0000-000000000049", "renderedBody": "<!doctype html>\\n<html lang=\\"zh-Hant\\">\\n<head>\\n<meta charset=\\"utf-8\\">\\n<meta name=\\"viewport\\" content=\\"width=device-width,initial-scale=1\\">\\n<title>Weekly newsletter f0490000-0000-0000-0000-000000000049 for hacktofire@gmail.com\\n</title>\\n</head>\\n<body style=\\"margin:0;padding:0;background:#f1f5f9;\\">\\n<table role=\\"presentation\\" width=\\"100%\\" cellpadding=\\"0\\" cellspacing=\\"0\\" border=\\"0\\" style=\\"background:#f1f5f9;\\">\\n<tr><td align=\\"center\\">\\n<table role=\\"presentation\\" width=\\"640\\" cellpadding=\\"0\\" cellspacing=\\"0\\" border=\\"0\\" style=\\"max-width:640px;width:100%;background:#ffffff;\\">\\n<tr><td>\\n<table role=\\"presentation\\" width=\\"100%\\" cellpadding=\\"0\\" cellspacing=\\"0\\" border=\\"0\\" style=\\"background:#f7ead7;\\">\\n  <tr>\\n    <td style=\\"padding:28px 24px;text-align:center;font-family:Georgia,'Times New Roman',serif;color:#5a3f2b;\\">\\n      <div style=\\"font-size:28px;font-weight:700;\\">善美真華德福教育</div>\\n      <div style=\\"margin-top:8px;font-size:15px;letter-spacing:0.04em;\\">Weekly community notes</div>\\n    </td>\\n  </tr>\\n</table>\\n\\n<table role=\\"presentation\\" width=\\"100%\\" cellpadding=\\"0\\" cellspacing=\\"0\\" border=\\"0\\" style=\\"background:#fffaf2;border:1px solid #ead8bf;margin:18px 0;\\">\\n  <tr>\\n    <td style=\\"padding:22px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#2f241d;\\">\\n      <div style=\\"font-size:12px;text-transform:uppercase;letter-spacing:0.12em;color:#8b5a3c;\\">School News</div>\\n      <h3 style=\\"margin:8px 0 10px;font-size:21px;line-height:1.3;color:#3c2a1f;\\">週報開刊致詞 (Weekly Opening)</h3>\\n      <p style=\\"margin:0 0 16px;font-size:15px;line-height:1.6;color:#5c5149;\\">歡迎閱讀本週電子報 Dear Parents and Students, Welcome to Week 47 of our newsletter. This week we have exciting updates from all classes. Highlights School event announcements Academic updates Upcoming activities Published on: 20…</p>\\n      <a href=\\"http://localhost:5173/week/2025-W49/a00001\\" style=\\"display:inline-block;padding:10px 16px;background:#8b5a3c;color:#ffffff;text-decoration:none;border-radius:999px;font-size:14px;font-weight:600;\\">Read the story</a>\\n    </td>\\n  </tr>\\n</table>\\n\\n<table role=\\"presentation\\" width=\\"100%\\" cellpadding=\\"0\\" cellspacing=\\"0\\" border=\\"0\\" style=\\"margin:20px 0;background:#fff7ed;\\">\\n  <tr>\\n    <td style=\\"padding:22px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#3c2a1f;\\">\\n      <p style=\\"margin:0;\\">This is sample injected HTML for file-template preview and sync.</p>\\n    </td>\\n  </tr>\\n</table>\\n\\n<table role=\\"presentation\\" width=\\"100%\\" cellpadding=\\"0\\" cellspacing=\\"0\\" border=\\"0\\" style=\\"background:#3c2a1f;color:#f7ead7;margin-top:24px;\\">\\n  <tr>\\n    <td style=\\"padding:22px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;line-height:1.7;\\">\\n      <div></div>\\n      <div>TEL: +886-2-0000-0000 - FAX: +886-2-0000-0001</div>\\n      <div>善美真華德福教育園區</div>\\n    </td>\\n  </tr>\\n</table>\\n\\n</td></tr>\\n</table>\\n</td></tr>\\n</table>\\n</body>\\n</html>", "sharedBlocks": [{"url": "http://localhost:5173/week/2025-W49/a00001", "title": "週報開刊致詞 (Weekly Opening)", "blockId": "a0470001-0001-0001-0001-000000000001", "content": "<h1>歡迎閱讀本週電子報</h1>\\n<p>Dear Parents and Students,</p>\\n<p>Welcome to Week 47 of our newsletter. This week we have exciting updates from all classes.</p>\\n<h2>Highlights</h2>\\n<ul>\\n<li>School event announcements</li>\\n<li>Academic updates</li>\\n<li>Upcoming activities</li>\\n</ul>\\n<hr>\\n<p><strong>Published on:</strong> 2025-11-17<br>\\n<strong>Week:</strong> 2025-W47</p>", "editorialOrder": 1, "personalizationKey": "article:a0470001-0001-0001-0001-000000000001"}], "classFallback": "no_eligible_class_blocks", "guardianEmail": "hacktofire@gmail.com", "rules_version": "v1", "renderedSubject": "Weekly newsletter f0490000-0000-0000-0000-000000000049 for hacktofire@gmail.com\\n", "resolvedClassIds": ["JIACHEN", "XCYB"], "input_fingerprint": "p13n-5a593dec", "templateRevisionId": "f21cd3ad-78fc-4d64-ba0c-4ed13af1ceac", "newsletterRevisionId": "2026-06-17T16:12:44.960216+00:00", "renderedHtmlFingerprint": "html-d943079b"}	kit-broadcast-24608562	\N	2026-06-17 16:12:52.095+00	2026-06-17 16:12:52.095+00	2026-06-17 16:12:45.005922+00	2026-06-17 16:12:52.107197+00	e997d6c9-9be8-4196-9723-9866a0ad0f40	hacktofire@gmail.com	journey-mqi9s025-n9ri944a	[]	synced	{"identity": {"lastName": null, "firstName": null}, "sourceBlocks": [], "stableMetadata": {"childNames": ["Alton", "Caton"], "parentType": "guardian", "childClasses": ["辛丑乙", "甲辰"]}, "classArticleExcerptSets": [{"classId": "JIACHEN", "excerpts": []}, {"classId": "XCYB", "excerpts": []}]}	p13n-5a593dec	{}	2026-06-17 16:12:52.095+00	\N	t
+\.
+
+
+ALTER TABLE public.newsletter_delivery_batch_recipients ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: newsletter_delivery_jobs; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.newsletter_delivery_jobs DISABLE TRIGGER ALL;
+
+COPY public.newsletter_delivery_jobs (id, batch_id, job_type, status, attempts, max_attempts, run_after, locked_at, locked_by, started_at, completed_at, last_error, details, created_at, updated_at) FROM stdin;
+e0d20dd7-f270-4464-85d2-378a4f955d6e	93ff789d-f7c3-4bbe-88e4-069cbe10cb3e	prepare_batch	succeeded	1	3	2026-06-17 16:00:07.882928+00	\N	\N	2026-06-17 16:00:07.914+00	2026-06-17 16:00:14.111+00	\N	{"source": "newsletter_delivery_service"}	2026-06-17 16:00:07.882928+00	2026-06-17 16:00:14.11269+00
+ed19919b-f8be-4122-be14-5fec783256a1	51faca0e-9e40-4223-989d-a05dad9360cc	prepare_batch	succeeded	1	3	2026-06-17 16:00:45.079736+00	\N	\N	2026-06-17 16:03:51.743+00	2026-06-17 16:03:56.739+00	\N	{"source": "newsletter_delivery_service"}	2026-06-17 16:00:45.079736+00	2026-06-17 16:03:56.739982+00
+5ac3c5ca-acf7-4d9b-9991-76c315a5399d	e07f0e97-fdf3-458c-a2ba-1252cdbf4b4c	prepare_batch	succeeded	1	3	2026-06-17 16:12:45.010719+00	\N	\N	2026-06-17 16:12:45.028+00	2026-06-17 16:12:52.129+00	\N	{"source": "newsletter_delivery_service"}	2026-06-17 16:12:45.010719+00	2026-06-17 16:12:52.130286+00
+\.
+
+
+ALTER TABLE public.newsletter_delivery_jobs ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: permission_mutation_audit_log; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.permission_mutation_audit_log DISABLE TRIGGER ALL;
+
+COPY public.permission_mutation_audit_log (id, actor_id, target_user_id, action, before_state, after_state, metadata, changed_at) FROM stdin;
+\.
+
+
+ALTER TABLE public.permission_mutation_audit_log ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: student_audit_log; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.student_audit_log DISABLE TRIGGER ALL;
+
+COPY public.student_audit_log (id, student_id, action, actor_id, prior_state, new_state, changed_at) FROM stdin;
+\.
+
+
+ALTER TABLE public.student_audit_log ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: student_class_enrollment; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.student_class_enrollment DISABLE TRIGGER ALL;
+
+COPY public.student_class_enrollment (id, student_id, family_id, class_id, enrolled_at, graduated_at) FROM stdin;
+55e6e2c9-ffed-437f-ba78-29888794e4c0	c1111111-1111-1111-1111-111111111111	f1111111-1111-1111-1111-111111111111	A1	2026-06-17 02:01:42.693582+00	\N
+7f9a89ac-9833-4893-bc9b-121b685fdfef	c2222222-2222-2222-2222-222222222222	f1111111-1111-1111-1111-111111111111	B1	2026-06-17 02:01:42.710322+00	\N
+6dc802b7-63be-4320-9e66-2e7ab4cc2f11	c3333333-3333-3333-3333-333333333333	f2222222-2222-2222-2222-222222222222	A2	2026-06-17 02:01:42.72279+00	\N
+de35a4aa-f3a7-4d3f-a94b-553827a491d8	278f016a-68f9-48fc-a3de-9ad25915bba3	eebe9de9-4fa8-46d6-a6ca-5bff46d072a3	XCYB	2026-06-17 02:01:42.739229+00	\N
+04813b3a-3864-4901-9e42-d42e9b659764	b9f9f6c4-c31c-4cd5-9f9d-0f8206a6b7d1	eebe9de9-4fa8-46d6-a6ca-5bff46d072a3	JIACHEN	2026-06-17 02:01:42.756382+00	\N
+\.
+
+
+ALTER TABLE public.student_class_enrollment ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: teacher_audit_log; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.teacher_audit_log DISABLE TRIGGER ALL;
+
+COPY public.teacher_audit_log (id, teacher_id, action, actor_id, prior_state, new_state, changed_at) FROM stdin;
+\.
+
+
+ALTER TABLE public.teacher_audit_log ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: teacher_class_assignment; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.teacher_class_assignment DISABLE TRIGGER ALL;
+
+COPY public.teacher_class_assignment (id, teacher_id, class_id, assigned_at) FROM stdin;
+d49678cd-228a-40fb-a5cc-585c5649da49	9faddd05-0cab-4b63-b364-cacbccbad936	A1	2026-06-17 02:01:42.323063+00
+\.
+
+
+ALTER TABLE public.teacher_class_assignment ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: teacher_profiles; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.teacher_profiles DISABLE TRIGGER ALL;
+
+COPY public.teacher_profiles (user_id, display_name, status, is_active, deactivated_at, created_at, updated_at) FROM stdin;
+\.
+
+
+ALTER TABLE public.teacher_profiles ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: tracking_tokens; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.tracking_tokens DISABLE TRIGGER ALL;
+
+COPY public.tracking_tokens (id, user_id, token_hash, token_payload, is_revoked, expires_at, created_at) FROM stdin;
+\.
+
+
+ALTER TABLE public.tracking_tokens ENABLE TRIGGER ALL;
+
+--
+-- Data for Name: user_role_assignments; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+ALTER TABLE public.user_role_assignments DISABLE TRIGGER ALL;
+
+COPY public.user_role_assignments (id, user_id, role, created_at, updated_at) FROM stdin;
+\.
+
+
+ALTER TABLE public.user_role_assignments ENABLE TRIGGER ALL;
+
+--
+-- PostgreSQL database dump complete
+--
+
+\unrestrict X1fCMPSvP69sRT1fyPtewbSDJh69zmtKaVYjXtXRkKi0iYzPCPw5bgP0Vidtark
+

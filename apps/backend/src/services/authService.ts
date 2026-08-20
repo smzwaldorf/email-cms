@@ -5,7 +5,7 @@
  */
 
 import { getSupabaseClient } from '#/lib/supabase'
-import type { AuthSession } from '@supabase/supabase-js'
+import type { AuthSession } from '#/lib/supabase'
 import type { AuthUser } from '#/types/auth'
 import { auditLogger } from './auditLogger'
 import { tokenManager } from './tokenManager'
@@ -99,7 +99,7 @@ class SupabaseAuthService implements AuthServiceInterface {
 
     try {
       console.log('🔐 Attempting to sign in with email:', email)
-      console.log('Using Supabase client from:', import.meta.env.VITE_SUPABASE_URL)
+      console.log('Using Postgres data client')
 
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
