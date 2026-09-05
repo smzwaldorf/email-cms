@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto'
+import { canPerformCmsAction, cmsRoles, type CmsActor } from '@email-cms/shared'
 import type { IncomingMessage } from 'node:http'
 import { withClient } from '#/lib/db'
 
@@ -8,10 +10,10 @@ export interface AuthenticatedAdmin {
   email: string | null
 }
 
-export interface AuthenticatedViewer {
+export interface AuthenticatedViewer extends CmsActor {
   id: string
   email: string
-  role: ViewerRole
+  role: ViewerRole | null
   displayName: string | null
 }
 
@@ -20,6 +22,7 @@ interface SmzAccessContext {
   clientId: string
   access: 'active'
   roles: string[]
+  classScopes: { parent: string[]; teacher: string[]; effective: string[] }
 }
 
 interface SmzUserInfo {
@@ -32,6 +35,8 @@ interface SmzIdentity {
   issuer: string
   subject: string
   verifiedEmail: string
+  roles: ViewerRole[]
+  classScopes: SmzAccessContext['classScopes']
 }
 
 interface LocalViewerRow {
@@ -47,6 +52,7 @@ export class HttpError extends Error {
   constructor(
     public readonly status: number,
     message: string,
+    public readonly code?: string,
   ) {
     super(message)
     this.name = 'HttpError'
@@ -80,11 +86,8 @@ function readBearerToken(request: IncomingMessage): string {
   return token
 }
 
-function asViewerRole(role: unknown): ViewerRole {
-  if (role === 'admin' || role === 'teacher' || role === 'parent' || role === 'student') {
-    return role
-  }
-  return 'student'
+function stringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every(item => typeof item === 'string' && item.length > 0)
 }
 
 async function identityRequest<T>(url: string, token: string): Promise<{ status: number; body: T | null }> {
@@ -116,8 +119,11 @@ export async function verifySmzAccessToken(token: string): Promise<SmzIdentity> 
     identityRequest<SmzUserInfo>(userInfoUrl, token),
   ])
 
-  if (directoryResult.status === 403) {
-    throw new HttpError(403, 'This identity does not have access to Email CMS')
+  if (directoryResult.status >= 500 || userInfoResult.status >= 500) {
+    throw new HttpError(503, 'SMZ Identity is unavailable')
+  }
+  if (directoryResult.status === 403 || userInfoResult.status === 403) {
+    throw new HttpError(403, 'This identity does not have access to Email CMS', 'access_revoked')
   }
   if (directoryResult.status !== 200 || userInfoResult.status !== 200) {
     throw new HttpError(401, 'Invalid or expired SMZ Identity token')
@@ -125,26 +131,34 @@ export async function verifySmzAccessToken(token: string): Promise<SmzIdentity> 
 
   const directory = directoryResult.body
   const userInfo = userInfoResult.body
-  const email = userInfo?.email?.trim().toLowerCase()
+  const email = typeof userInfo?.email === 'string' ? userInfo.email.trim().toLowerCase() : undefined
   if (
     !directory ||
     directory.clientId !== EMAIL_CMS_CLIENT_ID ||
     directory.access !== 'active' ||
     !userInfo ||
+    typeof directory.sub !== 'string' || !directory.sub ||
     directory.sub !== userInfo.sub ||
+    !stringArray(directory.roles) ||
+    !directory.classScopes ||
+    !stringArray(directory.classScopes.parent) ||
+    !stringArray(directory.classScopes.teacher) ||
+    !stringArray(directory.classScopes.effective) ||
     userInfo.email_verified !== true ||
     !email
   ) {
     throw new HttpError(401, 'SMZ Identity token has an invalid application or identity context')
   }
 
-  return { issuer, subject: directory.sub, verifiedEmail: email }
+  return { issuer, subject: directory.sub, verifiedEmail: email, roles: cmsRoles(directory.roles), classScopes: directory.classScopes }
 }
 
 async function resolveLocalViewer(identity: SmzIdentity): Promise<AuthenticatedViewer> {
   return withClient(async (client) => {
     await client.query('BEGIN')
     try {
+      // Serialize initial linking per verified email without changing existing issuer/subject links.
+      await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [identity.verifiedEmail])
       let result = await client.query<LocalViewerRow>(
         `SELECT ur.id, ur.email, ur.role, ur.display_name
          FROM user_auth_identities AS identity
@@ -162,8 +176,16 @@ async function resolveLocalViewer(identity: SmzIdentity): Promise<AuthenticatedV
            LIMIT 2`,
           [identity.verifiedEmail],
         )
-        if (matchingUsers.rows.length !== 1) {
-          throw new HttpError(403, 'No Email CMS user is linked to this SMZ identity')
+        if (matchingUsers.rows.length > 1) {
+          throw new HttpError(409, 'Ambiguous Email CMS data association')
+        }
+        if (matchingUsers.rows.length === 0) {
+          const created = await client.query<LocalViewerRow>(
+            `INSERT INTO user_roles (id, email, role) VALUES ($1, $2, 'student')
+             RETURNING id, email, role, display_name`,
+            [randomUUID(), identity.verifiedEmail],
+          )
+          matchingUsers.rows.push(created.rows[0])
         }
 
         await client.query(
@@ -186,11 +208,19 @@ async function resolveLocalViewer(identity: SmzIdentity): Promise<AuthenticatedV
       if (!row) {
         throw new HttpError(403, 'This Email CMS user is already linked to another SMZ identity')
       }
+      const codes = [...new Set([...identity.classScopes.teacher, ...identity.classScopes.parent])]
+      const classes = codes.length ? await client.query<{ id: string; class_code: string }>(
+        'SELECT id, class_code FROM classes WHERE class_code = ANY($1::text[]) AND is_active = true', [codes],
+      ) : { rows: [] }
+      const mapCodes = (scope: string[]) => classes.rows.filter(row => scope.includes(row.class_code) && classes.rows.filter(candidate => candidate.class_code === row.class_code).length === 1).map(row => row.id)
       await client.query('COMMIT')
       return {
         id: row.id,
         email: row.email,
-        role: asViewerRole(row.role),
+        role: identity.roles[0] ?? null,
+        roles: identity.roles,
+        teacherClassIds: mapCodes(identity.classScopes.teacher),
+        parentClassIds: mapCodes(identity.classScopes.parent),
         displayName: row.display_name,
       }
     } catch (error) {
@@ -200,7 +230,7 @@ async function resolveLocalViewer(identity: SmzIdentity): Promise<AuthenticatedV
   })
 }
 
-async function viewerForToken(token: string): Promise<AuthenticatedViewer> {
+export async function viewerForToken(token: string): Promise<AuthenticatedViewer> {
   return resolveLocalViewer(await verifySmzAccessToken(token))
 }
 
@@ -210,7 +240,7 @@ export async function requireViewer(request: IncomingMessage): Promise<Authentic
 
 export async function requireAdmin(request: IncomingMessage): Promise<AuthenticatedAdmin> {
   const viewer = await requireViewer(request)
-  if (viewer.role !== 'admin') {
+  if (!canPerformCmsAction(viewer, 'cms:manage')) {
     throw new HttpError(403, 'Admin role required')
   }
   return { id: viewer.id, email: viewer.email }

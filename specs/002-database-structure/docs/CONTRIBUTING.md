@@ -1,3 +1,5 @@
+> **Historical implementation record (superseded 2026-09-05).** [Current ownership, setup and security contract](../../docs/SMZ_AUTH_CMS_CONTRACT.md) replaces local authentication, UUID tokens and local role authorization described here. Original outcomes are retained; do not use these steps as current deployment guidance.
+
 # 貢獻指南
 
 感謝您對電子報閱讀 CMS 項目的興趣！本文檔提供了關於如何貢獻代碼、報告問題和提交拉取請求的指導。

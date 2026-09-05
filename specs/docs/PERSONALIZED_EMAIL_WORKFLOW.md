@@ -1,3 +1,5 @@
+> **Current ownership note (2026-09-05):** [SMZ Auth/CMS contract](SMZ_AUTH_CMS_CONTRACT.md) governs identity, permissions, subscribed-only delivery and transaction boundaries. Historical checkmarks below do not establish current deployment or send readiness. Kit remains active; provider replacement remains proposed.
+
 # Personalized Email Workflow
 
 ## Canonical Input Model (Task 1.1)

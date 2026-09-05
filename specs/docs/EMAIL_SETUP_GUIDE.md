@@ -1,3 +1,5 @@
+> **Historical / superseded for current authentication and deployment (2026-09-05).** Read the [SMZ Auth/CMS contract](SMZ_AUTH_CMS_CONTRACT.md). This retained record does not authorize Supabase login, magic-link reader access, local role assignment, or deployment. Earlier test/security conclusions apply only to their original revision.
+
 # 📧 Complete Email Setup & Deployment Guide
 
 Comprehensive guide for setting up email service (magic links) for your Email CMS with Supabase hosted on Zeabur.

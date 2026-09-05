@@ -12,6 +12,7 @@ export const ROLE_HIERARCHY: Record<UserRole, number> = {
   editor: 80,
   teacher: 60,
   parent: 40,
+  student: 0,
 };
 
 export function hasRole(user: AuthUser | null, role: UserRole): boolean {

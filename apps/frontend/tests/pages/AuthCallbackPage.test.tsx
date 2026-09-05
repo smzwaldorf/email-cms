@@ -52,4 +52,11 @@ describe('AuthCallbackPage', () => {
     await waitFor(() => expect(screen.getByText('Identity access denied')).toBeInTheDocument())
     expect(screen.getByRole('button', { name: '返回登入' })).toBeInTheDocument()
   })
+
+  it('lands an administrator on the dashboard before any newsletter is published', async () => {
+    mocks.completeSignIn.mockResolvedValue({ user: { id: 'admin', role: 'admin' } })
+    renderPage()
+    await waitFor(() => expect(screen.getByText('/admin')).toBeInTheDocument())
+    expect(mocks.getLatestPublishedWeek).not.toHaveBeenCalled()
+  })
 })

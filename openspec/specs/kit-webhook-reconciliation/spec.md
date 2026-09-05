@@ -1,3 +1,5 @@
+> **Ownership interpretation (2026-09-05):** [Current contract](../../../specs/docs/SMZ_AUTH_CMS_CONTRACT.md). Directory identity/role/relationship changes belong to SMZ Auth. CMS-local family/enrollment records are delivery business data and grant no login or reader access. Publish and delivery require live CMS admin permission, readiness and subscribed-only eligibility. Historical trace paths may predate the monorepo.
+
 # kit-webhook-reconciliation Specification
 
 ## Purpose

@@ -46,10 +46,10 @@ export function WeeklyReaderPage() {
   const locationState = location.state as WeeklyReaderLocationState | null
   const queryParams = new URLSearchParams(location.search)
   const isAdminInlineFromQuery = queryParams.get('admin') === '1'
-  const journeyCorrelationId = queryParams.get('jc')
 
   const { user } = useAuth()
   const navigation = useNavigation()
+  const resolvedArticleRoute = useRef<string | null>(null)
 
   // Resolve newsletter ID based on which route was used
   // - /newsletter/:newsletterId - use directly, no conversion needed
@@ -181,8 +181,8 @@ export function WeeklyReaderPage() {
 
       const targetShortId = shortId
 
-      if (targetShortId) {
-        // Handle short URL redirection
+      if (targetShortId && resolvedArticleRoute.current !== location.key) {
+        // Select the deep-linked article without rewriting the incoming URL.
         const targetArticle = articles.find(a => a.shortId === targetShortId)
 
         if (targetArticle) {
@@ -198,20 +198,12 @@ export function WeeklyReaderPage() {
             navigation.setNextArticleId(undefined)
           }
 
-          // Replace URL to clean version
-          // Use /week/:week_number for regular newsletters, /newsletter/:uuid for special editions
-          const redirectPath = targetArticle.weekNumber 
-            ? `/week/${targetArticle.weekNumber}` 
-            : `/newsletter/${currentNewsletterId}`
-          const redirectWithCorrelation = journeyCorrelationId
-            ? `${redirectPath}?jc=${encodeURIComponent(journeyCorrelationId)}`
-            : redirectPath
-          navigate(redirectWithCorrelation, { replace: true })
+          resolvedArticleRoute.current = location.key
           return
         }
       }
 
-      if (articleId) {
+      if (articleId && resolvedArticleRoute.current !== location.key) {
         const targetArticle = articles.find((item) => item.id === articleId)
         if (targetArticle) {
           const targetOrder = targetArticle.order ?? 1
@@ -224,13 +216,7 @@ export function WeeklyReaderPage() {
             navigation.setNextArticleId(undefined)
           }
 
-          const redirectPath = targetArticle.weekNumber
-            ? `/week/${targetArticle.weekNumber}`
-            : `/newsletter/${currentNewsletterId}`
-          const redirectWithCorrelation = journeyCorrelationId
-            ? `${redirectPath}?jc=${encodeURIComponent(journeyCorrelationId)}`
-            : redirectPath
-          navigate(redirectWithCorrelation, { replace: true })
+          resolvedArticleRoute.current = location.key
           return
         }
       }
@@ -259,7 +245,7 @@ export function WeeklyReaderPage() {
         navigation.setArticleList(articles)
       }
     }
-  }, [articles, articleId, currentNewsletterId, journeyCorrelationId, navigation, shortId, navigate])
+  }, [articles, articleId, currentNewsletterId, location.key, navigation, shortId])
 
   useEffect(() => {
     if (locationState?.focusArticleId) {
@@ -344,6 +330,13 @@ export function WeeklyReaderPage() {
     permissionCheckedArticleId,
   ])
 
+  const navigateToArticle = (selected: Article) => {
+    const route = selected.weekNumber
+      ? `/week/${selected.weekNumber}/${selected.shortId || selected.id}`
+      : `/newsletter/${currentNewsletterId}/${selected.shortId || selected.id}`
+    navigate(`${route}${location.search}${location.hash}`)
+  }
+
   // 處理上一篇導航
   const handlePrevious = () => {
     if (isEditMode) return // Disable navigation while editing
@@ -356,6 +349,7 @@ export function WeeklyReaderPage() {
     const previousArticle = articles[newOrder - 1]
 
     if (previousArticle) {
+      navigateToArticle(previousArticle)
       navigation.setCurrentArticle(previousArticle.id, newOrder)
 
       // 更新下一篇 (當前篇變成了下一篇)
@@ -378,6 +372,7 @@ export function WeeklyReaderPage() {
     const nextArticle = articles[newOrder - 1]
 
     if (nextArticle) {
+      navigateToArticle(nextArticle)
       navigation.setCurrentArticle(nextArticle.id, newOrder)
 
       // 更新再下一篇
@@ -397,6 +392,7 @@ export function WeeklyReaderPage() {
     const selectedArticle = articles.find((a) => a.id === articleId)
     if (selectedArticle) {
       const selectedOrder = selectedArticle.order ?? 1
+      navigateToArticle(selectedArticle)
       navigation.setCurrentArticle(articleId, selectedOrder)
 
       // 更新下一篇

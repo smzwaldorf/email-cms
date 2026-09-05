@@ -12,6 +12,7 @@ import type { PersonalizationInputTemplate, PersonalizationWarning } from '@/typ
 
 export interface RecipientEligibilityInput {
   is_active: boolean
+  newsletter_subscription_status?: string
   classIds: string[]
 }
 
@@ -42,6 +43,9 @@ export function validateRecipientEligibility(family: RecipientEligibilityInput):
   }
   if (family.classIds.length === 0) {
     return { eligible: false, reason: 'no_active_enrollment' }
+  }
+  if (family.newsletter_subscription_status !== 'subscribed') {
+    return { eligible: false, reason: 'not_subscribed' }
   }
   return { eligible: true, reason: null }
 }

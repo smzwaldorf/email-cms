@@ -1,3 +1,5 @@
+> **Historical implementation record (superseded 2026-09-05).** [Current ownership, setup and security contract](../../docs/SMZ_AUTH_CMS_CONTRACT.md) replaces local authentication, UUID tokens and local role authorization described here. Original outcomes are retained; do not use these steps as current deployment guidance.
+
 # Security Review: Admin Dashboard & User Management
 
 **Date**: December 4, 2025

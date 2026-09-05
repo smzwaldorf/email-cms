@@ -24,7 +24,7 @@ Architecture rule (enforced by ESLint `no-restricted-imports`): frontend code mu
 
 ### Essential Commands (run from repo root)
 ```bash
-npm run dev            # Frontend dev server (http://localhost:5173 with HMR)
+npm run dev            # Frontend dev server (http://localhost:5174 with HMR)
 npm run backend:dev    # Backend HTTP service (tsx, reads .env / .env.local)
 npm run worker:dev     # Newsletter delivery worker
 npm test               # Frontend then backend test suites (single run)
@@ -66,7 +66,7 @@ DATABASE_URL=postgresql://email_cms:email_cms@127.0.0.1:55432/email_cms
 VITE_BACKEND_URL=http://localhost:8787
 ```
 
-Auth/OCID is not migrated yet. A Bearer token equal to a `user_roles.id` UUID is the temporary identity.
+Authentication is delegated to SMZ Auth. UUID bearer tokens are invalid. Read [the current contract](specs/docs/SMZ_AUTH_CMS_CONTRACT.md) before auth, role, data-gateway, publish or delivery edits.
 
 ### Path Aliases
 Each workspace aliases `@` to its own `src/` directory:
@@ -87,7 +87,7 @@ Components (ArticleListView, ArticleContent, NavigationBar, SideButton)
 Services & Context (backendApi, thin service proxies, NavigationContext)
     ↓ (reader queries via backend HTTP API; admin operations via /api/admin/rpc)
 Backend (apps/backend routes.ts -> services)
-    ↓ (business logic, RBAC, Supabase service-role access, Kit sync, tracking)
+    ↓ (business logic, RBAC, PostgreSQL access, live central-role authorization, Kit sync, tracking)
 ```
 
 ### Key Directories (apps/frontend)

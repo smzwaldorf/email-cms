@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, waitFor } from '@testing-library/react'
+import { render, waitFor, screen } from '@testing-library/react'
 import { WeeklyReaderPage } from '@/pages/WeeklyReaderPage'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import React from 'react'
 import * as useFetchWeeklyHook from '@/hooks/useFetchWeekly'
 import * as useFetchArticleHook from '@/hooks/useFetchArticle'
@@ -40,6 +40,11 @@ type FetchWeeklyResult = ReturnType<typeof useFetchWeeklyHook.useFetchWeekly>
 type FetchArticleResult = ReturnType<typeof useFetchArticleHook.useFetchArticle>
 
 let lastArticleListViewProps: ArticleListViewProps | null = null
+const routeMocks = vi.hoisted(() => ({ setCurrentArticle: vi.fn() }))
+function RouteProbe() {
+  const location = useLocation()
+  return <output data-testid="route">{location.pathname}{location.search}{location.hash}</output>
+}
 
 // Mock child components
 vi.mock('@/components/ArticleListView', () => ({
@@ -88,7 +93,7 @@ vi.mock('@/context/NavigationContext', () => ({
       articleList: [],
     },
     setCurrentNewsletter: vi.fn(),
-    setCurrentArticle: vi.fn(),
+    setCurrentArticle: routeMocks.setCurrentArticle,
     setArticleList: vi.fn(),
     setNextArticleId: vi.fn(),
   }),
@@ -133,6 +138,24 @@ describe('WeeklyReaderPage Analytics', () => {
         isPublished: true,
         shortId: '456'
     }
+
+    it('selects the second deep-linked article and preserves its path, query and hash', async () => {
+        const second = { ...mockArticleW47, id: 'second-article', shortId: 'second', order: 2 }
+        vi.mocked(useFetchWeeklyHook.useFetchWeekly).mockReturnValue({
+            articles: [mockArticleW47, second], newsletter: null,
+            isLoading: false, error: null, refetch: vi.fn(),
+        } as FetchWeeklyResult)
+        vi.mocked(useFetchArticleHook.useFetchArticle).mockReturnValue({
+            article: second, isLoading: false, error: null, refetch: vi.fn(),
+        } as FetchArticleResult)
+        const route = `/newsletter/${mockNewsletterId}/second?from=email&jc=correlation#section`
+        render(<MemoryRouter initialEntries={[route]}>
+            <RouteProbe />
+            <Routes><Route path="/newsletter/:newsletterId/:shortId" element={<WeeklyReaderPage />} /></Routes>
+        </MemoryRouter>)
+        await waitFor(() => expect(routeMocks.setCurrentArticle).toHaveBeenCalledWith('second-article', 2))
+        expect(screen.getByTestId('route')).toHaveTextContent(route)
+    })
 
     it('should DISABLE analytics tracking when article newsletterId is not loaded', async () => {
         // Setup: Article without newsletterId

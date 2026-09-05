@@ -30,11 +30,11 @@ export const LoginPage: React.FC = () => {
           <div className="space-y-4 text-sm text-waldorf-cream-100/90">
             <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
               <p className="font-semibold text-white">One school account</p>
-              <p className="mt-1">SMZ Identity handles Google, email-link, and approved development sign-in.</p>
+              <p className="mt-1">Sign in with your approved Google account through SMZ Identity.</p>
             </div>
             <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
-              <p className="font-semibold text-white">Local permissions remain local</p>
-              <p className="mt-1">Email CMS still decides which newsletters and admin tools you may access.</p>
+              <p className="font-semibold text-white">Access follows your school role</p>
+              <p className="mt-1">Your school account determines which newsletters and CMS tools you can access.</p>
             </div>
           </div>
         </section>
@@ -48,7 +48,7 @@ export const LoginPage: React.FC = () => {
           <GoogleButton disabled={isLoading} redirectTo={redirectTo} />
 
           <p className="mt-5 rounded-xl border border-waldorf-cream-300 bg-waldorf-cream-50 px-4 py-3 text-sm text-waldorf-clay-600">
-            Only approved, active parents and teachers with Email CMS access can complete sign-in.
+            Only approved, active school accounts with Email CMS access can complete sign-in.
           </p>
         </section>
       </div>

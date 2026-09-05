@@ -1,3 +1,4 @@
+import { smzAuthIssuer } from '@/services/smzAuth'
 /**
  * Admin Dashboard Page
  * Main page for admin users to manage newsletters, users, and view audit logs
@@ -370,16 +371,8 @@ export function AdminDashboardPage() {
     navigate(`/admin/newsletter/create?sourceNewsletter=${id}`)
   }
 
-  const handlePublish = async (id: string) => {
-    try {
-      setNewsletterError(null)
-      const updated = await adminService.publishNewsletter(id)
-      setNewsletters(newsletters.map((n) => (n.id === id ? updated : n)))
-      setSuccessMessage('電子報已發布')
-    } catch (err) {
-      const message = err instanceof AdminServiceError ? err.message : err instanceof Error ? err.message : '發布失敗'
-      setNewsletterError(message)
-    }
+  const handlePublish = (id: string) => {
+    navigate(`/admin/newsletters/id/${encodeURIComponent(id)}`)
   }
 
   const handleArchive = async (id: string) => {
@@ -674,6 +667,7 @@ export function AdminDashboardPage() {
             </button>
           ) : activeTab === 'users' ? (
             <button
+              disabled
               onClick={() => setIsAddModalOpen(true)}
               className="group px-5 py-2.5 bg-gradient-to-r from-waldorf-peach-500 to-waldorf-peach-600 text-white rounded-xl hover:from-waldorf-peach-600 hover:to-waldorf-peach-700 transition-all duration-300 font-medium shadow-lg shadow-waldorf-peach-200/50 flex items-center space-x-2"
             >
@@ -753,6 +747,8 @@ export function AdminDashboardPage() {
             {/* Users Tab */}
             {activeTab === 'users' && (
               <>
+                <p className="mb-4 rounded border bg-white p-4">登入資格、角色和班級關係由 <a className="underline" href={new URL('/', smzAuthIssuer()).toString()}>SMZ Auth</a> 管理。以下為唯讀歷史資料。</p>
+                <fieldset disabled className="opacity-60">
                 <div className="flex justify-between items-center mb-8">
                   <div>
                     <h2 className="font-display text-2xl font-semibold text-waldorf-clay-800">User Management</h2>
@@ -956,7 +952,7 @@ export function AdminDashboardPage() {
                                     >
                                       {deletingId === userData.id ? 'Deleting...' : 'Delete'}
                                     </button>
-                                  </>
+                                    </>
                                 )}
                               </td>
                             </tr>
@@ -977,6 +973,7 @@ export function AdminDashboardPage() {
                     />
                   </div>
                 )}
+                </fieldset>
               </>
             )}
 

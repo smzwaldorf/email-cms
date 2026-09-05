@@ -137,7 +137,7 @@ describe('readerService.getWeekBundle', () => {
     const result = await readerService.getWeekBundle('nl-1', {
       id: 'parent-1',
       email: 'parent@example.com',
-      role: 'parent',
+      role: 'parent', roles: ['parent'], teacherClassIds: [], parentClassIds: ['A1'],
     })
 
     expect(result.articles.map((article) => article.id)).toEqual(['art-public', 'art-restricted'])
@@ -150,7 +150,7 @@ describe('readerService.getWeekBundle', () => {
     const result = await readerService.getWeekBundle('nl-1', {
       id: 'admin-1',
       email: 'admin@example.com',
-      role: 'admin',
+      role: 'admin', roles: ['admin'], teacherClassIds: [], parentClassIds: [],
     })
 
     expect(result.articles.map((article) => article.id)).toEqual(['art-public', 'art-draft'])

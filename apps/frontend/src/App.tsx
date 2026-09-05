@@ -1,8 +1,9 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
 import { AuthProvider } from '@/context/AuthContext'
 import { NavigationProvider } from '@/context/NavigationContext'
 import { LoginPage } from '@/pages/LoginPage'
+import { HomePage } from '@/pages/HomePage'
 import { AuthCallbackPage } from '@/pages/AuthCallbackPage'
 import { WeeklyReaderPage } from '@/pages/WeeklyReaderPage'
 import { ErrorPage } from '@/pages/ErrorPage'
@@ -56,7 +57,7 @@ export default function App() {
           <AnalyticsProvider>
             <Router>
               <Routes>
-              <Route path="/" element={<Navigate to="/login" replace />} />
+              <Route path="/" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
 
               <Route path="/auth/callback" element={<AuthCallbackPage />} />

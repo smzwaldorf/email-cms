@@ -1,5 +1,4 @@
 import { HttpError, type AuthenticatedViewer } from '#/auth'
-import { getSupabaseClient } from '#/lib/supabase'
 import ArticleService, { ArticleServiceError } from '#/services/ArticleService'
 import {
   canViewArticle,
@@ -19,47 +18,6 @@ export type ReaderArticle = ArticleRow & {
   week_number?: string
 }
 
-async function loadClassIds(viewer: AuthenticatedViewer): Promise<string[]> {
-  const supabase = getSupabaseClient()
-
-  if (viewer.role === 'teacher') {
-    const { data, error } = await supabase
-      .from('teacher_class_assignment')
-      .select('class_id')
-      .eq('teacher_id', viewer.id)
-    if (error) {
-      throw new HttpError(500, `Failed to load teacher class assignments: ${error.message}`)
-    }
-    return Array.from(new Set((data ?? []).map((row) => String(row.class_id))))
-  }
-
-  if (viewer.role === 'parent') {
-    const { data: families, error: familyError } = await supabase
-      .from('family_enrollment')
-      .select('family_id')
-      .eq('parent_id', viewer.id)
-    if (familyError) {
-      throw new HttpError(500, `Failed to load parent families: ${familyError.message}`)
-    }
-
-    const familyIds = (families ?? []).map((row) => String(row.family_id))
-    if (familyIds.length === 0) return []
-
-    const { data: enrollments, error: enrollmentError } = await supabase
-      .from('student_class_enrollment')
-      .select('class_id')
-      .in('family_id', familyIds)
-      .is('graduated_at', null)
-    if (enrollmentError) {
-      throw new HttpError(500, `Failed to load child class enrollments: ${enrollmentError.message}`)
-    }
-
-    return Array.from(new Set((enrollments ?? []).map((row) => String(row.class_id))))
-  }
-
-  return []
-}
-
 export async function resolveReaderViewer(
   viewer: AuthenticatedViewer | null,
 ): Promise<ReaderViewer | null> {
@@ -67,7 +25,10 @@ export async function resolveReaderViewer(
   return {
     id: viewer.id,
     role: viewer.role,
-    classIds: await loadClassIds(viewer),
+    roles: viewer.roles,
+    teacherClassIds: viewer.teacherClassIds,
+    parentClassIds: viewer.parentClassIds,
+    classIds: [...new Set([...viewer.teacherClassIds, ...viewer.parentClassIds])],
   }
 }
 

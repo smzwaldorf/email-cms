@@ -1,137 +1,28 @@
-import { describe, expect, it } from 'vitest'
-
-import { canViewArticle, canViewNewsletter, type ReaderViewer } from '#/services/readerVisibility'
-
-const parent: ReaderViewer = { id: 'parent-1', role: 'parent', classIds: ['A1', 'B2'] }
-const teacher: ReaderViewer = { id: 'teacher-1', role: 'teacher', classIds: ['A1'] }
-const admin: ReaderViewer = { id: 'admin-1', role: 'admin', classIds: [] }
-const student: ReaderViewer = { id: 'student-1', role: 'student', classIds: [] }
-
-describe('canViewNewsletter', () => {
-  it('lets anyone read a published newsletter', () => {
-    expect(canViewNewsletter({ status: 'published' }, null)).toBe(true)
-    expect(canViewNewsletter({ status: 'published' }, student)).toBe(true)
+import { describe, it, expect } from 'vitest'
+import { canPerformCmsAction, type CmsActor } from '@email-cms/shared'
+const actor: CmsActor = { roles: ['parent', 'teacher'], teacherClassIds: ['T'], parentClassIds: ['P'] }
+const article = { status: 'published', visibility_type: 'class_restricted', restricted_to_classes: ['P'] }
+describe('shared CMS permissions', () => {
+  it('unions parent and teacher reads without granting parent-scope writes', () => {
+    expect(canPerformCmsAction(actor, 'article:view', article)).toBe(true)
+    expect(canPerformCmsAction(actor, 'article:edit', article)).toBe(false)
+    expect(canPerformCmsAction(actor, 'article:edit', { ...article, restricted_to_classes: ['T'] })).toBe(true)
+    expect(canPerformCmsAction(actor, 'article:edit', { ...article, restricted_to_classes: ['T', 'P'] })).toBe(false)
   })
-
-  it('hides draft and archived newsletters from anonymous and parent viewers', () => {
-    expect(canViewNewsletter({ status: 'draft' }, null)).toBe(false)
-    expect(canViewNewsletter({ status: 'archived' }, parent)).toBe(false)
+  it('fails closed for unknown roles/actions and empty restrictions', () => {
+    expect(canPerformCmsAction({ ...actor, roles: ['owner'] }, 'cms:manage')).toBe(false)
+    expect(canPerformCmsAction({ ...actor, roles: ['admin'] }, 'made-up')).toBe(false)
+    expect(canPerformCmsAction(actor, 'article:view', { ...article, restricted_to_classes: [] })).toBe(false)
   })
-
-  it('lets admins and teachers read unpublished newsletters', () => {
-    expect(canViewNewsletter({ status: 'draft' }, admin)).toBe(true)
-    expect(canViewNewsletter({ status: 'archived' }, teacher)).toBe(true)
+  it('limits publishing and delivery to admins', () => {
+    for (const action of ['newsletter:publish', 'email:deliver', 'article:delete']) {
+      expect(canPerformCmsAction(actor, action, article)).toBe(false)
+      expect(canPerformCmsAction({ ...actor, roles: ['admin'] }, action, article)).toBe(true)
+    }
   })
-})
-
-describe('canViewArticle', () => {
-  it('hides soft-deleted articles from every role, including admin', () => {
-    expect(
-      canViewArticle(
-        { status: 'published', deleted_at: '2026-01-01T00:00:00Z', visibility_type: 'public' },
-        admin,
-      ),
-    ).toBe(false)
-  })
-
-  it('lets anonymous viewers read published public articles only', () => {
-    expect(
-      canViewArticle({ status: 'published', deleted_at: null, visibility_type: 'public' }, null),
-    ).toBe(true)
-    expect(
-      canViewArticle(
-        {
-          status: 'published',
-          deleted_at: null,
-          visibility_type: 'class_restricted',
-          restricted_to_classes: ['A1'],
-        },
-        null,
-      ),
-    ).toBe(false)
-    expect(
-      canViewArticle({ status: 'draft', deleted_at: null, visibility_type: 'public' }, null),
-    ).toBe(false)
-  })
-
-  it('lets parents read class-restricted articles for their children only', () => {
-    expect(
-      canViewArticle(
-        {
-          status: 'published',
-          deleted_at: null,
-          visibility_type: 'class_restricted',
-          restricted_to_classes: ['A1'],
-        },
-        parent,
-      ),
-    ).toBe(true)
-    expect(
-      canViewArticle(
-        {
-          status: 'published',
-          deleted_at: null,
-          visibility_type: 'class_restricted',
-          restricted_to_classes: ['C3'],
-        },
-        parent,
-      ),
-    ).toBe(false)
-  })
-
-  it('lets teachers read class-restricted articles for assigned classes only', () => {
-    expect(
-      canViewArticle(
-        {
-          status: 'published',
-          deleted_at: null,
-          visibility_type: 'class_restricted',
-          restricted_to_classes: ['A1'],
-        },
-        teacher,
-      ),
-    ).toBe(true)
-    expect(
-      canViewArticle(
-        {
-          status: 'published',
-          deleted_at: null,
-          visibility_type: 'class_restricted',
-          restricted_to_classes: ['B2'],
-        },
-        teacher,
-      ),
-    ).toBe(false)
-  })
-
-  it('lets admins read drafts and class-restricted articles', () => {
-    expect(
-      canViewArticle({ status: 'draft', deleted_at: null, visibility_type: 'public' }, admin),
-    ).toBe(true)
-    expect(
-      canViewArticle(
-        {
-          status: 'published',
-          deleted_at: null,
-          visibility_type: 'class_restricted',
-          restricted_to_classes: ['Z9'],
-        },
-        admin,
-      ),
-    ).toBe(true)
-  })
-
-  it('does not give students class-restricted access', () => {
-    expect(
-      canViewArticle(
-        {
-          status: 'published',
-          deleted_at: null,
-          visibility_type: 'class_restricted',
-          restricted_to_classes: ['A1'],
-        },
-        student,
-      ),
-    ).toBe(false)
+  it('keeps public published reads, hides drafts and deleted content', () => {
+    expect(canPerformCmsAction(null, 'article:view', { ...article, visibility_type: 'public' })).toBe(true)
+    expect(canPerformCmsAction(actor, 'article:view', { ...article, status: 'draft' })).toBe(false)
+    expect(canPerformCmsAction({ ...actor, roles: ['admin'] }, 'article:view', { ...article, deleted_at: 'now' })).toBe(false)
   })
 })

@@ -1,3 +1,4 @@
+import { requestBackend } from '@/services/backendClient'
 /**
  * Newsletter Service
  * Handles newsletter operations (CRUD, publishing)
@@ -261,38 +262,9 @@ export class WeekService {
    * Get published newsletters
    */
   static async getPublishedWeeks(options?: PaginationOptions): Promise<NewsletterRow[]> {
-    try {
-      let query = table('newsletters')
-        .select('*')
-        .eq('status', 'published')
-
-      const sortOrder = options?.sortOrder === 'asc' ? true : false
-      query = query.order('week_number', { ascending: sortOrder })
-
-      if (options?.limit) {
-        const offset = options?.offset || 0
-        query = query.range(offset, offset + options.limit - 1)
-      }
-
-      const { data, error } = await query
-
-      if (error) {
-        throw new WeekServiceError(
-          `Failed to fetch published newsletters: ${error.message}`,
-          'FETCH_WEEKS_ERROR',
-          error as Error,
-        )
-      }
-
-      return data || []
-    } catch (err) {
-      if (err instanceof WeekServiceError) throw err
-      throw new WeekServiceError(
-        `Unexpected error fetching published newsletters: ${err instanceof Error ? err.message : String(err)}`,
-        'FETCH_WEEKS_ERROR',
-        err instanceof Error ? err : undefined,
-      )
-    }
+    const rows = await requestBackend<NewsletterRow[]>('/api/reader/weeks')
+    if (options?.sortOrder === 'asc') rows.reverse()
+    return rows.slice(options?.offset ?? 0, options?.limit ? (options.offset ?? 0) + options.limit : undefined)
   }
 
   /**
@@ -300,31 +272,7 @@ export class WeekService {
    * Orders by release_date to correctly handle newsletters without week_number
    */
   static async getLatestPublishedWeek(): Promise<NewsletterRow | null> {
-    try {
-      const { data, error } = await table('newsletters')
-        .select('*')
-        .eq('status', 'published')
-        .order('release_date', { ascending: false })
-        .limit(1)
-        .single()
-
-      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-        throw new WeekServiceError(
-          `Failed to fetch latest newsletter: ${error.message}`,
-          'FETCH_WEEK_ERROR',
-          error as Error,
-        )
-      }
-
-      return data || null
-    } catch (err) {
-      if (err instanceof WeekServiceError) throw err
-      throw new WeekServiceError(
-        `Unexpected error fetching latest newsletter: ${err instanceof Error ? err.message : String(err)}`,
-        'FETCH_WEEK_ERROR',
-        err instanceof Error ? err : undefined,
-      )
-    }
+    return (await requestBackend<NewsletterRow[]>('/api/reader/weeks'))[0] ?? null
   }
 
   /**

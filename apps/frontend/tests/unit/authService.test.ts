@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@/services/smzAuth', () => ({
+  smzDirectoryResource: () => 'http://localhost:3000/api/directory/v1',
   smzAuth: {
     signinRedirect: mocks.signinRedirect,
     signinRedirectCallback: mocks.signinRedirectCallback,
@@ -39,11 +40,13 @@ vi.mock('@/services/auditLogger', () => ({
   auditLogger: { logAuthEvent: vi.fn().mockResolvedValue(undefined) },
 }))
 
-import { authService } from '@/services/authService'
+let authService: typeof import('@/services/authService')['authService']
 
 describe('SMZ AuthService', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
+    vi.resetModules()
+    authService = (await import('@/services/authService')).authService
     mocks.getUser.mockResolvedValue(null)
     await authService.ensureInitialized()
   })
@@ -53,7 +56,7 @@ describe('SMZ AuthService', () => {
 
     expect(mocks.signinRedirect).toHaveBeenCalledWith(expect.objectContaining({
       state: { redirectTo: '/article/article-123?jc=journey-1' },
-      resource: 'smz-directory',
+      resource: 'http://localhost:3000/api/directory/v1',
     }))
   })
 
@@ -92,4 +95,14 @@ describe('SMZ AuthService', () => {
     expect(mocks.setToken).toHaveBeenCalledWith('central-access-token', 900)
     expect(mocks.requestBackend).toHaveBeenCalledWith('/api/auth/session')
   })
+  it('retries a directory outage without consuming OIDC callback again or losing the article destination', async () => {
+    mocks.signinRedirectCallback.mockResolvedValue({ access_token: 'fixture', expires_in: 900, expired: false, state: { redirectTo: '/week/2026-W36/article-one?jc=fixture' } })
+    mocks.requestBackend.mockRejectedValueOnce(new Error('SMZ Identity is unavailable')).mockResolvedValueOnce({ user: { id: 'local', email: 'parent@example.test', role: 'parent', roles: ['parent'], teacherClassIds: [], parentClassIds: ['C4'], display_name: null } })
+    await expect(authService.completeSignIn()).rejects.toThrow('unavailable')
+    const recovered = await authService.completeSignIn()
+    expect(recovered.redirectTo).toBe('/week/2026-W36/article-one?jc=fixture')
+    expect(mocks.signinRedirectCallback).toHaveBeenCalledOnce()
+    expect(mocks.requestBackend).toHaveBeenCalledTimes(2)
+  })
+
 })

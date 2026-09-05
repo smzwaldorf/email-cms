@@ -1,3 +1,4 @@
+import { requestBackend } from '@/services/backendClient'
 /**
  * Article Service
  * Handles all article data operations (CRUD, publishing, soft-delete)
@@ -206,36 +207,7 @@ export class ArticleService {
    * Get a single article by ID
    */
   static async getArticleById(id: string): Promise<ArticleRow> {
-    try {
-      const { data, error } = await table('articles')
-        .select('*')
-        .eq('id', id)
-        .single()
-
-      if (error) {
-        throw new ArticleServiceError(
-          `Failed to fetch article ${id}: ${error.message}`,
-          'FETCH_ARTICLE_ERROR',
-          error as Error,
-        )
-      }
-
-      if (!data) {
-        throw new ArticleServiceError(
-          `Article ${id} not found`,
-          'ARTICLE_NOT_FOUND',
-        )
-      }
-
-      return data
-    } catch (err) {
-      if (err instanceof ArticleServiceError) throw err
-      throw new ArticleServiceError(
-        `Unexpected error fetching article: ${err instanceof Error ? err.message : String(err)}`,
-        'FETCH_ARTICLE_ERROR',
-        err instanceof Error ? err : undefined,
-      )
-    }
+    return requestBackend<ArticleRow>(`/api/cms/articles/${encodeURIComponent(id)}`)
   }
 
   /**
@@ -408,67 +380,14 @@ export class ArticleService {
    * @param userId Optional user ID for permission check (required for enforced permissions)
    * @throws PermissionError if user lacks edit permission
    */
-  static async updateArticle(id: string, dto: UpdateArticleDTO, userId?: string): Promise<ArticleRow> {
-    try {
-      // Get the article first
-      const article = await this.getArticleById(id)
-
-      // Check permissions if userId provided
-      if (userId) {
-        await PermissionService.assertCanEditArticle(userId, article)
-      }
-
-      const updateData: Record<string, unknown> = {}
-
-      if (dto.title !== undefined) updateData.title = dto.title
-      if (dto.summary !== undefined) updateData.summary = dto.summary
-      if (dto.content !== undefined) updateData.content = dto.content
-      if (dto.author !== undefined) updateData.author = dto.author
-      if (dto.visibilityType !== undefined) updateData.visibility_type = dto.visibilityType
-      if (dto.restrictedToClasses !== undefined) {
-        updateData.restricted_to_classes =
-          dto.visibilityType === 'class_restricted'
-            ? (dto.restrictedToClasses || [])
-            : null
-      }
-      if (dto.isPublished !== undefined) updateData.status = dto.isPublished ? 'published' : 'draft'
-
-      if (Object.keys(updateData).length === 0) {
-        // No fields to update, just return the article
-        return this.getArticleById(id)
-      }
-
-      const { data, error } = await table('articles')
-        .update(updateData)
-        .eq('id', id)
-        .select()
-        .single()
-
-      if (error) {
-        throw new ArticleServiceError(
-          `Failed to update article ${id}: ${error.message}`,
-          'UPDATE_ARTICLE_ERROR',
-          error as Error,
-        )
-      }
-
-      if (!data) {
-        throw new ArticleServiceError(
-          `Article ${id} not found for update`,
-          'ARTICLE_NOT_FOUND',
-        )
-      }
-
-      return data
-    } catch (err) {
-      if (err instanceof PermissionError) throw err
-      if (err instanceof ArticleServiceError) throw err
-      throw new ArticleServiceError(
-        `Unexpected error updating article: ${err instanceof Error ? err.message : String(err)}`,
-        'UPDATE_ARTICLE_ERROR',
-        err instanceof Error ? err : undefined,
-      )
+  static async updateArticle(id: string, dto: UpdateArticleDTO, _userId?: string): Promise<ArticleRow> {
+    const body: Record<string, string> = {}
+    for (const field of ['title', 'summary', 'content', 'author'] as const) {
+      if (dto[field] !== undefined) body[field] = dto[field] ?? ''
     }
+    return requestBackend<ArticleRow>(`/api/cms/articles/${encodeURIComponent(id)}`, {
+      method: 'PATCH', body: JSON.stringify(body),
+    })
   }
 
   /**

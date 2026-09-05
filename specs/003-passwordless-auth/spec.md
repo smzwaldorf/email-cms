@@ -1,3 +1,5 @@
+> **Historical implementation record (superseded 2026-09-05).** [Current ownership, setup and security contract](../docs/SMZ_AUTH_CMS_CONTRACT.md) replaces local authentication, UUID tokens and local role authorization described here. Original outcomes are retained; do not use these steps as current deployment guidance.
+
 # 功能規格說明：增強型無密碼認證系統
 
 **功能分支**: `003-passwordless-auth`

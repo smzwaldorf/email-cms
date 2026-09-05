@@ -7,6 +7,9 @@ export interface RelationSpec {
 
 /** Known PostgREST embeds used by the current backend services. */
 export const RELATIONS: Record<string, Record<string, RelationSpec>> = {
+  article_tag_assignments: {
+    article_tags: { table: 'article_tags', from: 'tag_id', to: 'id', type: 'one' },
+  },
   newsletter_articles: {
     articles: { table: 'articles', from: 'article_id', to: 'id', type: 'one' },
     newsletters: { table: 'newsletters', from: 'newsletter_id', to: 'id', type: 'one' },

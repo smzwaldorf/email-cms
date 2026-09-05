@@ -1509,7 +1509,7 @@ class AdminService {
           : (preview.selection.familyIds ?? []),
       }
     } catch (err) {
-      // Keep readiness checks non-blocking if delivery preview fails.
+      issues.push('無法確認投遞對象，請稍後重試')
       console.warn('Failed to resolve publish audience preview:', err)
     }
 

@@ -123,7 +123,11 @@ function renderArticleSummaryHtml(blocks: PersonalizedEmailResolvedBlock[]): str
   const items = blocks
     .map((block, index) => {
       const title = toCanonicalString(block.title) || `Article ${index + 1}`
-      return `<li>${escapeHtml(title)}</li>`
+      const url = toCanonicalString(block.url)
+      const safeUrl = /^https?:\/\//i.test(url) ? url : null
+      return safeUrl
+        ? `<li><a href="${escapeHtml(safeUrl)}">${escapeHtml(title)}</a></li>`
+        : `<li>${escapeHtml(title)}</li>`
     })
     .join('')
 

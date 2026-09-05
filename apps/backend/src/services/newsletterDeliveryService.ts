@@ -42,11 +42,13 @@ import type {
 interface FamilyWithEnrollments {
   id: string
   is_active: boolean
+  newsletter_subscription_status?: string
   classIds: string[]
 }
 
 export interface RecipientEligibilityInput {
   is_active: boolean
+  newsletter_subscription_status?: string
   classIds: string[]
 }
 
@@ -94,8 +96,14 @@ function generateJourneyCorrelationId(): string {
   return `journey-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
 }
 
+// PostgreSQL returns timestamptz as Date, while persisted revision IDs are text.
+function canonicalNewsletterRevision(value: string | Date): string {
+  const date = value instanceof Date ? value : new Date(value)
+  return Number.isNaN(date.getTime()) ? String(value) : date.toISOString()
+}
+
 function getPublicAppBaseUrl(): string {
-  return (process.env.VITE_APP_URL ?? process.env.APP_URL ?? 'http://localhost:5173').replace(/\/+$/, '')
+  return (process.env.VITE_APP_URL ?? process.env.APP_URL ?? 'http://localhost:5174').replace(/\/+$/, '')
 }
 
 function buildPublicArticleUrl(
@@ -166,6 +174,9 @@ export function validateRecipientEligibility(family: RecipientEligibilityInput):
   if (family.classIds.length === 0) {
     return { eligible: false, reason: 'no_active_enrollment' }
   }
+  if (family.newsletter_subscription_status !== 'subscribed') {
+    return { eligible: false, reason: 'not_subscribed' }
+  }
   return { eligible: true, reason: null }
 }
 
@@ -212,7 +223,7 @@ function mapBatchRow(row: NewsletterDeliveryBatchRow): NewsletterDeliveryBatch {
     selectedFamilyIds: row.selected_family_ids ?? [],
     parentBatchId: row.parent_batch_id ?? null,
     state: row.state,
-    pinnedNewsletterRevisionId: row.pinned_newsletter_revision_id,
+    pinnedNewsletterRevisionId: canonicalNewsletterRevision(row.pinned_newsletter_revision_id),
     pinnedTemplateId: row.pinned_template_id ?? null,
     pinnedTemplateRevisionId: row.pinned_template_revision_id ?? null,
     recipientSnapshotCapturedAt: row.recipient_snapshot_captured_at,
@@ -327,7 +338,7 @@ class NewsletterDeliveryService {
 
     let familyQuery = supabase
       .from('families')
-      .select('id, is_active')
+      .select('id, is_active, newsletter_subscription_status')
     if (candidateFamilyIds && candidateFamilyIds.length > 0) {
       familyQuery = familyQuery.in('id', candidateFamilyIds)
     }
@@ -359,7 +370,8 @@ class NewsletterDeliveryService {
 
     return (families ?? []).map((family) => ({
       id: family.id,
-      is_active: family.is_active ?? true,
+      is_active: family.is_active === true,
+      newsletter_subscription_status: family.newsletter_subscription_status,
       classIds: Array.from(classIdsByFamily.get(family.id) ?? []),
     }))
   }
@@ -700,7 +712,7 @@ class NewsletterDeliveryService {
 
     return {
       newsletterId: newsletter.id,
-      newsletterRevisionId: newsletter.updated_at,
+      newsletterRevisionId: canonicalNewsletterRevision(newsletter.updated_at),
       title: newsletter.title ?? null,
       url: buildPublicNewsletterUrl(newsletter),
       sharedBlocks,
@@ -1073,7 +1085,7 @@ class NewsletterDeliveryService {
           : (audience.familyIds ?? []),
         parent_batch_id: parentBatchId,
         state: 'queued',
-        pinned_newsletter_revision_id: newsletter.updated_at,
+        pinned_newsletter_revision_id: canonicalNewsletterRevision(newsletter.updated_at),
         pinned_template_id: template?.templateId ?? null,
         pinned_template_revision_id: template?.templateRevisionId ?? null,
         recipient_snapshot_captured_at: new Date().toISOString(),

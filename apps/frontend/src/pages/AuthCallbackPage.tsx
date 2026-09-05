@@ -19,6 +19,7 @@ async function defaultDestination(): Promise<string> {
 export const AuthCallbackPage: React.FC = () => {
   const navigate = useNavigate()
   const [status, setStatus] = useState<CallbackStatus>('processing')
+  const [attempt, setAttempt] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -28,7 +29,8 @@ export const AuthCallbackPage: React.FC = () => {
         const result = await authService.completeSignIn()
         if (!active) return
         setStatus('success')
-        navigate(result.redirectTo || await defaultDestination(), { replace: true })
+        const isAdmin = result.user.role === 'admin' || result.user.roles?.includes('admin')
+        navigate(result.redirectTo || (isAdmin ? '/admin' : await defaultDestination()), { replace: true })
       } catch (caught) {
         if (!active) return
         console.error('SMZ Identity callback failed', caught)
@@ -39,7 +41,7 @@ export const AuthCallbackPage: React.FC = () => {
     return () => {
       active = false
     }
-  }, [navigate])
+  }, [navigate, attempt])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-waldorf-sage to-waldorf-cream flex items-center justify-center p-4">
@@ -65,6 +67,9 @@ export const AuthCallbackPage: React.FC = () => {
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-700">!</div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">驗證失敗</h1>
             <p className="text-red-600 mb-4">{error}</p>
+            <button type="button" className="mb-4 underline" onClick={() => { setStatus('processing'); setAttempt(value => value + 1) }}>
+              重試驗證
+            </button>
             <button
               type="button"
               onClick={() => navigate('/login', { replace: true })}

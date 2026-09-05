@@ -1,6 +1,9 @@
 import { UserManager, WebStorageStateStore, type User } from 'oidc-client-ts'
 
-const directoryResource = 'smz-directory'
+export function smzDirectoryResource(): string {
+  return new URL('/api/directory/v1', smzAuthIssuer()).toString()
+}
+const directoryResource = smzDirectoryResource()
 
 export function smzAuthIssuer(): string {
   return (import.meta.env.VITE_SMZ_AUTH_ISSUER || 'http://localhost:3000/api/auth').replace(/\/+$/, '')

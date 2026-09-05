@@ -1,3 +1,5 @@
+> **Ownership revision (2026-09-05):** [Current contract](../../../specs/docs/SMZ_AUTH_CMS_CONTRACT.md). SMZ Auth owns login, roles, school relationships and per-app admission; CMS consumes live facts for action policy. Earlier local role/bulk-assignment and magic-link plans are superseded. Historical completion statements are preserved as history, not current verification.
+
 ## Context
 
 The system already includes role-based authentication and class-aware content filtering, but advanced permission operations are still handled implicitly across code paths and lack a dedicated admin UX. `FUTURE-PLANS.md` calls for a permission/access-control UI with role settings, class restrictions, bulk adjustments, access logs, and explicit multi-role conflict handling.

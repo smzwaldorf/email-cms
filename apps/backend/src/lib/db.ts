@@ -1,4 +1,7 @@
+import { AsyncLocalStorage } from 'node:async_hooks'
 import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from 'pg'
+
+const transactionClient = new AsyncLocalStorage<PoolClient>()
 
 let pool: Pool | null = null
 
@@ -24,7 +27,7 @@ export async function query<T extends QueryResultRow = QueryResultRow>(
   text: string,
   values: unknown[] = [],
 ): Promise<QueryResult<T>> {
-  return getPool().query<T>(text, values)
+  return (transactionClient.getStore() ?? getPool()).query<T>(text, values)
 }
 
 export async function withClient<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
@@ -40,4 +43,20 @@ export async function closePool(): Promise<void> {
   if (!pool) return
   await pool.end()
   pool = null
+}
+
+/** Keep service queries on the same connection until the entire business operation commits. */
+export async function withTransaction<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
+  if (transactionClient.getStore()) throw new Error('Nested transactions are not supported')
+  return withClient(async client => {
+    await client.query('BEGIN')
+    try {
+      const result = await transactionClient.run(client, () => fn(client))
+      await client.query('COMMIT')
+      return result
+    } catch (error) {
+      await client.query('ROLLBACK')
+      throw error
+    }
+  })
 }

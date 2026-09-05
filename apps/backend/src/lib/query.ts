@@ -91,9 +91,24 @@ function parseSelect(raw: string, tableName: string, options?: { count?: 'exact'
     return { columns: ['*'], embeds, count: options?.count ?? null, head: options?.head === true }
   }
 
-  const parts = compact.split(',').map((part) => part.trim()).filter(Boolean)
+  // Commas inside relation projections belong to that relation, not the base table.
+  const parts: string[] = []
+  let depth = 0
+  let start = 0
+  for (let index = 0; index < compact.length; index += 1) {
+    if (compact[index] === '(') depth += 1
+    if (compact[index] === ')') depth -= 1
+    if (depth < 0) throw new Error('Unbalanced select projection')
+    if (compact[index] === ',' && depth === 0) {
+      parts.push(compact.slice(start, index).trim())
+      start = index + 1
+    }
+  }
+  if (depth !== 0) throw new Error('Unbalanced select projection')
+  parts.push(compact.slice(start).trim())
   for (const part of parts) {
-    const embedMatch = part.match(/^([A-Za-z_][A-Za-z0-9_]*)!(inner|left)\s*\((.*)\)$/i)
+    if (!part) continue
+    const embedMatch = part.match(/^([A-Za-z_][A-Za-z0-9_]*)(?:!(inner|left))?\s*\((.*)\)$/i)
     if (embedMatch) {
       const alias = embedMatch[1]
       const relation = RELATIONS[tableName]?.[alias]
@@ -103,7 +118,7 @@ function parseSelect(raw: string, tableName: string, options?: { count?: 'exact'
       const innerCols = embedMatch[3].trim()
       embeds.push({
         alias,
-        inner: embedMatch[2].toLowerCase() === 'inner',
+        inner: embedMatch[2]?.toLowerCase() === 'inner',
         columns: innerCols === '*' ? '*' : innerCols.split(',').map((col) => col.trim()).filter(Boolean),
         relation,
       })

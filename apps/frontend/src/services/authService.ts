@@ -2,7 +2,7 @@ import type { User } from 'oidc-client-ts'
 import type { AuthSession } from '@/lib/supabase'
 import type { AuthUser } from '@/types/auth'
 import { requestBackend, setStoredAuthUser } from '@/services/backendClient'
-import { redirectFromSmzUser, smzAuth } from '@/services/smzAuth'
+import { redirectFromSmzUser, smzAuth, smzDirectoryResource } from '@/services/smzAuth'
 import { auditLogger } from './auditLogger'
 import { tokenManager } from './tokenManager'
 import { isSafeAppRedirectPath } from '@/utils/urlUtils'
@@ -11,7 +11,10 @@ interface SessionResponse {
   user: {
     id: string
     email: string
-    role: string
+    role: string | null
+    roles: string[]
+    teacherClassIds: string[]
+    parentClassIds: string[]
     display_name: string | null
   }
 }
@@ -41,6 +44,7 @@ class SmzAuthService implements AuthServiceInterface {
   private authStateListeners: Array<(user: AuthUser | null) => void> = []
   private initialized = false
   private initializationPromise: Promise<void> | null = null
+  private callbackUserPromise: Promise<User> | null = null
   private callbackPromise: Promise<CompletedSignIn> | null = null
 
   async initialize(): Promise<void> {
@@ -64,6 +68,7 @@ class SmzAuthService implements AuthServiceInterface {
       smzAuth.events.addUserUnloaded(() => {
         void this.clearLocalSession()
       })
+      window.addEventListener('cms-auth-invalid', () => { void this.clearLocalSession() })
       this.initialized = true
     })()
 
@@ -95,12 +100,15 @@ class SmzAuthService implements AuthServiceInterface {
   }
 
   completeSignIn(): Promise<CompletedSignIn> {
-    this.callbackPromise ??= this.finishSignIn()
+    this.callbackPromise ??= this.finishSignIn().catch(error => {
+      this.callbackPromise = null
+      throw error
+    })
     return this.callbackPromise
   }
 
   private async finishSignIn(): Promise<CompletedSignIn> {
-    const oidcUser = await smzAuth.signinRedirectCallback()
+    const oidcUser = await (this.callbackUserPromise ??= smzAuth.signinRedirectCallback())
     const user = await this.establishLocalSession(oidcUser)
     const redirectTo = redirectFromSmzUser(oidcUser)
     return {
@@ -153,8 +161,8 @@ class SmzAuthService implements AuthServiceInterface {
     const safeRedirectTo = isSafeAppRedirectPath(redirectTo) ? redirectTo : undefined
     await smzAuth.signinRedirect({
       state: safeRedirectTo ? { redirectTo: safeRedirectTo } : undefined,
-      resource: 'smz-directory',
-      extraTokenParams: { resource: 'smz-directory' },
+      resource: smzDirectoryResource(),
+      extraTokenParams: { resource: smzDirectoryResource() },
     })
   }
 
@@ -167,7 +175,10 @@ class SmzAuthService implements AuthServiceInterface {
     const user: AuthUser = {
       id: session.user.id,
       email: session.user.email,
-      role: session.user.role as AuthUser['role'],
+      role: (session.user.role ?? 'student') as AuthUser['role'],
+      roles: session.user.roles,
+      teacherClassIds: session.user.teacherClassIds,
+      parentClassIds: session.user.parentClassIds,
       displayName: session.user.display_name || session.user.email.split('@')[0],
     }
     this.currentUser = user
