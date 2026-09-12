@@ -40,3 +40,5 @@ Workers fetch and scheduled handlers run with separate pools and environment eve
 ### Build compatibility corrections
 
 Generate SQL row contracts from schema, retain explicit joined projection types, preserve composite upsert conflict keys and normalize PostgreSQL numeric values at DTO boundaries. Use a Worker-compatible HTML parser and bundle templates. Resolve emitted backend import aliases and the shared runtime export for plain Node. Compiler checks remain enabled.
+
+Database deployment checks use a short-lived, bearer-protected Wrangler remote preview with the production Hyperdrive binding. This verifies the actual runtime credential and avoids a second direct database password in GitHub. The preview exposes fixed readiness/check/bootstrap operations, accepts no user SQL, and is terminated after use. Initialization is opt-in, transactional and empty-schema-only.
