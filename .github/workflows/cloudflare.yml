@@ -59,6 +59,8 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: npm run build -w @email-cms/shared
       - run: npm run cloudflare:configure
+      - name: Validate Pages configuration
+        run: npx wrangler pages functions build-env .wrangler/deploy --outfile .wrangler/deploy/pages-build-env.json
       - run: node scripts/cloudflare-check-binding.mjs
       - name: Configure persistent session secrets
         run: node scripts/cloudflare-session-secrets.mjs

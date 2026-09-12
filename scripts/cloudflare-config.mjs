@@ -28,6 +28,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const config = configuration(process.env)
   await mkdir(new URL('../.wrangler/deploy/', import.meta.url), { recursive: true })
   await writeFile(new URL('../.wrangler/deploy/cms.json', import.meta.url), JSON.stringify(config, null, 2) + '\n')
-  await writeFile(new URL('../.wrangler/deploy/wrangler.json', import.meta.url), JSON.stringify({ name: 'smz-cms', account_id: process.env.CLOUDFLARE_ACCOUNT_ID, pages_build_output_dir: '../../apps/frontend/dist', compatibility_date: '2026-09-12', services: [{ binding: 'CMS_API', service: 'smz-cms-api' }] }, null, 2) + '\n')
+  await writeFile(new URL('../.wrangler/deploy/wrangler.json', import.meta.url), JSON.stringify({ name: 'smz-cms', pages_build_output_dir: '../../apps/frontend/dist', compatibility_date: '2026-09-12', services: [{ binding: 'CMS_API', service: 'smz-cms-api' }] }, null, 2) + '\n')
   console.info('Generated .wrangler/deploy/cms.json; delivery is disabled')
 }
