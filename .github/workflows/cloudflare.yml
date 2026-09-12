@@ -72,5 +72,6 @@ jobs:
       - run: node scripts/cloudflare-preflight.mjs
       - run: npm run cloudflare:pages:build
       - run: npx wrangler deploy --config .wrangler/deploy/cms.json
-      - run: npx wrangler pages deploy --config .wrangler/deploy/pages.json --branch main
+      - run: npx wrangler pages deploy --branch main
+        working-directory: .wrangler/deploy
       - run: node scripts/cloudflare-smoke.mjs
