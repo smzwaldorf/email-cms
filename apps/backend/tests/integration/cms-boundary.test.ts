@@ -34,6 +34,8 @@ describe('CMS HTTP boundary and publish handoff', () => {
     for (const body of [
       { table: 'user_roles', mutation: { type: 'update', payload: { role: 'admin' } } },
       { table: 'user_auth_identities' },
+      { table: 'cms_browser_sessions' },
+      { table: 'cms_login_flows' },
       { table: 'articles', filters: [{ op: 'delete', column: 'id', value: 'x' }] },
     ]) expect((await call('/api/data/query', body)).status).toBeGreaterThanOrEqual(400)
     expect(m.runQuery).not.toHaveBeenCalled()

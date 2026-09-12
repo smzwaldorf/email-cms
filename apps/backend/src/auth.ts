@@ -1,3 +1,4 @@
+import { cookieViewer, serverSessionsEnabled, sessionId } from '#/session/http'
 import { identityFetch, runtimeEnvironment } from '#/runtime/environment'
 import { randomUUID } from 'node:crypto'
 import { canPerformCmsAction, cmsRoles, type CmsActor } from '@email-cms/shared'
@@ -111,7 +112,7 @@ async function identityRequest<T>(url: string, token: string): Promise<{ status:
   return { status: response.status, body }
 }
 
-export async function verifySmzAccessToken(token: string): Promise<SmzIdentity> {
+export async function verifySmzAccessToken(token: string, clientId = EMAIL_CMS_CLIENT_ID, subject?: string): Promise<SmzIdentity> {
   const issuer = authIssuer()
   const directoryUrl = new URL('/api/directory/v1/me/access-context', issuer).toString()
   const userInfoUrl = `${issuer}/oauth2/userinfo`
@@ -123,9 +124,13 @@ export async function verifySmzAccessToken(token: string): Promise<SmzIdentity> 
   if (directoryResult.status >= 500 || userInfoResult.status >= 500) {
     throw new HttpError(503, 'SMZ Identity is unavailable')
   }
-  if (directoryResult.status === 403 || userInfoResult.status === 403) {
+  if (directoryResult.status === 401 && (directoryResult.body as { error?: string } | null)?.error === 'session_expired') {
+    throw new HttpError(401, 'Please verify your identity to resume', 'session_expired')
+  }
+  if (directoryResult.status === 403 && (directoryResult.body as { error?: string } | null)?.error === 'access_revoked') {
     throw new HttpError(403, 'This identity does not have access to Email CMS', 'access_revoked')
   }
+  if (directoryResult.status === 403 || userInfoResult.status === 403) throw new HttpError(403, 'Identity permission denied')
   if (directoryResult.status !== 200 || userInfoResult.status !== 200) {
     throw new HttpError(401, 'Invalid or expired SMZ Identity token')
   }
@@ -135,9 +140,10 @@ export async function verifySmzAccessToken(token: string): Promise<SmzIdentity> 
   const email = typeof userInfo?.email === 'string' ? userInfo.email.trim().toLowerCase() : undefined
   if (
     !directory ||
-    directory.clientId !== EMAIL_CMS_CLIENT_ID ||
+    directory.clientId !== clientId ||
     directory.access !== 'active' ||
     !userInfo ||
+    (subject !== undefined && directory.sub !== subject) ||
     typeof directory.sub !== 'string' || !directory.sub ||
     directory.sub !== userInfo.sub ||
     !stringArray(directory.roles) ||
@@ -231,11 +237,12 @@ async function resolveLocalViewer(identity: SmzIdentity): Promise<AuthenticatedV
   })
 }
 
-export async function viewerForToken(token: string): Promise<AuthenticatedViewer> {
-  return resolveLocalViewer(await verifySmzAccessToken(token))
+export async function viewerForToken(token: string, clientId = EMAIL_CMS_CLIENT_ID, subject?: string): Promise<AuthenticatedViewer> {
+  return resolveLocalViewer(await verifySmzAccessToken(token, clientId, subject))
 }
 
 export async function requireViewer(request: IncomingMessage): Promise<AuthenticatedViewer> {
+  if (serverSessionsEnabled() && sessionId(request)) return cookieViewer(request)
   return viewerForToken(readBearerToken(request))
 }
 
@@ -248,6 +255,7 @@ export async function requireAdmin(request: IncomingMessage): Promise<Authentica
 }
 
 export async function optionalViewer(request: IncomingMessage): Promise<AuthenticatedViewer | null> {
+  if (serverSessionsEnabled() && sessionId(request)) return cookieViewer(request)
   const token = readOptionalBearerToken(request)
   return token ? viewerForToken(token) : null
 }

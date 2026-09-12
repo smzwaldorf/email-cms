@@ -1,3 +1,5 @@
+import { serverSessionMode } from './serverSessionMode'
+import { serverAuthService } from './serverAuthService'
 import type { User } from 'oidc-client-ts'
 import type { AuthSession } from '@/lib/supabase'
 import type { AuthUser } from '@/types/auth'
@@ -336,7 +338,7 @@ class SmzAuthService implements AuthServiceInterface {
   }
 }
 
-const authService = new SmzAuthService()
+const authService = serverSessionMode ? serverAuthService : new SmzAuthService()
 
 void authService.initialize().catch((error) => {
   console.error('Failed to initialize SMZ Identity', error)

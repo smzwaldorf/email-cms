@@ -47,6 +47,12 @@ export function ArticleEditorPage() {
     loadArticleData()
   }, [weekNumber, articleId])
 
+  useEffect(() => {
+    const recovered = () => { if (!article && error) void loadArticleData() }
+    window.addEventListener('cms-auth-renewed', recovered)
+    return () => window.removeEventListener('cms-auth-renewed', recovered)
+  }, [article, error, articleId, weekNumber, id])
+
   const loadArticleData = async () => {
     if ((!weekNumber && !id) || !articleId) {
       setError('缺少必要的參數：newsletter 或 articleId')
@@ -131,6 +137,7 @@ export function ArticleEditorPage() {
       const message = err instanceof Error ? err.message : '保存失敗'
       setError(message)
       console.error('Failed to save article:', err)
+      throw err
     }
   }
 

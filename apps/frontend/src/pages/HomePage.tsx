@@ -15,6 +15,7 @@ export function HomePage() {
     if (!user || isAdmin) return
     let active = true
     void WeekService.getLatestPublishedWeek().then(week => {
+      if (active) setError(false)
       if (active && week) setDestination(week.week_number ? `/week/${week.week_number}` : `/newsletter/${week.id}`)
     }).catch(() => { if (active) setError(true) }).finally(() => { if (active) setLoading(false) })
     return () => { active = false }
@@ -27,7 +28,7 @@ export function HomePage() {
   if (destination) return <Navigate to={destination} replace />
   return <main className="mx-auto max-w-xl p-8 text-center">
     <h1 className="mb-4 text-2xl font-semibold">{error ? '暫時無法載入電子報' : '尚未有已發布的電子報'}</h1>
-    <p className="mb-6">{error ? '請稍後重新整理頁面。' : '你已成功登入。新的電子報發布後，便可在這裡閱讀。'}</p>
+    <p className="mb-6">{error ? '連線恢復後會自動重試。' : '你已成功登入。新的電子報發布後，便可在這裡閱讀。'}</p>
     <Link className="mr-6 underline" to="/">首頁</Link>
     <button className="underline" onClick={() => { void signOut() }}>登出</button>
   </main>

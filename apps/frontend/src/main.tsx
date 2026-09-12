@@ -12,6 +12,10 @@ const queryClient = new QueryClient({
   },
 })
 
+window.addEventListener('cms-auth-renewed', () => {
+  void queryClient.invalidateQueries({ predicate: query => query.state.status === 'error' })
+})
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>

@@ -1,3 +1,5 @@
+import { serverSessionMode } from '@/services/serverSessionMode'
+import { serverAuthService, type AuthorizationStatus } from '@/services/serverAuthService'
 /**
  * Authentication Context
  * Provides auth state and methods to the entire application
@@ -31,6 +33,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [renewalRequired, setRenewalRequired] = useState(false)
+  const [authorizationStatus, setAuthorizationStatus] = useState<AuthorizationStatus>(() => serverSessionMode ? serverAuthService.getAuthorizationStatus() : 'active')
+  useEffect(() => {
+    const changed = (event: Event) => setAuthorizationStatus((event as CustomEvent<AuthorizationStatus>).detail)
+    window.addEventListener('cms-session-status', changed)
+    return () => window.removeEventListener('cms-session-status', changed)
+  }, [])
   useEffect(() => {
     const required = () => setRenewalRequired(true)
     const renewed = () => setRenewalRequired(false)
@@ -184,7 +192,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }
 
   return <AuthContext.Provider value={value}>
-    {user && renewalRequired && <div role="alert" className="bg-amber-50 p-3 text-amber-950">
+    {user && serverSessionMode && authorizationStatus === 'reconnecting' && <div role="status" className="bg-amber-50 p-3 text-amber-950">正在重新連線。你的登入身分與目前工作會保留，連線恢復後即可繼續。</div>}
+    {user && (serverSessionMode ? authorizationStatus === 'reauthentication_required' : renewalRequired) && <div role="alert" className="bg-amber-50 p-3 text-amber-950">
       登入需要重新驗證。目前頁面會保留，重新登入後才能繼續儲存或載入資料。
       <button className="ml-3 underline" onClick={() => void authService.signInWithGoogle(window.location.pathname + window.location.search)}>重新登入</button>
     </div>}

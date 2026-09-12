@@ -1,3 +1,4 @@
+import { serverSessionMode } from './serverSessionMode'
 export class BackendApiError extends Error {
   constructor(
     message: string,
@@ -10,12 +11,13 @@ export class BackendApiError extends Error {
 }
 
 export function backendBaseUrl(): string {
+  if (serverSessionMode) return ''
   const configured = import.meta.env.VITE_BACKEND_URL
   return (configured && configured.replace(/\/+$/, '')) || 'http://localhost:8787'
 }
 
 export function getAccessTokenOrNull(): string | null {
-  if (typeof window === 'undefined') return null
+  if (typeof window === 'undefined' || serverSessionMode) return null
   return window.sessionStorage.getItem('email-cms-access-token')
 }
 
@@ -69,14 +71,20 @@ export async function requestBackend<T>(
 ): Promise<T> {
   const response = await fetch(`${backendBaseUrl()}${path}`, {
     ...init,
+    ...(serverSessionMode ? { credentials: 'same-origin' as const, cache: 'no-store' as const } : {}),
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(serverSessionMode ? { 'X-CMS-Request': '1' } : {}),
+      ...(!serverSessionMode && token ? { Authorization: `Bearer ${token}` } : {}),
       ...init.headers,
     },
+  }).catch(error => {
+    if (serverSessionMode) window.dispatchEvent(new Event('cms-auth-unavailable'))
+    throw error
   })
   const body = await parseResponseBody(response)
   if (!response.ok) {
+    if (serverSessionMode && response.status >= 500) window.dispatchEvent(new Event('cms-auth-unavailable'))
     const code = body && typeof body === 'object' && 'code' in body ? body.code : undefined
     if (token === getAccessTokenOrNull() && response.status === 403 && code === 'access_revoked') {
       setAccessToken(null)

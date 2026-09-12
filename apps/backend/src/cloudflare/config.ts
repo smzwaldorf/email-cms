@@ -1,6 +1,9 @@
 import type { IdentityTransport } from '#/runtime/environment'
 
 export interface Env {
+  CMS_SESSION_ENABLED?: string
+  CMS_SESSION_SECRET?: string
+  CMS_OIDC_CLIENT_SECRET?: string
   SMZ_AUTH?: IdentityTransport
   HYPERDRIVE: { connectionString: string }
   SMZ_AUTH_ISSUER: string
@@ -23,6 +26,7 @@ export function validateEnvironment(env: Env): Record<string, string | undefined
   if (!env.SMZ_AUTH_ISSUER.endsWith('/api/auth') || env.APP_URL !== env.BACKEND_CORS_ORIGIN) throw new Error('Invalid CMS origins')
   if (!env.HYPERDRIVE?.connectionString) throw new Error('Missing Hyperdrive binding')
   if (env.DELIVERY_ENABLED !== undefined && !['true', 'false'].includes(env.DELIVERY_ENABLED)) throw new Error('Invalid delivery switch')
-  return { SMZ_AUTH_ISSUER: env.SMZ_AUTH_ISSUER, APP_URL: env.APP_URL, BACKEND_CORS_ORIGIN: env.BACKEND_CORS_ORIGIN,
+  if (env.CMS_SESSION_ENABLED === 'true' && (!/^[a-f0-9]{64}$/i.test(env.CMS_SESSION_SECRET ?? '') || (env.CMS_OIDC_CLIENT_SECRET?.length ?? 0) < 32)) throw new Error('Missing backend session secrets')
+  return { CMS_SESSION_ENABLED: env.CMS_SESSION_ENABLED, CMS_SESSION_SECRET: env.CMS_SESSION_SECRET, CMS_OIDC_CLIENT_SECRET: env.CMS_OIDC_CLIENT_SECRET, SMZ_AUTH_ISSUER: env.SMZ_AUTH_ISSUER, APP_URL: env.APP_URL, BACKEND_CORS_ORIGIN: env.BACKEND_CORS_ORIGIN,
     KIT_API_TOKEN: env.KIT_API_TOKEN, KIT_WEBHOOK_SECRET: env.KIT_WEBHOOK_SECRET, JWT_SECRET: env.JWT_SECRET, NODE_ENV: 'production' }
 }

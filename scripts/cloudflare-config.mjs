@@ -20,7 +20,7 @@ export function configuration(env) {
     alias: { '@email-cms/shared': path.join(root, 'packages/shared/src/index.ts') },
     services: [{ binding: 'SMZ_AUTH', service: 'smz-auth' }],
     hyperdrive: [{ binding: 'HYPERDRIVE', id: env.CLOUDFLARE_HYPERDRIVE_ID }],
-    vars: { APP_URL: env.CMS_ORIGIN, BACKEND_CORS_ORIGIN: env.CMS_ORIGIN, SMZ_AUTH_ISSUER: env.SMZ_AUTH_ISSUER, DELIVERY_ENABLED: 'false' },
+    vars: { CMS_SESSION_ENABLED: 'true', APP_URL: env.CMS_ORIGIN, BACKEND_CORS_ORIGIN: env.CMS_ORIGIN, SMZ_AUTH_ISSUER: env.SMZ_AUTH_ISSUER, DELIVERY_ENABLED: 'false' },
     triggers: { crons: ['* * * * *'] },
   }
 }
@@ -28,5 +28,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const config = configuration(process.env)
   await mkdir(new URL('../.wrangler/deploy/', import.meta.url), { recursive: true })
   await writeFile(new URL('../.wrangler/deploy/cms.json', import.meta.url), JSON.stringify(config, null, 2) + '\n')
+  await writeFile(new URL('../.wrangler/deploy/pages.json', import.meta.url), JSON.stringify({ name: 'smz-cms', account_id: process.env.CLOUDFLARE_ACCOUNT_ID, pages_build_output_dir: '../../apps/frontend/dist', compatibility_date: '2026-09-12', services: [{ binding: 'CMS_API', service: 'smz-cms-api' }] }, null, 2) + '\n')
   console.info('Generated .wrangler/deploy/cms.json; delivery is disabled')
 }

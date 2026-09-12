@@ -36,6 +36,7 @@ export default defineConfig(({ mode }) => {
     port: 5174,
     strictPort: true,
     open: true,
+    proxy: { '/api': { target: env.VITE_BACKEND_URL || 'http://localhost:8787', changeOrigin: false } },
   },
   build: {
     outDir: 'dist',

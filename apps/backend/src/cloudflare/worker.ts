@@ -3,7 +3,7 @@ import { createServer } from 'node:http'
 import { httpServerHandler } from 'cloudflare:node'
 import { Pool } from 'pg'
 import { createCmsApplication } from '#/application'
-import { withDatabasePool } from '#/lib/db'
+import { query, withDatabasePool } from '#/lib/db'
 import { getSupabaseClient } from '#/lib/supabase'
 import { withRuntimeEnvironment } from '#/runtime/environment'
 import { NewsletterDeliveryWorker } from '#/worker/deliveryWorker'
@@ -49,6 +49,13 @@ export default {
   },
   async scheduled(_event: ScheduledController, env: Env): Promise<void> {
     const config = validateEnvironment(env)
+    if (env.CMS_SESSION_ENABLED === 'true') {
+      const cleanupPool = poolFor(env)
+      try { await withDatabasePool(cleanupPool, async () => {
+        await query('DELETE FROM cms_login_flows WHERE state_hash IN (SELECT state_hash FROM cms_login_flows WHERE expires_at < now() LIMIT 100)')
+        await query("DELETE FROM cms_browser_sessions WHERE id_hash IN (SELECT id_hash FROM cms_browser_sessions WHERE remembered_until < now() LIMIT 100)")
+      }) } finally { await cleanupPool.end() }
+    }
     if (env.DELIVERY_ENABLED !== 'true') return
     if (!env.KIT_API_TOKEN || !env.KIT_WEBHOOK_SECRET || !env.JWT_SECRET) throw new Error('Delivery secrets are required before activation')
     const pool = poolFor(env)

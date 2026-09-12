@@ -1,3 +1,5 @@
+> Session update (2026-09-13): [Persistent CMS identity](../../docs/SESSION-BEHAVIOR.md) defines the server-session mode. Earlier statements below about browser token storage or expiry-driven logout are historical for that mode.
+
 > **Historical implementation record (superseded 2026-09-05).** [Current ownership, setup and security contract](../../docs/SMZ_AUTH_CMS_CONTRACT.md) replaces local authentication, UUID tokens and local role authorization described here. Original outcomes are retained; do not use these steps as current deployment guidance.
 
 # Session Timeout & Refresh Mechanisms

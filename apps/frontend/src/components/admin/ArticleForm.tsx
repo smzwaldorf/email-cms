@@ -1,3 +1,4 @@
+import { usePersistentDraft } from '@/hooks/usePersistentDraft'
 /**
  * Article Form Component
  * Form for editing article content, title, author, and class assignments
@@ -17,7 +18,7 @@ import type { AdminArticle } from '@/types/admin'
 
 export interface ArticleFormProps {
   article: AdminArticle
-  onSave?: (article: AdminArticle) => void
+  onSave?: (article: AdminArticle) => void | Promise<void>
   onError?: (error: Error) => void
   onCancel?: () => void
   availableClasses?: Array<{ id: string; name: string }>
@@ -45,7 +46,7 @@ export function ArticleForm({
   availableFamilies = [],
   showNewsletterTargeting = false,
 }: ArticleFormProps) {
-  const [formData, setFormData] = useState<AdminArticle>(article)
+  const [formData, setFormData, clearDraft, conflictingDraft, restoreDraft] = usePersistentDraft<AdminArticle>(`admin-article:${article.id}`, article)
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [hasConflict, setHasConflict] = useState(false)
@@ -150,7 +151,8 @@ export function ArticleForm({
         editedAt: now,
       }
 
-      onSave?.(updated)
+      await onSave?.(updated)
+      clearDraft()
     } catch (err: unknown) {
       const error = new Error(
         err instanceof Error ? err.message : 'Failed to save article'
@@ -194,6 +196,7 @@ export function ArticleForm({
     <div className="bg-white rounded-lg shadow-lg p-6">
       <h2 className="text-2xl font-bold mb-4 text-gray-900">編輯文章</h2>
 
+      {conflictingDraft && <div role="alert" className="mb-4 bg-amber-50 p-3">有尚未儲存的草稿，但伺服器文章已變更。<button type="button" className="ml-2 underline" onClick={restoreDraft}>恢復草稿以檢查</button><button type="button" className="ml-2 underline" onClick={clearDraft}>捨棄草稿</button></div>}
       {/* Conflict Warning */}
       {hasConflict && conflictDetails && (
         <div

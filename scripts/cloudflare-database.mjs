@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url'
 import { configuration } from './cloudflare-config.mjs'
 
 // Use production's Hyperdrive credential without a permanent admin endpoint.
-export async function checkHyperdriveDatabase({ initialize = false } = {}) {
+export async function checkHyperdriveDatabase({ initialize = false, migrateSessions = false } = {}) {
   const config = configuration(process.env)
   const root = fileURLToPath(new URL('../', import.meta.url))
   await mkdir(`${root}.wrangler/`, { recursive: true })
@@ -19,10 +19,12 @@ export async function checkHyperdriveDatabase({ initialize = false } = {}) {
   const port = server.address().port
   await new Promise(resolve => server.close(resolve))
   const schema = initialize ? await readFile(new URL('../db/schema.sql', import.meta.url), 'utf8') : ''
+  const sessionSchema = migrateSessions ? await readFile(new URL('../db/migrations/20260913_cms_sessions.sql', import.meta.url), 'utf8') : ''
   await writeFile(`${directory}/worker.mjs`, `
 import pg from 'pg';
 import { verifyDatabase } from '../../scripts/cloudflare-database-operation.mjs';
 const schema = ${JSON.stringify(schema)};
+const sessionSchema = ${JSON.stringify(sessionSchema)};
 export default { async fetch(request, env) {
   if (request.headers.get('authorization') !== 'Bearer ' + env.CHECK_TOKEN) return new Response(null, {status:404});
   if (request.method === 'GET') return new Response(null, {status:204});
@@ -30,7 +32,18 @@ export default { async fetch(request, env) {
   const client = new pg.Client({connectionString:env.HYPERDRIVE.connectionString, connectionTimeoutMillis:15000});
   try {
     await client.connect();
-    return Response.json(await verifyDatabase(client, {initialize:${initialize}, schema}));
+    const verified = await verifyDatabase(client, {initialize:${initialize}, schema});
+    if (sessionSchema) {
+      await client.query('BEGIN');
+      await client.query("SET LOCAL lock_timeout='5s'");
+      await client.query("SET LOCAL statement_timeout='30s'");
+      await client.query("SELECT pg_advisory_xact_lock(hashtext('cms-session-migration'))");
+      await client.query(sessionSchema);
+      await client.query('SELECT id_hash FROM cms_browser_sessions LIMIT 0');
+      await client.query('SELECT state_hash FROM cms_login_flows LIMIT 0');
+      await client.query('COMMIT');
+    }
+    return Response.json(verified);
   } catch (error) {
     return Response.json({error:'CMS database check failed',code:error.code ?? null}, {status:503});
   } finally { await client.end().catch(() => {}); }

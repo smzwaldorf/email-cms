@@ -1,3 +1,4 @@
+import { serverSessionMode } from './serverSessionMode'
 import { requestBackend, getAccessTokenOrNull, BackendApiError } from '@/services/backendClient'
 import type { ArticleRow, NewsletterRow } from '@/types/database'
 import type {
@@ -35,7 +36,7 @@ export async function backendRequest<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
-  return requestBackend<T>(path, init, requireAccessToken())
+  return requestBackend<T>(path, init, serverSessionMode ? null : requireAccessToken())
 }
 
 export async function backendRequestOptional<T>(

@@ -23,7 +23,7 @@ jobs:
       - name: Backend runtime, authorization and delivery regression tests
         run: >-
           npm run test -w @email-cms/backend --
-          tests/unit/cloudflare-context.test.ts tests/unit/cloudflare-config.test.ts tests/unit/identity-transport.test.ts
+          tests/unit/server-session.test.ts tests/unit/cloudflare-context.test.ts tests/unit/cloudflare-config.test.ts tests/unit/identity-transport.test.ts
           tests/unit/cloudflare-delivery.test.ts tests/unit/services/articleMediaRows.test.ts
           tests/unit/services/adminService.spec.ts tests/unit/services/canvaEmailImport.test.ts
           tests/unit/services/fileEmailTemplateLoader.test.ts tests/unit/lib/upsert-conflict.test.ts
@@ -33,7 +33,7 @@ jobs:
       - name: Frontend authentication and media regression tests
         run: >-
           npm run test -w @email-cms/frontend --
-          tests/unit/authService.test.ts tests/services/tokenManager.test.ts
+          tests/components/ArticleEditor.test.tsx tests/components/ArticleEditor_Storage.test.tsx tests/components/admin/ArticleForm.test.tsx tests/pages/ArticleEditorPage.test.tsx tests/hooks/usePersistentDraft.test.tsx tests/services/serverAuthService.test.ts tests/services/serverBackendClient.test.ts tests/unit/authService.test.ts tests/services/tokenManager.test.ts
           tests/services/TokenManager_Resilience.test.ts tests/services/backendClient.logout.test.ts
           tests/pages/LocalLogoutPage.test.tsx tests/pages/ParentReadonly.test.tsx
           tests/context/AuthContext_SmzSession.test.tsx tests/pages/AuthCallbackPage.test.tsx
@@ -60,11 +60,17 @@ jobs:
       - run: npm run build -w @email-cms/shared
       - run: npm run cloudflare:configure
       - run: node scripts/cloudflare-check-binding.mjs
+      - name: Configure persistent session secrets
+        run: node scripts/cloudflare-session-secrets.mjs
+        env:
+          CMS_SESSION_SECRET: ${{ secrets.CMS_SESSION_SECRET }}
+          CMS_OIDC_CLIENT_SECRET: ${{ secrets.CMS_OIDC_CLIENT_SECRET }}
       - name: Initialize the explicitly approved empty CMS database
         if: vars.CMS_INITIALIZE_EMPTY_DATABASE == 'true'
         run: npm run cloudflare:schema
+      - run: node scripts/cloudflare-session-migrate.mjs
       - run: node scripts/cloudflare-preflight.mjs
       - run: npm run cloudflare:pages:build
       - run: npx wrangler deploy --config .wrangler/deploy/cms.json
-      - run: npx wrangler pages deploy apps/frontend/dist --project-name smz-cms --branch main
+      - run: npx wrangler pages deploy --config .wrangler/deploy/pages.json --branch main
       - run: node scripts/cloudflare-smoke.mjs

@@ -302,6 +302,15 @@ export function AdminDashboardPage() {
     }
   }, [activeTab])
 
+  useEffect(() => {
+    const recovered = () => {
+      if (activeTab === 'newsletters') void loadNewsletters()
+      else if (activeTab === 'users') void fetchUsers()
+    }
+    window.addEventListener('cms-auth-renewed', recovered)
+    return () => window.removeEventListener('cms-auth-renewed', recovered)
+  }, [activeTab])
+
   // Check for suspicious activity
   useEffect(() => {
     const checkSuspicious = async () => {
@@ -722,12 +731,6 @@ export function AdminDashboardPage() {
             {/* Newsletters Tab */}
             {activeTab === 'newsletters' && (
               <>
-                {newsletterError && (
-                  <div className="mb-6 p-4 bg-waldorf-rose-50 border border-waldorf-rose-200 rounded-xl">
-                    <p className="text-waldorf-rose-800 font-semibold">Error</p>
-                    <p className="text-waldorf-rose-600 text-sm mt-1">{newsletterError}</p>
-                  </div>
-                )}
                 <NewsletterTable
                   newsletters={displayedNewsletters}
                   isLoading={isNewsletterLoading}

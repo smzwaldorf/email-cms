@@ -1,3 +1,5 @@
+import { serverSessionMode } from '@/services/serverSessionMode'
+import { usePersistentDraft } from '@/hooks/usePersistentDraft'
 /**
  * 組件 - 文章編輯器
  * 提供文章編輯功能的表單介面，使用富文本編輯器
@@ -13,7 +15,7 @@ import { SimpleEditor } from '@/components/tiptap-templates/simple/simple-editor
 
 interface ArticleEditorProps {
   article: Article
-  onSave: (updates: Partial<Article>) => void
+  onSave: (updates: Partial<Article>) => void | Promise<void>
   onCancel: () => void
   isSaving?: boolean
   canEdit?: boolean
@@ -29,13 +31,19 @@ export function ArticleEditor({
   permissionError,
 }: ArticleEditorProps) {
   const { user } = useAuth()
-  const [formData, setFormData] = useState({
+  const [formData, setFormData, clearDraft, conflictingDraft, restoreDraft] = usePersistentDraft(`article:${article.id}`, {
     title: article.title,
     author: article.author || '',
     summary: article.summary || '',
     content: article.content,
     isPublished: article.isPublished,
   })
+  const [permissionRevision, setPermissionRevision] = useState(0)
+  useEffect(() => {
+    const recovered = () => setPermissionRevision(value => value + 1)
+    window.addEventListener('cms-auth-renewed', recovered)
+    return () => window.removeEventListener('cms-auth-renewed', recovered)
+  }, [])
   const [localPermissionError, setLocalPermissionError] = useState<string>('')
   const [isCheckingPermission, setIsCheckingPermission] = useState(false)
   const [hasEditPermission, setHasEditPermission] = useState(canEdit ?? false)
@@ -89,31 +97,27 @@ export function ArticleEditor({
     }
 
     checkPermission()
-  }, [article.id, user?.id, canEdit, permissionError])
+  }, [article.id, user?.id, canEdit, permissionError, permissionRevision])
 
-  // 當文章改變時更新表單
+  // Legacy pages hydrate forms from props. Server-session editors are keyed by article
+  // and retain a recovered draft instead of replacing it during session revalidation.
   useEffect(() => {
-    setFormData({
-      title: article.title,
-      author: article.author || '',
-      summary: article.summary || '',
-      content: article.content,
-      isPublished: article.isPublished,
-    })
+    if (serverSessionMode) return
+    setFormData({ title: article.title, author: article.author || '', summary: article.summary || '', content: article.content, isPublished: article.isPublished })
   }, [article])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     // Save HTML content directly (TipTap output)
     // No conversion needed - store HTML directly in database
-    onSave({
+    try { await onSave({
       title: formData.title,
       author: formData.author || undefined,
       summary: formData.summary || undefined,
       content: formData.content,  // Already HTML from editor
       isPublished: formData.isPublished,
-    })
+    }); clearDraft() } catch { /* Parent keeps the save error visible; retain this draft. */ }
   }
 
   const handleChange = (
@@ -134,6 +138,8 @@ export function ArticleEditor({
       content: value || '',
     }))
   }
+
+  const recoveryNotice = conflictingDraft && <div role="alert">有草稿與目前文章版本不同。<button type="button" onClick={restoreDraft}>恢復草稿以檢查</button><button type="button" onClick={clearDraft}>捨棄草稿</button></div>
 
   // 如果沒有編輯權限，顯示權限拒絕信息
   if (!hasEditPermission && !isCheckingPermission) {
@@ -206,6 +212,7 @@ export function ArticleEditor({
         className="flex-1 overflow-y-auto px-6 py-4 bg-white"
       >
         <div className="max-w-6xl mx-auto space-y-4">
+          {recoveryNotice}
           {/* 標題 */}
           <div>
             <label

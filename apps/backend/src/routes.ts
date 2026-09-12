@@ -1,3 +1,4 @@
+import { handleSessionRequest } from '#/session/http'
 import { withTransaction } from '#/lib/db'
 import { canPerformCmsAction } from '@email-cms/shared'
 import { isAllowedRpc } from '#/services/rpcPolicy'
@@ -220,6 +221,7 @@ export async function handleApiRequest(
   }
 
   try {
+    if (await handleSessionRequest(request, response)) return
     const url = new URL(request.url ?? '/', 'http://localhost')
     const method = request.method ?? 'GET'
 

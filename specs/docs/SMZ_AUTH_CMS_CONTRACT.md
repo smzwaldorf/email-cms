@@ -1,3 +1,5 @@
+> Session update (2026-09-13): [Persistent CMS identity](./SESSION-BEHAVIOR.md) defines the server-session mode. Earlier statements below about browser token storage or expiry-driven logout are historical for that mode.
+
 # SMZ Auth, CMS permissions and email contract
 
 Reviewed 2026-09-05. This document supersedes the legacy Supabase authentication and direct database/RLS deployment instructions elsewhere in this repository. Historical implementation reports are not current readiness evidence.

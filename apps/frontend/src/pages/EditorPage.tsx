@@ -73,6 +73,14 @@ export function EditorPage() {
     loadWeeklyData(weekNumber, user.id)
   }, [weekNumber, user?.id])
 
+  useEffect(() => {
+    const recovered = () => {
+      if (state.error && !state.editingArticleId && weekNumber && user?.id) void loadWeeklyData(weekNumber, user.id)
+    }
+    window.addEventListener('cms-auth-renewed', recovered)
+    return () => window.removeEventListener('cms-auth-renewed', recovered)
+  }, [state.error, state.editingArticleId, weekNumber, user?.id])
+
   // 加載週報和文章資料，並過濾使用者可編輯的文章
   const loadWeeklyData = async (week: string, userId: string) => {
     setState(prev => ({ ...prev, isLoading: true, error: null }))
@@ -126,12 +134,13 @@ export function EditorPage() {
         isSaving: false,
         unsavedChanges: false,
       }))
-    } catch {
+    } catch (error) {
       setState(prev => ({
         ...prev,
         error: '保存文章失敗',
         isSaving: false,
       }))
+      throw error
     }
   }
 
@@ -351,6 +360,7 @@ export function EditorPage() {
                 <div className="bg-white rounded-lg shadow p-6">
                   {state.articles.find(a => a.id === state.editingArticleId) ? (
                     <ArticleEditor
+                      key={state.editingArticleId}
                       article={state.articles.find(
                         a => a.id === state.editingArticleId
                       )!}

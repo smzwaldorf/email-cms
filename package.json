@@ -1,7 +1,7 @@
 {
   "name": "email-cms-newsletter-viewer",
   "version": "1.0.0",
-  "description": "\u96fb\u5b50\u5831\u95b1\u8b80 CMS Web App - \u5141\u8a31\u8b80\u8005\u67e5\u770b\u548c\u700f\u89bd\u6bcf\u9031\u96fb\u5b50\u5831\u5167\u5bb9",
+  "description": "電子報閱讀 CMS Web App - 允許讀者查看和瀏覽每週電子報內容",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -71,6 +71,7 @@
     "lodash-es": "^4.17.21",
     "lucide-react": "^0.555.0",
     "oidc-client-ts": "^3.5.0",
+    "openid-client": "^6.7.1",
     "pg": "^8.23.0",
     "react": "^18.2.0",
     "react-day-picker": "^9.12.0",

@@ -1,3 +1,4 @@
+import { serverSessionMode } from '@/services/serverSessionMode'
 import type { FileObject } from '@/types/storage'
 import type { SqlTables } from '@email-cms/shared/types/sqlRows'
 import { from, type HttpQueryBuilder } from '@/lib/dataQuery'
@@ -109,11 +110,11 @@ function createClient(..._args: unknown[]): PostgresClient {
       async getSession() {
         const token = getAccessTokenOrNull()
         const user = getStoredAuthUser()
-        if (!token || !user) return { data: { session: null }, error: null }
+        if ((!serverSessionMode && !token) || !user) return { data: { session: null }, error: null }
         return {
           data: {
             session: {
-              access_token: token,
+              access_token: token ?? '',
               user,
             },
           },
@@ -123,7 +124,7 @@ function createClient(..._args: unknown[]): PostgresClient {
       async getUser() {
         const token = getAccessTokenOrNull()
         const user = getStoredAuthUser()
-        if (!token || !user) return { data: { user: null }, error: { message: 'Not authenticated' } }
+        if ((!serverSessionMode && !token) || !user) return { data: { user: null }, error: { message: 'Not authenticated' } }
         return { data: { user }, error: null }
       },
       async refreshSession() {
