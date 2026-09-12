@@ -171,7 +171,7 @@ export async function getArticlesForFamily(
 
     // Step 3: Get all articles for this newsletter via junction table
     const { data: newsletterArticles, error: articlesError } = await supabase
-      .from('newsletter_articles')
+      .from<NewsletterArticleTargetingRow>('newsletter_articles')
       .select(`
         article_order,
         targeting_mode,
@@ -254,7 +254,7 @@ export async function getArticlesForClass(
 
     // Get all articles for this newsletter via junction table
     const { data: newsletterArticles, error: articlesError } = await supabase
-      .from('newsletter_articles')
+      .from<NewsletterArticleTargetingRow>('newsletter_articles')
       .select(`
         article_order,
         targeting_mode,

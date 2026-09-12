@@ -1,3 +1,5 @@
+import type { UserRoleRow } from '#/types/database'
+import type { CmsTableRows as SqlTables } from '@email-cms/shared'
 import { viewerForToken } from '#/auth'
 import { from, type QueryBuilder, type QueryError } from '#/lib/query'
 
@@ -21,7 +23,11 @@ function authNotMigrated(): never {
 }
 
 export interface PostgresClient {
-  from: <T = unknown>(tableName: string) => QueryBuilder<T>
+  rpc<T = UserRoleRow>(name: string, args?: unknown): Promise<{ data: T; error: null } | { data: null; error: QueryError }>
+  from: {
+    <N extends keyof SqlTables>(tableName: N): QueryBuilder<SqlTables[N]>
+    <T = unknown>(tableName: string): QueryBuilder<T>
+  }
   auth: {
     getUser(token?: string): Promise<{
       data: { user: AuthUser | null }
@@ -58,6 +64,7 @@ async function getCentralUser(token?: string): Promise<{
 function createPostgresClient(): PostgresClient {
   return {
     from,
+    async rpc() { return { data: null, error: { message: 'Legacy identity RPCs are disabled; identity is owned by SMZ Auth.' } } },
     auth: {
       getUser: getCentralUser,
       getSession: async () => ({ data: { session: null }, error: null }),
@@ -96,6 +103,8 @@ export function resetSupabaseClient(): void {
   clientOverride = null
 }
 
+export function table<N extends keyof SqlTables>(tableName: N): QueryBuilder<SqlTables[N]>
+export function table<T = unknown>(tableName: string): QueryBuilder<T>
 export function table<T = unknown>(tableName: string): QueryBuilder<T> {
   return getSupabaseClient().from<T>(tableName)
 }

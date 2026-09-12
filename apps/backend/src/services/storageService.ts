@@ -1,3 +1,4 @@
+import { runtimeEnvironment } from '#/runtime/environment'
 /**
  * 儲存服務工廠
  * Storage Service Factory
@@ -60,7 +61,7 @@ function _createStorageProvider(
     }
 
     case 'mock': {
-      const simulateDelay = process.env.NODE_ENV !== 'production'
+      const simulateDelay = runtimeEnvironment().NODE_ENV !== 'production'
       return new MockStorageAdapter(simulateDelay, 100)
     }
 
@@ -89,7 +90,7 @@ export function getStorageProvider(): StorageProvider {
     return _storageProvider
   }
 
-  const provider = (process.env.VITE_STORAGE_PROVIDER as StorageProviderType) || 'mock'
+  const provider = (runtimeEnvironment().VITE_STORAGE_PROVIDER as StorageProviderType) || 'mock'
 
   return createStorageProvider({ provider })
 }
@@ -129,7 +130,7 @@ export function getCurrentStorageProviderName(): string {
 export async function verifyStorageConnection(): Promise<boolean> {
   try {
     const provider = getStorageProvider()
-    const testBucket = process.env.VITE_MEDIA_BUCKET || 'media'
+    const testBucket = runtimeEnvironment().VITE_MEDIA_BUCKET || 'media'
 
     // 嘗試列出檔案以驗證連線
     // Try listing files to verify connection

@@ -1,15 +1,16 @@
+import type { SqlTables } from '@email-cms/shared'
 /**
  * 文章媒體管理服務 - 處理文章與媒體檔案的關聯管理
  * Article Media Manager Service - Manages relationships between articles and media files
  */
 
 import { getSupabaseClient } from '@/lib/supabase'
-import type { MediaFile } from '@/types/media'
+import { MediaFileStatus, MediaFileType, type MediaFile } from '@/types/media'
 import { mediaGovernanceService } from '@/services/mediaGovernanceService'
 
 interface ArticleMediaReferenceNestedRow {
   /** PostgREST may return a single joined row or an array */
-  media_files?: MediaFile | MediaFile[] | null
+  media_files?: SqlTables['media_files'] | SqlTables['media_files'][] | null
 }
 
 interface ArticleMediaReferenceIdRow {
@@ -18,6 +19,16 @@ interface ArticleMediaReferenceIdRow {
 
 interface MediaFileIdOnlyRow {
   id: string
+}
+
+function mapMediaRow(row: SqlTables['media_files']): MediaFile {
+  return {
+    id: row.id, fileName: row.filename, fileSize: Number(row.file_size), mimeType: row.mime_type,
+    mediaType: row.file_type as MediaFileType, status: MediaFileStatus.READY,
+    uploadedBy: row.uploaded_by, uploadedAt: row.uploaded_at, updatedAt: row.updated_at,
+    storageUrl: `storage://media/${row.storage_path}`, publicUrl: row.public_url,
+    width: row.width ?? undefined, height: row.height ?? undefined, duration: row.duration == null ? undefined : Number(row.duration),
+  }
 }
 
 /**
@@ -62,26 +73,8 @@ export class ArticleMediaManager {
     try {
       const supabase = getSupabaseClient()
       const { data, error } = await supabase
-        .from('article_media_references')
-        .select(
-          `
-          media_files (
-            id,
-            fileName,
-            fileSize,
-            mimeType,
-            mediaType,
-            status,
-            storageUrl,
-            width,
-            height,
-            duration,
-            uploadedBy,
-            uploadedAt,
-            updatedAt
-          )
-        `
-        )
+        .from<ArticleMediaReferenceNestedRow>('article_media_references')
+        .select('media_files(*)')
         .eq('article_id', articleId)
 
       if (error) throw error
@@ -91,8 +84,8 @@ export class ArticleMediaManager {
       return (data || []).flatMap((ref: ArticleMediaReferenceNestedRow) => {
         const mf = ref.media_files
         if (!mf) return []
-        return Array.isArray(mf) ? mf : [mf]
-      }) as MediaFile[]
+        return (Array.isArray(mf) ? mf : [mf]).map(mapMediaRow)
+      })
     } catch (error) {
       console.error('Failed to get article media:', error)
       return []
@@ -274,37 +267,15 @@ export class ArticleMediaManager {
   async findOrphanedFiles(userId: string): Promise<MediaFile[]> {
     try {
       const supabase = getSupabaseClient()
-      // 找出未被參考的媒體檔案
-      // Find unreferenced media files
-      const { data: orphaned, error } = await supabase
-        .from('media_files')
-        .select(
-          `
-          id,
-          fileName,
-          fileSize,
-          mimeType,
-          mediaType,
-          status,
-          storageUrl,
-          width,
-          height,
-          duration,
-          uploadedBy,
-          uploadedAt,
-          updatedAt
-        `
-        )
-        .eq('uploaded_by', userId)
-        .not(
-          'id',
-          'in',
-          `(SELECT media_id FROM article_media_references)`
-        )
-
+      const { data: references, error: referenceError } = await supabase
+        .from('article_media_references').select('media_id')
+      if (referenceError) throw referenceError
+      const referenced = new Set((references ?? []).map(row => row.media_id))
+      const { data: files, error } = await supabase
+        .from('media_files').select('*').eq('uploaded_by', userId)
       if (error) throw error
+      return (files ?? []).filter(row => !referenced.has(row.id)).map(mapMediaRow)
 
-      return (orphaned || []) as MediaFile[]
     } catch (error) {
       console.error('Failed to find orphaned files:', error)
       return []

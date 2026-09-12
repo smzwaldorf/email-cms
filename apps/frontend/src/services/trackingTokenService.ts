@@ -225,7 +225,7 @@ export const trackingTokenService = {
       .single();
 
     if (error || !data) return false;
-    return data.is_revoked;
+    return data.is_revoked === true;
   },
 
   /**

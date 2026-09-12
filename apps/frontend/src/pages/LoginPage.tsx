@@ -30,7 +30,7 @@ export const LoginPage: React.FC = () => {
           <div className="space-y-4 text-sm text-waldorf-cream-100/90">
             <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
               <p className="font-semibold text-white">One school account</p>
-              <p className="mt-1">Sign in with your approved Google account through SMZ Identity.</p>
+              <p className="mt-1">Sign in with your approved school account through SMZ Identity.</p>
             </div>
             <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
               <p className="font-semibold text-white">Access follows your school role</p>

@@ -16,13 +16,15 @@ export function backendBaseUrl(): string {
 
 export function getAccessTokenOrNull(): string | null {
   if (typeof window === 'undefined') return null
-  return window.localStorage.getItem('email-cms-access-token')
+  return window.sessionStorage.getItem('email-cms-access-token')
 }
 
 export function setAccessToken(token: string | null): void {
   if (typeof window === 'undefined') return
-  if (token) window.localStorage.setItem('email-cms-access-token', token)
-  else window.localStorage.removeItem('email-cms-access-token')
+  // Each tab owns its OIDC session; do not share another tab's bearer identity.
+  window.localStorage.removeItem('email-cms-access-token')
+  if (token) window.sessionStorage.setItem('email-cms-access-token', token)
+  else window.sessionStorage.removeItem('email-cms-access-token')
 }
 
 export interface StoredAuthUser {
@@ -76,7 +78,7 @@ export async function requestBackend<T>(
   const body = await parseResponseBody(response)
   if (!response.ok) {
     const code = body && typeof body === 'object' && 'code' in body ? body.code : undefined
-    if (response.status === 401 || (response.status === 403 && code === 'access_revoked')) {
+    if (token === getAccessTokenOrNull() && (response.status === 401 || (response.status === 403 && code === 'access_revoked'))) {
       setAccessToken(null)
       setStoredAuthUser(null)
       window.dispatchEvent(new Event('cms-auth-invalid'))

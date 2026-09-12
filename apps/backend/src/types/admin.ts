@@ -262,7 +262,7 @@ export interface AdminArticle {
   familyIds?: string[] // 家族 ID 列表
   categoryIds?: string[] // 文章分類 ID 列表
   tagIds?: string[] // 文章標籤 ID 列表
-  status: 'draft' | 'published'
+  status: 'draft' | 'published' | 'archived'
   createdAt: string
   updatedAt: string
   publishedAt?: string | null

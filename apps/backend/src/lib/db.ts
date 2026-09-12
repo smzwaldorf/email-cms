@@ -2,6 +2,12 @@ import { AsyncLocalStorage } from 'node:async_hooks'
 import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from 'pg'
 
 const transactionClient = new AsyncLocalStorage<PoolClient>()
+const invocationPool = new AsyncLocalStorage<Pool>()
+
+/** Workers own one pool per invocation; Node keeps the existing process pool. */
+export function withDatabasePool<T>(value: Pool, run: () => T): T {
+  return invocationPool.run(value, run)
+}
 
 let pool: Pool | null = null
 
@@ -14,6 +20,8 @@ export function getDatabaseUrl(): string {
 }
 
 export function getPool(): Pool {
+  const scoped = invocationPool.getStore()
+  if (scoped) return scoped
   if (!pool) {
     pool = new Pool({
       connectionString: getDatabaseUrl(),

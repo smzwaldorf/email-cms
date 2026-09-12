@@ -1,3 +1,4 @@
+import { runtimeEnvironment } from '#/runtime/environment'
 import { createHmac, timingSafeEqual } from 'node:crypto'
 
 import { getSupabaseClient } from '#/lib/supabase'
@@ -77,7 +78,7 @@ function isValidRedirectUrl(targetUrl: string): boolean {
 }
 
 function getJwtSecret(): string {
-  const secret = process.env.JWT_SECRET ?? process.env.VITE_JWT_SECRET
+  const secret = runtimeEnvironment().JWT_SECRET ?? runtimeEnvironment().VITE_JWT_SECRET
   if (!secret) {
     throw new Error('Missing JWT_SECRET configuration')
   }

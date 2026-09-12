@@ -1,3 +1,4 @@
+import { runtimeEnvironment } from '#/runtime/environment'
 /**
  * 服務 - 錯誤報告和監控
  * 用於記錄、追蹤和報告應用程式錯誤和問題
@@ -185,7 +186,7 @@ class ErrorReportingService {
     //   .catch(err => console.error('Failed to report error:', err))
 
     // 對於開發環境，只是記錄到控制台
-    if (process.env.NODE_ENV === 'development') {
+    if (runtimeEnvironment().NODE_ENV === 'development') {
       console.debug('Error would be sent to remote service:', errorLog)
     }
   }

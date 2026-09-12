@@ -1,3 +1,4 @@
+import { runtimeEnvironment } from '#/runtime/environment'
 export interface BackendConfig {
   port: number
   corsOrigin: string
@@ -7,7 +8,7 @@ export interface BackendConfig {
 }
 
 function readPositiveInt(key: string, fallback: number): number {
-  const raw = process.env[key]
+  const raw = runtimeEnvironment()[key]
   if (!raw) return fallback
   const parsed = Number.parseInt(raw, 10)
   if (!Number.isFinite(parsed) || parsed <= 0) {
@@ -19,8 +20,8 @@ function readPositiveInt(key: string, fallback: number): number {
 export function loadBackendConfig(): BackendConfig {
   return {
     port: readPositiveInt('PORT', 8787),
-    corsOrigin: process.env.BACKEND_CORS_ORIGIN ?? 'http://localhost:5174',
-    workerId: process.env.NEWSLETTER_WORKER_ID ?? `newsletter-worker-${process.pid}`,
+    corsOrigin: runtimeEnvironment().BACKEND_CORS_ORIGIN ?? 'http://localhost:5174',
+    workerId: runtimeEnvironment().NEWSLETTER_WORKER_ID ?? `newsletter-worker-${process.pid}`,
     workerPollIntervalMs: readPositiveInt('NEWSLETTER_WORKER_POLL_INTERVAL_MS', 5_000),
     workerBatchSize: readPositiveInt('NEWSLETTER_WORKER_BATCH_SIZE', 3),
   }

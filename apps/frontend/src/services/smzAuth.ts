@@ -13,6 +13,10 @@ function appOrigin(): string {
   return (import.meta.env.VITE_APP_URL || window.location.origin).replace(/\/+$/, '')
 }
 
+export function redirectToGlobalSignOut(): void {
+  window.location.assign(new URL('/logout-all/email-cms', smzAuthIssuer()).toString())
+}
+
 export const smzAuth = new UserManager({
   authority: smzAuthIssuer(),
   client_id: 'email-cms',

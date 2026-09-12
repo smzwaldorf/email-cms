@@ -1,0 +1,36 @@
+{
+  "name": "smz-cms-api",
+  "main": "src/cloudflare/worker.ts",
+  "compatibility_date": "2026-09-12",
+  "compatibility_flags": [
+    "nodejs_compat",
+    "enable_nodejs_http_server_modules"
+  ],
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": {
+    "enabled": true
+  },
+  "alias": {
+    "@email-cms/shared": "../../packages/shared/src/index.ts"
+  },
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "686ed1534b77435eb5537fabba62e61c",
+      "localConnectionString": "postgres://email_cms:email_cms@127.0.0.1:55440/cms_browser_synthetic"
+    }
+  ],
+  "vars": {
+    "SMZ_AUTH_ISSUER": "https://smz-auth.black-tree-204e.workers.dev/api/auth",
+    "APP_URL": "https://smz-cms.pages.dev",
+    "BACKEND_CORS_ORIGIN": "https://smz-cms.pages.dev",
+    "DELIVERY_ENABLED": "false"
+  },
+  "triggers": {
+    "crons": [
+      "* * * * *"
+    ]
+  },
+  "account_id": "f1b69ad88454573ccaa3364b628fd114"
+}

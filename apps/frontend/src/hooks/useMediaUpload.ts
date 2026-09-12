@@ -269,18 +269,18 @@ export function useMediaUpload() {
           const mediaFile: MediaFile = {
             id: dbFile.id,
             fileName: dbFile.filename,
-            fileSize: dbFile.file_size,
+            fileSize: Number(dbFile.file_size),
             mimeType: dbFile.mime_type,
-            mediaType: dbFile.file_type,
+            mediaType: mediaType,
             status: MediaFileStatus.READY,
             uploadedBy: dbFile.uploaded_by,
             uploadedAt: dbFile.uploaded_at,
             updatedAt: dbFile.updated_at,
             publicUrl: dbFile.public_url,
             storageUrl: dbFile.public_url,
-            width: dbFile.width,
-            height: dbFile.height,
-            duration: dbFile.duration,
+            width: dbFile.width ?? undefined,
+            height: dbFile.height ?? undefined,
+            duration: dbFile.duration == null ? undefined : Number(dbFile.duration),
           }
 
           uploadedFiles.push(mediaFile)

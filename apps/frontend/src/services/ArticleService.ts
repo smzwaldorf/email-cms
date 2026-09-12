@@ -18,6 +18,7 @@ interface NewsletterArticleJoinRow {
 
 /** Row from `newsletter_articles` with `newsletters!inner(...)` for week filter */
 interface NewsletterJunctionWithNewsletterRow {
+  article_order: number
   newsletter_id: string
   newsletters: Pick<NewsletterRow, 'week_number'> | null
 }
@@ -150,7 +151,7 @@ export class ArticleService {
       
       // Query articles via junction table
       const { data, error } = await supabase
-        .from('newsletter_articles')
+        .from<NewsletterJunctionWithNewsletterRow>('newsletter_articles')
         .select(`
           article_order,
           articles!inner (*)
@@ -240,7 +241,7 @@ export class ArticleService {
       if (newsletterId && this.isUUID(newsletterId)) {
         // Simple query - just check if the article is in this newsletter
         const { data: junctionData, error: junctionError } = await supabase
-          .from('newsletter_articles')
+          .from<NewsletterJunctionWithNewsletterRow>('newsletter_articles')
           .select('newsletter_id')
           .eq('article_id', id)
           .eq('newsletter_id', newsletterId)
@@ -258,13 +259,13 @@ export class ArticleService {
           return {
             ...article,
             newsletter_id: junctionData.newsletter_id,
-            week_number: newsletterData?.week_number
+            week_number: newsletterData?.week_number ?? undefined
           }
         }
       } else {
         // Need to join to filter by week_number or get any association
         let junctionQuery = supabase
-          .from('newsletter_articles')
+          .from<NewsletterJunctionWithNewsletterRow>('newsletter_articles')
           .select('newsletter_id, newsletters!inner(id, week_number)')
           .eq('article_id', id)
 
@@ -280,7 +281,7 @@ export class ArticleService {
           return {
             ...article,
             newsletter_id: junction.newsletter_id,
-            week_number: junction.newsletters?.week_number,
+            week_number: junction.newsletters?.week_number ?? undefined,
           }
         }
       }
@@ -290,7 +291,7 @@ export class ArticleService {
       if (newsletterId) {
         console.warn(`[ArticleService] Junction query failed for ${newsletterId}, trying fallback...`)
         const { data: fallbackData } = await supabase
-          .from('newsletter_articles')
+          .from<NewsletterJunctionWithNewsletterRow>('newsletter_articles')
           .select('newsletter_id')
           .eq('article_id', id)
           .limit(1)
@@ -307,7 +308,7 @@ export class ArticleService {
           return {
             ...article,
             newsletter_id: fallbackData.newsletter_id,
-            week_number: newsletterData?.week_number
+            week_number: newsletterData?.week_number ?? undefined
           }
         }
       }
@@ -531,7 +532,7 @@ export class ArticleService {
     try {
       const supabase = getSupabaseClient()
       const { data, error } = await supabase
-        .from('newsletter_articles')
+        .from<NewsletterJunctionWithNewsletterRow>('newsletter_articles')
         .select('article_order')
         .eq('newsletter_id', newsletterId)
         .order('article_order', { ascending: false })

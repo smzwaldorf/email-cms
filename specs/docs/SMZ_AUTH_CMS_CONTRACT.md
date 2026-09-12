@@ -40,6 +40,14 @@ Access-context has `sub`, `clientId`, `access: active`, `roles`, `familyMembersh
 
 Central family/student UUIDs are not CMS family/student IDs. Current reader access uses central class scopes, so it needs no family UUID join. CMS retains its existing family/enrollment/subscription records solely as delivery business data. Synchronizing those records with central family/student identities requires an explicit reviewed mapping/import contract and is not implemented here. Local relationship changes do not change login or reader authorization.
 
+## Development role sign-in
+
+Auth owns the explicitly enabled development-only Admin/Parent sign-in buttons and their environment guards. CMS has no development token, cookie or role bypass: either button must complete normal OIDC Authorization Code + PKCE and provide verified UserInfo plus active `email-cms` access-context on every protected request.
+
+The synthetic identities are `dev.admin@smz.example.test` (subject `d0000000-0000-4000-8000-000000000001`, role `admin`) and `dev.parent@smz.example.test` (subject ending `0002`, role `parent`). They bootstrap ordinary local identity anchors; do not assign local admin roles, reuse a Google identity, or map the dev parent into delivery families solely to enable reading. The parent has no class scope and may read published public articles; restricted articles still require actual central class memberships.
+
+The Parent cannot access the admin panel, edit articles, publish newsletters, or mutate data/media through direct APIs. The same server policy applies to synthetic and Google identities. The 2026-09-06 parent-controlled Dia run verified one-click Admin dashboard access, one-click Parent return to the exact protected article path/query, no Parent edit/admin menu controls, and redirection away from `/admin`; the separate live API probe verified Parent write/admin denials as HTTP 403. A successful dev login is not email subscription consent and creates no delivery enrollment. Local review uses only `cms_browser_synthetic`, with the worker stopped and Kit configured to local capture.
+
 ## Server action policy
 
 Shared policy is `packages/shared/src/cmsPermissions.ts`. Unknown actions and unknown roles grant nothing. Admin manages CMS content, publish and delivery. Teacher edits text only when every class targeted by an article is in live teacher scope; parent scope never grants writes. Dual teacher/parent roles union read scopes. Parents read published content in their live parent scope. Deleted articles and empty restricted scopes are hidden. Auth currently admits adults, not student identities; the student compatibility role grants no restricted read/write authority.
@@ -52,6 +60,16 @@ Shared policy is `packages/shared/src/cmsPermissions.ts`. Unknown actions and un
 - Local user-management controls are disabled and direct operators to SMZ Auth. Remaining local family/student/class tools edit delivery business records, not central directory access.
 
 A permission-denied operation returns 403 without logging out an otherwise admitted user. Invalid token returns 401. Central revoked admission returns 403 with `access_revoked`; the frontend clears local credentials on those authentication failures. Directory timeout/network/5xx returns 503 and stops protected work; it never substitutes stale roles. Callback retry retains the consumed OIDC result in memory and retries CMS session resolution while preserving its safe intended URL. Browser reload after a consumed callback may require a fresh sign-in.
+
+## Global logout across linked applications
+
+CMS Sign Out clears its local session and navigates to the configured Auth origin at `/logout-all/email-cms`. It does not use a caller-supplied return URL or the former client-only OIDC signout redirect. Auth revokes the current browser's central session and its cross-client access/refresh grants before bounded front-channel cleanup, then returns only to the registered CMS `/login` URL. This does not sign out unrelated devices or the upstream Google account.
+
+Register CMS `metadata.frontChannelLogoutUri` as `http://localhost:5174/logout/local`. This unguarded route skips session hydration, requires an iframe from the configured Auth origin (verified against `document.referrer`) and a UUID `logout_state`, then clears the local OIDC/user/role/bearer state. It acknowledges `{type: 'smz:logout-complete', state}` only to the configured Auth origin. It never follows a caller return parameter. Auth validates the acknowledgment's origin, frame source and one-time state. Unreachable client cleanup cannot undo central revocation; Auth owns the bounded timeout and incomplete-cleanup reporting.
+
+The CMS cleanup route's response must permit framing by the configured Auth origin only: `Content-Security-Policy: frame-ancestors http://localhost:3000` locally, without `X-Frame-Options: SAMEORIGIN` on that route. Vite dev and preview apply this scoped header; a deployed static host must preserve the equivalent response policy. Auth sends `Referrer-Policy: origin` on the coordinator so the iframe can verify its parent without receiving query details.
+
+CMS broadcasts same-origin logout and writes a durable localStorage marker. Every CMS tab checks that marker on initialization, focus, visibility and page restoration; active visible sessions also revalidate every 15 seconds. Bearer tokens now use per-tab sessionStorage, matching the OIDC user store; the legacy shared bearer is removed. Confirmed backend 401 or revoked-session 403 clears state. Epoch and marker checks discard session/refresh results that complete after logout, including delayed OIDC user-loaded events. Ordinary permission 403 does not log out an admitted user. Server authorization remains live on every protected request, including when a tab was suspended or iframe cleanup could not run. The 2026-09-06 Dia run verified CMS-initiated and App-B-initiated logout: all linked applications became unauthenticated, existing CMS admin tabs redirected to login on focus without reloading, and fresh sign-in worked after the previous logout. The same-task live API probe separately confirmed CMS session 200 before logout and 403 afterward, plus access/refresh rejection across all three applications.
 
 ## Publish, prepare and deliver
 

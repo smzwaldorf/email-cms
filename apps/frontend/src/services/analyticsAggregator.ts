@@ -469,7 +469,7 @@ export const analyticsAggregator = {
     // 1. Fetch Views per article
     // Note: articles no longer have week_number - we filter by newsletter_id on events
     const { data: viewEvents, error: viewError } = await supabase
-      .from('analytics_events')
+      .from<PageViewWithArticleRow>('analytics_events')
       .select('article_id, user_id, session_id, articles!inner ( title, created_at )')
       .eq('newsletter_id', newsletterId)
       .eq('event_type', 'page_view');
@@ -611,7 +611,7 @@ export const analyticsAggregator = {
         // We need article titles/metadata. Snapshots don't have them.
         // Use junction table since articles no longer have week_number
         const { data: junctionData } = await supabase
-           .from('newsletter_articles')
+           .from<NewsletterJunctionRow>('newsletter_articles')
            .select('article_order, articles!inner (id, title, created_at)')
            .eq('newsletter_id', newsletterId)
            .order('article_order', { ascending: true });
@@ -759,7 +759,7 @@ export const analyticsAggregator = {
              // Fetch Family Enrollments for these Parents to identify their classes
              // Note: A parent might belong to multiple classes. We'll credit their activity to ALL their classes for now.
              const { data: familyEnrollments } = await supabase
-                 .from('family_enrollment')
+                 .from<FamilyEnrollmentParentClassesRow>('family_enrollment')
                  .select('parent_id, families ( student_class_enrollment ( class_id, classes ( class_name ) ) )')
                  .in('parent_id', userIds);
              
@@ -836,7 +836,7 @@ export const analyticsAggregator = {
              // Ideally: Count distinct families.id where student_class_enrollment.class_id = X
              
              const { data: allClassData } = await supabase
-                .from('classes')
+                .from<ClassRowWithEnrollmentCount>('classes')
                 .select(`
                     class_name,
                     student_class_enrollment (count)
@@ -897,7 +897,7 @@ export const analyticsAggregator = {
 
           // 1. Fetch all page_view events with article publish time
           const { data: events, error } = await supabase
-            .from('analytics_events')
+            .from<TopicHotnessEventRow>('analytics_events')
             .select('article_id, user_id, created_at, articles ( title, created_at )')
             .eq('newsletter_id', newsletterId)
             .eq('event_type', 'page_view')
@@ -984,7 +984,7 @@ export const analyticsAggregator = {
       const classIds = classes.map(c => c.id);
 
       const { data: parents } = await supabase
-          .from('student_class_enrollment')
+          .from<StudentClassEnrollmentParentRow>('student_class_enrollment')
           .select('family_enrollment ( parent_id )')
           .in('class_id', classIds);
           
@@ -1020,7 +1020,7 @@ export const analyticsAggregator = {
       
       // Get newsletter info from junction table
       const { data: junction } = await supabase
-        .from('newsletter_articles')
+        .from<{ newsletter_id: string; newsletters: NewsletterWeekFromJoin | NewsletterWeekFromJoin[] | null }>('newsletter_articles')
         .select('newsletter_id, newsletters!inner (week_number)')
         .eq('article_id', articleId)
         .limit(1)
@@ -1068,7 +1068,7 @@ export const analyticsAggregator = {
       if (userIds.length === 0) return [];
       
       const { data: families } = await supabase
-        .from('family_enrollment')
+        .from<FamilyEnrollmentReadersRow>('family_enrollment')
         .select('parent_id, families ( family_code, student_class_enrollment ( classes ( class_name ), students ( name ) ) )')
         .in('parent_id', userIds);
       

@@ -1,6 +1,6 @@
 import type { AuthSession } from '@/lib/supabase'
 import { setAccessToken } from '@/services/backendClient'
-import { refreshSmzUser, smzAuth } from '@/services/smzAuth'
+import { refreshSmzUser, smzAuth, smzDirectoryResource } from '@/services/smzAuth'
 
 export interface TokenInfo {
   accessToken: string
@@ -9,6 +9,7 @@ export interface TokenInfo {
 }
 
 export class TokenManager {
+  private sessionEpoch = 0
   private accessToken: string | null = null
   private accessTokenExpiresAt: number | null = null
   private refreshInProgress: Promise<boolean> | null = null
@@ -17,14 +18,17 @@ export class TokenManager {
   private readonly CHECK_INTERVAL = 30_000
 
   async initializeFromSession(): Promise<void> {
+    const epoch = this.sessionEpoch
     try {
       const user = await refreshSmzUser()
+      if (epoch !== this.sessionEpoch) return
       if (user?.access_token) {
         this.setAccessToken(user.access_token, user.expires_in ?? 3600)
       } else {
         this.clearTokens()
       }
     } catch (error) {
+      if (epoch !== this.sessionEpoch) return
       console.error('TokenManager: failed to restore SMZ Identity session', error)
       this.clearTokens()
     }
@@ -32,6 +36,7 @@ export class TokenManager {
   }
 
   setAccessToken(token: string, expiresInSeconds: number): void {
+    this.sessionEpoch += 1
     this.accessToken = token
     this.accessTokenExpiresAt = Date.now() + expiresInSeconds * 1000
     setAccessToken(token)
@@ -70,11 +75,13 @@ export class TokenManager {
   }
 
   private async performRefresh(): Promise<boolean> {
+    const epoch = this.sessionEpoch
     try {
       const user = await smzAuth.signinSilent({
-        resource: 'smz-directory',
-        extraTokenParams: { resource: 'smz-directory' },
+        resource: smzDirectoryResource(),
+        extraTokenParams: { resource: smzDirectoryResource() },
       })
+      if (epoch !== this.sessionEpoch) return false
       if (!user?.access_token) {
         this.clearTokens()
         return false
@@ -82,6 +89,7 @@ export class TokenManager {
       this.setAccessToken(user.access_token, user.expires_in ?? 3600)
       return true
     } catch (error) {
+      if (epoch !== this.sessionEpoch) return false
       console.error('TokenManager: SMZ Identity refresh failed', error)
       this.clearTokens()
       await smzAuth.removeUser()
@@ -98,6 +106,7 @@ export class TokenManager {
   }
 
   clearTokens(): void {
+    this.sessionEpoch += 1
     this.accessToken = null
     this.accessTokenExpiresAt = null
     setAccessToken(null)

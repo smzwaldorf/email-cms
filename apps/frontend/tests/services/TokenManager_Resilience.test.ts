@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@/services/smzAuth', () => ({
+  smzDirectoryResource: () => 'http://localhost:3000/api/directory/v1',
   refreshSmzUser: vi.fn(),
   smzAuth: {
     signinSilent: mocks.signinSilent,

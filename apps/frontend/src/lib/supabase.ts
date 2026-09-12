@@ -1,3 +1,5 @@
+import type { FileObject } from '@/types/storage'
+import type { SqlTables } from '@email-cms/shared/types/sqlRows'
 import { from, type HttpQueryBuilder } from '@/lib/dataQuery'
 import { getAccessTokenOrNull, getStoredAuthUser, setAccessToken, setStoredAuthUser } from '@/services/backendClient'
 import type {
@@ -20,7 +22,6 @@ import type {
   UserRoleRow,
 } from '@/types/database'
 
-type UntypedTableRow = Record<string, unknown>
 
 export interface AuthUser {
   id: string
@@ -57,8 +58,8 @@ const storageStub = {
       },
       async list(..._args: unknown[]) {
         return {
-          data: [] as Array<{ name: string; metadata?: { size?: number }; created_at?: string; updated_at?: string }>,
-          error: null,
+          data: [] as FileObject[],
+          error: { message: 'Storage is not using Supabase.' },
         }
       },
       async createSignedUrl(..._args: unknown[]) {
@@ -193,18 +194,18 @@ export interface DatabaseTables {
   child_class_enrollment: ChildClassEnrollmentRow
   teacher_class_assignment: TeacherClassAssignmentRow
   article_audit_log: ArticleAuditLogRow
-  auth_events: UntypedTableRow
-  analytics_events: UntypedTableRow
-  analytics_snapshots: UntypedTableRow
-  media_files: UntypedTableRow
-  media_usage: UntypedTableRow
-  media_variants: UntypedTableRow
-  media_deletion_audit: UntypedTableRow
-  article_media_references: UntypedTableRow
-  tracking_tokens: UntypedTableRow
-  user_role_assignments: UntypedTableRow
-  permission_mutation_audit_log: UntypedTableRow
-  authorization_decision_trace: UntypedTableRow
+  auth_events: SqlTables['auth_events']
+  analytics_events: SqlTables['analytics_events']
+  analytics_snapshots: SqlTables['analytics_snapshots']
+  media_files: SqlTables['media_files']
+  media_usage: SqlTables['media_usage']
+  media_variants: SqlTables['media_variants']
+  media_deletion_audit: SqlTables['media_deletion_audit']
+  article_media_references: SqlTables['article_media_references']
+  tracking_tokens: SqlTables['tracking_tokens']
+  user_role_assignments: SqlTables['user_role_assignments']
+  permission_mutation_audit_log: SqlTables['permission_mutation_audit_log']
+  authorization_decision_trace: SqlTables['authorization_decision_trace']
   email_platform_subscriber_mappings: EmailPlatformSubscriberMappingRow
   email_platform_sync_jobs: EmailPlatformSyncJobRow
   email_platform_webhook_events: EmailPlatformWebhookEventRow

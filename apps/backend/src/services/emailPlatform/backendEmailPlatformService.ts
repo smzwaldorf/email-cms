@@ -1,3 +1,4 @@
+import { runtimeEnvironment } from '#/runtime/environment'
 import { getSupabaseClient } from '#/lib/supabase'
 import { resolveEmailPlatformConfig } from '#/services/emailPlatform/config'
 import { KitAdapter } from '#/services/emailPlatform/kitAdapter'
@@ -44,7 +45,7 @@ export interface BackendServiceResponse {
 }
 
 function getKitConfig() {
-  return resolveEmailPlatformConfig((key) => process.env[key])
+  return resolveEmailPlatformConfig((key) => runtimeEnvironment()[key])
 }
 
 function stripHtml(input: string): string {

@@ -1,3 +1,4 @@
+import { runtimeEnvironment } from '#/runtime/environment'
 /**
  * 服務 - 分析和使用者反饋
  * 收集使用者行為數據和匿名滿意度反饋
@@ -231,7 +232,7 @@ class AnalyticsService {
     // fetch('#/api/feedback', { method: 'POST', body: JSON.stringify(feedback) })
     //   .catch(err => console.error('Failed to send feedback:', err))
 
-    if (process.env.NODE_ENV === 'development') {
+    if (runtimeEnvironment().NODE_ENV === 'development') {
       console.debug('Feedback would be sent to service:', feedback)
     }
   }
@@ -244,7 +245,7 @@ class AnalyticsService {
     // fetch('#/api/analytics/events', { method: 'POST', body: JSON.stringify(event) })
     //   .catch(err => console.error('Failed to send event:', err))
 
-    if (process.env.NODE_ENV === 'development') {
+    if (runtimeEnvironment().NODE_ENV === 'development') {
       console.debug('Event would be sent to service:', event)
     }
   }

@@ -41,6 +41,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         // Restore the central OIDC session and resolve the local application user.
         await authService.ensureInitialized()
+        if (!isMounted) return () => {}
         console.log('🔄 AuthContext: AuthService initialization complete')
 
         // Subscribe to auth state changes
@@ -50,6 +51,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setUser(newUser)
           }
         })
+        const stopMonitoring = authService.startSessionMonitoring()
 
         // Get current user (may have been restored from session)
         const currentUser = authService.getCurrentUser()
@@ -60,7 +62,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setIsLoading(false)
         }
 
-        return unsubscribe
+        return () => { unsubscribe(); stopMonitoring() }
       } catch (err) {
         console.error('Failed to initialize auth:', err)
         if (isMounted) {

@@ -1,5 +1,4 @@
-import fs from 'node:fs'
-import path from 'node:path'
+import bundledTemplateFiles from '../generated/emailTemplates.json'
 import Handlebars from 'handlebars'
 import { isEmailBlockType } from '#/services/emailTemplateBlocks'
 import type { EmailBlockType, EmailTemplateBlock } from '#/types/emailTemplate'
@@ -27,35 +26,6 @@ const SUPPORTED_BLOCK_MODES = new Set<string>([
 ])
 const PARTIAL_REFERENCE_PATTERN = /\{\{>\s*([a-zA-Z0-9_-]+)/g
 
-const TEMPLATE_ROOT_DIR = path.resolve(__dirname, '../../templates/email')
-const TEMPLATE_FILE_PATTERN = /\.(json|hbs|html)$/i
-
-function readTemplateFilesFromDisk(rootDir: string = TEMPLATE_ROOT_DIR): Record<string, string> {
-  if (!fs.existsSync(rootDir)) {
-    return {}
-  }
-
-  const files: Record<string, string> = {}
-  const walk = (dir: string): void => {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      const fullPath = path.join(dir, entry.name)
-      if (entry.isDirectory()) {
-        walk(fullPath)
-        continue
-      }
-      if (!entry.isFile() || !TEMPLATE_FILE_PATTERN.test(entry.name)) {
-        continue
-      }
-      const relativePath = path.relative(rootDir, fullPath).split(path.sep).join('/')
-      files[`/${TEMPLATE_ROOT}/${relativePath}`] = fs.readFileSync(fullPath, 'utf8')
-    }
-  }
-
-  walk(rootDir)
-  return files
-}
-
-const bundledTemplateFiles = readTemplateFilesFromDisk()
 
 type RenderScopeScalar =
   | string

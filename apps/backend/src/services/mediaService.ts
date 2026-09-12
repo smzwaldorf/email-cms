@@ -1,3 +1,4 @@
+import { runtimeEnvironment } from '#/runtime/environment'
 /**
  * 媒體服務 - 媒體檔案管理與驗證
  * Media Service - Media file management and validation
@@ -366,7 +367,7 @@ export class MediaService {
    * Get file size limits from environment variables
    */
   getFileSizeLimit(mediaType: MediaFileType): number {
-    const envLimit = process.env[`VITE_MEDIA_MAX_${mediaType.toUpperCase()}_SIZE`]
+    const envLimit = runtimeEnvironment()[`VITE_MEDIA_MAX_${mediaType.toUpperCase()}_SIZE`]
     return envLimit ? parseInt(envLimit) : FILE_SIZE_LIMITS[mediaType]
   }
 }

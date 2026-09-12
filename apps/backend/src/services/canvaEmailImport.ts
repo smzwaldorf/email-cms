@@ -1,8 +1,7 @@
-import { createRequire } from 'node:module'
+import { DOMParser as ServerDOMParser } from 'linkedom'
 import type { EmailBlockType, EmailTemplateBlock } from '#/types/emailTemplate'
 import { createDefaultBlock } from '#/services/emailTemplateBlocks'
 
-const nodeRequire = createRequire(__filename)
 
 export type CanvaEmailImportIssueCode =
   | 'unsupported_tag'
@@ -161,10 +160,10 @@ function parseHtml(rawHtml: string): Document {
     return new DOMParser().parseFromString(rawHtml, 'text/html')
   }
 
-  const { JSDOM } = nodeRequire('jsdom') as {
-    JSDOM: new (html: string) => { window: { document: Document } }
-  }
-  return new JSDOM(rawHtml).window.document
+  const source = /<html[\s>]/i.test(rawHtml) ? rawHtml
+    : /<(head|body)[\s>]/i.test(rawHtml) ? `<html>${rawHtml}</html>`
+      : `<html><head></head><body>${rawHtml}</body></html>`
+  return new ServerDOMParser().parseFromString(source, 'text/html') as unknown as Document
 }
 
 export function normalizeCanvaEmailHtml(rawHtml: string): CanvaEmailImportResult {

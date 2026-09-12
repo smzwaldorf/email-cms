@@ -4,6 +4,7 @@ import { AuthProvider } from '@/context/AuthContext'
 import { NavigationProvider } from '@/context/NavigationContext'
 import { LoginPage } from '@/pages/LoginPage'
 import { HomePage } from '@/pages/HomePage'
+import { LocalLogoutPage } from '@/pages/LocalLogoutPage'
 import { AuthCallbackPage } from '@/pages/AuthCallbackPage'
 import { WeeklyReaderPage } from '@/pages/WeeklyReaderPage'
 import { ErrorPage } from '@/pages/ErrorPage'
@@ -59,6 +60,7 @@ export default function App() {
               <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/logout/local" element={<LocalLogoutPage />} />
 
               <Route path="/auth/callback" element={<AuthCallbackPage />} />
               <Route

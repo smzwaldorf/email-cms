@@ -56,7 +56,7 @@ class AdminSessionService {
         return []
       }
 
-      return (data as UserSession[]) || []
+      return data ?? []
     } catch (err) {
       console.error('Get sessions exception:', err)
       return []

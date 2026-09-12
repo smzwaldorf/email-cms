@@ -23,4 +23,12 @@ describe('relation select projections', () => {
     expect(() => from('student_class_enrollment').select('students(name, is_active')).toThrow('Unbalanced')
     expect(mocks.query).not.toHaveBeenCalled()
   })
+  it('counts newsletter articles without joining or duplicating newsletter rows', async () => {
+    const result = await from('newsletters').select('*, newsletter_articles(count)')
+    expect(result.error).toBeNull()
+    const sql = mocks.query.mock.calls[0][0]
+    expect(sql).toContain("jsonb_build_array(jsonb_build_object('count', count(*)))")
+    expect(sql).toContain('"newsletter_articles"."newsletter_id" = "newsletters"."id"')
+    expect(sql).not.toContain('JOIN')
+  })
 })

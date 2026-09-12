@@ -1,23 +1,28 @@
-import '#/env'
 import { loadBackendConfig } from '#/config'
+import { closePool } from '#/lib/db'
 import { getSupabaseClient } from '#/lib/supabase'
 import { NewsletterDeliveryWorker } from '#/worker/deliveryWorker'
+import { createPollingWorker } from '#/runtime/pollingWorker'
+import { installShutdownSignals } from '#/runtime/signals'
 
-const config = loadBackendConfig()
-const worker = new NewsletterDeliveryWorker(config, getSupabaseClient())
-
-async function tick(): Promise<void> {
-  try {
-    const processed = await worker.runOnce()
-    if (processed > 0) {
-      console.info(`Processed ${processed} newsletter delivery job(s)`)
-    }
-  } catch (error) {
-    console.error('Newsletter delivery worker tick failed:', error)
-  }
+export async function main(): Promise<void> {
+  await import('#/env')
+  const config = loadBackendConfig()
+  const runtime = createPollingWorker({
+    executor: new NewsletterDeliveryWorker(config, getSupabaseClient()),
+    pollIntervalMs: config.workerPollIntervalMs,
+    closeResources: closePool,
+    onProcessed(count) {
+      if (count > 0) console.info(`Processed ${count} newsletter delivery job(s)`)
+    },
+  })
+  installShutdownSignals(runtime.stop)
+  runtime.start()
 }
 
-void tick()
-setInterval(() => {
-  void tick()
-}, config.workerPollIntervalMs)
+if (require.main === module) {
+  void main().catch(error => {
+    console.error('CMS worker startup failed:', error)
+    process.exitCode = 1
+  })
+}

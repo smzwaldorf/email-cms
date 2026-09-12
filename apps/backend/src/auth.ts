@@ -1,3 +1,4 @@
+import { runtimeEnvironment } from '#/runtime/environment'
 import { randomUUID } from 'node:crypto'
 import { canPerformCmsAction, cmsRoles, type CmsActor } from '@email-cms/shared'
 import type { IncomingMessage } from 'node:http'
@@ -60,7 +61,7 @@ export class HttpError extends Error {
 }
 
 function authIssuer(): string {
-  const configured = process.env.SMZ_AUTH_ISSUER ?? 'http://localhost:3000/api/auth'
+  const configured = runtimeEnvironment().SMZ_AUTH_ISSUER ?? 'http://localhost:3000/api/auth'
   try {
     return new URL(configured).toString().replace(/\/$/, '')
   } catch {

@@ -28,7 +28,7 @@ export interface SerializedQuery {
   orders?: OrderBy[]
   limit?: number | null
   offset?: number | null
-  mutation?: { type: 'insert' | 'update' | 'delete' | 'upsert'; payload?: unknown } | null
+  mutation?: { type: 'insert' | 'update' | 'delete' | 'upsert'; payload?: unknown; onConflict?: string } | null
   returning?: boolean
   single?: 'one' | 'maybe' | null
 }
@@ -187,8 +187,18 @@ function buildWhere(tableName: string, filters: Filter[], values: unknown[]): st
   return `WHERE ${clauses.join(' AND ')}`
 }
 
-function embedSelect(embed: Embed): string {
+function isCountEmbed(embed: Embed): boolean {
+  return Array.isArray(embed.columns) && embed.columns.length === 1 && embed.columns[0] === 'count'
+}
+
+function embedSelect(embed: Embed, tableName: string): string {
   const related = quoteIdent(embed.relation.table)
+  if (isCountEmbed(embed)) {
+    // Count in a correlated subquery so parents with zero children remain in the list
+    // and parents with several children still produce exactly one result row.
+    return `(SELECT jsonb_build_array(jsonb_build_object('count', count(*))) FROM ${related}
+      WHERE ${related}.${quoteIdent(embed.relation.to)} = ${quoteIdent(tableName)}.${quoteIdent(embed.relation.from)}) AS ${quoteIdent(embed.alias)}`
+  }
   if (embed.columns === '*') {
     return `to_jsonb(${related}.*) AS ${quoteIdent(embed.alias)}`
   }
@@ -204,7 +214,7 @@ export class QueryBuilder<T = unknown> {
   private orders: OrderBy[] = []
   private limitCount: number | null = null
   private offsetCount: number | null = null
-  private mutation: { type: 'insert' | 'update' | 'delete' | 'upsert'; payload?: unknown } | null = null
+  private mutation: { type: 'insert' | 'update' | 'delete' | 'upsert'; payload?: unknown; onConflict?: string } | null = null
   private returning = false
   private wantsSingle: 'one' | 'maybe' | null = null
 
@@ -309,8 +319,8 @@ export class QueryBuilder<T = unknown> {
     return this
   }
 
-  upsert(payload: unknown): this {
-    this.mutation = { type: 'upsert', payload }
+  upsert(payload: unknown, options?: { onConflict?: string }): this {
+    this.mutation = { type: 'upsert', payload, onConflict: options?.onConflict }
     return this
   }
 
@@ -319,9 +329,9 @@ export class QueryBuilder<T = unknown> {
     return this
   }
 
-  single(): Promise<QueryResponse<T | null>> {
+  single(): Promise<{ data: T; error: null; count: number | null } | { data: null; error: QueryError; count: number | null }> {
     this.wantsSingle = 'one'
-    return this.execute() as Promise<QueryResponse<T | null>>
+    return this.execute() as ReturnType<this['single']>
   }
 
   maybeSingle(): Promise<QueryResponse<T | null>> {
@@ -333,7 +343,7 @@ export class QueryBuilder<T = unknown> {
     onfulfilled?: ((value: QueryResponse<T[]>) => TResult1 | PromiseLike<TResult1>) | null,
     onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
   ): Promise<TResult1 | TResult2> {
-    return this.execute().then(onfulfilled, onrejected)
+    return (this.execute() as Promise<QueryResponse<T[]>>).then(onfulfilled, onrejected)
   }
 
   private async execute(): Promise<QueryResponse<T[] | T | null>> {
@@ -355,7 +365,7 @@ export class QueryBuilder<T = unknown> {
     const values: unknown[] = []
     const table = quoteIdent(this.tableName)
     const selectList = this.buildSelectList()
-    const joins = this.selectSpec.embeds.map((embed) => {
+    const joins = this.selectSpec.embeds.filter(embed => !isCountEmbed(embed)).map((embed) => {
       const joinType = embed.inner ? 'INNER JOIN' : 'LEFT JOIN'
       const related = quoteIdent(embed.relation.table)
       return `${joinType} ${related} ON ${related}.${quoteIdent(embed.relation.to)} = ${table}.${quoteIdent(embed.relation.from)}`
@@ -402,7 +412,7 @@ export class QueryBuilder<T = unknown> {
         ? `${table}.*`
         : '*'
       : this.selectSpec.columns.map((column) => qualify(this.tableName, column)).join(', ')
-    const embeds = this.selectSpec.embeds.map((embed) => embedSelect(embed))
+    const embeds = this.selectSpec.embeds.map((embed) => embedSelect(embed, this.tableName))
     return [base, ...embeds].filter(Boolean).join(', ')
   }
 
@@ -428,11 +438,12 @@ export class QueryBuilder<T = unknown> {
         })
         return `(${placeholders.join(', ')})`
       })
+      const conflictColumns = (this.mutation.onConflict ?? 'id').split(',').map(value => value.trim())
+      const changes = columns.filter(column => !conflictColumns.includes(column))
       const conflict = this.mutation.type === 'upsert'
-        ? `ON CONFLICT (${quoteIdent('id')}) DO UPDATE SET ${columns
-            .filter((column) => column !== 'id')
-            .map((column) => `${quoteIdent(column)} = EXCLUDED.${quoteIdent(column)}`)
-            .join(', ')}`
+        ? `ON CONFLICT (${conflictColumns.map(quoteIdent).join(', ')}) ${changes.length
+          ? `DO UPDATE SET ${changes.map(column => `${quoteIdent(column)} = EXCLUDED.${quoteIdent(column)}`).join(', ')}`
+          : 'DO NOTHING'}`
         : ''
       sql = `INSERT INTO ${table} (${columns.map(quoteIdent).join(', ')}) VALUES ${valueGroups.join(', ')} ${conflict} ${this.returning ? 'RETURNING *' : ''}`
     } else if (this.mutation.type === 'update') {
@@ -502,7 +513,7 @@ export async function runSerializedQuery(spec: SerializedQuery): Promise<QueryRe
   if (spec.offset != null) builder.range(spec.offset, spec.offset + (spec.limit ?? 1) - 1)
   if (spec.mutation?.type === 'insert') builder.insert(spec.mutation.payload)
   if (spec.mutation?.type === 'update') builder.update(spec.mutation.payload)
-  if (spec.mutation?.type === 'upsert') builder.upsert(spec.mutation.payload)
+  if (spec.mutation?.type === 'upsert') builder.upsert(spec.mutation.payload, { onConflict: spec.mutation.onConflict })
   if (spec.mutation?.type === 'delete') builder.delete()
   if (spec.single === 'one') return builder.single()
   if (spec.single === 'maybe') return builder.maybeSingle()

@@ -1,3 +1,4 @@
+import { runtimeEnvironment } from '#/runtime/environment'
 import { getSupabaseClient } from '#/lib/supabase'
 import {
   buildFallbackArticleImageUrl,
@@ -103,7 +104,7 @@ function canonicalNewsletterRevision(value: string | Date): string {
 }
 
 function getPublicAppBaseUrl(): string {
-  return (process.env.VITE_APP_URL ?? process.env.APP_URL ?? 'http://localhost:5174').replace(/\/+$/, '')
+  return (runtimeEnvironment().VITE_APP_URL ?? runtimeEnvironment().APP_URL ?? 'http://localhost:5174').replace(/\/+$/, '')
 }
 
 function buildPublicArticleUrl(

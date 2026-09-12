@@ -1,11 +1,31 @@
-import { defineConfig } from 'vite' // Trigger rebuild
+import { defineConfig, loadEnv, type Plugin } from 'vite' // Trigger rebuild
 import react from '@vitejs/plugin-react'
 import path from 'path'
+import type { IncomingMessage, ServerResponse } from 'node:http'
+
+function logoutFramePolicy(authOrigin: string): Plugin {
+  const middleware = (request: IncomingMessage, response: ServerResponse, next: () => void) => {
+    if (request.url?.split('?')[0] === '/logout/local') {
+      response.setHeader('Content-Security-Policy', `frame-ancestors ${authOrigin}`)
+      response.removeHeader('X-Frame-Options')
+      response.setHeader('Cache-Control', 'no-store')
+    }
+    next()
+  }
+  return {
+    name: 'cms-logout-frame-policy',
+    configureServer: server => { server.middlewares.use(middleware) },
+    configurePreviewServer: server => { server.middlewares.use(middleware) },
+  }
+}
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, path.resolve(__dirname, '../..'), 'VITE_')
+  const authOrigin = new URL(env.VITE_SMZ_AUTH_ISSUER || 'http://localhost:3000/api/auth').origin
+  return {
   envDir: path.resolve(__dirname, '../..'),
-  plugins: [react()],
+  plugins: [react(), logoutFramePolicy(authOrigin)],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -56,4 +76,5 @@ export default defineConfig({
     // Report compression results
     reportCompressedSize: true,
   },
+  }
 })

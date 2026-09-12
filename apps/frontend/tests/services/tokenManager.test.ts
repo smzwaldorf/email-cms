@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@/services/smzAuth', () => ({
+  smzDirectoryResource: () => 'http://localhost:3000/api/directory/v1',
   refreshSmzUser: mocks.refreshSmzUser,
   smzAuth: {
     signinSilent: mocks.signinSilent,
@@ -53,4 +54,17 @@ describe('TokenManager with SMZ Identity', () => {
     expect(manager.getTokenInfo()).toBeNull()
     expect(mocks.setAccessToken).toHaveBeenLastCalledWith(null)
   })
+  it('does not resurrect a bearer token when an in-flight refresh finishes after logout', async () => {
+    let resolve!: (value: unknown) => void
+    manager.setAccessToken('old-token', 0)
+    mocks.signinSilent.mockImplementationOnce(() => new Promise(value => { resolve = value }))
+    const pending = manager.forceRefresh()
+    manager.onLogout()
+    resolve({ access_token: 'late-token', expires_in: 1200 })
+    await expect(pending).resolves.toBe(false)
+    expect(manager.getTokenInfo()).toBeNull()
+    expect(mocks.setAccessToken).toHaveBeenLastCalledWith(null)
+    expect(mocks.signinSilent).toHaveBeenCalledWith({ resource: 'http://localhost:3000/api/directory/v1', extraTokenParams: { resource: 'http://localhost:3000/api/directory/v1' } })
+  })
+
 })

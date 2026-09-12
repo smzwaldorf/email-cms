@@ -15,6 +15,7 @@ vi.mock('@/services/authService', () => ({
     ensureInitialized: mocks.ensureInitialized,
     getCurrentUser: mocks.getCurrentUser,
     onAuthStateChange: mocks.onAuthStateChange,
+    startSessionMonitoring: () => () => {},
   },
 }))
 

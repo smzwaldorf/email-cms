@@ -22,7 +22,7 @@ import { readerService } from '#/services/readerService'
 import { runSerializedQuery, type SerializedQuery } from '#/lib/query'
 import type { DeliveryAudienceSelection } from '#/types/emailDelivery'
 
-interface RouteContext {
+export interface RouteContext {
   supabase: SupabaseClient
   corsOrigin: string
 }

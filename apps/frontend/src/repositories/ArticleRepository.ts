@@ -71,7 +71,7 @@ export class ArticleRepository {
 
       // Validate article order is unique
       const { data: existingArticle, error: orderError } = await getSupabaseClient()
-        .from('articles')
+        .from<ArticleRow & { article_order: number }>('articles')
         .select('*')
         .eq('week_number', weekNumber)
         .eq('article_order', articleData.articleOrder)
@@ -116,7 +116,7 @@ export class ArticleRepository {
       // Step 1: Validate all article IDs exist in the week
       const articleIds = Object.keys(orderMap)
       const { data: articles, error: fetchError } = await getSupabaseClient()
-        .from('articles')
+        .from<ArticleRow & { article_order: number }>('articles')
         .select('*')
         .eq('week_number', weekNumber)
         .in('id', articleIds)
@@ -142,7 +142,7 @@ export class ArticleRepository {
       // Step 2: Validate new orders don't conflict with other articles in week
       const newOrders = Object.values(orderMap)
       const { data: allWeekArticles, error: allError } = await getSupabaseClient()
-        .from('articles')
+        .from<ArticleRow & { article_order: number }>('articles')
         .select('*')
         .eq('week_number', weekNumber)
 
@@ -179,7 +179,7 @@ export class ArticleRepository {
           // This will be overwritten in the actual update
         }).then(() =>
           getSupabaseClient()
-            .from('articles')
+            .from<ArticleRow & { article_order: number }>('articles')
             .update({ article_order: orderMap[articleId] })
             .eq('id', articleId)
             .select()
@@ -217,7 +217,7 @@ export class ArticleRepository {
   static async validateArticleOrder(weekNumber: string): Promise<ValidationResult> {
     try {
       const { data: articles, error } = await getSupabaseClient()
-        .from('articles')
+        .from<ArticleRow & { article_order: number }>('articles')
         .select('*')
         .eq('week_number', weekNumber)
         .is('deleted_at', null)
@@ -343,7 +343,7 @@ export class ArticleRepository {
   ): Promise<boolean> {
     try {
       const { data, error } = await getSupabaseClient()
-        .from('articles')
+        .from<ArticleRow & { article_order: number }>('articles')
         .select('*', { count: 'exact', head: true })
         .eq('week_number', weekNumber)
         .eq('article_order', articleOrder)

@@ -1,0 +1,70 @@
+name: Cloudflare
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: cloudflare-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm install --no-audit --no-fund
+      - run: npm run build
+      - run: npm run cloudflare:check
+      - name: Backend runtime, authorization and delivery regression tests
+        run: >-
+          npm run test -w @email-cms/backend --
+          tests/unit/cloudflare-context.test.ts tests/unit/cloudflare-config.test.ts
+          tests/unit/cloudflare-delivery.test.ts tests/unit/services/articleMediaRows.test.ts
+          tests/unit/services/adminService.spec.ts tests/unit/services/canvaEmailImport.test.ts
+          tests/unit/services/fileEmailTemplateLoader.test.ts tests/unit/lib/upsert-conflict.test.ts
+          tests/unit/lib/relation-select.test.ts tests/unit/auth/smz-auth.test.ts
+          tests/integration/parent-readonly.test.ts tests/integration/cms-boundary.test.ts
+          tests/integration/delivery-workflow.test.ts tests/unit/runtime-adapters.test.ts
+      - name: Frontend authentication and media regression tests
+        run: >-
+          npm run test -w @email-cms/frontend --
+          tests/unit/authService.test.ts tests/services/tokenManager.test.ts
+          tests/services/TokenManager_Resilience.test.ts tests/services/backendClient.logout.test.ts
+          tests/pages/LocalLogoutPage.test.tsx tests/pages/ParentReadonly.test.tsx
+          tests/context/AuthContext_SmzSession.test.tsx tests/pages/AuthCallbackPage.test.tsx
+          tests/unit/services/mediaGovernanceService.test.ts tests/unit/services/mediaService.test.ts
+  deploy:
+    needs: validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: production
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_HYPERDRIVE_ID: ${{ vars.CLOUDFLARE_HYPERDRIVE_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CMS_DATABASE_URL: ${{ secrets.CMS_DATABASE_URL }}
+      CMS_ORIGIN: ${{ vars.CMS_ORIGIN }}
+      CMS_API_ORIGIN: ${{ vars.CMS_API_ORIGIN }}
+      SMZ_AUTH_ISSUER: ${{ vars.SMZ_AUTH_ISSUER }}
+      CMS_AUTH_REGISTRATION_VERIFIED: ${{ vars.CMS_AUTH_REGISTRATION_VERIFIED }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm install --no-audit --no-fund
+      - run: npm run build -w @email-cms/shared
+      - run: npm run cloudflare:configure
+      - run: node scripts/cloudflare-check-binding.mjs
+      - name: Initialize the explicitly approved empty CMS database
+        if: vars.CMS_INITIALIZE_EMPTY_DATABASE == 'true'
+        run: npm run cloudflare:schema
+      - run: node scripts/cloudflare-preflight.mjs
+      - run: npm run cloudflare:pages:build
+      - run: npx wrangler deploy --config .wrangler/deploy/cms.json
+      - run: npx wrangler pages deploy apps/frontend/dist --project-name smz-cms --branch main
+      - run: node scripts/cloudflare-smoke.mjs

@@ -25,7 +25,7 @@ interface SerializedQuery {
   orders: Array<{ column: string; ascending: boolean }>
   limit?: number | null
   offset?: number | null
-  mutation?: { type: 'insert' | 'update' | 'delete' | 'upsert'; payload?: unknown } | null
+  mutation?: { type: 'insert' | 'update' | 'delete' | 'upsert'; payload?: unknown; onConflict?: string } | null
   returning?: boolean
   single?: 'one' | 'maybe' | null
 }
@@ -140,8 +140,8 @@ export class HttpQueryBuilder<T = unknown> {
     return this
   }
 
-  upsert(payload: unknown): this {
-    this.mutation = { type: 'upsert', payload }
+  upsert(payload: unknown, options?: { onConflict?: string }): this {
+    this.mutation = { type: 'upsert', payload, onConflict: options?.onConflict }
     return this
   }
 
@@ -150,9 +150,9 @@ export class HttpQueryBuilder<T = unknown> {
     return this
   }
 
-  single(): Promise<QueryResponse<T | null>> {
+  single(): Promise<{ data: T; error: null; count: number | null } | { data: null; error: QueryError; count: number | null }> {
     this.wantsSingle = 'one'
-    return this.execute() as Promise<QueryResponse<T | null>>
+    return this.execute() as ReturnType<this['single']>
   }
 
   maybeSingle(): Promise<QueryResponse<T | null>> {

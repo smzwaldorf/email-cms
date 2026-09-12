@@ -2,10 +2,14 @@ import type { User } from 'oidc-client-ts'
 import type { AuthSession } from '@/lib/supabase'
 import type { AuthUser } from '@/types/auth'
 import { requestBackend, setStoredAuthUser } from '@/services/backendClient'
-import { redirectFromSmzUser, smzAuth, smzDirectoryResource } from '@/services/smzAuth'
+import { redirectFromSmzUser, redirectToGlobalSignOut, smzAuth, smzDirectoryResource } from '@/services/smzAuth'
 import { auditLogger } from './auditLogger'
 import { tokenManager } from './tokenManager'
 import { isSafeAppRedirectPath } from '@/utils/urlUtils'
+
+export const CMS_LOGOUT_MARKER = 'email-cms-global-logout'
+const SESSION_MARKER = 'email-cms-session-logout-marker'
+const LOGOUT_CHANNEL = 'email-cms-global-logout'
 
 interface SessionResponse {
   user: {
@@ -31,6 +35,8 @@ export interface AuthServiceInterface {
   verifyMagicLink(token: string): Promise<AuthUser | null>
   completeSignIn(): Promise<CompletedSignIn>
   signOut(): Promise<void>
+  clearSessionForGlobalLogout(): Promise<void>
+  startSessionMonitoring(): () => void
   getCurrentUser(): AuthUser | null
   isAuthenticated(): boolean
   onAuthStateChange(callback: (user: AuthUser | null) => void): () => void
@@ -40,6 +46,8 @@ export interface AuthServiceInterface {
 }
 
 class SmzAuthService implements AuthServiceInterface {
+  private sessionEpoch = 0
+  private revalidation: Promise<void> | null = null
   private currentUser: AuthUser | null = null
   private authStateListeners: Array<(user: AuthUser | null) => void> = []
   private initialized = false
@@ -52,23 +60,23 @@ class SmzAuthService implements AuthServiceInterface {
     if (this.initialized) return
 
     this.initializationPromise = (async () => {
-      if (window.location.pathname !== '/auth/callback') {
+      if (!['/auth/callback', '/logout/local'].includes(window.location.pathname)) {
         const oidcUser = await smzAuth.getUser()
-        if (oidcUser && !oidcUser.expired && oidcUser.access_token) {
+        if (oidcUser && !oidcUser.expired && oidcUser.access_token && !this.logoutMarkerChanged()) {
           await this.establishLocalSession(oidcUser)
         } else {
-          await this.clearLocalSession()
+          await this.invalidateLocalSession()
         }
       }
 
       smzAuth.events.addUserLoaded((user) => {
         if (this.callbackPromise) return
-        void this.establishLocalSession(user).catch(() => this.clearLocalSession())
+        if (!this.currentUser) { void smzAuth.removeUser(); return }
+        void this.establishLocalSession(user).catch(() => this.invalidateLocalSession())
       })
       smzAuth.events.addUserUnloaded(() => {
         void this.clearLocalSession()
       })
-      window.addEventListener('cms-auth-invalid', () => { void this.clearLocalSession() })
       this.initialized = true
     })()
 
@@ -108,7 +116,14 @@ class SmzAuthService implements AuthServiceInterface {
   }
 
   private async finishSignIn(): Promise<CompletedSignIn> {
+    const epoch = this.sessionEpoch
+    const marker = window.localStorage.getItem(CMS_LOGOUT_MARKER)
+    // A new explicit login may follow an earlier logout. A later marker change
+    // still cancels this in-flight callback through the epoch/marker checks.
+    if (marker === null) window.sessionStorage.removeItem(SESSION_MARKER)
+    else window.sessionStorage.setItem(SESSION_MARKER, marker)
     const oidcUser = await (this.callbackUserPromise ??= smzAuth.signinRedirectCallback())
+    if (epoch !== this.sessionEpoch || marker !== window.localStorage.getItem(CMS_LOGOUT_MARKER)) throw new Error('Sign-in was cancelled by logout')
     const user = await this.establishLocalSession(oidcUser)
     const redirectTo = redirectFromSmzUser(oidcUser)
     return {
@@ -118,14 +133,94 @@ class SmzAuthService implements AuthServiceInterface {
   }
 
   async signOut(): Promise<void> {
-    if (this.currentUser?.id) {
-      await auditLogger.logAuthEvent({
-        userId: this.currentUser.id,
-        eventType: 'logout',
-      }).catch(() => undefined)
+    try {
+      await this.clearSessionForGlobalLogout()
+    } finally {
+      // Always revoke centrally, even if local browser storage cleanup fails.
+      redirectToGlobalSignOut()
     }
-    await this.clearLocalSession()
-    await smzAuth.signoutRedirect()
+  }
+
+  async clearSessionForGlobalLogout(): Promise<void> {
+    this.clearLocalSession()
+    const marker = `${Date.now()}:${crypto.randomUUID()}`
+    window.localStorage.setItem(CMS_LOGOUT_MARKER, marker)
+    window.sessionStorage.setItem(SESSION_MARKER, marker)
+    if (typeof BroadcastChannel !== 'undefined') {
+      const channel = new BroadcastChannel(LOGOUT_CHANNEL)
+      channel.postMessage({ type: 'logout' })
+      channel.close()
+    }
+    await smzAuth.removeUser()
+  }
+
+  private logoutMarkerChanged(): boolean {
+    return window.localStorage.getItem(CMS_LOGOUT_MARKER) !== window.sessionStorage.getItem(SESSION_MARKER)
+  }
+
+  private async invalidateLocalSession(): Promise<void> {
+    this.clearLocalSession()
+    await smzAuth.removeUser()
+    const marker = window.localStorage.getItem(CMS_LOGOUT_MARKER)
+    if (marker === null) window.sessionStorage.removeItem(SESSION_MARKER)
+    else window.sessionStorage.setItem(SESSION_MARKER, marker)
+  }
+
+  startSessionMonitoring(): () => void {
+    const invalid = () => { void this.invalidateLocalSession() }
+    const check = () => {
+      if (this.logoutMarkerChanged()) {
+        void this.invalidateLocalSession()
+      } else if (document.visibilityState !== 'hidden') {
+        void this.revalidateSession()
+      }
+    }
+    const storage = (event: StorageEvent) => {
+      if (event.key === CMS_LOGOUT_MARKER || event.key === null) check()
+    }
+    const channel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel(LOGOUT_CHANNEL) : null
+    const broadcast = (event: MessageEvent) => {
+      if (event.data?.type === 'logout') void this.invalidateLocalSession()
+    }
+    channel?.addEventListener('message', broadcast)
+    window.addEventListener('storage', storage)
+    window.addEventListener('cms-auth-invalid', invalid)
+    window.addEventListener('focus', check)
+    window.addEventListener('pageshow', check)
+    document.addEventListener('visibilitychange', check)
+    const timer = window.setInterval(check, 15_000)
+    return () => {
+      window.clearInterval(timer)
+      channel?.close()
+      window.removeEventListener('storage', storage)
+      window.removeEventListener('cms-auth-invalid', invalid)
+      window.removeEventListener('focus', check)
+      window.removeEventListener('pageshow', check)
+      document.removeEventListener('visibilitychange', check)
+    }
+  }
+
+  private async revalidateSession(): Promise<void> {
+    if (!this.currentUser || this.revalidation) return
+    const epoch = this.sessionEpoch
+    this.revalidation = (async () => {
+      try {
+        const oidcUser = await smzAuth.getUser()
+        if (epoch !== this.sessionEpoch) return
+        if (!oidcUser?.access_token || oidcUser.expired) {
+          await this.invalidateLocalSession()
+          return
+        }
+        const session = await requestBackend<SessionResponse>('/api/auth/session', {}, oidcUser.access_token)
+        if (epoch !== this.sessionEpoch || this.logoutMarkerChanged()) return
+        this.currentUser = this.userFromSession(session)
+        this.notifyListeners(this.currentUser)
+      } catch {
+        // The HTTP client clears confirmed 401/revoked sessions. A temporary
+        // outage is not a new authorization grant; every protected API fails closed.
+      }
+    })()
+    try { await this.revalidation } finally { this.revalidation = null }
   }
 
   getCurrentUser(): AuthUser | null {
@@ -144,8 +239,10 @@ class SmzAuthService implements AuthServiceInterface {
   }
 
   async getSession(): Promise<AuthSession | null> {
+    if (this.logoutMarkerChanged()) { await this.invalidateLocalSession(); return null }
+    const epoch = this.sessionEpoch
     const oidcUser = await smzAuth.getUser()
-    if (!oidcUser?.access_token || oidcUser.expired || !this.currentUser) return null
+    if (epoch !== this.sessionEpoch || !oidcUser?.access_token || oidcUser.expired || !this.currentUser) return null
     return {
       access_token: oidcUser.access_token,
       refresh_token: oidcUser.refresh_token,
@@ -158,6 +255,8 @@ class SmzAuthService implements AuthServiceInterface {
   }
 
   private async startSignIn(redirectTo?: string): Promise<void> {
+    this.callbackUserPromise = null
+    this.callbackPromise = null
     const safeRedirectTo = isSafeAppRedirectPath(redirectTo) ? redirectTo : undefined
     await smzAuth.signinRedirect({
       state: safeRedirectTo ? { redirectTo: safeRedirectTo } : undefined,
@@ -170,17 +269,16 @@ class SmzAuthService implements AuthServiceInterface {
     if (!oidcUser.access_token || oidcUser.expired) {
       throw new Error('SMZ Identity did not return a usable access token')
     }
+    const epoch = this.sessionEpoch
+    const marker = window.localStorage.getItem(CMS_LOGOUT_MARKER)
     tokenManager.setAccessToken(oidcUser.access_token, oidcUser.expires_in ?? 3600)
     const session = await requestBackend<SessionResponse>('/api/auth/session')
-    const user: AuthUser = {
-      id: session.user.id,
-      email: session.user.email,
-      role: (session.user.role ?? 'student') as AuthUser['role'],
-      roles: session.user.roles,
-      teacherClassIds: session.user.teacherClassIds,
-      parentClassIds: session.user.parentClassIds,
-      displayName: session.user.display_name || session.user.email.split('@')[0],
+    if (epoch !== this.sessionEpoch || marker !== window.localStorage.getItem(CMS_LOGOUT_MARKER)) {
+      throw new Error('Session was cancelled by logout')
     }
+    if (marker === null) window.sessionStorage.removeItem(SESSION_MARKER)
+    else window.sessionStorage.setItem(SESSION_MARKER, marker)
+    const user = this.userFromSession(session)
     this.currentUser = user
     setStoredAuthUser({ id: user.id, email: user.email })
     this.notifyListeners(user)
@@ -192,9 +290,27 @@ class SmzAuthService implements AuthServiceInterface {
     return user
   }
 
-  private async clearLocalSession(): Promise<void> {
+  private userFromSession(session: SessionResponse): AuthUser {
+    return {
+      id: session.user.id,
+      email: session.user.email,
+      role: (session.user.role ?? 'student') as AuthUser['role'],
+      roles: session.user.roles,
+      teacherClassIds: session.user.teacherClassIds,
+      parentClassIds: session.user.parentClassIds,
+      displayName: session.user.display_name || session.user.email.split('@')[0],
+    }
+  }
+
+  private clearLocalSession(): void {
+    this.sessionEpoch += 1
+    this.callbackPromise = null
+    this.callbackUserPromise = null
     tokenManager.onLogout()
     setStoredAuthUser(null)
+    for (const key of Object.keys(window.sessionStorage)) {
+      if (key.startsWith('oidc.')) window.sessionStorage.removeItem(key)
+    }
     this.currentUser = null
     this.notifyListeners(null)
   }

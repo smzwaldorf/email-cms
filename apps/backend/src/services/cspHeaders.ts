@@ -1,3 +1,4 @@
+import { runtimeEnvironment } from '#/runtime/environment'
 /**
  * 內容安全策略 (CSP) 標頭服務
  * Content Security Policy (CSP) Headers Service
@@ -208,7 +209,7 @@ export function buildCSPHeader(policy: CSPPolicy): string {
  * Get CSP header configuration
  */
 export function getCSPHeaders(): Record<string, string> {
-  const isDevelopment = process.env.NODE_ENV === 'development'
+  const isDevelopment = runtimeEnvironment().NODE_ENV === 'development'
   const policy = isDevelopment ? CSP_DEVELOPMENT : CSP_PRODUCTION
 
   const cspHeader = buildCSPHeader(policy)
@@ -260,7 +261,7 @@ export interface CSPViolationReport {
  * Log CSP violation
  */
 export function logCSPViolation(report: Partial<CSPViolationReport>): void {
-  const isDev = process.env.NODE_ENV === 'development'
+  const isDev = runtimeEnvironment().NODE_ENV === 'development'
 
   const message = `
 CSP Violation:

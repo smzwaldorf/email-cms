@@ -1,7 +1,7 @@
 /**
  * SMZ Identity sign-in button.
- * The central sign-in page offers the approved Google, email-link, and
- * development-account methods.
+ * The central sign-in page owns Google login and explicitly enabled
+ * development-only synthetic identities.
  */
 
 import React from 'react'

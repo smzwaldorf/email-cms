@@ -96,6 +96,7 @@ export class SupabaseStorageAdapter implements StorageProvider {
         throw new Error(`Supabase download error: ${error.message}`)
       }
 
+      if (!data) throw new Error('Storage returned no file')
       return data
     } catch (error) {
       throw error instanceof Error ? error : new Error(String(error))
@@ -243,8 +244,8 @@ export class SupabaseStorageAdapter implements StorageProvider {
 
       return {
         name: file.name,
-        size: file.metadata?.size || 0,
-        mimeType: file.metadata?.mimetype || 'unknown',
+        size: typeof file.metadata?.size === 'number' ? file.metadata.size : 0,
+        mimeType: typeof file.metadata?.mimetype === 'string' ? file.metadata.mimetype : 'unknown',
         uploadedAt: file.created_at,
         updatedAt: file.updated_at,
       }

@@ -1317,7 +1317,7 @@ class AdminService {
       const supabase = getSupabaseClient()
 
       const { data, error } = await supabase
-        .from('newsletters')
+        .from<NewsletterWithArticleCountRow>('newsletters')
         .select('*, newsletter_articles(count)')
         .eq('week_number', weekNumber)
         .single()
@@ -1439,7 +1439,7 @@ class AdminService {
       if (updates.releaseDate !== undefined) payload.release_date = updates.releaseDate
 
       const { data, error } = await supabase
-        .from('newsletters')
+        .from<NewsletterWithArticleCountRow>('newsletters')
         .update(payload)
         .eq('id', id)
         .select('*, newsletter_articles(count)')
@@ -2287,7 +2287,7 @@ class AdminService {
 
       // Check for concurrent edits using LWW
       const { data: existing, error: fetchError } = await supabase
-        .from('articles')
+        .from<AdminArticleDbRow>('articles')
         .select('edited_at, created_at')
         .eq('id', id)
         .single()
@@ -2343,7 +2343,7 @@ class AdminService {
       }
 
       const { data, error } = await supabase
-        .from('articles')
+        .from<AdminArticleDbRow>('articles')
         .update(updatePayload)
         .eq('id', id)
         .select()
@@ -2361,17 +2361,17 @@ class AdminService {
         id: data.id,
         title: data.title,
         content: data.content,
-        author: data.author,
-        summary: data.summary,
-        weekNumber: data.week_number,
-        order: data.article_order,
+        author: data.author ?? undefined,
+        summary: data.summary ?? undefined,
+        weekNumber: data.week_number ?? '',
+        order: data.article_order ?? 0,
         classIds: data.class_ids || [],
         familyIds: data.family_ids || [],
         status: data.status,
         createdAt: data.created_at,
         updatedAt: data.updated_at,
-        lastEditedBy: data.last_edited_by,
-        editedAt: data.edited_at,
+        lastEditedBy: data.last_edited_by ?? undefined,
+        editedAt: data.edited_at ?? undefined,
       }
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
@@ -3801,7 +3801,7 @@ class AdminService {
       const now = new Date().toISOString()
 
       const { data: article, error: articleError } = await supabase
-        .from('articles')
+        .from<AdminArticleDbRow>('articles')
         .insert({
           title: '未命名文章',
           content: '',
@@ -3832,8 +3832,8 @@ class AdminService {
         id: article.id,
         title: article.title,
         content: article.content,
-        author: article.author,
-        summary: article.summary,
+        author: article.author ?? undefined,
+        summary: article.summary ?? undefined,
         weekNumber: newsletter.weekNumber || '',
         order: nextOrder,
         newsletterTargetingMode: 'shared',
@@ -3843,8 +3843,8 @@ class AdminService {
         status: article.status,
         createdAt: article.created_at,
         updatedAt: article.updated_at,
-        lastEditedBy: article.last_edited_by,
-        editedAt: article.edited_at,
+        lastEditedBy: article.last_edited_by ?? undefined,
+        editedAt: article.edited_at ?? undefined,
       }
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
@@ -4070,7 +4070,7 @@ class AdminService {
       if (studentIds && studentIds.length > 0) {
         // Get family_id for each student from family_enrollment table
         const { data: familyEnrollments, error: familyError } = await supabase
-          .from('family_enrollment')
+          .from<StudentFamilyPairRow>('family_enrollment')
           .select('student_id, family_id')
           .in('student_id', studentIds)
 
@@ -4259,7 +4259,7 @@ class AdminService {
         if (toAdd.length > 0) {
           // Get family_id for each student from family_enrollment table
           const { data: familyEnrollments, error: familyError } = await supabase
-            .from('family_enrollment')
+            .from<StudentFamilyPairRow>('family_enrollment')
             .select('student_id, family_id')
             .in('student_id', toAdd)
 
@@ -4538,7 +4538,7 @@ class AdminService {
 
       // First, fetch the class to get existing students
       const { data: classData, error: fetchError } = await supabase
-        .from('classes')
+        .from<{ student_ids: string[] | null }>('classes')
         .select('student_ids')
         .eq('id', classId)
         .single()
@@ -4588,7 +4588,7 @@ class AdminService {
 
       // First, fetch the class to get existing students
       const { data: classData, error: fetchError } = await supabase
-        .from('classes')
+        .from<{ student_ids: string[] | null }>('classes')
         .select('student_ids')
         .eq('id', classId)
         .single()
@@ -6079,7 +6079,7 @@ class AdminService {
       }
 
       const supabase = getSupabaseClient()
-      const { data, error } = await supabase.rpc('admin_update_user_display_name', {
+      const { data, error } = await supabase.rpc<UserRolesAdminRow>('admin_update_user_display_name', {
         target_user_id: id,
         target_display_name: normalizedName,
       })
@@ -6250,7 +6250,7 @@ class AdminService {
     const supabase = getSupabaseClient()
     try {
       const { data: existing, error: existingError } = await supabase
-        .from('user_roles')
+        .from<TeacherUserWithProfileRow>('user_roles')
         .select(`
           id,
           email,
@@ -6278,7 +6278,7 @@ class AdminService {
       await this.validateTeacherWriteInput({
         idToExclude: id,
         email: existing.email,
-        name: updates.name ?? existing.teacher_profiles?.[0]?.display_name,
+        name: updates.name ?? existing.teacher_profiles?.[0]?.display_name ?? undefined,
       })
 
       const priorState = {
@@ -6415,7 +6415,7 @@ class AdminService {
 
     try {
       const { data: existing, error: existingError } = await supabase
-        .from('user_roles')
+        .from<TeacherUserWithProfileRow>('user_roles')
         .select(`
           id,
           email,
@@ -6517,7 +6517,7 @@ class AdminService {
     if (role && role !== 'teacher') return []
 
     const supabase = getSupabaseClient()
-    let resolvedRole = role
+    let resolvedRole: UserRoleRow['role'] | undefined = role
     if (!resolvedRole) {
       const { data, error } = await supabase
         .from('user_roles')
@@ -6852,7 +6852,7 @@ class AdminService {
       const supabase = getSupabaseClient()
       const userId = crypto.randomUUID()
 
-      const { data, error } = await supabase.rpc('admin_create_user_role', {
+      const { data, error } = await supabase.rpc<UserRolesAdminRow>('admin_create_user_role', {
         target_user_id: userId,
         target_email: email,
         target_role: role,
@@ -6896,7 +6896,7 @@ class AdminService {
     try {
       const supabase = getSupabaseClient()
       const nextRole = updates.role ?? 'parent'
-      const { data, error } = await supabase.rpc('admin_update_user_role', {
+      const { data, error } = await supabase.rpc<UserRolesAdminRow>('admin_update_user_role', {
         target_user_id: id,
         target_role: nextRole,
       })
@@ -6935,7 +6935,7 @@ class AdminService {
   async deleteUser(id: string): Promise<void> {
     try {
       const supabase = getSupabaseClient()
-      const { data, error } = await supabase.rpc('admin_delete_user_role', {
+      const { data, error } = await supabase.rpc<UserRolesAdminRow>('admin_delete_user_role', {
         target_user_id: id,
       })
 
@@ -6979,7 +6979,7 @@ class AdminService {
       const supabase = getSupabaseClient()
 
       const { data, error } = await supabase
-        .from('parent_student_relationships')
+        .from<{ id: string; parent_id: string; student_id: string; relationship: string | null; created_at: string; updated_at: string }>('parent_student_relationships')
         .insert({
           parent_id: parentId,
           student_id: studentId,
@@ -7000,7 +7000,7 @@ class AdminService {
         id: data.id,
         parentId: data.parent_id,
         studentId: data.student_id,
-        relationship: data.relationship,
+        relationship: data.relationship ?? undefined,
         createdAt: data.created_at,
         updatedAt: data.updated_at,
       }
@@ -7055,7 +7055,7 @@ class AdminService {
       const supabase = getSupabaseClient()
 
       const { data: relationships, error: relError } = await supabase
-        .from('parent_student_relationships')
+        .from<ParentStudentIdRow>('parent_student_relationships')
         .select('student_id')
         .eq('parent_id', parentId)
 
@@ -7115,7 +7115,7 @@ class AdminService {
       const startTime = Date.now()
 
       const { data: relationships, error } = await supabase
-        .from('parent_student_relationships')
+        .from<ParentStudentRelationshipPairRow>('parent_student_relationships')
         .select('parent_id, student_id')
 
       if (error) {
