@@ -18,6 +18,7 @@ export function configuration(env) {
     compatibility_flags: ['nodejs_compat', 'enable_nodejs_http_server_modules'],
     workers_dev: true, preview_urls: false, observability: { enabled: true },
     alias: { '@email-cms/shared': path.join(root, 'packages/shared/src/index.ts') },
+    services: [{ binding: 'SMZ_AUTH', service: 'smz-auth' }],
     hyperdrive: [{ binding: 'HYPERDRIVE', id: env.CLOUDFLARE_HYPERDRIVE_ID }],
     vars: { APP_URL: env.CMS_ORIGIN, BACKEND_CORS_ORIGIN: env.CMS_ORIGIN, SMZ_AUTH_ISSUER: env.SMZ_AUTH_ISSUER, DELIVERY_ENABLED: 'false' },
     triggers: { crons: ['* * * * *'] },

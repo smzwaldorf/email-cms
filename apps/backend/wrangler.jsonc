@@ -32,5 +32,11 @@
       "* * * * *"
     ]
   },
-  "account_id": "f1b69ad88454573ccaa3364b628fd114"
+  "account_id": "f1b69ad88454573ccaa3364b628fd114",
+  "services": [
+    {
+      "binding": "SMZ_AUTH",
+      "service": "smz-auth"
+    }
+  ]
 }

@@ -1,4 +1,7 @@
+import type { IdentityTransport } from '#/runtime/environment'
+
 export interface Env {
+  SMZ_AUTH?: IdentityTransport
   HYPERDRIVE: { connectionString: string }
   SMZ_AUTH_ISSUER: string
   APP_URL: string

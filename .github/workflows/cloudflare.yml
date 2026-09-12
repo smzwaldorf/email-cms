@@ -17,12 +17,13 @@ jobs:
         with:
           node-version: 24
       - run: npm install --no-audit --no-fund
+      - run: node --test scripts/cloudflare-config.test.mjs
       - run: npm run build
       - run: npm run cloudflare:check
       - name: Backend runtime, authorization and delivery regression tests
         run: >-
           npm run test -w @email-cms/backend --
-          tests/unit/cloudflare-context.test.ts tests/unit/cloudflare-config.test.ts
+          tests/unit/cloudflare-context.test.ts tests/unit/cloudflare-config.test.ts tests/unit/identity-transport.test.ts
           tests/unit/cloudflare-delivery.test.ts tests/unit/services/articleMediaRows.test.ts
           tests/unit/services/adminService.spec.ts tests/unit/services/canvaEmailImport.test.ts
           tests/unit/services/fileEmailTemplateLoader.test.ts tests/unit/lib/upsert-conflict.test.ts

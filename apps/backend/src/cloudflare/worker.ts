@@ -34,7 +34,7 @@ export default {
           return
         }
         await createCmsApplication({ supabase: getSupabaseClient(), corsOrigin: env.BACKEND_CORS_ORIGIN }).handle(incoming, outgoing)
-      })).catch(() => {
+      }), env.SMZ_AUTH).catch(() => {
         if (!outgoing.headersSent) { outgoing.writeHead(500, { 'Content-Type': 'application/json' }); outgoing.end('{"error":"Internal server error"}') }
         else outgoing.destroy()
       }).finally(finish)

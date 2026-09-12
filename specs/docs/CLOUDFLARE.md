@@ -2,16 +2,18 @@
 
 ## Status — 2026-09-12
 
-The CMS Pages build and Workers adapter are implemented and locally validated. Nothing has been published from this change. The planned URLs below are configuration targets, not confirmed live CMS services.
+CMS Pages and Worker deployed successfully through commit-triggered CI run [34691246901](https://github.com/smzwaldorf/email-cms/actions/runs/34691246901), commit `f68468de28b7ed77f6a525d729b99bbeb5e08b1d`. The production schema was initialized in the existing PlanetScale `smz-cms` logical database through its uncached Hyperdrive binding. The one-time initializer flag and unused invalid GitHub database secret were removed after success. No new paid cluster was provisioned; delivery remains disabled.
 
-Wrangler now authenticates as `smzwaldorf.education@gmail.com` and can access 善美真. The `smz-cms` Pages project has been created with production branch `main`, but no application deployment exists yet. Deployment remains blocked by CMS schema initialization and the current Auth logout contract. The live Auth endpoint `/logout-all/email-cms` returns HTTP 400 `invalid_logout_return`; the current Auth coordinator accepts only app-a and app-b. Registering the CMS OIDC client alone will not fix coordinated logout.
+Live services: [CMS](https://smz-cms.pages.dev) and [API health](https://smz-cms-api.black-tree-204e.workers.dev/health). Worker version `14c4fe53-3d92-47f3-8b02-c3c16b1efe03`; Pages deployment [374d7abe](https://374d7abe.smz-cms.pages.dev).
+
+All CI build, regression, database preflight and HTTP smoke checks passed. Dia verified the CMS login page, correct CMS PKCE redirect to SMZ Identity, and arrival at Google's account chooser. An eligible user's completed login, authenticated CMS reads, refresh and coordinated logout remain unverified; the browser is left at account selection. No people or CMS admission grants were seeded.
 
 ## Topology
 
 | Component | Target |
 | --- | --- |
-| Frontend | Cloudflare Pages project `smz-cms`; planned `https://smz-cms.pages.dev` |
-| API and disabled scheduled executor | Worker `smz-cms-api`; planned `https://smz-cms-api.black-tree-204e.workers.dev` in the existing SMZ account |
+| Frontend | Cloudflare Pages project `smz-cms`; `https://smz-cms.pages.dev` |
+| API and disabled scheduled executor | Worker `smz-cms-api`; `https://smz-cms-api.black-tree-204e.workers.dev` in the existing SMZ account |
 | Identity | Existing `https://smz-auth.black-tree-204e.workers.dev/api/auth` |
 | Data | Reserved `smz-cms` logical database on the existing PlanetScale cluster |
 | SQL connection | Separate uncached Hyperdrive binding targeting `smz-cms` |
@@ -69,7 +71,7 @@ Verification in this task:
 - Frontend focused auth/logout/media regressions: 76 tests across 10 files pass.
 - Compiled Node startup returns the expected unauthenticated 401 and exits cleanly on SIGTERM.
 - Real local workerd returns the expected session 401, CORS preflight 204 and disabled scheduled-event success.
-- A read-only production SQL check verified the empty CMS database. No authenticated Cloudflare CMS browser workflow or provider send was verified. Local Docker PostgreSQL was unavailable. A dry run is not deployment evidence.
+- Production initialization and read-only schema preflight passed through Hyperdrive. Local verification used an isolated PostgreSQL 17 server because Docker was unavailable. Provider sending and completed authenticated browser workflows remain unverified.
 
 After publication, run `node scripts/cloudflare-smoke.mjs` with the production origins, then browser-test login, callback, role restrictions, newsletter reads and coordinated logout across tabs/apps using existing authorized identities. The HTTP smoke intentionally does not substitute for those browser checks.
 
@@ -77,11 +79,11 @@ After publication, run `node scripts/cloudflare-smoke.mjs` with the production o
 
 Existing media storage contains mock/legacy adapters; durable uploads are not implemented by this deployment. Unsupported storage operations must not be represented as successful production persistence. Legacy identity RPCs fail closed because SMZ Auth owns identity; this change does not recreate identity administration inside CMS. Existing legacy content queries and untested workflows still require their own acceptance checks. Delivery remains disabled until separately authorized and verified.
 
-### Release setup progress
+### Historical setup progress (superseded by published status above)
 
 The GitHub production environment has the account ID, CMS/API origins and Auth issuer. The approved 90-day account token `smz-cms-github-production` was created with Hyperdrive Read, Pages Write and Workers Scripts Write for 善美真 and saved as `CLOUDFLARE_API_TOKEN` in the GitHub production environment. It expires December 12, 2026. Production SQL console access was temporarily enabled for database verification and restored to disabled. The approved role `smz-cms-production` was created with no inherited cluster-wide permissions. CMS database CONNECT/CREATE and public-schema USAGE/CREATE grants succeeded; a SQL check confirmed CMS CREATE true and Auth database CREATE false. GitHub `CMS_DATABASE_URL` and `CLOUDFLARE_HYPERDRIVE_ID` are saved, and the CMS Hyperdrive connection was created successfully with caching disabled. The initial database password accidentally appeared in a tool output. The user reset the role credentials; the replacement was then saved to GitHub and Hyperdrive without displaying it. Hyperdrive accepted the updated connection. No paid cluster, schema, Worker, email send or application deployment was created in this retry.
 
-### Auth implementation source found
+### Historical Auth source investigation (resolved by release 6fd82cc)
 
 The matching registration-driven global logout implementation exists as uncommitted work in `/Users/harryworld/.codex/worktrees/5fb1/smz-auth` on `codex/auth-login-ownership`. Production Auth `main` at `c3b102a` does not contain it. Do not publish that entire unfinished worktree as an incidental CMS deployment; port and validate the required registration, revocation, coordinator and client cleanup changes against production Auth first. CMS schema initialization and authenticated production verification are still pending.
 
@@ -97,3 +99,7 @@ An isolated PostgreSQL 17 database accepted all 42 CMS tables. Local workerd pas
 ### Hyperdrive preflight correction — September 12, 2026
 
 Auth commit `6fd82cc` deployed successfully. CMS run `34690582524` passed validation but stopped before schema changes because the separate GitHub database password failed authentication. A read-only remote Hyperdrive query succeeded against `smz-cms` and confirmed zero public tables. Bootstrap and recurring preflight now use the production Hyperdrive binding through a temporary Wrangler preview. Each preview accepts only a random bearer token and fixed operations, is terminated after the check, and is never deployed as a permanent administration endpoint. Schema initialization still refuses other databases or existing tables and runs in one transaction. The release continues through push-to-main CI.
+
+### CMS login transport correction
+
+The first authenticated login exposed Cloudflare error 1042 on public CMS-to-Auth subrequests. A remote runtime probe reproduced 404/1042 for JWKS, user-info and directory endpoints. The public-fetch compatibility flag alone did not resolve that probe. A direct `SMZ_AUTH` service binding to `smz-auth` returned JWKS 200 and the expected 401 for synthetic invalid tokens. CMS now routes identity checks through this invocation-scoped binding; the Node runtime retains ordinary fetch. Bearer validation and directory admission remain enforced by Auth. Regression checks cover both Wrangler configurations, concurrent transport isolation and the Node fallback. Worker type checking, bundle dry run and 23 focused auth/runtime tests passed before publication.

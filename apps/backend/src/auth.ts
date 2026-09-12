@@ -1,4 +1,4 @@
-import { runtimeEnvironment } from '#/runtime/environment'
+import { identityFetch, runtimeEnvironment } from '#/runtime/environment'
 import { randomUUID } from 'node:crypto'
 import { canPerformCmsAction, cmsRoles, type CmsActor } from '@email-cms/shared'
 import type { IncomingMessage } from 'node:http'
@@ -94,7 +94,7 @@ function stringArray(value: unknown): value is string[] {
 async function identityRequest<T>(url: string, token: string): Promise<{ status: number; body: T | null }> {
   let response: Response
   try {
-    response = await fetch(url, {
+    response = await identityFetch(url, {
       headers: { Authorization: `Bearer ${token}` },
       signal: AbortSignal.timeout(5_000),
     })
