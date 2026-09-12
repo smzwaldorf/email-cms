@@ -92,7 +92,7 @@ export class TokenManager {
       if (epoch !== this.sessionEpoch) return false
       console.error('TokenManager: SMZ Identity refresh failed', error)
       this.clearTokens()
-      await smzAuth.removeUser()
+      window.dispatchEvent(new Event('cms-auth-expired'))
       return false
     }
   }

@@ -30,6 +30,17 @@ export interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [renewalRequired, setRenewalRequired] = useState(false)
+  useEffect(() => {
+    const required = () => setRenewalRequired(true)
+    const renewed = () => setRenewalRequired(false)
+    window.addEventListener('cms-auth-renewal-required', required)
+    window.addEventListener('cms-auth-renewed', renewed)
+    return () => {
+      window.removeEventListener('cms-auth-renewal-required', required)
+      window.removeEventListener('cms-auth-renewed', renewed)
+    }
+  }, [])
 
   // Initialize auth state on mount
   useEffect(() => {
@@ -172,7 +183,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signOut,
   }
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={value}>
+    {user && renewalRequired && <div role="alert" className="bg-amber-50 p-3 text-amber-950">
+      登入需要重新驗證。目前頁面會保留，重新登入後才能繼續儲存或載入資料。
+      <button className="ml-3 underline" onClick={() => void authService.signInWithGoogle(window.location.pathname + window.location.search)}>重新登入</button>
+    </div>}
+    {children}
+  </AuthContext.Provider>
 }
 
 /**

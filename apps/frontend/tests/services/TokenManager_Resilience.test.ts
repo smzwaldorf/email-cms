@@ -27,6 +27,6 @@ describe('TokenManager refresh failure', () => {
 
     await expect(manager.forceRefresh()).resolves.toBe(false)
     expect(manager.getTokenInfo()).toBeNull()
-    expect(mocks.removeUser).toHaveBeenCalled()
+    expect(mocks.removeUser).not.toHaveBeenCalled()
   })
 })

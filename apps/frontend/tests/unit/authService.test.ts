@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   requestBackend: vi.fn(),
   setStoredAuthUser: vi.fn(),
   setToken: vi.fn(),
+  forceRefresh: vi.fn().mockResolvedValue(false),
 }))
 
 vi.mock('@/services/smzAuth', () => ({
@@ -36,6 +37,7 @@ vi.mock('@/services/backendClient', () => ({
 vi.mock('@/services/tokenManager', () => ({
   tokenManager: {
     setAccessToken: mocks.setToken,
+    forceRefresh: mocks.forceRefresh,
     onLogout: vi.fn(),
   },
 }))
@@ -57,6 +59,26 @@ describe('SMZ AuthService', () => {
     authService = (await import('@/services/authService')).authService
     mocks.getUser.mockResolvedValue(null)
     await authService.ensureInitialized()
+  })
+
+
+  it('preserves the current page session when renewal fails at expiry', async () => {
+    const user = { access_token: 'current', expires_in: 900, expired: false }
+    mocks.signinRedirectCallback.mockResolvedValue(user)
+    mocks.requestBackend.mockResolvedValue({ user: { id: 'admin', email: 'admin@example.test', role: 'admin', roles: ['admin'], teacherClassIds: [], parentClassIds: [] } })
+    await authService.completeSignIn()
+    mocks.getUser.mockResolvedValue({ ...user, expired: true, expires_in: -1 })
+    mocks.forceRefresh.mockResolvedValue(false)
+    const required = vi.fn()
+    window.addEventListener('cms-auth-renewal-required', required)
+    const stop = authService.startSessionMonitoring()
+    mocks.removeUser.mockClear()
+    window.dispatchEvent(new Event('focus'))
+    await vi.waitFor(() => expect(required).toHaveBeenCalled())
+    expect(authService.getCurrentUser()?.id).toBe('admin')
+    expect(mocks.removeUser).not.toHaveBeenCalled()
+    stop()
+    window.removeEventListener('cms-auth-renewal-required', required)
   })
 
   it('preserves a safe application destination in OIDC state', async () => {

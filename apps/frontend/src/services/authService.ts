@@ -61,7 +61,10 @@ class SmzAuthService implements AuthServiceInterface {
 
     this.initializationPromise = (async () => {
       if (!['/auth/callback', '/logout/local'].includes(window.location.pathname)) {
-        const oidcUser = await smzAuth.getUser()
+        let oidcUser = await smzAuth.getUser()
+        if (oidcUser?.expired && !this.logoutMarkerChanged() && await tokenManager.forceRefresh()) {
+          oidcUser = await smzAuth.getUser()
+        }
         if (oidcUser && !oidcUser.expired && oidcUser.access_token && !this.logoutMarkerChanged()) {
           await this.establishLocalSession(oidcUser)
         } else {
@@ -72,7 +75,7 @@ class SmzAuthService implements AuthServiceInterface {
       smzAuth.events.addUserLoaded((user) => {
         if (this.callbackPromise) return
         if (!this.currentUser) { void smzAuth.removeUser(); return }
-        void this.establishLocalSession(user).catch(() => this.invalidateLocalSession())
+        void this.establishLocalSession(user).catch(() => window.dispatchEvent(new Event('cms-auth-expired')))
       })
       smzAuth.events.addUserUnloaded(() => {
         void this.clearLocalSession()
@@ -167,6 +170,7 @@ class SmzAuthService implements AuthServiceInterface {
   }
 
   startSessionMonitoring(): () => void {
+    const expired = () => { void this.revalidateSession(true) }
     const invalid = () => { void this.invalidateLocalSession() }
     const check = () => {
       if (this.logoutMarkerChanged()) {
@@ -185,6 +189,7 @@ class SmzAuthService implements AuthServiceInterface {
     channel?.addEventListener('message', broadcast)
     window.addEventListener('storage', storage)
     window.addEventListener('cms-auth-invalid', invalid)
+    window.addEventListener('cms-auth-expired', expired)
     window.addEventListener('focus', check)
     window.addEventListener('pageshow', check)
     document.addEventListener('visibilitychange', check)
@@ -194,29 +199,39 @@ class SmzAuthService implements AuthServiceInterface {
       channel?.close()
       window.removeEventListener('storage', storage)
       window.removeEventListener('cms-auth-invalid', invalid)
+      window.removeEventListener('cms-auth-expired', expired)
       window.removeEventListener('focus', check)
       window.removeEventListener('pageshow', check)
       document.removeEventListener('visibilitychange', check)
     }
   }
 
-  private async revalidateSession(): Promise<void> {
+  private async revalidateSession(forceRefresh = false): Promise<void> {
     if (!this.currentUser || this.revalidation) return
     const epoch = this.sessionEpoch
     this.revalidation = (async () => {
       try {
-        const oidcUser = await smzAuth.getUser()
+        let oidcUser = await smzAuth.getUser()
         if (epoch !== this.sessionEpoch) return
-        if (!oidcUser?.access_token || oidcUser.expired) {
-          await this.invalidateLocalSession()
-          return
+        if (forceRefresh || !oidcUser?.access_token || oidcUser.expired || (typeof oidcUser.expires_in === 'number' && oidcUser.expires_in < 60)) {
+          if (!(await tokenManager.forceRefresh())) {
+            if (epoch === this.sessionEpoch) window.dispatchEvent(new Event('cms-auth-renewal-required'))
+            return
+          }
+          oidcUser = await smzAuth.getUser()
+          if (epoch !== this.sessionEpoch) return
+          if (!oidcUser?.access_token || oidcUser.expired) {
+            window.dispatchEvent(new Event('cms-auth-renewal-required'))
+            return
+          }
         }
         const session = await requestBackend<SessionResponse>('/api/auth/session', {}, oidcUser.access_token)
         if (epoch !== this.sessionEpoch || this.logoutMarkerChanged()) return
         this.currentUser = this.userFromSession(session)
         this.notifyListeners(this.currentUser)
+        window.dispatchEvent(new Event('cms-auth-renewed'))
       } catch {
-        // The HTTP client clears confirmed 401/revoked sessions. A temporary
+        // The HTTP client preserves expired sessions but clears confirmed revocation. A temporary
         // outage is not a new authorization grant; every protected API fails closed.
       }
     })()
@@ -282,6 +297,7 @@ class SmzAuthService implements AuthServiceInterface {
     this.currentUser = user
     setStoredAuthUser({ id: user.id, email: user.email })
     this.notifyListeners(user)
+    window.dispatchEvent(new Event('cms-auth-renewed'))
     await auditLogger.logAuthEvent({
       userId: user.id,
       eventType: 'login_success',

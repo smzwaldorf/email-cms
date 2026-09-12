@@ -20,6 +20,16 @@ describe('tab-scoped bearer invalidation', () => {
     await expect(pending).rejects.toMatchObject({ status: 401 })
     expect(getAccessTokenOrNull()).toBe('new')
   })
+  it('reports token expiry without automatically logging out', async () => {
+    setAccessToken('expired')
+    const expired = vi.fn()
+    window.addEventListener('cms-auth-expired', expired)
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: 'expired' }), { status: 401 })))
+    await expect(requestBackend('/api/auth/session')).rejects.toMatchObject({ status: 401 })
+    expect(getAccessTokenOrNull()).toBe('expired')
+    expect(expired).toHaveBeenCalledOnce()
+    window.removeEventListener('cms-auth-expired', expired)
+  })
   it('clears current bearer on confirmed central session revocation', async () => {
     setAccessToken('current')
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: 'revoked', code: 'access_revoked' }), { status: 403 })))

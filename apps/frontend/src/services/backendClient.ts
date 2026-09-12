@@ -78,11 +78,12 @@ export async function requestBackend<T>(
   const body = await parseResponseBody(response)
   if (!response.ok) {
     const code = body && typeof body === 'object' && 'code' in body ? body.code : undefined
-    if (token === getAccessTokenOrNull() && (response.status === 401 || (response.status === 403 && code === 'access_revoked'))) {
+    if (token === getAccessTokenOrNull() && response.status === 403 && code === 'access_revoked') {
       setAccessToken(null)
       setStoredAuthUser(null)
       window.dispatchEvent(new Event('cms-auth-invalid'))
     }
+    if (token === getAccessTokenOrNull() && response.status === 401) window.dispatchEvent(new Event('cms-auth-expired'))
     const message = body && typeof body === 'object' && 'error' in body
       ? String((body as { error: unknown }).error)
       : `Backend API request failed with status ${response.status}`

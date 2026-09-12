@@ -70,6 +70,16 @@ describe('AuthContext SMZ session', () => {
     expect(screen.getByTestId('email')).toHaveTextContent('parent@example.com')
   })
 
+  it('shows renewal notice without unmounting the authenticated page', async () => {
+    render(<AuthProvider><SessionState /></AuthProvider>)
+    await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('false'))
+    act(() => { window.dispatchEvent(new Event('cms-auth-renewal-required')) })
+    expect(screen.getByRole('alert')).toHaveTextContent('目前頁面會保留')
+    expect(screen.getByTestId('authenticated')).toHaveTextContent('true')
+    act(() => { window.dispatchEvent(new Event('cms-auth-renewed')) })
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
   it('uses the SMZ auth subscription and removes it on unmount', async () => {
     const { unmount } = render(
       <AuthProvider>
