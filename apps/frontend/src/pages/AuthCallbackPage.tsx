@@ -29,8 +29,7 @@ export const AuthCallbackPage: React.FC = () => {
         const result = await authService.completeSignIn()
         if (!active) return
         setStatus('success')
-        const isAdmin = result.user.role === 'admin' || result.user.roles?.includes('admin')
-        navigate(result.redirectTo || (isAdmin ? '/admin' : await defaultDestination()), { replace: true })
+        navigate(result.redirectTo || await defaultDestination(), { replace: true })
       } catch (caught) {
         if (!active) return
         console.error('SMZ Identity callback failed', caught)

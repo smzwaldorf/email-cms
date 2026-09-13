@@ -46,6 +46,13 @@ describe('AuthCallbackPage', () => {
     expect(mocks.getLatestPublishedWeek).not.toHaveBeenCalled()
   })
 
+  it('lands an administrator on the latest newsletter by default', async () => {
+    mocks.completeSignIn.mockResolvedValue({ user: { id: 'admin', role: 'admin' } })
+    mocks.getLatestPublishedWeek.mockResolvedValue({ id: 'week-1', week_number: '2026-W37' })
+    renderPage()
+    await waitFor(() => expect(screen.getByText('/week/2026-W37')).toBeInTheDocument())
+  })
+
   it('shows a retry path when the callback is rejected', async () => {
     mocks.completeSignIn.mockRejectedValue(new Error('Identity access denied'))
     renderPage()
@@ -53,10 +60,11 @@ describe('AuthCallbackPage', () => {
     expect(screen.getByRole('button', { name: '返回登入' })).toBeInTheDocument()
   })
 
-  it('lands an administrator on the dashboard before any newsletter is published', async () => {
+  it('lands an administrator on the front page before any newsletter is published', async () => {
     mocks.completeSignIn.mockResolvedValue({ user: { id: 'admin', role: 'admin' } })
+    mocks.getLatestPublishedWeek.mockResolvedValue(null)
     renderPage()
-    await waitFor(() => expect(screen.getByText('/admin')).toBeInTheDocument())
-    expect(mocks.getLatestPublishedWeek).not.toHaveBeenCalled()
+    await waitFor(() => expect(screen.getByText('/')).toBeInTheDocument())
+    expect(mocks.getLatestPublishedWeek).toHaveBeenCalled()
   })
 })
