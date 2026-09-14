@@ -10,7 +10,7 @@
  * - Type-safe: TypeScript ensures only valid event types are logged
  */
 
-import { getSupabaseClient } from '@/lib/supabase'
+import { requestBackend } from '@/services/backendClient'
 
 /**
  * Valid authentication event types
@@ -69,28 +69,16 @@ class AuditLoggerService {
    */
   async logAuthEvent(options: AuditLogOptions): Promise<void> {
     try {
-      const supabase = getSupabaseClient()
-
-      const { error } = await supabase
-        .from('auth_events')
-        .insert({
-          user_id: options.userId || null,
-          event_type: options.eventType,
-          auth_method: options.authMethod || null,
-          user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
-          // Note: IP address would need to be captured by the backend request handler.
-          // Client-side JS cannot reliably access user's IP address
-          ip_address: null,
-          metadata: options.metadata || null,
-        })
-
-      if (error) {
-        console.error('Failed to log auth event:', {
+      await requestBackend('/api/auth/events', {
+        method: 'POST',
+        body: JSON.stringify({
+          userId: options.userId || null,
           eventType: options.eventType,
-          error: error.message,
-          details: error,
-        })
-      }
+          authMethod: options.authMethod || null,
+          userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+          metadata: options.metadata || null,
+        }),
+      })
     } catch (err) {
       // Log to console for debugging, but don't throw
       // Authentication should never fail due to logging issues

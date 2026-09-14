@@ -77,7 +77,12 @@ class SmzAuthService implements AuthServiceInterface {
       smzAuth.events.addUserLoaded((user) => {
         if (this.callbackPromise) return
         if (!this.currentUser) { void smzAuth.removeUser(); return }
-        void this.establishLocalSession(user).catch(() => window.dispatchEvent(new Event('cms-auth-expired')))
+        // `signinSilent` emits user-loaded after a token refresh. The token
+        // manager has already updated the bearer token; rebuilding the local
+        // session here causes the auth tree (and the page beneath it) to
+        // repaint on every renewal. Only an explicit callback establishes a
+        // local session, so keep the current page mounted during refresh.
+        void user
       })
       smzAuth.events.addUserUnloaded(() => {
         void this.clearLocalSession()
@@ -231,7 +236,6 @@ class SmzAuthService implements AuthServiceInterface {
         if (epoch !== this.sessionEpoch || this.logoutMarkerChanged()) return
         this.currentUser = this.userFromSession(session)
         this.notifyListeners(this.currentUser)
-        window.dispatchEvent(new Event('cms-auth-renewed'))
       } catch {
         // The HTTP client preserves expired sessions but clears confirmed revocation. A temporary
         // outage is not a new authorization grant; every protected API fails closed.
@@ -302,8 +306,8 @@ class SmzAuthService implements AuthServiceInterface {
     window.dispatchEvent(new Event('cms-auth-renewed'))
     await auditLogger.logAuthEvent({
       userId: user.id,
-      eventType: 'login_success',
-      authMethod: 'smz_oidc',
+      eventType: 'oauth_google_success',
+      authMethod: 'google_oauth',
     }).catch(() => undefined)
     return user
   }

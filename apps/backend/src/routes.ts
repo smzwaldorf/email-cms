@@ -274,6 +274,25 @@ export async function handleApiRequest(
       return
     }
 
+    if (method === 'POST' && url.pathname === '/api/auth/events') {
+      const viewer = await requireViewer(request)
+      const body = await readJson(request)
+      if (!isRecord(body) || typeof body.eventType !== 'string') {
+        throw new HttpError(400, 'Invalid auth event')
+      }
+      const { error } = await getSupabaseClient().from('auth_events').insert({
+        user_id: viewer.id,
+        event_type: body.eventType,
+        auth_method: typeof body.authMethod === 'string' ? body.authMethod : null,
+        user_agent: typeof body.userAgent === 'string' ? body.userAgent : null,
+        ip_address: null,
+        metadata: isRecord(body.metadata) ? body.metadata : null,
+      })
+      if (error) throw new HttpError(500, `Failed to log auth event: ${error.message}`)
+      sendJson(response, 204, null, context.corsOrigin)
+      return
+    }
+
     const cmsArticleMatch = url.pathname.match(/^\/api\/cms\/articles\/([^/]+)$/)
     if (cmsArticleMatch && (method === 'GET' || method === 'PATCH')) {
       const viewer = await requireViewer(request)
