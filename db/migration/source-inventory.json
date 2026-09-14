@@ -1,0 +1,727 @@
+{
+  "source": "db/seed-data.sql",
+  "sourceSha256": "f6417e706c8ca377ae9f8feaa8bfccad1b27c91010478115f143c9c2988e51f3",
+  "sourceBytes": 112960,
+  "targetDatabase": "smz-cms",
+  "mode": "preparation-only",
+  "sourceAuthorityConfirmed": true,
+  "productionWritesPerformed": false,
+  "tableCount": 41,
+  "totalRows": 125,
+  "triggerDisablingStatements": 41,
+  "blockers": [
+    "Confirm the authoritative source and take a fresh consistent export if this snapshot is stale.",
+    "Back up production and reconcile source user IDs with existing CMS identity links.",
+    "Rehearse parameterized inserts with constraints enabled; do not execute this dump directly.",
+    "Resolve foreign-key, unique-key and external-media checks before enabling import."
+  ],
+  "tables": [
+    {
+      "table": "public.newsletters",
+      "columns": [
+        "id",
+        "week_number",
+        "title",
+        "description",
+        "release_date",
+        "status",
+        "published_at",
+        "created_at",
+        "updated_at",
+        "is_template"
+      ],
+      "rows": 5,
+      "handling": "candidate-domain-data"
+    },
+    {
+      "table": "public.user_roles",
+      "columns": [
+        "id",
+        "email",
+        "role",
+        "created_at",
+        "updated_at",
+        "display_name"
+      ],
+      "rows": 6,
+      "handling": "reconcile-local-user-ids-without-granting-auth-roles"
+    },
+    {
+      "table": "public.articles",
+      "columns": [
+        "id",
+        "title",
+        "content",
+        "author_id",
+        "status",
+        "visibility_type",
+        "restricted_to_classes",
+        "created_by",
+        "created_at",
+        "updated_at",
+        "deleted_at",
+        "short_id",
+        "week_number",
+        "author",
+        "summary",
+        "article_order",
+        "class_ids",
+        "family_ids",
+        "published_at",
+        "edited_at",
+        "last_edited_by",
+        "deleted_by",
+        "purge_scheduled_at"
+      ],
+      "rows": 10,
+      "handling": "candidate-domain-data"
+    },
+    {
+      "table": "public.analytics_events",
+      "columns": [
+        "id",
+        "user_id",
+        "newsletter_id",
+        "article_id",
+        "session_id",
+        "event_type",
+        "metadata",
+        "created_at"
+      ],
+      "rows": 32,
+      "handling": "retain-in-source-archive; separate-history-decision"
+    },
+    {
+      "table": "public.classes",
+      "columns": [
+        "id",
+        "class_name",
+        "class_grade_year",
+        "created_at",
+        "class_code",
+        "description",
+        "is_active",
+        "updated_at",
+        "deactivated_at"
+      ],
+      "rows": 6,
+      "handling": "candidate-domain-data"
+    },
+    {
+      "table": "public.analytics_snapshots",
+      "columns": [
+        "id",
+        "snapshot_date",
+        "newsletter_id",
+        "article_id",
+        "class_id",
+        "metric_name",
+        "metric_value",
+        "created_at"
+      ],
+      "rows": 0,
+      "handling": "retain-in-source-archive; separate-history-decision"
+    },
+    {
+      "table": "public.article_audit_log",
+      "columns": [
+        "id",
+        "article_id",
+        "action",
+        "changed_by",
+        "old_values",
+        "new_values",
+        "changed_at"
+      ],
+      "rows": 10,
+      "handling": "retain-in-source-archive; separate-history-decision"
+    },
+    {
+      "table": "public.article_categories",
+      "columns": [
+        "id",
+        "name",
+        "description",
+        "is_active",
+        "created_at",
+        "updated_at",
+        "deactivated_at"
+      ],
+      "rows": 0,
+      "handling": "candidate-domain-data"
+    },
+    {
+      "table": "public.article_category_assignments",
+      "columns": [
+        "article_id",
+        "category_id",
+        "assigned_at"
+      ],
+      "rows": 0,
+      "handling": "candidate-domain-data"
+    },
+    {
+      "table": "public.media_files",
+      "columns": [
+        "id",
+        "filename",
+        "file_type",
+        "mime_type",
+        "file_size",
+        "storage_path",
+        "storage_provider",
+        "public_url",
+        "width",
+        "height",
+        "alt_text",
+        "caption",
+        "duration",
+        "usage_count",
+        "referenced_articles",
+        "uploaded_by",
+        "uploaded_at",
+        "updated_at"
+      ],
+      "rows": 0,
+      "handling": "candidate-domain-data"
+    },
+    {
+      "table": "public.article_media_references",
+      "columns": [
+        "article_id",
+        "media_id",
+        "reference_type",
+        "\"position\"",
+        "created_at"
+      ],
+      "rows": 0,
+      "handling": "candidate-domain-data"
+    },
+    {
+      "table": "public.article_tags",
+      "columns": [
+        "id",
+        "name",
+        "description",
+        "is_active",
+        "created_at",
+        "updated_at",
+        "deactivated_at"
+      ],
+      "rows": 0,
+      "handling": "candidate-domain-data"
+    },
+    {
+      "table": "public.article_tag_assignments",
+      "columns": [
+        "article_id",
+        "tag_id",
+        "assigned_at"
+      ],
+      "rows": 0,
+      "handling": "candidate-domain-data"
+    },
+    {
+      "table": "public.auth_events",
+      "columns": [
+        "id",
+        "user_id",
+        "event_type",
+        "auth_method",
+        "ip_address",
+        "user_agent",
+        "metadata",
+        "created_at"
+      ],
+      "rows": 2,
+      "handling": "exclude-from-initial-import"
+    },
+    {
+      "table": "public.authorization_decision_trace",
+      "columns": [
+        "id",
+        "actor_id",
+        "action",
+        "winning_role",
+        "resolved_scope",
+        "granted",
+        "reason",
+        "policy_version",
+        "metadata",
+        "created_at"
+      ],
+      "rows": 0,
+      "handling": "exclude-from-initial-import"
+    },
+    {
+      "table": "public.class_audit_log",
+      "columns": [
+        "id",
+        "class_id",
+        "action",
+        "actor_id",
+        "prior_state",
+        "new_state",
+        "changed_at"
+      ],
+      "rows": 0,
+      "handling": "retain-in-source-archive; separate-history-decision"
+    },
+    {
+      "table": "public.families",
+      "columns": [
+        "id",
+        "family_code",
+        "created_at",
+        "family_name",
+        "guardian_email",
+        "description",
+        "related_topics",
+        "is_active",
+        "updated_at",
+        "deactivated_at",
+        "newsletter_subscription_status",
+        "newsletter_subscription_source",
+        "newsletter_subscription_updated_at",
+        "newsletter_subscribed_at",
+        "newsletter_unsubscribed_at"
+      ],
+      "rows": 3,
+      "handling": "candidate-domain-data"
+    },
+    {
+      "table": "public.email_platform_subscriber_mappings",
+      "columns": [
+        "id",
+        "family_id",
+        "provider",
+        "external_identity_key",
+        "external_subscriber_id",
+        "external_email_address",
+        "provider_state",
+        "last_synced_at",
+        "last_payload_fingerprint",
+        "last_provider_version_marker",
+        "last_reconciled_at",
+        "last_drift_reason",
+        "sync_metadata",
+        "created_at",
+        "updated_at"
+      ],
+      "rows": 0,
+      "handling": "exclude-from-initial-import"
+    },
+    {
+      "table": "public.email_platform_webhook_events",
+      "columns": [
+        "id",
+        "provider",
+        "provider_event_id",
+        "event_type",
+        "delivery_key",
+        "signature_valid",
+        "signature_failure_reason",
+        "payload",
+        "payload_hash",
+        "occurred_at",
+        "received_at",
+        "status",
+        "attempt_count",
+        "max_attempts",
+        "next_retry_at",
+        "processing_started_at",
+        "processed_at",
+        "dead_lettered_at",
+        "resolved_family_id",
+        "resolved_mapping_id",
+        "unresolved_reason",
+        "last_error_code",
+        "last_error_message",
+        "metrics",
+        "created_at",
+        "updated_at"
+      ],
+      "rows": 0,
+      "handling": "exclude-from-initial-import"
+    },
+    {
+      "table": "public.email_platform_subscription_audit",
+      "columns": [
+        "id",
+        "family_id",
+        "provider",
+        "mapping_id",
+        "webhook_event_id",
+        "old_status",
+        "new_status",
+        "source",
+        "event_type",
+        "occurred_at",
+        "metadata",
+        "created_at"
+      ],
+      "rows": 0,
+      "handling": "exclude-from-initial-import"
+    },
+    {
+      "table": "public.email_platform_sync_jobs",
+      "columns": [
+        "id",
+        "family_id",
+        "mapping_id",
+        "provider",
+        "job_type",
+        "status",
+        "enqueue_reason",
+        "payload",
+        "payload_fingerprint",
+        "attempt_count",
+        "max_attempts",
+        "next_retry_at",
+        "processing_started_at",
+        "completed_at",
+        "dead_lettered_at",
+        "mismatch_reason",
+        "last_error_code",
+        "last_error_message",
+        "metrics",
+        "created_at",
+        "updated_at"
+      ],
+      "rows": 2,
+      "handling": "exclude-from-initial-import"
+    },
+    {
+      "table": "public.email_template_revisions",
+      "columns": [
+        "id",
+        "template_id",
+        "revision_number",
+        "subject_template",
+        "body_template",
+        "created_by",
+        "created_at",
+        "blocks"
+      ],
+      "rows": 1,
+      "handling": "candidate-domain-data"
+    },
+    {
+      "table": "public.email_templates",
+      "columns": [
+        "id",
+        "name",
+        "description",
+        "state",
+        "current_revision_id",
+        "deactivated_at",
+        "created_at",
+        "updated_at"
+      ],
+      "rows": 1,
+      "handling": "candidate-domain-data"
+    },
+    {
+      "table": "public.family_audit_log",
+      "columns": [
+        "id",
+        "family_id",
+        "action",
+        "actor_id",
+        "prior_state",
+        "new_state",
+        "changed_at"
+      ],
+      "rows": 0,
+      "handling": "retain-in-source-archive; separate-history-decision"
+    },
+    {
+      "table": "public.students",
+      "columns": [
+        "id",
+        "name",
+        "created_at",
+        "updated_at",
+        "student_code",
+        "is_active",
+        "deactivated_at"
+      ],
+      "rows": 5,
+      "handling": "candidate-domain-data"
+    },
+    {
+      "table": "public.family_enrollment",
+      "columns": [
+        "id",
+        "family_id",
+        "parent_id",
+        "relationship",
+        "enrolled_at",
+        "student_id"
+      ],
+      "rows": 9,
+      "handling": "candidate-domain-data"
+    },
+    {
+      "table": "public.media_deletion_audit",
+      "columns": [
+        "id",
+        "media_id",
+        "deleted_by",
+        "deleted_at",
+        "reason",
+        "preflight_usage_count",
+        "metadata"
+      ],
+      "rows": 0,
+      "handling": "candidate-domain-data"
+    },
+    {
+      "table": "public.media_usage",
+      "columns": [
+        "id",
+        "media_id",
+        "target_type",
+        "target_id",
+        "context_key",
+        "active",
+        "created_by",
+        "created_at",
+        "updated_at",
+        "deactivated_at"
+      ],
+      "rows": 0,
+      "handling": "candidate-domain-data"
+    },
+    {
+      "table": "public.media_variants",
+      "columns": [
+        "id",
+        "media_id",
+        "variant_type",
+        "format",
+        "storage_path",
+        "file_size",
+        "width",
+        "height",
+        "duration",
+        "status",
+        "retry_count",
+        "error_message",
+        "last_processed_at",
+        "created_at",
+        "updated_at"
+      ],
+      "rows": 0,
+      "handling": "candidate-domain-data"
+    },
+    {
+      "table": "public.newsletter_articles",
+      "columns": [
+        "id",
+        "newsletter_id",
+        "article_id",
+        "article_order",
+        "added_at",
+        "added_by",
+        "targeting_mode",
+        "target_class_ids"
+      ],
+      "rows": 17,
+      "handling": "candidate-domain-data"
+    },
+    {
+      "table": "public.newsletter_delivery_batches",
+      "columns": [
+        "id",
+        "newsletter_id",
+        "trigger",
+        "audience_mode",
+        "selected_class_ids",
+        "selected_family_ids",
+        "parent_batch_id",
+        "state",
+        "pinned_newsletter_revision_id",
+        "pinned_template_id",
+        "pinned_template_revision_id",
+        "recipient_snapshot_captured_at",
+        "rules_version",
+        "preparation_job_id",
+        "total_recipients",
+        "eligible_recipients",
+        "ready_recipients",
+        "sent_recipients",
+        "failed_recipients",
+        "invalid_recipients",
+        "metadata",
+        "created_by",
+        "created_at",
+        "updated_at"
+      ],
+      "rows": 3,
+      "handling": "exclude-from-initial-import"
+    },
+    {
+      "table": "public.newsletter_delivery_batch_recipients",
+      "columns": [
+        "id",
+        "batch_id",
+        "family_id",
+        "guardian_email",
+        "eligibility_status",
+        "preparation_status",
+        "send_status",
+        "failure_reason",
+        "prepared_payload",
+        "provider_message_id",
+        "provider_error",
+        "last_attempted_at",
+        "sent_at",
+        "created_at",
+        "updated_at",
+        "parent_id",
+        "parent_email",
+        "journey_correlation_id",
+        "preparation_findings",
+        "kit_merge_sync_status",
+        "kit_merge_payload",
+        "kit_merge_payload_fingerprint",
+        "kit_merge_provider_field_ids",
+        "kit_merge_last_synced_at",
+        "kit_merge_provider_error",
+        "campaign_ready"
+      ],
+      "rows": 4,
+      "handling": "exclude-from-initial-import"
+    },
+    {
+      "table": "public.newsletter_delivery_jobs",
+      "columns": [
+        "id",
+        "batch_id",
+        "job_type",
+        "status",
+        "attempts",
+        "max_attempts",
+        "run_after",
+        "locked_at",
+        "locked_by",
+        "started_at",
+        "completed_at",
+        "last_error",
+        "details",
+        "created_at",
+        "updated_at"
+      ],
+      "rows": 3,
+      "handling": "exclude-from-initial-import"
+    },
+    {
+      "table": "public.permission_mutation_audit_log",
+      "columns": [
+        "id",
+        "actor_id",
+        "target_user_id",
+        "action",
+        "before_state",
+        "after_state",
+        "metadata",
+        "changed_at"
+      ],
+      "rows": 0,
+      "handling": "retain-in-source-archive; separate-history-decision"
+    },
+    {
+      "table": "public.student_audit_log",
+      "columns": [
+        "id",
+        "student_id",
+        "action",
+        "actor_id",
+        "prior_state",
+        "new_state",
+        "changed_at"
+      ],
+      "rows": 0,
+      "handling": "retain-in-source-archive; separate-history-decision"
+    },
+    {
+      "table": "public.student_class_enrollment",
+      "columns": [
+        "id",
+        "student_id",
+        "family_id",
+        "class_id",
+        "enrolled_at",
+        "graduated_at"
+      ],
+      "rows": 5,
+      "handling": "candidate-domain-data"
+    },
+    {
+      "table": "public.teacher_audit_log",
+      "columns": [
+        "id",
+        "teacher_id",
+        "action",
+        "actor_id",
+        "prior_state",
+        "new_state",
+        "changed_at"
+      ],
+      "rows": 0,
+      "handling": "retain-in-source-archive; separate-history-decision"
+    },
+    {
+      "table": "public.teacher_class_assignment",
+      "columns": [
+        "id",
+        "teacher_id",
+        "class_id",
+        "assigned_at"
+      ],
+      "rows": 1,
+      "handling": "candidate-domain-data"
+    },
+    {
+      "table": "public.teacher_profiles",
+      "columns": [
+        "user_id",
+        "display_name",
+        "status",
+        "is_active",
+        "deactivated_at",
+        "created_at",
+        "updated_at"
+      ],
+      "rows": 0,
+      "handling": "candidate-domain-data"
+    },
+    {
+      "table": "public.tracking_tokens",
+      "columns": [
+        "id",
+        "user_id",
+        "token_hash",
+        "token_payload",
+        "is_revoked",
+        "expires_at",
+        "created_at"
+      ],
+      "rows": 0,
+      "handling": "exclude-from-initial-import"
+    },
+    {
+      "table": "public.user_role_assignments",
+      "columns": [
+        "id",
+        "user_id",
+        "role",
+        "created_at",
+        "updated_at"
+      ],
+      "rows": 0,
+      "handling": "exclude-from-initial-import"
+    }
+  ]
+}

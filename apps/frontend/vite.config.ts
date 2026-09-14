@@ -33,7 +33,7 @@ export default defineConfig(({ mode }) => {
   },
   server: {
     host: '0.0.0.0',
-    port: 5174,
+    port: 5173,
     strictPort: true,
     open: true,
     proxy: { '/api': { target: env.VITE_BACKEND_URL || 'http://localhost:8787', changeOrigin: false } },

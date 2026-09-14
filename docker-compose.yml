@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: email_cms
       POSTGRES_DB: email_cms
     ports:
-      - "55432:5432"
+      - "127.0.0.1:${CMS_POSTGRES_PORT:-55440}:5432"
     volumes:
       - email-cms-postgres-data:/var/lib/postgresql/data
     healthcheck:

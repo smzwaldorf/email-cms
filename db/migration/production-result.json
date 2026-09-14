@@ -1,0 +1,46 @@
+{
+  "date": "2026-09-12",
+  "outcome": "committed-and-independently-verified",
+  "sourceSha256": "f6417e706c8ca377ae9f8feaa8bfccad1b27c91010478115f143c9c2988e51f3",
+  "backupSha256": "adcfc11180b3d997e7cc3c3e4eec53ea659a89a18a6dd68362472fa02ae18065",
+  "backupRestoreVerified": true,
+  "productionDryRun": "rolled-back",
+  "inserted": {
+    "user_roles": 5,
+    "newsletters": 5,
+    "classes": 6,
+    "families": 3,
+    "students": 5,
+    "article_categories": 0,
+    "article_tags": 0,
+    "email_templates": 1,
+    "email_template_revisions": 1,
+    "articles": 10,
+    "media_files": 0,
+    "media_variants": 0,
+    "media_usage": 0,
+    "article_category_assignments": 0,
+    "article_tag_assignments": 0,
+    "article_media_references": 0,
+    "family_enrollment": 9,
+    "student_class_enrollment": 5,
+    "teacher_profiles": 0,
+    "teacher_class_assignment": 1,
+    "newsletter_articles": 17
+  },
+  "totalInserted": 68,
+  "reusedUsers": 1,
+  "preservedOidcLinks": 1,
+  "generatedAuditRows": 10,
+  "migrationLedgerRows": 1,
+  "deliveryEnabled": false,
+  "hyperdriveConnectionLimits": {
+    "smz-auth": 10,
+    "smz-cms": 5
+  },
+  "browserVerification": {
+    "adminLogin": "passed",
+    "newslettersVisible": 5,
+    "articlesVisible": 10
+  }
+}

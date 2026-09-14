@@ -9,14 +9,15 @@ Start with the [current Auth/CMS contract](specs/docs/SMZ_AUTH_CMS_CONTRACT.md),
 ```bash
 npm install
 npm run build -w @email-cms/shared
-cp config/local.env.example .env.local
+# For a new setup only; preserve an existing .env.local:
+cp -n config/local.env.example .env.local
 # Set the existing local DATABASE_URL and configure optional email-cms admission in SMZ Auth.
 npm run backend:dev
 # In another terminal:
 npm run dev
 ```
 
-CMS runs on localhost:5174; backend on :8787; central Auth on :3000. The Auth examples retain :5173 and :4000. This task does not start the sending worker or change local/production registrations.
+CMS defaults to localhost:5173; backend to :8787; central Auth to :3000. The current local CMS database is on :55440. Do not launch another application on the same frontend port; any alternate origin needs matching CORS and OIDC registration. See [runtime environments](specs/docs/RUNTIME-ENVIRONMENTS.md) for existing database reuse, server-session parity and standalone Node hosting. Delivery is disabled unless separately configured.
 
 ```bash
 npm run lint
@@ -27,7 +28,7 @@ npm run build
 
 Shared, backend and frontend production builds now pass. Deployment still requires the live database and Auth/browser workflow gates recorded in the review. No real email is used in verification.
 
-See the [Cloudflare deployment guide](specs/docs/CLOUDFLARE.md) for Pages, Workers, reserved CMS database setup, commit-triggered CI and current access/Auth blockers. These targets have not been published from this change.
+See the [Cloudflare deployment guide](specs/docs/CLOUDFLARE.md) for the deployed Pages/Workers topology, existing CMS database, commit-triggered CI, session secrets and release evidence.
 
 Authoritative runtime code lives under `apps/frontend`, `apps/backend`, and `packages/shared`. OpenSpec capability requirements are under `openspec/specs`; the ownership implementation is `openspec/changes/delegate-auth-and-enforce-cms-permissions`. Kit is the current provider. The unimplemented Resend proposal is not deployment authorization.
 

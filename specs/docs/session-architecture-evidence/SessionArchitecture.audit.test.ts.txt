@@ -1,0 +1,29 @@
+import { describe, expect, it, vi } from 'vitest'
+const mocks = vi.hoisted(() => ({ signinSilent: vi.fn(), setAccessToken: vi.fn() }))
+vi.mock('@/services/smzAuth', () => ({
+  smzDirectoryResource: () => 'https://identity.example/api/directory/v1',
+  refreshSmzUser: vi.fn(),
+  smzAuth: { signinSilent: mocks.signinSilent, removeUser: vi.fn() },
+}))
+vi.mock('@/services/backendClient', () => ({ setAccessToken: mocks.setAccessToken }))
+import { TokenManager } from '@/services/tokenManager'
+describe('Architecture contract audit (expected failures on current release)', () => {
+  it('retains a still-valid token when proactive renewal encounters a network outage', async () => {
+    const manager = new TokenManager()
+    manager.setAccessToken('still-valid', 45)
+    mocks.signinSilent.mockRejectedValue(new TypeError('Network unavailable'))
+    await manager.forceRefresh()
+    expect(manager.isAccessTokenValid()).toBe(true)
+  })
+  it('reports success when OIDC userLoaded synchronizes the renewed token before signinSilent returns', async () => {
+    const manager = new TokenManager()
+    manager.setAccessToken('old', 0)
+    mocks.signinSilent.mockImplementation(async () => {
+      // oidc-client-ts stores the new user and raises userLoaded before resolving.
+      manager.setAccessToken('renewed', 900)
+      return { access_token: 'renewed', expires_in: 900 }
+    })
+    await expect(manager.forceRefresh()).resolves.toBe(true)
+    expect(manager.isAccessTokenValid()).toBe(true)
+  })
+})

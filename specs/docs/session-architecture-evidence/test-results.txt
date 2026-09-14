@@ -1,0 +1,69 @@
+
+ RUN  v1.6.1 /private/tmp/email-cms-release-20260912/apps/frontend
+
+stdout | _log (/private/tmp/email-cms-release-20260912/node_modules/dotenv/lib/main.js:131:11)
+◇ injected env (0) from ../../.env.local // tip: ⌘ override existing { override: true }
+
+stderr | tests/services/SessionArchitecture.audit.test.ts > Architecture contract audit (expected failures on current release) > retains a still-valid token when proactive renewal encounters a network outage
+TokenManager: SMZ Identity refresh failed TypeError: Network unavailable
+    at /private/tmp/email-cms-release-20260912/apps/frontend/tests/services/SessionArchitecture.audit.test.ts:14:42
+    at file:///private/tmp/email-cms-release-20260912/node_modules/@vitest/runner/dist/index.js:135:14
+    at file:///private/tmp/email-cms-release-20260912/node_modules/@vitest/runner/dist/index.js:60:26
+    at runTest (file:///private/tmp/email-cms-release-20260912/node_modules/@vitest/runner/dist/index.js:781:17)
+    at runSuite (file:///private/tmp/email-cms-release-20260912/node_modules/@vitest/runner/dist/index.js:909:15)
+    at runSuite (file:///private/tmp/email-cms-release-20260912/node_modules/@vitest/runner/dist/index.js:909:15)
+    at runFiles (file:///private/tmp/email-cms-release-20260912/node_modules/@vitest/runner/dist/index.js:958:5)
+    at startTests (file:///private/tmp/email-cms-release-20260912/node_modules/@vitest/runner/dist/index.js:967:3)
+    at file:///private/tmp/email-cms-release-20260912/node_modules/vitest/dist/chunks/runtime-runBaseTests.oAvMKtQC.js:116:7
+    at withEnv (file:///private/tmp/email-cms-release-20260912/node_modules/vitest/dist/chunks/runtime-runBaseTests.oAvMKtQC.js:83:5)
+
+ ❯ tests/services/SessionArchitecture.audit.test.ts  (2 tests | 2 failed) 5ms
+   ❯ tests/services/SessionArchitecture.audit.test.ts > Architecture contract audit (expected failures on current release) > retains a still-valid token when proactive renewal encounters a network outage
+     → expected false to be true // Object.is equality
+   ❯ tests/services/SessionArchitecture.audit.test.ts > Architecture contract audit (expected failures on current release) > reports success when OIDC userLoaded synchronizes the renewed token before signinSilent returns
+     → expected false to be true // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/services/SessionArchitecture.audit.test.ts > Architecture contract audit (expected failures on current release) > retains a still-valid token when proactive renewal encounters a network outage
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ tests/services/SessionArchitecture.audit.test.ts:16:42
+     14|     mocks.signinSilent.mockRejectedValue(new TypeError('Network unavai…
+     15|     await manager.forceRefresh()
+     16|     expect(manager.isAccessTokenValid()).toBe(true)
+       |                                          ^
+     17|   })
+     18|   it('reports success when OIDC userLoaded synchronizes the renewed to…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/services/SessionArchitecture.audit.test.ts > Architecture contract audit (expected failures on current release) > reports success when OIDC userLoaded synchronizes the renewed token before signinSilent returns
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ tests/services/SessionArchitecture.audit.test.ts:26:5
+     24|       return { access_token: 'renewed', expires_in: 900 }
+     25|     })
+     26|     await expect(manager.forceRefresh()).resolves.toBe(true)
+       |     ^
+     27|     expect(manager.isAccessTokenValid()).toBe(true)
+     28|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  23:55:23
+   Duration  1.02s (transform 32ms, setup 188ms, collect 15ms, tests 5ms, environment 396ms, prepare 58ms)

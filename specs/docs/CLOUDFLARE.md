@@ -1,5 +1,42 @@
 # Cloudflare deployment
 
+## Current configuration — September 14, 2026
+
+Production runs on Cloudflare Pages (`smz-cms.pages.dev`) and Worker `smz-cms-api`, with SMZ Identity on Worker `smz-auth`. Pages forwards `/api/*` through its `CMS_API` service binding; the CMS Worker uses its `SMZ_AUTH` binding for Identity requests. The existing shared PlanetScale cluster holds separate logical databases: CMS uses `smz-cms` through uncached Hyperdrive `686ed1534b77435eb5537fabba62e61c`. Do not substitute Auth's database or binding.
+
+The latest CMS release recorded here is `d876ca3`: [successful CI](https://github.com/smzwaldorf/email-cms/actions/runs/34727389222), followed by production browser verification of login and the newsletter front-page destination. This is release evidence, not a continuously updated live status. [Session verification](SESSION-VERIFICATION.md) records the earlier session release and its verification limits.
+
+## Release path
+
+Only pushes to `main` trigger the production job in `.github/workflows/cloudflare.yml`; pull requests validate without deployment. CI generates `.wrangler/deploy/cms.json` and `.wrangler/deploy/wrangler.json`, validates Pages configuration and Hyperdrive, provisions session secrets, applies the additive session migration, runs preflight, builds, deploys Worker then Pages, and performs HTTP smoke checks. Pages deploy runs from `.wrangler/deploy` with the standard config filename and inherits the account from the environment.
+
+Required GitHub production variables: `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_HYPERDRIVE_ID`, `CMS_ORIGIN`, `CMS_API_ORIGIN`, `SMZ_AUTH_ISSUER`, and `CMS_AUTH_REGISTRATION_VERIFIED`.
+
+Required GitHub production secrets:
+
+- `CLOUDFLARE_API_TOKEN`: deployment access.
+- `CMS_SESSION_SECRET`: 32-byte hex key encrypting backend session credentials.
+- `CMS_OIDC_CLIENT_SECRET`: confidential client secret shared with Auth's `email-cms-server` registration.
+
+The CMS database credential lives in Hyperdrive. The retired `CMS_DATABASE_URL` GitHub secret is not used. Never put database or client secrets in Vite variables.
+
+## Authentication and migrations
+
+Production enables `CMS_SESSION_ENABLED=true` and builds with `VITE_CMS_SERVER_SESSION=true`. The confidential `email-cms-server` client uses the exact callback `https://smz-cms.pages.dev/api/session/callback`. The old public `email-cms` client remains for compatibility; it is not the production server-session registration. See [session behavior](SESSION-BEHAVIOR.md).
+
+CI runs `db/migrations/20260913_cms_sessions.sql` through `scripts/cloudflare-session-migrate.mjs`. This repeatable additive schema migration is distinct from the completed September 12 content import under `db/migration/`. The latter is historical operational tooling and must not be added to startup or CI. `CMS_INITIALIZE_EMPTY_DATABASE` is a guarded first-time bootstrap flag and should remain unset after initialization.
+
+Delivery remains disabled. Scheduled session cleanup still runs; disabled delivery does not disable all scheduled work. Worker and Pages publication is not atomic, so inspect both deployment results after a failed run.
+
+## Development and other servers
+
+See [runtime environments](RUNTIME-ENVIRONMENTS.md) for local ports, database reuse, optional server-session parity and standalone Node requirements. Do not use production credentials to repair localhost configuration.
+
+## Historical deployment record
+
+The following September 12 material is retained for audit. Its old release status, public-client instructions, secret inventory and setup-pending statements are superseded by the configuration above; they are not current setup instructions.
+
+
 ## Status — 2026-09-12
 
 CMS Pages and Worker deployed successfully through commit-triggered CI run [34691246901](https://github.com/smzwaldorf/email-cms/actions/runs/34691246901), commit `f68468de28b7ed77f6a525d729b99bbeb5e08b1d`. The production schema was initialized in the existing PlanetScale `smz-cms` logical database through its uncached Hyperdrive binding. The one-time initializer flag and unused invalid GitHub database secret were removed after success. No new paid cluster was provisioned; delivery remains disabled.
@@ -103,3 +140,11 @@ Auth commit `6fd82cc` deployed successfully. CMS run `34690582524` passed valida
 ### CMS login transport correction
 
 The first authenticated login exposed Cloudflare error 1042 on public CMS-to-Auth subrequests. A remote runtime probe reproduced 404/1042 for JWKS, user-info and directory endpoints. The public-fetch compatibility flag alone did not resolve that probe. A direct `SMZ_AUTH` service binding to `smz-auth` returned JWKS 200 and the expected 401 for synthetic invalid tokens. CMS now routes identity checks through this invocation-scoped binding; the Node runtime retains ordinary fetch. Bearer validation and directory admission remain enforced by Auth. Regression checks cover both Wrangler configurations, concurrent transport isolation and the Node fallback. Worker type checking, bundle dry run and 23 focused auth/runtime tests passed before publication.
+
+Login fix release `874237dd7c51ddeca318de47bb2ba2adf7fc785f` passed validation and deployment in [CI run 34693940795](https://github.com/smzwaldorf/email-cms/actions/runs/34693940795). A fresh Google login as the explicitly approved `harryworld@gmail.com` reached the live CMS Admin Dashboard and its empty newsletter list in Dia. This verifies authenticated callback, Auth service-binding verification and CMS admin access. Refresh, cross-application logout, content editing and delivery are separate checks; delivery remains disabled.
+
+### Production data migration — September 12, 2026
+
+The user-authorized `db/seed-data.sql` import completed after verified backup restoration and a successful live rolled-back dry run. Production now contains 5 newsletters and 10 articles among 68 imported domain/reference rows. The existing CMS user and OIDC link were preserved; Auth admission and roles were unchanged by the import. Dia verified admin login and both populated lists. Delivery/sync jobs were excluded and email delivery remains disabled. See `db/migration/production-result.json` and `db/migration/PLAN.md`.
+
+The shared PlanetScale server reports 25 total connections with 3 reserved. Hyperdrive origin limits are now CMS 5 and Auth 10 to prevent the competing pools from exhausting that capacity. Both bindings remain uncached and on the original cluster.
