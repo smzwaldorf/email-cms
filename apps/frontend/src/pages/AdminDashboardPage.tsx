@@ -257,6 +257,8 @@ export function AdminDashboardPage() {
 
   // Tab state derived from URL
   const tabParam = searchParams.get('tab')
+  // User management remains out of the primary navigation; keep the legacy
+  // tab addressable for backwards-compatible links.
   const activeTab = (tabParam === 'users' || tabParam === 'audit') ? tabParam : 'newsletters'
 
   // Newsletter state

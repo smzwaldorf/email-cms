@@ -322,8 +322,8 @@ export async function handleApiRequest(
       const readTables = new Set(['articles', 'newsletters', 'newsletter_articles', 'classes', 'families',
         'students', 'user_roles', 'family_enrollment', 'student_class_enrollment', 'teacher_class_assignment',
         'article_categories', 'article_tags', 'article_category_assignments', 'article_tag_assignments',
-        'media_files', 'media_usage', 'analytics_events', 'email_opens', 'email_clicks', 'auth_events'])
-      const writeTables = new Set(['media_files', 'media_usage'])
+        'media_files', 'media_usage', 'analytics_events', 'analytics_snapshots', 'email_opens', 'email_clicks', 'auth_events'])
+      const writeTables = new Set(['media_files', 'media_usage', 'analytics_snapshots'])
       if (!readTables.has(body.table) || (body.mutation && !writeTables.has(body.table))) {
         throw new HttpError(403, 'Use an authorized CMS action for this table')
       }
