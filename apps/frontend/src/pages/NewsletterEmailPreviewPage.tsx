@@ -288,7 +288,7 @@ export function NewsletterEmailPreviewPage() {
               <div className="mb-3 grid grid-cols-1 gap-2 text-xs text-waldorf-clay-600 sm:grid-cols-3">
                 <div>
                   <p className="font-medium">Recipient</p>
-                  <p>{preview.guardianEmail ?? '(no guardian email)'}</p>
+                  <p>{preview.guardianEmail ?? 'Family preview — recipient emails checked separately'}</p>
                 </div>
                 <div>
                   <p className="font-medium">Template</p>

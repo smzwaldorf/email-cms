@@ -30,14 +30,16 @@ beforeEach(() => {
     if (sql.includes('FROM user_auth_identities')) return { rows: state.linked ? [local] : [] }
     if (sql.includes('WHERE lower(email)')) return { rows: [] }
     if (sql.includes('INSERT INTO user_roles')) return { rows: [{ ...local, id: values[0], role: 'student' }] }
-    if (sql.includes('INSERT INTO user_auth_identities')) state.linked = true
+    if (sql.includes('INSERT INTO user_auth_identities')) { state.linked = true; return { rows: [{ user_id: values[2] }], rowCount: 1 } }
     if (sql.includes('SELECT * FROM articles')) return { rows: [{ ...state.article }] }
     if (sql.startsWith('UPDATE articles')) return { rows: [{ ...state.article, title: values[1] }] }
     return { rows: [], rowCount: 0 }
   })
-  vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(JSON.stringify(url.includes('access-context')
-    ? { sub: 'synthetic-parent', clientId: 'email-cms', access: 'active', roles: state.roles, classScopes: { parent: [], teacher: [], effective: [] } }
-    : { sub: 'synthetic-parent', email: 'synthetic-parent@example.test', email_verified: true }), { status: 200 })))
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    if (url.includes('/access-context')) return new Response(JSON.stringify({ sub: 'synthetic-parent', clientId: 'email-cms', access: 'active', roles: state.roles, classScopes: { parent: [], teacher: [], effective: [] } }), { status: 200 })
+    if (url.includes('/me/directory')) return new Response(JSON.stringify({ directory: { people: [{ id: 'synthetic-parent', displayName: 'Synthetic Parent', kind: 'adult' }], families: [], classes: [], familyMemberships: [], classMemberships: [] } }), { status: 200 })
+    return new Response(JSON.stringify({ sub: 'synthetic-parent', email: 'synthetic-parent@example.test', email_verified: true }), { status: 200 })
+  }))
 })
 afterEach(() => vi.unstubAllGlobals())
 describe('synthetic identities use ordinary CMS authorization', () => {
@@ -46,7 +48,7 @@ describe('synthetic identities use ordinary CMS authorization', () => {
     const session = await call('/api/auth/session')
     expect(session.status).toBe(200)
     expect(session.body.user).toMatchObject({ role: 'parent', roles: ['parent'] })
-    expect(state.query.mock.calls.some(([sql]) => sql.includes("VALUES ($1, $2, 'student')"))).toBe(true)
+    expect(state.query.mock.calls.some(([sql]) => sql.includes('INSERT INTO user_auth_identities'))).toBe(true)
   })
   it('allows a parent to read published public content but hides drafts and other-class content', async () => {
     expect((await call('/api/cms/articles/article-1')).status).toBe(200)
@@ -63,7 +65,7 @@ describe('synthetic identities use ordinary CMS authorization', () => {
     ['/api/cms/articles/article-1', 'PATCH', { title: 'denied' }],
   ])('denies parent operation %s without business writes', async (path, method, body) => {
     expect((await call(path as string, method as string, body)).status).toBe(403)
-    expect(state.query.mock.calls.filter(([sql]) => /^\s*(UPDATE|INSERT|DELETE)\b/.test(sql))).toHaveLength(0)
+    expect(state.query.mock.calls.filter(([sql]) => /^\s*(UPDATE|INSERT|DELETE)\b/.test(sql) && !/^\s*INSERT INTO user_auth_identities\b/.test(sql))).toHaveLength(0)
   })
   it('uses live central roles when switching admin to parent, retaining no dev privilege', async () => {
     state.roles = ['admin']

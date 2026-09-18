@@ -41,7 +41,7 @@ Historical report membership must not be invented from today's enrollments.
 On a restored local copy, compare counts and deterministic full-row digests for
 all retained tables before/after. Assert all nine masters are absent, extracted
 preferences match, migration rerun is safe, and an unmapped opt-out rejects with
-all masters intact. Test fresh `schema.sql` + `seed-data.sql` independently.
+all masters intact. Test the fresh `schema.sql` baseline and the current `seed:demo` fixture independently. The historical SQL snapshot is retired; do not use it as an import source.
 Exercise login, directory pages, class targeting, paired-family previews,
 audience preparation, worker authorization, reader access and analytics against
 the migrated database before declaring the application cutover complete.

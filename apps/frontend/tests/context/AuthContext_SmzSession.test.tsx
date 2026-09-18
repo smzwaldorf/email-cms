@@ -2,6 +2,7 @@ import React from 'react'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthProvider, useAuth } from '../../src/context/AuthContext'
+import { serverSessionMode } from '@/services/serverSessionMode'
 
 const mocks = vi.hoisted(() => ({
   ensureInitialized: vi.fn(),
@@ -73,10 +74,18 @@ describe('AuthContext SMZ session', () => {
   it('shows renewal notice without unmounting the authenticated page', async () => {
     render(<AuthProvider><SessionState /></AuthProvider>)
     await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('false'))
-    act(() => { window.dispatchEvent(new Event('cms-auth-renewal-required')) })
+    if (serverSessionMode) {
+      act(() => { window.dispatchEvent(new CustomEvent('cms-session-status', { detail: 'reauthentication_required' })) })
+    } else {
+      act(() => { window.dispatchEvent(new Event('cms-auth-renewal-required')) })
+    }
     expect(screen.getByRole('alert')).toHaveTextContent('目前頁面會保留')
     expect(screen.getByTestId('authenticated')).toHaveTextContent('true')
-    act(() => { window.dispatchEvent(new Event('cms-auth-renewed')) })
+    if (serverSessionMode) {
+      act(() => { window.dispatchEvent(new CustomEvent('cms-session-status', { detail: 'active' })) })
+    } else {
+      act(() => { window.dispatchEvent(new Event('cms-auth-renewed')) })
+    }
     expect(screen.queryByRole('alert')).toBeNull()
   })
 

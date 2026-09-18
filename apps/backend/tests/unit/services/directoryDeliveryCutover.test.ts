@@ -17,6 +17,10 @@ describe('delivery after identity table retirement',()=>{
  h.store!.rows('newsletter_family_preferences').push({family_id:'preference-family',auth_family_id:'f',newsletter_subscription_status:'unsubscribed'})
  const r=await withIdentityDirectory(context,()=>newsletterDeliveryService.resolveAudience({mode:'family',familyId:'f'}));expect(r.eligibleCount).toBe(0);expect(r.recipients[0].eligibilityReason).toBe('not_subscribed')
  })
+ it('keeps an explicit pending preference out of the Auth-derived count',async()=>{
+ h.store!.rows('newsletter_family_preferences').push({family_id:'preference-family',auth_family_id:'f',newsletter_subscription_status:'pending'})
+ const r=await withIdentityDirectory(context,()=>newsletterDeliveryService.resolveAudience({mode:'family',familyId:'f'}));expect(r.eligibleCount).toBe(0);expect(r.recipients[0]).toMatchObject({eligibilityStatus:'ineligible',eligibilityReason:'not_subscribed',subscriptionStatus:'unsubscribed'})
+ })
  it('uses authorized contact and explicit class alias only with affirmative consent',async()=>{
  h.store!.rows('newsletter_family_preferences').push({family_id:'legacy-family',auth_family_id:'f',newsletter_subscription_status:'subscribed'})
  const r=await withIdentityDirectory(context,()=>newsletterDeliveryService.resolveAudience({mode:'classes',classIds:['old-class']}));expect(r.eligibleCount).toBe(1);expect(r.recipients[0]).toMatchObject({familyId:'f',parentId:'p',parentEmail:'parent@example.test',classIds:['c','old-class']})

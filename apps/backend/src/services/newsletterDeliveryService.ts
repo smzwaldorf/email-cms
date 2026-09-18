@@ -172,12 +172,15 @@ export function validateRecipientEligibility(family: RecipientEligibilityInput):
 }
 
 /**
- * Family identity, membership, and delivery contacts are Auth-owned.  CMS only
- * retains an explicit opt-out; an absent or pre-cutover `pending` preference
- * must not suppress an Auth-discovered family from the delivery count.
+ * Family identity, membership, and delivery contacts are Auth-owned.
+ * Preserve legacy eligibility when no CMS preference exists; explicit pending
+ * or opt-out preferences must not count as consent to deliver.
  */
 function effectiveSubscriptionStatus(status: string | null | undefined): 'subscribed' | 'unsubscribed' {
-  return status === 'unsubscribed' ? 'unsubscribed' : 'subscribed'
+  // Families discovered from Auth predate CMS preferences and remain eligible
+  // until CMS records an explicit non-subscribed state. Once a preference row
+  // exists, pending/bounced/complained states must remain non-deliverable.
+  return status == null || status === 'subscribed' ? 'subscribed' : 'unsubscribed'
 }
 
 export function filterAudienceCandidateFamilyIds(

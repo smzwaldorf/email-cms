@@ -19,7 +19,7 @@ The ignored `.env.local` now points to CMS port `55440` and allows frontend orig
 
 For a new installation only, Compose creates `email-cms-postgres` with default host port `55440`, configurable through `CMS_POSTGRES_PORT`. Changing that variable also requires changing `DATABASE_URL`. Do not start this container while the existing CMS database already occupies the port. Changing a Compose port does not migrate or adopt another container's volume.
 
-`npm run db:schema` drops and recreates the Compose database; `npm run seed` invokes it. Neither is a repair command for an existing database. Reuse the existing data and apply reviewed additive migrations when needed.
+`npm run db:schema` drops and recreates the Compose database and is not a repair command for an existing database. `npm run seed` now prints the insert-only demo plan; it never invokes a reset. See [demo setup](../../docs/DEMO-NEWSLETTER.md). Reuse the existing data and apply reviewed additive migrations when needed.
 
 Start the local API with `npm run backend:dev` and the frontend with `npm run dev`. Start Identity from the sibling Auth repository using its own instructions. `DATABASE_URL` belongs only in backend configuration; credentials must never have a `VITE_` prefix.
 

@@ -35,3 +35,7 @@ See the [Cloudflare deployment guide](specs/docs/CLOUDFLARE.md) for the deployed
 Authoritative runtime code lives under `apps/frontend`, `apps/backend`, and `packages/shared`. OpenSpec capability requirements are under `openspec/specs`; the ownership implementation is `openspec/changes/delegate-auth-and-enforce-cms-permissions`. Resend is the newsletter sending provider; Identity login emails also use Resend. See [delivery configuration and verification](specs/docs/NEWSLETTER-JOURNEY.md). Kit broadcast sending and outbound sync endpoints are disabled; historical records are retained.
 
 The [previous README](specs/docs/history/README-before-auth-separation.md) preserves earlier architecture, completion reports and Supabase-era instructions as history. Those are not current setup or security guidance.
+
+## Repeatable newsletter demo
+
+See [the two-family demo guide](docs/DEMO-NEWSLETTER.md) for insert-only synthetic seeds and the Resend inbox test. `npm run seed:demo` prints a plan; `--check` rehearses with rollback and `--apply` writes only a new fixture.

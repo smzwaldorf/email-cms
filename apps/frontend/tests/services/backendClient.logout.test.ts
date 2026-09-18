@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { getAccessTokenOrNull, requestBackend, setAccessToken } from '@/services/backendClient'
+// This suite verifies bearer-token races; server-cookie sessions have separate coverage.
+vi.mock('@/services/serverSessionMode', () => ({ serverSessionMode: false }))
 beforeEach(() => { window.localStorage.clear(); window.sessionStorage.clear() })
 afterEach(() => vi.unstubAllGlobals())
 describe('tab-scoped bearer invalidation', () => {

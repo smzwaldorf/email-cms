@@ -17,14 +17,15 @@ jobs:
         with:
           node-version: 24
       - run: npm install --no-audit --no-fund
-      - run: node --test scripts/cloudflare-config.test.mjs
+      - run: node --test scripts/cloudflare-config.test.mjs scripts/cloudflare-migrations.test.mjs scripts/cloudflare-secrets-config.test.mjs
+      - run: npm run test:seed
       - run: npm run build
       - run: npm run cloudflare:check
       - name: Backend runtime, authorization and delivery regression tests
         run: >-
           npm run test -w @email-cms/backend --
           tests/unit/server-session.test.ts tests/unit/cloudflare-context.test.ts tests/unit/cloudflare-config.test.ts tests/unit/identity-transport.test.ts
-          tests/unit/cloudflare-delivery.test.ts tests/unit/services/articleMediaRows.test.ts
+          tests/unit/cloudflare-delivery.test.ts tests/unit/services/emailDeliveryPolicy.test.ts tests/unit/services/directoryDeliveryCutover.test.ts tests/unit/services/authCatalogues.test.ts tests/unit/services/retiredIdentityRpc.test.ts tests/unit/services/articleMediaRows.test.ts
           tests/unit/services/adminService.spec.ts tests/unit/services/canvaEmailImport.test.ts
           tests/unit/services/fileEmailTemplateLoader.test.ts tests/unit/lib/upsert-conflict.test.ts
           tests/unit/lib/relation-select.test.ts tests/unit/auth/smz-auth.test.ts
@@ -50,6 +51,10 @@ jobs:
       CMS_ORIGIN: ${{ vars.CMS_ORIGIN }}
       CMS_API_ORIGIN: ${{ vars.CMS_API_ORIGIN }}
       SMZ_AUTH_ISSUER: ${{ vars.SMZ_AUTH_ISSUER }}
+      NEWSLETTER_DEMO_MODE: 'true'
+      NEWSLETTER_TEST_RECIPIENTS: ${{ vars.NEWSLETTER_TEST_RECIPIENTS }}
+      CMS_IDENTITY_RETIREMENT_APPROVED: ${{ vars.CMS_IDENTITY_RETIREMENT_APPROVED }}
+      CMS_IDENTITY_BACKUP_REFERENCE: ${{ vars.CMS_IDENTITY_BACKUP_REFERENCE }}
       CMS_AUTH_REGISTRATION_VERIFIED: ${{ vars.CMS_AUTH_REGISTRATION_VERIFIED }}
     steps:
       - uses: actions/checkout@v4
@@ -62,15 +67,18 @@ jobs:
       - name: Validate Pages configuration
         run: npx wrangler pages functions build-env .wrangler/deploy --outfile .wrangler/deploy/pages-build-env.json
       - run: node scripts/cloudflare-check-binding.mjs
-      - name: Configure persistent session secrets
+      - name: Configure persistent session and Resend secrets
         run: node scripts/cloudflare-session-secrets.mjs
         env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
           CMS_SESSION_SECRET: ${{ secrets.CMS_SESSION_SECRET }}
           CMS_OIDC_CLIENT_SECRET: ${{ secrets.CMS_OIDC_CLIENT_SECRET }}
       - name: Initialize the explicitly approved empty CMS database
         if: vars.CMS_INITIALIZE_EMPTY_DATABASE == 'true'
         run: npm run cloudflare:schema
-      - run: node scripts/cloudflare-session-migrate.mjs
+      - run: node scripts/cloudflare-migrate.mjs
       - run: node scripts/cloudflare-preflight.mjs
       - run: npm run cloudflare:pages:build
       - run: npx wrangler deploy --config .wrangler/deploy/cms.json

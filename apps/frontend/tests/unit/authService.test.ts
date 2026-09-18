@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+// These tests exercise the browser OIDC adapter. The production selector uses
+// the server-session adapter when VITE_CMS_SERVER_SESSION=true; keep this
+// suite explicit so local .env.local values do not silently swap its subject.
+vi.mock('@/services/serverSessionMode', () => ({ serverSessionMode: false }))
+
 const mocks = vi.hoisted(() => ({
   signinRedirect: vi.fn(),
   signinRedirectCallback: vi.fn(),

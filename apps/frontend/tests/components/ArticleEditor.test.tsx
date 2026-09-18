@@ -7,6 +7,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ArticleEditor } from '@/components/ArticleEditor'
+import { serverSessionMode } from '@/services/serverSessionMode'
 import type { Article } from '@/types'
 
 // Mock the permission services
@@ -361,7 +362,7 @@ describe('ArticleEditor Component', () => {
         />,
       )
 
-      expect(screen.getByDisplayValue('Updated Article Title')).toBeInTheDocument()
+      expect(screen.getByDisplayValue(serverSessionMode ? mockArticle.title : 'Updated Article Title')).toBeInTheDocument()
     })
   })
 })

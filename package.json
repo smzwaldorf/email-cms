@@ -24,7 +24,7 @@
     "coverage": "npm run coverage -w @email-cms/frontend",
     "lint": "eslint apps/frontend/src apps/frontend/tests apps/backend/src packages/shared/src --ext .ts,.tsx",
     "format": "prettier --write \"apps/frontend/src/**/*.{ts,tsx,css}\" \"apps/frontend/tests/**/*.{ts,tsx}\" \"apps/backend/src/**/*.ts\" \"packages/shared/src/**/*.ts\"",
-    "seed": "npm run db:schema && npm run db:copy-data",
+    "seed": "npm run seed:demo",
     "db:up": "docker compose up -d postgres",
     "db:schema": "bash db/apply-schema.sh",
     "db:copy-data": "bash db/copy-data.sh",
@@ -34,7 +34,9 @@
     "cloudflare:schema": "node scripts/cloudflare-schema.mjs",
     "cloudflare:check": "npm run cloudflare:templates && npm run cloudflare:typecheck && wrangler deploy --dry-run --config apps/backend/wrangler.jsonc",
     "cloudflare:typecheck": "tsc -p apps/backend/tsconfig.cloudflare.json",
-    "db:types": "node scripts/generate-sql-types.mjs"
+    "db:types": "node scripts/generate-sql-types.mjs",
+    "seed:demo": "node scripts/seed-demo.mjs",
+    "test:seed": "node --test scripts/demo-seed.test.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.90.12",

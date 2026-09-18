@@ -11,6 +11,12 @@ export function configuration(env) {
     if (key !== 'SMZ_AUTH_ISSUER' && url.origin !== env[key]) throw new Error(`${key} must be an origin`)
   }
   if (!env.SMZ_AUTH_ISSUER.endsWith('/api/auth')) throw new Error('Invalid issuer path')
+  const demoMode = env.NEWSLETTER_DEMO_MODE || 'true'
+  if (!['true', 'false'].includes(demoMode)) throw new Error('Invalid NEWSLETTER_DEMO_MODE')
+  const recipients = (env.NEWSLETTER_TEST_RECIPIENTS ?? '').split(',').map(value => value.trim().toLowerCase()).filter(Boolean)
+  if (recipients.some(value => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))) throw new Error('Invalid NEWSLETTER_TEST_RECIPIENTS')
+  if (demoMode === 'true' && recipients.length !== 2) throw new Error('Demo deployment requires exactly two NEWSLETTER_TEST_RECIPIENTS')
+  if (new Set(recipients).size !== recipients.length) throw new Error('Duplicate demo recipients')
   const root = fileURLToPath(new URL('../', import.meta.url))
   return {
     name: 'smz-cms-api', main: path.join(root, 'apps/backend/src/cloudflare/worker.ts'),
@@ -20,7 +26,7 @@ export function configuration(env) {
     alias: { '@email-cms/shared': path.join(root, 'packages/shared/src/index.ts') },
     services: [{ binding: 'SMZ_AUTH', service: 'smz-auth' }],
     hyperdrive: [{ binding: 'HYPERDRIVE', id: env.CLOUDFLARE_HYPERDRIVE_ID }],
-    vars: { CMS_SESSION_ENABLED: 'true', APP_URL: env.CMS_ORIGIN, BACKEND_CORS_ORIGIN: env.CMS_ORIGIN, SMZ_AUTH_ISSUER: env.SMZ_AUTH_ISSUER, DELIVERY_ENABLED: 'false' },
+    vars: { CMS_SESSION_ENABLED: 'true', APP_URL: env.CMS_ORIGIN, BACKEND_CORS_ORIGIN: env.CMS_ORIGIN, SMZ_AUTH_ISSUER: env.SMZ_AUTH_ISSUER, DELIVERY_ENABLED: 'false', NEWSLETTER_DEMO_MODE: demoMode, NEWSLETTER_TEST_RECIPIENTS: recipients.join(',') },
     triggers: { crons: ['* * * * *'] },
   }
 }
