@@ -276,6 +276,18 @@ export function isRepeaterBlockType(type: EmailBlockType): boolean {
   return REGISTRY[type].isRepeater
 }
 
+const LAYOUT_HTML_PATTERN = /<(table|tbody|thead|tr|td|th|center)[\s>/]|\sstyle\s*=\s*["']|<!--/i
+
+/**
+ * True when a block body relies on email layout markup — tables, inline
+ * styles or conditional comments — that the visual TipTap editor cannot
+ * represent. TipTap re-serializes such HTML as plain paragraphs, silently
+ * dropping the layout and styling, so these bodies must be edited as raw HTML.
+ */
+export function requiresRawHtmlEditing(html: string | null | undefined): boolean {
+  return typeof html === 'string' && LAYOUT_HTML_PATTERN.test(html)
+}
+
 /**
  * Best-effort coercion of arbitrary JSON (typically from a JSONB column) into
  * a typed `EmailTemplateBlock[]`. Unknown block types are dropped; missing
