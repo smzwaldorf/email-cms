@@ -89,12 +89,21 @@ function isGlobalToken(token: string): token is GlobalToken {
  * Validates a template revision's subject + body + (optional) typed-block list.
  *
  * - Subject and the legacy `bodyTemplate` validate against the global token scope.
- * - Each block's `bodyHtml` validates against `global ∪ blockType.innerScopeTokens`.
+ * - Each block's `bodyHtml` validates against
+ *   `global ∪ blockType.innerScopeTokens ∪ scalar keys of block.config`
+ *   (the renderer substitutes scalar config values as `{{key}}` tokens).
  * - When `blocks` is omitted (undefined), the legacy single-body validation
  *   behavior is preserved exactly.
  * - Empty `blocks: []` is allowed (legacy revisions backfilled with a single
  *   block; tests pass `undefined` to opt out of block validation).
  */
+function scalarConfigTokenNames(config: EmailTemplateBlock['config'] | undefined): string[] {
+  if (!config || typeof config !== 'object') return []
+  return Object.entries(config)
+    .filter(([, value]) => typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')
+    .map(([key]) => key)
+}
+
 export function validateEmailTemplate(
   subjectTemplate: string,
   bodyTemplate: string,
@@ -158,6 +167,7 @@ export function validateEmailTemplate(
       const allowedInnerTokens = new Set<string>([
         ...EMAIL_TEMPLATE_TOKENS,
         ...definition.innerScopeTokens,
+        ...scalarConfigTokenNames(block.config),
       ])
       for (const token of listTokens(block.bodyHtml)) {
         if (!allowedInnerTokens.has(token)) {

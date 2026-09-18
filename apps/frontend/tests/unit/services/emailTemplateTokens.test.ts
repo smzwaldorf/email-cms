@@ -5,8 +5,31 @@ import {
   renderEmailTemplatePreview,
   validateEmailTemplate,
 } from '@/services/emailTemplateTokens'
+import { createStarterEmailBlocks } from '@/services/emailTemplateBlocks'
 
 describe('emailTemplateTokens', () => {
+  it('accepts a block\'s own scalar config keys as tokens (starter blocks validate clean)', () => {
+    const result = validateEmailTemplate('Weekly {{newsletter.title}}', '', createStarterEmailBlocks())
+
+    expect(result.issues).toEqual([])
+    expect(result.valid).toBe(true)
+  })
+
+  it('still rejects config keys whose values are not scalars', () => {
+    const result = validateEmailTemplate('Hello', '', [
+      {
+        type: 'footer',
+        order: 0,
+        visible: true,
+        bodyHtml: '<p>{{tel}} {{socials}}</p>',
+        config: { tel: '+886', socials: [] },
+      },
+    ])
+
+    expect(result.valid).toBe(false)
+    expect(result.issues.map((issue) => issue.token)).toEqual(['socials'])
+  })
+
   it('validates unsupported tokens', () => {
     const result = validateEmailTemplate(
       'Hello {{guardian.email}} {{bad.token}}',

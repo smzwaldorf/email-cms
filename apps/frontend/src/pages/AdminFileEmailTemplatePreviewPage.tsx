@@ -65,27 +65,25 @@ export function AdminFileEmailTemplatePreviewPage() {
 
   return (
     <ErrorBoundary>
-      <AdminLayout activeTab="email-templates">
+      <AdminLayout
+        activeTab="email-templates"
+        contentVariant="plain"
+        title="File Template Preview"
+        description="Read-only template rendered with sample data. Sync it to create a database revision newsletters can use."
+        backLink={{ to: '/admin/email-templates', label: 'Back to templates' }}
+      >
         <div className="space-y-6">
-          <button
-            type="button"
-            onClick={() => navigate('/admin/email-templates')}
-            className="text-sm font-medium text-waldorf-sage-700 hover:underline"
-          >
-            Back to email templates
-          </button>
-
-          {error && <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+          {error && <div className="rounded-xl border border-waldorf-rose-200 bg-waldorf-rose-50 px-4 py-3 text-sm font-medium text-waldorf-rose-700">{error}</div>}
 
           {isLoadingPreview ? (
             <p className="text-sm text-waldorf-clay-500">Loading preview...</p>
           ) : !preview ? (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            <div className="rounded-xl border border-waldorf-rose-200 bg-waldorf-rose-50 p-4 text-sm text-waldorf-rose-700">
               File template source not found: {sourceId}
             </div>
           ) : (
             <>
-              <div className="rounded-xl border border-waldorf-cream-200 bg-white p-4">
+              <div className="rounded-2xl border border-waldorf-cream-200 bg-white/90 p-5 shadow-sm">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <div className="flex items-center gap-2">
@@ -115,7 +113,7 @@ export function AdminFileEmailTemplatePreviewPage() {
               </div>
 
               {(blockingIssues.length > 0 || warnings.length > 0) && (
-                <div className="rounded-xl border border-waldorf-cream-200 bg-white p-4">
+                <div className="rounded-2xl border border-waldorf-cream-200 bg-white/90 p-5 shadow-sm">
                   <h3 className="text-sm font-semibold text-waldorf-clay-700">Validation</h3>
                   {blockingIssues.length > 0 && (
                     <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3">
@@ -141,7 +139,7 @@ export function AdminFileEmailTemplatePreviewPage() {
               )}
 
               <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-                <div className="rounded-xl border border-waldorf-cream-200 bg-white p-4">
+                <div className="rounded-2xl border border-waldorf-cream-200 bg-white/90 p-5 shadow-sm">
                   <h3 className="text-sm font-semibold text-waldorf-clay-700">Rendered Subject</h3>
                   <p className="mt-3 rounded-lg bg-waldorf-cream-50 p-3 text-sm text-waldorf-clay-700">
                     {preview.renderedSubject}
@@ -165,7 +163,7 @@ export function AdminFileEmailTemplatePreviewPage() {
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-waldorf-cream-200 bg-white p-4">
+                <div className="rounded-2xl border border-waldorf-cream-200 bg-white/90 p-5 shadow-sm">
                   <h3 className="text-sm font-semibold text-waldorf-clay-700">Rendered HTML Body</h3>
                   <iframe
                     title="File email template preview"

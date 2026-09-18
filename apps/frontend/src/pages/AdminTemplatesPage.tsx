@@ -64,6 +64,9 @@ export function AdminTemplatesPage() {
     <ErrorBoundary>
       <AdminLayout
         activeTab="templates"
+        title="電子報模板"
+        description="從既有電子報儲存的文章結構。建立新電子報時可選擇模板，直接沿用編排。"
+        backLink={{ to: '/admin', label: '返回電子報列表' }}
         headerAction={
           <button
             onClick={() => navigate('/admin/newsletter/create?sourceNewsletter=')}

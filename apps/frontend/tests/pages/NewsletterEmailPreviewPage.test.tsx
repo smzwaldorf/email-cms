@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { NewsletterEmailPreviewPage } from '@/pages/NewsletterEmailPreviewPage'
 const api = vi.hoisted(() => ({ preview: vi.fn(), audience: vi.fn(), publish: vi.fn(), newsletters: vi.fn() }))
 vi.mock('@/components/admin/AdminLayout', () => ({ AdminLayout: ({ children }: { children: React.ReactNode }) => children }))
@@ -20,26 +21,43 @@ beforeEach(() => {
   api.publish.mockResolvedValue({ id: 'b1', state: 'queued' })
   vi.spyOn(window, 'confirm').mockReturnValue(true)
 })
+const renderPage = (initialEntry = '/admin/newsletters/preview') =>
+  render(
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <NewsletterEmailPreviewPage />
+    </MemoryRouter>,
+  )
 describe('reviewed email publication', () => {
   it('loads the same unfiltered newsletter catalogue as the Newsletters tab', async () => {
     api.newsletters.mockResolvedValue([
       { id: 'n1', title: 'Draft', status: 'draft' },
       { id: 'n2', title: 'Published', status: 'published' },
     ])
-    render(<NewsletterEmailPreviewPage />)
+    renderPage()
     await screen.findByRole('option', { name: 'Published (published)' })
     expect(api.newsletters).toHaveBeenCalledWith()
   })
 
+  it('preselects the newsletter named in the ?newsletter= query param', async () => {
+    api.newsletters.mockResolvedValue([
+      { id: 'n1', title: 'Draft', status: 'draft' },
+      { id: 'n2', title: 'Second draft', status: 'draft' },
+    ])
+    renderPage('/admin/newsletters/preview?newsletter=n2')
+    await screen.findByRole('option', { name: 'Second draft (draft)' })
+    fireEvent.click(await screen.findByRole('button', { name: 'Render preview' }))
+    await waitFor(() => expect(api.preview).toHaveBeenCalledWith({ newsletterId: 'n2', familyId: 'identity-f1', templateId: undefined }))
+  })
+
   it('uses the SMZ Identity family directory in the Family selector', async () => {
-    render(<NewsletterEmailPreviewPage />)
+    renderPage()
     expect(await screen.findByText('Family')).toBeInTheDocument()
     expect(screen.getByRole('option', { name: 'Identity family' })).toBeInTheDocument()
     expect(screen.queryByText('Sample family')).not.toBeInTheDocument()
   })
 
   it('submits the Auth family to preview and preserves local delivery IDs for publication', async () => {
-    render(<NewsletterEmailPreviewPage />)
+    renderPage()
     fireEvent.change(await screen.findByLabelText('Delivery audience'), { target: { value: 'classes' } })
     fireEvent.click(screen.getByRole('checkbox'))
     fireEvent.click(await screen.findByRole('button', { name: 'Render preview' }))
@@ -51,7 +69,7 @@ describe('reviewed email publication', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Confirm and publish' })).toBeDisabled())
   })
   it('shows the Auth-derived recipient count for a selected family', async () => {
-    render(<NewsletterEmailPreviewPage />)
+    renderPage()
     fireEvent.click(await screen.findByRole('button', { name: 'Render preview' }))
     await waitFor(() => expect(api.preview).toHaveBeenCalledWith({ newsletterId: 'n1', familyId: 'identity-f1', templateId: undefined }))
     await waitFor(() => expect(api.audience).toHaveBeenCalledWith({ mode: 'family', familyId: 'identity-f1' }))
@@ -59,7 +77,7 @@ describe('reviewed email publication', () => {
     expect(screen.getByRole('button', { name: 'Confirm and publish' })).toBeEnabled()
   })
   it('invalidates review when audience changes and blocks zero-recipient sends', async () => {
-    render(<NewsletterEmailPreviewPage />)
+    renderPage()
     fireEvent.change(await screen.findByLabelText('Delivery audience'), { target: { value: 'classes' } })
     fireEvent.click(screen.getByRole('checkbox'))
     fireEvent.click(await screen.findByRole('button', { name: 'Render preview' }))

@@ -55,7 +55,7 @@ function buildDemoEmailPreviewContext(): EmailTemplateRenderContext {
 function EmailPreviewFrame({ html, decode }: { html: string; decode: (value: string) => string }) {
   const raw = decode(html)
   if (!raw.trim()) {
-    return <p className="text-sm text-waldorf-clay-500">(empty)</p>
+    return <p className="py-8 text-center text-sm text-waldorf-clay-500">(empty)</p>
   }
   const isFullDoc = /^\s*<!doctype/i.test(raw) || /<html[\s>]/i.test(raw.trim())
   if (isFullDoc) {
@@ -64,13 +64,13 @@ function EmailPreviewFrame({ html, decode }: { html: string; decode: (value: str
         title="Email preview"
         sandbox="allow-same-origin"
         srcDoc={raw}
-        className="h-[min(520px,70vh)] w-full rounded border border-waldorf-cream-200 bg-white"
+        className="h-[min(640px,70vh)] w-full rounded-lg border border-waldorf-cream-200 bg-white shadow-sm"
       />
     )
   }
   return (
     <div
-      className="prose max-w-none rounded border border-waldorf-cream-200 bg-white p-3 text-sm"
+      className="prose max-h-[min(640px,70vh)] max-w-none overflow-y-auto rounded-lg border border-waldorf-cream-200 bg-white p-4 text-sm shadow-sm"
       dangerouslySetInnerHTML={{ __html: raw || '<p>(empty)</p>' }}
     />
   )
@@ -106,6 +106,7 @@ export function AdminEmailTemplateEditorPage() {
   /** Combined = full walker output with document shell; block = one block fragment with sample repeater data. */
   const [previewScope, setPreviewScope] = useState<'combined' | 'block'>('combined')
   const [previewBlockIndex, setPreviewBlockIndex] = useState(0)
+  const [copiedToken, setCopiedToken] = useState<string | null>(null)
 
   const importResult = useMemo(
     () => (rawImportedHtml !== null ? emailTemplateService.normalizeImportedBodyHtml(rawImportedHtml) : null),
@@ -412,117 +413,195 @@ export function AdminEmailTemplateEditorPage() {
     return value
   }
 
+
+  const handleTokenChipClick = (token: string) => {
+    if (bodyEditor) {
+      handleInsertToken(token)
+      return
+    }
+    // Block editors manage their own TipTap instances, so fall back to the clipboard.
+    void navigator.clipboard?.writeText(`{{${token}}}`)
+    setCopiedToken(token)
+    window.setTimeout(() => setCopiedToken((current) => (current === token ? null : current)), 1500)
+  }
+
+  const stateBadge = editingTemplate
+    ? editingTemplate.state === 'active'
+      ? { label: 'In use', className: 'bg-waldorf-sage-600 text-white' }
+      : editingTemplate.state === 'draft'
+        ? { label: 'Draft', className: 'bg-waldorf-cream-200 text-waldorf-clay-600' }
+        : { label: 'Inactive', className: 'bg-waldorf-cream-100 text-waldorf-clay-500' }
+    : null
+
+  const cardClass = 'rounded-2xl border border-waldorf-cream-200 bg-white/90 backdrop-blur-sm shadow-sm'
+  const cardTitleClass = 'font-display text-lg font-semibold text-waldorf-clay-800'
+  const inputClass =
+    'w-full rounded-lg border border-waldorf-cream-300 bg-white px-3 py-2.5 text-sm text-waldorf-clay-700 focus:border-waldorf-sage-400 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-200'
+  const secondaryButtonClass =
+    'rounded-lg border border-waldorf-cream-300 bg-white px-3 py-2 text-sm font-medium text-waldorf-clay-700 transition-colors hover:bg-waldorf-cream-100 disabled:cursor-not-allowed disabled:opacity-50'
+
   return (
     <ErrorBoundary>
-      <AdminLayout activeTab="email-templates">
+      <AdminLayout
+        activeTab="email-templates"
+        contentVariant="plain"
+        title={isNew ? 'New Email Template' : 'Edit Email Template'}
+        description={
+          isNew
+            ? 'Compose the subject and body blocks, check the live preview, then create the template.'
+            : 'Every save creates a new revision. Newsletters use the revision that was current when they were published.'
+        }
+        backLink={{ to: '/admin/email-templates', label: 'Back to templates' }}
+      >
         <div className="space-y-6">
-          {error && <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
-          {success && <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{success}</div>}
-
-          <div className="rounded-xl border border-waldorf-cream-200 bg-white p-4">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm font-semibold text-waldorf-clay-700">
-                  {isNew ? 'Create Email Template' : 'Edit Email Template'}
+          {/* Action bar */}
+          <div className={`${cardClass} flex flex-wrap items-center justify-between gap-4 px-5 py-4`}>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="truncate font-display text-xl font-semibold text-waldorf-clay-800">
+                  {name.trim() || 'Untitled template'}
                 </h2>
-                {!isNew && editingTemplate && (
-                  editingTemplate.state === 'active' ? (
-                    <span className="rounded-full bg-waldorf-sage-600 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
-                      In use
-                    </span>
-                  ) : editingTemplate.state === 'draft' ? (
-                    <span className="rounded-full bg-waldorf-cream-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-waldorf-clay-600">
-                      Draft
-                    </span>
-                  ) : (
-                    <span className="rounded-full bg-waldorf-cream-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-waldorf-clay-500">
-                      Inactive
-                    </span>
-                  )
+                {stateBadge && (
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${stateBadge.className}`}>
+                    {stateBadge.label}
+                  </span>
                 )}
               </div>
-              <div className="flex items-center gap-2">
-                {!isNew && editingTemplate && editingTemplate.state !== 'active' && (
-                  <button
-                    type="button"
-                    onClick={() => void handleSetActive()}
-                    disabled={isActivating || !editingTemplate.currentRevisionId}
-                    title={
-                      !editingTemplate.currentRevisionId
-                        ? 'Save the template at least once before marking it as active'
-                        : 'Use this template for newsletter publishing'
-                    }
-                    className="rounded-lg border border-waldorf-sage-300 bg-white px-3 py-2 text-sm text-waldorf-sage-700 hover:bg-waldorf-sage-50 disabled:opacity-50"
-                  >
-                    {isActivating ? 'Activating…' : 'Use this template'}
-                  </button>
-                )}
+              <p className="mt-0.5 text-xs text-waldorf-clay-500">
+                {isNew
+                  ? 'Not saved yet'
+                  : editingRevision
+                    ? `Revision v${editingRevision.revisionNumber} · saved ${new Date(editingRevision.createdAt).toLocaleString()}`
+                    : 'Loading revision…'}
+                {hasValidationIssues && <span className="ml-2 font-medium text-amber-700">· resolve validation issues to save</span>}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {!isNew && editingTemplate && editingTemplate.state !== 'active' && (
                 <button
                   type="button"
-                  onClick={() => navigate('/admin/email-templates')}
-                  className="rounded-lg border border-waldorf-cream-300 px-3 py-2 text-sm text-waldorf-clay-700 hover:bg-waldorf-cream-100"
+                  onClick={() => void handleSetActive()}
+                  disabled={isActivating || !editingTemplate.currentRevisionId}
+                  title={
+                    !editingTemplate.currentRevisionId
+                      ? 'Save the template at least once before marking it as active'
+                      : 'Use this template for newsletter publishing'
+                  }
+                  className="rounded-lg border border-waldorf-sage-300 bg-white px-3 py-2 text-sm font-medium text-waldorf-sage-700 transition-colors hover:bg-waldorf-sage-50 disabled:opacity-50"
                 >
-                  Back to List
+                  {isActivating ? 'Activating…' : 'Use this template'}
                 </button>
-              </div>
+              )}
+              {!isNew && (
+                <>
+                  <button onClick={handleDuplicate} disabled={isSaving} className={secondaryButtonClass}>
+                    Duplicate
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    disabled={isSaving}
+                    className="rounded-lg border border-waldorf-rose-200 bg-white px-3 py-2 text-sm font-medium text-waldorf-rose-700 transition-colors hover:bg-waldorf-rose-50 disabled:opacity-50"
+                  >
+                    Delete
+                  </button>
+                </>
+              )}
+              {isNew ? (
+                <button
+                  onClick={handleCreate}
+                  disabled={isSaving || hasValidationIssues}
+                  className="rounded-lg bg-gradient-to-r from-waldorf-sage-500 to-waldorf-sage-600 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-waldorf-sage-200/50 transition-all hover:from-waldorf-sage-600 hover:to-waldorf-sage-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
+                >
+                  {isSaving ? 'Creating…' : 'Create'}
+                </button>
+              ) : (
+                <button
+                  onClick={handleSave}
+                  disabled={isSaving || hasValidationIssues}
+                  className="rounded-lg bg-gradient-to-r from-waldorf-peach-500 to-waldorf-peach-600 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-waldorf-peach-200/50 transition-all hover:from-waldorf-peach-600 hover:to-waldorf-peach-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
+                >
+                  {isSaving ? 'Saving…' : 'Save'}
+                </button>
+              )}
             </div>
+          </div>
 
-            {isLoading ? (
-              <p className="text-sm text-waldorf-clay-500">Loading...</p>
-            ) : (
-              <>
-                <div className="space-y-3">
-                  <div>
-                    <p className="mb-2 text-xs font-medium text-waldorf-clay-600">Template Name</p>
-                    <input
-                      value={name}
-                      onChange={(event) => setName(event.target.value)}
-                      placeholder="Template name"
-                      className="w-full rounded-lg border border-waldorf-cream-300 px-3 py-2 text-sm"
-                    />
+          {error && <div className="rounded-xl border border-waldorf-rose-200 bg-waldorf-rose-50 px-4 py-3 text-sm font-medium text-waldorf-rose-700">{error}</div>}
+          {success && <div className="rounded-xl border border-waldorf-sage-200 bg-waldorf-sage-50 px-4 py-3 text-sm font-medium text-waldorf-sage-700">{success}</div>}
+
+          {isLoading ? (
+            <div className={`${cardClass} p-8 text-sm text-waldorf-clay-500`}>Loading...</div>
+          ) : (
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(380px,42%)] xl:items-start">
+              {/* Editor column */}
+              <div className="space-y-6">
+                <section className={`${cardClass} p-5`}>
+                  <h3 className={cardTitleClass}>Template details</h3>
+                  <div className="mt-4 space-y-4">
+                    <label className="block">
+                      <span className="mb-1.5 block text-xs font-medium text-waldorf-clay-600">Template name</span>
+                      <input
+                        value={name}
+                        onChange={(event) => setName(event.target.value)}
+                        placeholder="Template name"
+                        className={inputClass}
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1.5 flex items-center justify-between text-xs font-medium text-waldorf-clay-600">
+                        <span>Subject template</span>
+                        <span className="font-normal text-waldorf-clay-400">Supports tokens like {'{{newsletter.title}}'}</span>
+                      </span>
+                      <textarea
+                        value={subjectTemplate}
+                        onChange={(event) => setSubjectTemplate(event.target.value)}
+                        placeholder="Subject template"
+                        rows={2}
+                        className={inputClass}
+                      />
+                    </label>
                   </div>
-                  <div>
-                    <p className="mb-2 text-xs font-medium text-waldorf-clay-600">Subject Template</p>
-                    <textarea
-                      value={subjectTemplate}
-                      onChange={(event) => setSubjectTemplate(event.target.value)}
-                      placeholder="Subject template"
-                      rows={2}
-                      className="w-full rounded-lg border border-waldorf-cream-300 px-3 py-2 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <div className="mb-2 flex items-center justify-between">
-                      <p className="text-xs font-medium text-waldorf-clay-600">
-                        {showBlockList ? 'Template blocks' : 'Body template'}
+                </section>
+
+                <section className={`${cardClass} p-5`}>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h3 className={cardTitleClass}>{showBlockList ? 'Template blocks' : 'Body template'}</h3>
+                      <p className="mt-0.5 text-xs text-waldorf-clay-500">
+                        {showBlockList
+                          ? 'Blocks render top to bottom. Hide a block to leave it out without deleting it.'
+                          : 'Single-body template. Edit visually or paste HTML.'}
                       </p>
-                      {!showBlockList && (
-                        <div className="inline-flex overflow-hidden rounded-lg border border-waldorf-cream-300 text-xs">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setRawImportedHtml(null)
-                              setImportIssues([])
-                              setBodyEditorMode('tiptap')
-                            }}
-                            className={`px-2 py-1 ${bodyEditorMode === 'tiptap' ? 'bg-waldorf-peach-100 text-waldorf-clay-700' : 'bg-white text-waldorf-clay-600'}`}
-                          >
-                            TipTap
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setRawImportedHtml(effectiveBodyTemplate)
-                              setImportIssues([])
-                              setBodyEditorMode('html')
-                            }}
-                            className={`border-l border-waldorf-cream-300 px-2 py-1 ${bodyEditorMode === 'html' ? 'bg-waldorf-peach-100 text-waldorf-clay-700' : 'bg-white text-waldorf-clay-600'}`}
-                          >
-                            HTML
-                          </button>
-                        </div>
-                      )}
                     </div>
+                    {!showBlockList && (
+                      <div className="inline-flex overflow-hidden rounded-lg border border-waldorf-cream-300 text-xs">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRawImportedHtml(null)
+                            setImportIssues([])
+                            setBodyEditorMode('tiptap')
+                          }}
+                          className={`px-3 py-1.5 font-medium ${bodyEditorMode === 'tiptap' ? 'bg-waldorf-clay-700 text-white' : 'bg-white text-waldorf-clay-600 hover:bg-waldorf-cream-50'}`}
+                        >
+                          TipTap
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRawImportedHtml(effectiveBodyTemplate)
+                            setImportIssues([])
+                            setBodyEditorMode('html')
+                          }}
+                          className={`border-l border-waldorf-cream-300 px-3 py-1.5 font-medium ${bodyEditorMode === 'html' ? 'bg-waldorf-clay-700 text-white' : 'bg-white text-waldorf-clay-600 hover:bg-waldorf-cream-50'}`}
+                        >
+                          HTML
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-4 space-y-3">
                     {showBlockList ? (
                       <EmailTemplateBlockList
                         blocks={editorBlocks ?? []}
@@ -531,7 +610,7 @@ export function AdminEmailTemplateEditorPage() {
                       />
                     ) : null}
                     {!showBlockList && isLegacySingleBlock && (
-                      <div className="mb-2 flex items-center justify-between rounded border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800">
+                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800">
                         <span>This template stores its body as a single legacy block. Convert to use the typed block editor.</span>
                         <button
                           type="button"
@@ -552,7 +631,7 @@ export function AdminEmailTemplateEditorPage() {
                       </div>
                     )}
                     {!showBlockList && rawImportedHtml !== null && (
-                      <div className="mb-2 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                      <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
                         Imported HTML preservation mode is on. Save/Preview will use the original imported HTML exactly as-is.
                         <button
                           type="button"
@@ -594,207 +673,193 @@ export function AdminEmailTemplateEditorPage() {
                       />
                     )}
                   </div>
-                </div>
 
-                {showBlockList && editorBlocks && editorBlocks.length > 0 && (
-                  <div className="mt-4 flex flex-wrap items-center gap-3 rounded-lg border border-waldorf-cream-200 bg-waldorf-cream-50/50 px-3 py-2 text-xs text-waldorf-clay-600">
-                    <span className="font-medium text-waldorf-clay-700">Live preview</span>
-                    <label className="inline-flex cursor-pointer items-center gap-1.5">
+                  {validation.issues.length > 0 && (
+                    <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                      <p className="mb-1 font-semibold">Validation</p>
+                      {validation.issues.map((issue, index) => (
+                        <p key={`${issue.field}-${index}`}>- {issue.message}</p>
+                      ))}
+                    </div>
+                  )}
+
+                  {importDetectionMessage && (
+                    <div className="mt-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800">
+                      {importDetectionMessage}
+                    </div>
+                  )}
+
+                  {importIssues.length > 0 && (
+                    <div className="mt-4 rounded-lg border border-waldorf-rose-200 bg-waldorf-rose-50 px-4 py-3 text-sm text-waldorf-rose-700">
+                      <p className="font-semibold">Imported HTML compatibility issues</p>
+                      {importIssues.map((issue, index) => (
+                        <p key={`${issue.code}-${index}`}>- {issue.message}</p>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Import tools stay at the bottom of the editor column so the paste area is the last text field. */}
+                  <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-waldorf-cream-200 pt-4">
+                    <span className="mr-1 text-xs font-medium text-waldorf-clay-500">Bring in existing HTML (e.g. Canva export):</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setImportHtml(bodyTemplate)
+                        setShowImportPanel((prev) => !prev)
+                      }}
+                      disabled={isSaving}
+                      className={secondaryButtonClass}
+                    >
+                      Import HTML
+                    </button>
+                    <label className={`cursor-pointer ${secondaryButtonClass}`}>
+                      Upload .html
                       <input
-                        type="radio"
-                        name="preview-scope"
-                        checked={previewScope === 'combined'}
-                        onChange={() => setPreviewScope('combined')}
-                        className="accent-waldorf-sage-600"
+                        type="file"
+                        accept=".html,text/html"
+                        className="hidden"
+                        onChange={(event) => void handleImportFile(event)}
                       />
-                      Combined template
                     </label>
-                    <label className="inline-flex cursor-pointer items-center gap-1.5">
-                      <input
-                        type="radio"
-                        name="preview-scope"
-                        checked={previewScope === 'block'}
-                        onChange={() => setPreviewScope('block')}
-                        className="accent-waldorf-sage-600"
+                  </div>
+
+                  {showImportPanel && (
+                    <div className="mt-4 rounded-lg border border-waldorf-cream-200 bg-waldorf-cream-50 p-4">
+                      <h4 className="mb-1 text-sm font-semibold text-waldorf-clay-700">Import HTML</h4>
+                      <p className="mb-2 text-xs text-waldorf-clay-500">Paste full HTML markup, then apply to replace editor body content.</p>
+                      <textarea
+                        value={importHtml}
+                        onChange={(event) => setImportHtml(event.target.value)}
+                        rows={10}
+                        className="w-full rounded-lg border border-waldorf-cream-300 bg-white px-3 py-2 font-mono text-xs text-waldorf-clay-700"
                       />
-                      Single block
-                    </label>
-                    {previewScope === 'block' && (
-                      <select
-                        value={Math.min(previewBlockIndex, editorBlocks.length - 1)}
-                        onChange={(event) => setPreviewBlockIndex(Number(event.target.value))}
-                        className="rounded border border-waldorf-cream-300 bg-white px-2 py-1 text-xs text-waldorf-clay-700"
-                      >
-                        {editorBlocks.map((block, index) => (
-                          <option key={`${block.type}-${index}`} value={index}>
-                            {index + 1}. {getEmailBlockTypeDefinition(block.type).label}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="mt-3 flex gap-2">
+                        <button
+                          type="button"
+                          onClick={handleApplyImportedHtml}
+                          className="rounded-lg bg-waldorf-sage-600 px-3 py-2 text-sm font-medium text-white hover:bg-waldorf-sage-700"
+                        >
+                          Apply Imported HTML
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowImportPanel(false)}
+                          className={secondaryButtonClass}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </section>
+              </div>
+
+              {/* Preview column */}
+              <div className="space-y-6 xl:sticky xl:top-6">
+                <section className={`${cardClass} overflow-hidden`}>
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-waldorf-cream-200 px-5 py-4">
+                    <div>
+                      <h3 className={cardTitleClass}>Live preview</h3>
+                      <p className="mt-0.5 text-xs text-waldorf-clay-500">
+                        Sample data · updates as you edit.{' '}
+                        {showBlockList && previewScope === 'block'
+                          ? 'Body shows the selected block only.'
+                          : showBlockList
+                            ? 'Visible blocks in order, wrapped like a sent message.'
+                            : 'Subject and body with demo tokens.'}
+                      </p>
+                    </div>
+                    {showBlockList && editorBlocks && editorBlocks.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-2 text-xs">
+                        <div className="inline-flex overflow-hidden rounded-lg border border-waldorf-cream-300">
+                          <button
+                            type="button"
+                            onClick={() => setPreviewScope('combined')}
+                            aria-pressed={previewScope === 'combined'}
+                            className={`px-3 py-1.5 font-medium ${previewScope === 'combined' ? 'bg-waldorf-clay-700 text-white' : 'bg-white text-waldorf-clay-600 hover:bg-waldorf-cream-50'}`}
+                          >
+                            Combined
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPreviewScope('block')}
+                            aria-pressed={previewScope === 'block'}
+                            className={`border-l border-waldorf-cream-300 px-3 py-1.5 font-medium ${previewScope === 'block' ? 'bg-waldorf-clay-700 text-white' : 'bg-white text-waldorf-clay-600 hover:bg-waldorf-cream-50'}`}
+                          >
+                            Single block
+                          </button>
+                        </div>
+                        {previewScope === 'block' && (
+                          <select
+                            value={Math.min(previewBlockIndex, editorBlocks.length - 1)}
+                            onChange={(event) => setPreviewBlockIndex(Number(event.target.value))}
+                            aria-label="Block to preview"
+                            className="rounded-lg border border-waldorf-cream-300 bg-white px-2 py-1.5 text-xs text-waldorf-clay-700"
+                          >
+                            {editorBlocks.map((block, index) => (
+                              <option key={`${block.type}-${index}`} value={index}>
+                                {index + 1}. {getEmailBlockTypeDefinition(block.type).label}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
                     )}
                   </div>
-                )}
 
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {isNew ? (
-                    <button
-                      onClick={handleCreate}
-                      disabled={isSaving || hasValidationIssues}
-                      className="rounded-lg bg-waldorf-sage-600 px-3 py-2 text-sm text-white disabled:opacity-50"
-                    >
-                      Create
-                    </button>
-                  ) : (
-                    <>
-                      <button
-                        onClick={handleSave}
-                        disabled={isSaving || hasValidationIssues}
-                        className="rounded-lg bg-waldorf-peach-600 px-3 py-2 text-sm text-white disabled:opacity-50"
-                      >
-                        Save
-                      </button>
-                      <button
-                        onClick={handleDuplicate}
-                        disabled={isSaving}
-                        className="rounded-lg border border-waldorf-cream-300 px-3 py-2 text-sm text-waldorf-clay-700 disabled:opacity-50"
-                      >
-                        Duplicate
-                      </button>
-                      <button
-                        onClick={handleDelete}
-                        disabled={isSaving}
-                        className="rounded-lg bg-red-600 px-3 py-2 text-sm text-white disabled:opacity-50"
-                      >
-                        Delete
-                      </button>
-                    </>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setImportHtml(bodyTemplate)
-                      setShowImportPanel((prev) => !prev)
-                    }}
-                    disabled={isSaving}
-                    className="rounded-lg border border-waldorf-cream-300 px-3 py-2 text-sm text-waldorf-clay-700 disabled:opacity-50"
-                  >
-                    Import HTML
-                  </button>
-                  <label className="cursor-pointer rounded-lg border border-waldorf-cream-300 px-3 py-2 text-sm text-waldorf-clay-700 hover:bg-waldorf-cream-100">
-                    Upload .html
-                    <input
-                      type="file"
-                      accept=".html,text/html"
-                      className="hidden"
-                      onChange={(event) => void handleImportFile(event)}
-                    />
-                  </label>
-                </div>
-
-                {showImportPanel && (
-                  <div className="mt-4 rounded-lg border border-waldorf-cream-200 bg-waldorf-cream-50 p-4">
-                    <h3 className="mb-2 text-sm font-semibold text-waldorf-clay-700">Import HTML</h3>
-                    <p className="mb-2 text-xs text-waldorf-clay-500">Paste full HTML markup, then apply to replace editor body content.</p>
-                    <textarea
-                      value={importHtml}
-                      onChange={(event) => setImportHtml(event.target.value)}
-                      rows={10}
-                      className="w-full rounded-lg border border-waldorf-cream-300 bg-white px-3 py-2 font-mono text-xs text-waldorf-clay-700"
-                    />
-                    <div className="mt-3 flex gap-2">
-                      <button
-                        type="button"
-                        onClick={handleApplyImportedHtml}
-                        className="rounded-lg bg-waldorf-sage-600 px-3 py-2 text-sm text-white hover:opacity-90"
-                      >
-                        Apply Imported HTML
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowImportPanel(false)}
-                        className="rounded-lg border border-waldorf-cream-300 px-3 py-2 text-sm text-waldorf-clay-700 hover:bg-white"
-                      >
-                        Cancel
-                      </button>
-                    </div>
+                  <div className="flex items-baseline gap-3 border-b border-waldorf-cream-200 bg-waldorf-cream-50/60 px-5 py-3">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-waldorf-clay-400">Subject</span>
+                    <span className="text-sm font-medium text-waldorf-clay-800">{livePreview.subject || '(empty)'}</span>
                   </div>
-                )}
 
-                {validation.issues.length > 0 && (
-                  <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                    {validation.issues.map((issue, index) => (
-                      <p key={`${issue.field}-${index}`}>- {issue.message}</p>
-                    ))}
+                  <div className="bg-waldorf-cream-100/60 p-4">
+                    {livePreviewResolvingGallery ? (
+                      <p className="py-8 text-center text-xs text-waldorf-clay-500">Loading image previews (gallery URLs)…</p>
+                    ) : (
+                      <EmailPreviewFrame html={livePreviewFrameHtml} decode={decodePreviewHtml} />
+                    )}
                   </div>
-                )}
 
-                {importDetectionMessage && (
-                  <div className="mt-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800">
-                    {importDetectionMessage}
-                  </div>
-                )}
-
-                {importIssues.length > 0 && (
-                  <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                    <p className="font-semibold">Imported HTML compatibility issues</p>
-                    {importIssues.map((issue, index) => (
-                      <p key={`${issue.code}-${index}`}>- {issue.message}</p>
-                    ))}
-                  </div>
-                )}
-
-                <div className="mt-4 rounded-lg border border-waldorf-cream-200 bg-waldorf-cream-50 p-4">
-                  <h3 className="mb-1 text-sm font-semibold text-waldorf-clay-700">Live preview (sample data)</h3>
-                  <p className="mb-3 text-xs text-waldorf-clay-500">
-                    Updates as you edit.{' '}
-                    {showBlockList && previewScope === 'block'
-                      ? 'Subject uses global tokens; body is the selected block only (repeaters use demo articles).'
-                      : showBlockList
-                        ? 'Full assembled email: visible blocks in order, wrapped like a sent message.'
-                        : 'Legacy single body: subject and body templates with truncated demo tokens.'}
-                  </p>
-                  <p className="mb-2 text-xs text-waldorf-clay-500">Subject</p>
-                  <p className="mb-3 text-sm text-waldorf-clay-700">{livePreview.subject || '(empty)'}</p>
-                  <p className="mb-2 text-xs text-waldorf-clay-500">HTML body</p>
-                  {livePreviewResolvingGallery ? (
-                    <p className="text-xs text-waldorf-clay-500">Loading image previews (gallery URLs)…</p>
-                  ) : (
-                    <EmailPreviewFrame html={livePreviewFrameHtml} decode={decodePreviewHtml} />
-                  )}
                   {livePreview.warnings.length > 0 && (
-                    <div className="mt-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                    <div className="border-t border-amber-200 bg-amber-50 px-5 py-3 text-xs text-amber-700">
                       {livePreview.warnings.map((warning, index) => (
                         <p key={`${index}-${warning}`}>- {warning}</p>
                       ))}
                     </div>
                   )}
-                </div>
-              </>
-            )}
-          </div>
+                </section>
 
-          <div className="rounded-xl border border-waldorf-cream-200 bg-white p-4">
-            <h3 className="mb-2 text-sm font-semibold text-waldorf-clay-700">Allowed Tokens</h3>
-            <ul className="space-y-1 text-sm text-waldorf-clay-600">
-              {EMAIL_TEMPLATE_TOKENS.map((token) => (
-                <li key={token}>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onMouseDown={(event) => {
-                        event.preventDefault()
-                        handleInsertToken(token)
-                      }}
-                      className="rounded border border-waldorf-cream-300 bg-white px-2 py-1 text-left text-sm text-waldorf-clay-700 hover:bg-waldorf-cream-100"
-                    >
-                      {`{{${token}}}`}
-                    </button>
-                    <span className="text-xs text-waldorf-clay-500">{`e.g. ${TOKEN_EXAMPLES[token]}`}</span>
+                <section className={`${cardClass} p-5`}>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <h3 className={cardTitleClass}>Tokens</h3>
+                    <span className="text-[11px] text-waldorf-clay-400">
+                      {bodyEditor ? 'Click to insert at the cursor' : 'Click to copy'}
+                    </span>
                   </div>
-                </li>
-              ))}
-            </ul>
-          </div>
+                  <ul className="mt-3 grid gap-1.5 sm:grid-cols-2">
+                    {EMAIL_TEMPLATE_TOKENS.map((token) => (
+                      <li key={token}>
+                        <button
+                          type="button"
+                          onMouseDown={(event) => {
+                            event.preventDefault()
+                            handleTokenChipClick(token)
+                          }}
+                          title={`e.g. ${TOKEN_EXAMPLES[token]}`}
+                          className="group flex w-full flex-col items-start rounded-lg border border-waldorf-cream-200 bg-white px-2.5 py-1.5 text-left transition-colors hover:border-waldorf-sage-300 hover:bg-waldorf-sage-50"
+                        >
+                          <span className="font-mono text-xs text-waldorf-clay-800">
+                            {copiedToken === token ? 'Copied!' : `{{${token}}}`}
+                          </span>
+                          <span className="truncate text-[11px] text-waldorf-clay-400 group-hover:text-waldorf-clay-500">{`e.g. ${TOKEN_EXAMPLES[token]}`}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              </div>
+            </div>
+          )}
         </div>
       </AdminLayout>
     </ErrorBoundary>

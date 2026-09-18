@@ -95,6 +95,14 @@ function isGlobalToken(token: string): token is GlobalToken {
  * - Empty `blocks: []` is allowed (legacy revisions backfilled with a single
  *   block; tests pass `undefined` to opt out of block validation).
  */
+/** Config keys whose values the block renderer substitutes as `{{key}}` tokens. */
+function scalarConfigTokenNames(config: EmailTemplateBlock['config'] | undefined): string[] {
+  if (!config || typeof config !== 'object') return []
+  return Object.entries(config)
+    .filter(([, value]) => typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')
+    .map(([key]) => key)
+}
+
 export function validateEmailTemplate(
   subjectTemplate: string,
   bodyTemplate: string,
@@ -158,6 +166,9 @@ export function validateEmailTemplate(
       const allowedInnerTokens = new Set<string>([
         ...EMAIL_TEMPLATE_TOKENS,
         ...definition.innerScopeTokens,
+        // The renderer exposes scalar config values (e.g. header brandName,
+        // footer tel) as tokens inside the block body, so allow them here too.
+        ...scalarConfigTokenNames(block.config),
       ])
       for (const token of listTokens(block.bodyHtml)) {
         if (!allowedInnerTokens.has(token)) {

@@ -426,6 +426,37 @@ function NewsletterAdminDashboard() {
 
   const displayedNewsletters = showTemplateList ? templateNewsletters : newsletters
 
+  const newsletterSummary = [
+    {
+      key: 'draft',
+      label: '草稿',
+      hint: '尚未發布',
+      count: newsletters.filter((n) => n.status === 'draft').length,
+      tone: 'border-waldorf-peach-200 bg-waldorf-peach-50/70 text-waldorf-peach-700',
+    },
+    {
+      key: 'published',
+      label: '已發布',
+      hint: '已寄送給家長',
+      count: newsletters.filter((n) => n.status === 'published').length,
+      tone: 'border-waldorf-sage-200 bg-waldorf-sage-50/70 text-waldorf-sage-700',
+    },
+    {
+      key: 'archived',
+      label: '已封存',
+      hint: '歷史期數',
+      count: newsletters.filter((n) => n.status === 'archived').length,
+      tone: 'border-waldorf-cream-300 bg-waldorf-cream-100/70 text-waldorf-clay-600',
+    },
+    {
+      key: 'templates',
+      label: '模板',
+      hint: '可重複使用的結構',
+      count: templateNewsletters.length,
+      tone: 'border-waldorf-lavender-200 bg-waldorf-lavender-50/70 text-waldorf-lavender-700',
+    },
+  ]
+
   // --- User Functions ---
 
   const fetchUsers = async () => {
@@ -671,6 +702,14 @@ function NewsletterAdminDashboard() {
     <ErrorBoundary>
       <AdminLayout
         activeTab={activeTab}
+        title={activeTab === 'audit' ? 'Audit Logs' : activeTab === 'users' ? 'User Management' : 'Newsletters'}
+        description={
+          activeTab === 'audit'
+            ? 'Authentication, operation and access-control traces.'
+            : activeTab === 'users'
+              ? 'Read-only history; roles and eligibility are managed in SMZ Auth.'
+              : '建立草稿 → 編排文章 → 預覽郵件 → 發布寄送。點選任一期進入編排頁。'
+        }
         headerAction={
           activeTab === 'newsletters' ? (
             <button
@@ -740,6 +779,22 @@ function NewsletterAdminDashboard() {
             {/* Newsletters Tab */}
             {activeTab === 'newsletters' && (
               <>
+                {!isNewsletterLoading && !newsletterError && (
+                  <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+                    {newsletterSummary.map((item) => (
+                      <div
+                        key={item.key}
+                        className={`rounded-xl border px-4 py-3 ${item.tone} ${
+                          item.key === 'templates' && showTemplateList ? 'ring-2 ring-waldorf-lavender-300' : ''
+                        }`}
+                      >
+                        <p className="text-xs font-semibold uppercase tracking-wider opacity-80">{item.label}</p>
+                        <p className="mt-1 font-display text-3xl font-semibold leading-none">{item.count}</p>
+                        <p className="mt-1 text-[11px] opacity-70">{item.hint}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <NewsletterTable
                   newsletters={displayedNewsletters}
                   isLoading={isNewsletterLoading}
