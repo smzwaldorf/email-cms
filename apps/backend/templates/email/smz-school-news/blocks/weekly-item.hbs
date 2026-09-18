@@ -1,15 +1,19 @@
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#fdf6ee;background-image:repeating-linear-gradient(0deg,transparent,transparent 23px,#f3e7d7 24px),repeating-linear-gradient(90deg,transparent,transparent 23px,#f3e7d7 24px);">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#fdf8f4;background-image:repeating-linear-gradient(0deg,rgba(243,231,215,0) 0,rgba(243,231,215,0) 23px,#f1e4d6 23px,#f1e4d6 24px),repeating-linear-gradient(90deg,rgba(243,231,215,0) 0,rgba(243,231,215,0) 23px,#f1e4d6 23px,#f1e4d6 24px);">
   <tr>
-    <td style="padding:10px 32px 6px;">
+    <td style="padding:10px 36px 8px;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr>
-          <td width="20" valign="top" style="width:20px;padding-top:2px;">
-            <span style="color:#f29fae;font-size:14px;line-height:1;">&#9679;</span>
+          <td width="18" valign="top" style="width:18px;padding-top:7px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td width="9" height="9" style="width:9px;height:9px;border-radius:50%;background-color:#df97a7;font-size:0;line-height:0;">&nbsp;</td>
+              </tr>
+            </table>
           </td>
-          <td valign="top">
-            <a href="{{article.url}}" style="font-family:'Noto Sans TC','PingFang TC','Microsoft JhengHei',Arial,sans-serif;font-size:16px;font-weight:700;color:#574a42;text-decoration:none;">{{article.title}}</a>
-            <div style="margin-top:3px;font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:11px;letter-spacing:1px;color:#b3a89f;">{{article.date}}</div>
-            <div style="margin-top:5px;font-family:'Noto Sans TC','PingFang TC',Arial,sans-serif;font-size:13px;line-height:1.8;color:#857a71;">{{article.excerpt}} <a href="{{article.url}}" style="color:#ef9fb0;text-decoration:none;font-weight:600;">{{readMoreLabel}}</a></div>
+          <td valign="top" style="padding-left:6px;">
+            <a href="{{article.url}}" style="font-family:'Noto Sans TC','PingFang TC','Microsoft JhengHei',Arial,Helvetica,sans-serif;font-size:16px;line-height:1.35;font-weight:700;color:#4a4039;text-decoration:underline;">{{article.title}}</a>
+            <div style="margin-top:3px;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:1.4;letter-spacing:0.5px;color:#b9a48f;">{{article.date}}</div>
+            <div style="margin-top:6px;font-family:'Noto Sans TC','PingFang TC','Microsoft JhengHei',Arial,Helvetica,sans-serif;font-size:13px;line-height:1.85;color:#6e6057;">{{article.excerpt}} <a href="{{article.url}}" style="color:#6e6057;text-decoration:none;">{{readMoreLabel}}</a></div>
           </td>
         </tr>
       </table>

@@ -1,8 +1,8 @@
 {
   "sourceId": "smz-school-news",
   "name": "SMZ School News",
-  "description": "Watercolor-style weekly newsletter matching the SMZ School News design: featured school cards, per-class news cards, and the weekly announcement list (本週重要事情佈達).",
-  "version": "1.0.0",
+  "description": "Watercolor-style weekly newsletter matching the SMZ School News design: featured school cards, per-class news cards, the weekly announcement list (本週重要事情佈達), an About us panel and the contact footer.",
+  "version": "1.1.0",
   "subject": "subject.hbs",
   "partials": [
     {
@@ -21,7 +21,7 @@
       "config": {
         "brandName": "善美真華德福教育",
         "scriptTitle": "SMZ School News",
-        "tagline": "每週校園新聞與班級動態"
+        "logoUrl": ""
       }
     },
     {
@@ -36,7 +36,7 @@
         "eyebrow": "REGARDING SCHOOL",
         "ctaLabel": "READ MORE",
         "maxItems": 3,
-        "excerptLength": 110,
+        "excerptLength": 84,
         "excludeSourceTag": "weekly"
       }
     },
@@ -51,7 +51,7 @@
         "eyebrow": "CLASS NEWS & EVENTS",
         "ctaLabel": "READ MORE",
         "maxItemsPerClass": 2,
-        "excerptLength": 110
+        "excerptLength": 84
       }
     },
     {
@@ -76,7 +76,7 @@
       "articleSource": "weeklyItems",
       "config": {
         "sourceTag": "weekly",
-        "excerptLength": 64,
+        "excerptLength": 72,
         "readMoreLabel": "read more..."
       }
     },
@@ -101,22 +101,38 @@
       }
     },
     {
-      "id": "footer",
+      "id": "about",
       "mode": "static",
-      "type": "footer",
-      "label": "About us / footer",
-      "file": "blocks/footer.hbs",
+      "type": "about",
+      "label": "About us / 認識 善美真",
+      "file": "blocks/about.hbs",
       "order": 7,
       "config": {
         "aboutTitleEn": "About us",
         "aboutTitleZh": "認識 善美真",
-        "schoolMission": "校名「善美真」，就是希望型塑華德福人性的善、美、真，做為教育的核心信念，建立一個與大自然融合的學習平台，幫助成人和學童身心靈知覺均衡發展。",
+        "aboutImageUrl": "",
+        "schoolMission": "取名「善美真」，就是希望培養人性的善、美、真，做為教育的核心價值，建立一個與大自然融合的學習平台，幫助成人和學童身心靈保持整體動態的平衡與健康，並持續不斷地成長。在學習各種知識和生活藝能的同時，豐富心靈美感。",
+        "aboutUrl": "",
+        "aboutCtaLabel": "READ MORE"
+      }
+    },
+    {
+      "id": "footer",
+      "mode": "static",
+      "type": "footer",
+      "label": "Contact footer",
+      "file": "blocks/footer.hbs",
+      "order": 8,
+      "config": {
         "schoolName": "善美真華德福實驗教育機構",
         "tel": "04-26263111",
         "fax": "04-26283830",
         "address": "436 臺中市清水區公正路 52 號",
         "facebookUrl": "https://www.facebook.com/smzwaldorf",
-        "facebookLabel": "Facebook 粉絲專頁"
+        "facebookLabel": "Facebook 粉絲專頁",
+        "instagramUrl": "",
+        "contactEmail": "",
+        "websiteUrl": ""
       }
     }
   ]

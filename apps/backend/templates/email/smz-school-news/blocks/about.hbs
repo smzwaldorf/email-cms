@@ -1,0 +1,63 @@
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;">
+  <tr>
+    <td style="padding:26px 36px 6px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td valign="bottom">
+            <span style="display:inline-block;font-family:'Snell Roundhand','Brush Script MT','Segoe Script','Savoye LET',cursive;font-size:40px;line-height:1;color:#9c7c65;white-space:nowrap;">{{aboutTitleEn}}</span>
+            <span style="display:inline-block;margin-left:16px;font-family:'Noto Sans TC','PingFang TC','Microsoft JhengHei',Arial,Helvetica,sans-serif;font-size:18px;line-height:1.2;font-weight:700;letter-spacing:4px;color:#4a4039;vertical-align:8px;">{{aboutTitleZh}}</span>
+          </td>
+          <td valign="bottom" align="right" style="text-align:right;padding-bottom:12px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="right">
+              <tr>
+                <td width="14" height="7" style="width:14px;height:7px;border-radius:4px;background-color:#f0cf72;font-size:0;line-height:0;">&nbsp;</td>
+                <td width="5" style="width:5px;font-size:0;line-height:0;">&nbsp;</td>
+                <td width="14" height="7" style="width:14px;height:7px;border-radius:4px;background-color:#e8a07f;font-size:0;line-height:0;">&nbsp;</td>
+                <td width="5" style="width:5px;font-size:0;line-height:0;">&nbsp;</td>
+                <td width="14" height="7" style="width:14px;height:7px;border-radius:4px;background-color:#e89eab;font-size:0;line-height:0;">&nbsp;</td>
+                <td width="5" style="width:5px;font-size:0;line-height:0;">&nbsp;</td>
+                <td width="14" height="7" style="width:14px;height:7px;border-radius:4px;background-color:#98bee5;font-size:0;line-height:0;">&nbsp;</td>
+                <td width="5" style="width:5px;font-size:0;line-height:0;">&nbsp;</td>
+                <td width="14" height="7" style="width:14px;height:7px;border-radius:4px;background-color:#b8d8c0;font-size:0;line-height:0;">&nbsp;</td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:12px 36px 30px;font-size:0;line-height:0;text-align:left;">
+      {{#if aboutImageUrl}}
+      <!-- Fluid columns: portrait left, mission panel right; stacked on narrow screens -->
+      <div style="display:inline-block;width:100%;max-width:268px;vertical-align:middle;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td style="padding:0 18px 14px 0;">
+              <img src="{{aboutImageUrl}}" width="250" alt="{{aboutTitleZh}}" style="display:block;width:100%;max-width:250px;height:auto;border:0;border-radius:46% 42% 48% 40% / 42% 48% 40% 46%;background-color:#f1ddd2;" />
+            </td>
+          </tr>
+        </table>
+      </div>
+      {{/if}}
+      <div style="display:inline-block;width:100%;max-width:{{#if aboutImageUrl}}300px{{else}}568px{{/if}};vertical-align:middle;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f0e5de;background-image:linear-gradient(180deg,#f3e8e1 0%,#ecdfd7 100%);border-radius:22px 30px 22px 26px;">
+          <tr>
+            <td style="padding:22px 24px 20px;">
+              <div style="font-family:'Noto Sans TC','PingFang TC','Microsoft JhengHei',Arial,Helvetica,sans-serif;font-size:13px;line-height:1.9;color:#5c4e45;">{{schoolMission}}</div>
+              {{#if aboutUrl}}
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:16px;">
+                <tr>
+                  <td align="center" style="text-align:center;">
+                    {{> ctaButton url=aboutUrl label=aboutCtaLabel align="center"}}
+                  </td>
+                </tr>
+              </table>
+              {{/if}}
+            </td>
+          </tr>
+        </table>
+      </div>
+    </td>
+  </tr>
+</table>

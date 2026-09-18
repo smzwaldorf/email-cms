@@ -1,7 +1,7 @@
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:4px auto 2px;">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="{{#if align}}{{align}}{{else}}center{{/if}}">
   <tr>
-    <td style="background-color:#f3a9b8;border-radius:999px;">
-      <a href="{{url}}" style="display:inline-block;padding:11px 34px;color:#ffffff;font-family:Arial,'Noto Sans TC','PingFang TC',sans-serif;font-size:12px;font-weight:700;letter-spacing:4px;text-decoration:none;text-transform:uppercase;">{{label}}</a>
+    <td align="center" style="background-color:#f3bcc2;background-image:linear-gradient(180deg,#f8c8cc 0%,#efb2b9 100%);border-radius:14px;">
+      <a href="{{url}}" style="display:inline-block;min-width:130px;padding:10px 34px;color:#ffffff;font-family:Arial,Helvetica,'Noto Sans TC','PingFang TC',sans-serif;font-size:12px;line-height:1.4;font-weight:700;letter-spacing:3px;text-align:center;text-decoration:none;text-transform:uppercase;">{{label}}</a>
     </td>
   </tr>
 </table>

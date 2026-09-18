@@ -124,8 +124,35 @@ describe('smz-school-news file template bundle', () => {
       'weekly-summary-list',
       'custom-html',
       'custom-html',
+      'about',
       'footer',
     ])
+  })
+
+  it('hides optional brand assets and links until they are configured', () => {
+    const preview = loadPreview()
+    const blockById = new Map(
+      preview.blocks.map((block) => [String(block.config.fileTemplateBlockId), block]),
+    )
+
+    // No logo URL configured: the header falls back to the CSS watercolor mark.
+    const header = blockById.get('header')
+    expect(header?.bodyHtml).not.toContain('<img')
+    expect(header?.bodyHtml).toContain('border-radius:50%')
+
+    // About panel renders the mission text-only when no portrait is configured.
+    const about = blockById.get('about')
+    expect(about?.bodyHtml).toContain('認識 善美真')
+    expect(about?.bodyHtml).toContain('取名「善美真」')
+    expect(about?.bodyHtml).not.toContain('<img')
+
+    // Footer only renders social icons for configured destinations.
+    const footer = blockById.get('footer')
+    expect(footer?.bodyHtml).toContain('https://www.facebook.com/smzwaldorf')
+    expect(footer?.bodyHtml).toContain('04-26263111')
+    expect(footer?.bodyHtml).not.toContain('mailto:')
+    expect(footer?.bodyHtml).not.toContain('>IG<')
+    expect(footer?.bodyHtml).not.toContain('>WWW<')
   })
 
   it('preserves delivery tokens in the synced block snapshot', () => {
@@ -194,6 +221,8 @@ describe('smz-school-news file template bundle', () => {
     expect(bodyA).toContain('The weekly news')
     expect(bodyA).toContain('REGARDING SCHOOL')
     expect(bodyA).toContain('CLASS NEWS &amp; EVENTS · 癸卯班')
+    expect(bodyA).toContain('About us')
+    expect(bodyA).toContain('善美真華德福實驗教育機構')
 
     // Wrapped as a complete HTML document for delivery.
     expect(bodyA).toContain('<!doctype html>')
