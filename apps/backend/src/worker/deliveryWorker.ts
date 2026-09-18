@@ -53,6 +53,33 @@ export class NewsletterDeliveryWorker {
     return processed
   }
 
+  /**
+   * Process one queued job for an explicitly named batch. This is used for
+   * operational recovery so retrying one newsletter cannot consume any other
+   * queued delivery work.
+   */
+  async runBatchOnce(batchId: string): Promise<number> {
+    const { data, error } = await this.supabase
+      .from('newsletter_delivery_jobs')
+      .select('*')
+      .eq('batch_id', batchId)
+      .eq('status', 'queued')
+      .lte('run_after', nowIso())
+      .order('created_at', { ascending: true })
+      .limit(1)
+
+    if (error) {
+      throw new Error(`Failed to read newsletter delivery batch ${batchId}: ${error.message}`)
+    }
+
+    const job = (data?.[0] as NewsletterDeliveryJobRow | undefined)
+    if (!job) return 0
+    const claimed = await this.claim(job)
+    if (!claimed) return 0
+    await this.process(claimed)
+    return 1
+  }
+
   private async claim(job: NewsletterDeliveryJobRow): Promise<NewsletterDeliveryJobRow | null> {
     const { data, error } = await this.supabase
       .from('newsletter_delivery_jobs')

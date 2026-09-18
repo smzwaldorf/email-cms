@@ -9,6 +9,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "worker:start": "node dist/worker/index.js",
+    "worker:batch": "node dist/worker/processBatch.js",
     "test": "vitest --run --config vitest.config.ts",
     "prebuild": "node ../../scripts/cloudflare-templates.mjs",
     "postbuild": "node ../../scripts/backend-build-imports.mjs"
