@@ -1,3 +1,4 @@
+import {currentDirectory,classAliases} from '#/services/identityDirectory'
 /**
  * Admin Service
  * Handles CRUD operations for admin dashboard (newsletters, articles, classes, families, users)
@@ -909,6 +910,7 @@ class AdminService {
   private mapFamilyRow(row: FamilyRow): Family {
     return {
       id: row.id,
+      code: row.family_code,
       name: row.family_name || row.family_code || '',
       description: row.description || '',
       relatedTopics: Array.isArray(row.related_topics) ? row.related_topics : [],
@@ -952,32 +954,7 @@ class AdminService {
     return { targetingMode: 'targeted', targetClassIds: uniqueClassIds }
   }
 
-  private async validateTargetClassIds(targetClassIds: string[]): Promise<void> {
-    if (targetClassIds.length === 0) return
-
-    const supabase = getSupabaseClient()
-    const { data, error } = await supabase
-      .from('classes')
-      .select('id')
-      .in('id', targetClassIds)
-
-    if (error) {
-      throw new AdminServiceError(
-        `Failed to validate target classes: ${error.message}`,
-        'VALIDATION_ERROR',
-        error
-      )
-    }
-
-    const validIds = new Set((data || []).map((row: IdOnlyRow) => row.id))
-    const unknownIds = targetClassIds.filter((id) => !validIds.has(id))
-    if (unknownIds.length > 0) {
-      throw new AdminServiceError(
-        `Unknown class IDs: ${unknownIds.join(', ')}`,
-        'VALIDATION_ERROR'
-      )
-    }
-  }
+  private async validateTargetClassIds(targetClassIds: string[]): Promise<void> { if(!targetClassIds.length)return; const classes=await classAliases(await currentDirectory()); const unknownIds=targetClassIds.filter(id=>!classes.some(c=>c.id===id)); if(unknownIds.length)throw new AdminServiceError('Unknown Auth class IDs: '+unknownIds.join(', '),'VALIDATION_ERROR') }
 
   private mapNewsletterRow(row: NewsletterRow, articleCount: number = 0): AdminNewsletter {
     return {
@@ -1500,6 +1477,8 @@ class AdminService {
       )
       audienceSummary = {
         mode: preview.selection.mode,
+        eligibleRecipientCount: preview.eligibleRecipientCount,
+        exclusionReasons: preview.exclusionReasons,
         totalCandidates: preview.totalCandidates,
         eligibleCount: preview.eligibleCount,
         ineligibleCount: preview.ineligibleCount,
@@ -1507,6 +1486,9 @@ class AdminService {
         selectedFamilyIds: preview.selection.mode === 'family'
           ? (preview.selection.familyId ? [preview.selection.familyId] : [])
           : (preview.selection.familyIds ?? []),
+      }
+      if (preview.eligibleCount === 0) {
+        issues.push('沒有可投遞的家長，請檢查班級、家庭訂閱及家長電子郵件')
       }
     } catch (err) {
       issues.push('無法確認投遞對象，請稍後重試')
@@ -3925,90 +3907,7 @@ class AdminService {
   /**
    * Fetch all classes
    */
-  async fetchClasses(options: FetchClassesOptions = {}): Promise<Class[]> {
-    try {
-      const supabase = getSupabaseClient()
-
-      let classQuery = supabase
-        .from('classes')
-        .select('*')
-      if (!options.includeInactive) {
-        classQuery = classQuery.eq('is_active', true)
-      }
-      const { data, error } = await classQuery
-        .order('class_name', { ascending: true })
-
-      if (error) {
-        throw new AdminServiceError(
-          `Failed to fetch classes: ${error.message}`,
-          'FETCH_CLASSES_ERROR',
-          error
-        )
-      }
-
-      // Fetch student enrollments and teacher assignments for all classes
-      const classIds = (data || []).map((row: ClassRow) => row.id)
-
-      const { data: enrollments, error: enrollmentError } = await supabase
-        .from('student_class_enrollment')
-        .select('class_id, student_id')
-        .in('class_id', classIds)
-
-      if (enrollmentError) {
-        // Log error but don't fail - classes can exist without students
-        console.error('Failed to fetch class enrollments:', enrollmentError)
-      }
-
-      const { data: teacherAssignments, error: teacherError } = await supabase
-        .from('teacher_class_assignment')
-        .select('class_id, teacher_id')
-        .in('class_id', classIds)
-
-      if (teacherError) {
-        // Log error but don't fail - classes can exist without teachers
-        console.error('Failed to fetch teacher assignments:', teacherError)
-      }
-
-      // Build a map of class_id -> student_ids array
-      const studentsByClass = new Map<string, string[]>()
-      ;(enrollments || []).forEach((enrollment: StudentClassPairRow) => {
-        if (!studentsByClass.has(enrollment.class_id)) {
-          studentsByClass.set(enrollment.class_id, [])
-        }
-        studentsByClass.get(enrollment.class_id)!.push(enrollment.student_id)
-      })
-
-      // Build a map of class_id -> teacher_ids array
-      const teachersByClass = new Map<string, string[]>()
-      ;(teacherAssignments || []).forEach((assignment: TeacherClassPairRow) => {
-        if (!teachersByClass.has(assignment.class_id)) {
-          teachersByClass.set(assignment.class_id, [])
-        }
-        teachersByClass.get(assignment.class_id)!.push(assignment.teacher_id)
-      })
-
-      return (data || []).map((row: ClassRow) => ({
-        id: row.id,
-        code: row.class_code || row.id,
-        name: row.class_name,
-        description: row.description || '',
-        gradeYear: row.class_grade_year,
-        isActive: row.is_active ?? true,
-        deactivatedAt: row.deactivated_at ?? null,
-        studentIds: studentsByClass.get(row.id) || [],
-        teacherIds: teachersByClass.get(row.id) || [],
-        createdAt: row.created_at,
-        updatedAt: row.updated_at || row.created_at,
-      }))
-    } catch (err) {
-      if (err instanceof AdminServiceError) throw err
-      throw new AdminServiceError(
-        `Error fetching classes: ${err instanceof Error ? err.message : String(err)}`,
-        'FETCH_CLASSES_ERROR',
-        err
-      )
-    }
-  }
+  async fetchClasses(options: FetchClassesOptions = {}): Promise<Class[]> { void options; const directory=await currentDirectory(); const aliases=await classAliases(directory); return directory.classes.map(c=>({id:c.id,legacyIds:aliases.filter(a=>a.authId===c.id && a.id!==c.id).map(a=>a.id),code:c.code,name:c.displayName,description:'',gradeYear:0,isActive:true,deactivatedAt:null,studentIds:[],teacherIds:[],createdAt:'',updatedAt:''})) }
 
   /**
    * Create class
@@ -4635,38 +4534,7 @@ class AdminService {
   /**
    * Fetch families (active by default)
    */
-  async fetchFamilies(options: FetchFamiliesOptions = {}): Promise<Family[]> {
-    try {
-      const supabase = getSupabaseClient()
-      let query = supabase
-        .from('families')
-        .select('*')
-        .order('family_code', { ascending: true })
-
-      if (!options.includeInactive) {
-        query = query.eq('is_active', true)
-      }
-
-      const { data, error } = await query
-
-      if (error) {
-        throw new AdminServiceError(
-          `Failed to fetch families: ${error.message}`,
-          'FETCH_FAMILIES_ERROR',
-          error
-        )
-      }
-
-      return (data || []).map((row: FamilyRow) => this.mapFamilyRow(row))
-    } catch (err) {
-      if (err instanceof AdminServiceError) throw err
-      throw new AdminServiceError(
-        `Error fetching families: ${err instanceof Error ? err.message : String(err)}`,
-        'FETCH_FAMILIES_ERROR',
-        err
-      )
-    }
-  }
+  async fetchFamilies(options: FetchFamiliesOptions = {}): Promise<Family[]> { void options; const directory=await currentDirectory(); return directory.families.map(f=>({id:f.id,code:f.code,name:f.displayName,description:'',relatedTopics:[],isActive:true,deactivatedAt:null,createdAt:'',updatedAt:''})) }
 
   /**
    * Create family

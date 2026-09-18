@@ -4,7 +4,7 @@ import { adminService } from '@/services/adminService'
 
 interface AdminLayoutProps {
   children: React.ReactNode
-  activeTab?: 'newsletters' | 'articles' | 'media' | 'templates' | 'email-templates' | 'users' | 'audit' | 'classes' | 'teachers' | 'families' | 'parents' | 'students' | 'analytics'
+  activeTab?: 'newsletters' | 'articles' | 'media' | 'templates' | 'email-templates' | 'email-preview' | 'users' | 'audit' | 'classes' | 'teachers' | 'families' | 'parents' | 'students' | 'analytics'
   headerAction?: React.ReactNode
 }
 
@@ -145,7 +145,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, activeTab, h
         {/* Tab Navigation */}
         <div className="mb-8">
           <div className="bg-white/60 backdrop-blur-sm rounded-2xl border border-waldorf-cream-200 shadow-sm">
-            <nav className="flex space-x-8 px-8" aria-label="Admin Navigation">
+            <nav className="flex flex-wrap gap-x-8 px-8" aria-label="Admin Navigation">
               <TabButton
                 isActive={activeTab === 'newsletters'}
                 onClick={() => handleTabClick('newsletters')}
@@ -157,6 +157,12 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children, activeTab, h
               </TabLink>
               <TabLink to="/admin/media" isActive={activeTab === 'media'}>
                 Media
+              </TabLink>
+              <TabLink to="/admin/email-templates" isActive={activeTab === 'email-templates'}>
+                Email Templates
+              </TabLink>
+              <TabLink to="/admin/newsletters/preview" isActive={activeTab === 'email-preview'}>
+                Email Preview
               </TabLink>
               <TabButton
                 isActive={activeTab === 'audit'}

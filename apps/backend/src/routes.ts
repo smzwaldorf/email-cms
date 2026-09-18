@@ -1,11 +1,13 @@
-import { handleSessionRequest } from '#/session/http'
+import { withIdentityDirectory } from '#/services/identityDirectory'
+import { hashSessionId } from '#/session/crypto'
+import { deliveryIdentityForSessionHash, directoryForCookie, handleSessionRequest, serverSessionsEnabled, sessionId } from '#/session/http'
 import { withTransaction } from '#/lib/db'
 import { canPerformCmsAction } from '@email-cms/shared'
 import { isAllowedRpc } from '#/services/rpcPolicy'
 import { cmsArticleService } from '#/services/cmsArticleService'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { SupabaseClient } from '#/lib/supabase'
-import { HttpError, optionalViewer, requireAdmin, requireViewer } from '#/auth'
+import { directoryForToken, HttpError, optionalViewer, requireAdmin, requireViewer } from '#/auth'
 import { getSupabaseClient } from '#/lib/supabase'
 import { adminService } from '#/services/adminService'
 import {
@@ -19,6 +21,7 @@ import {
 } from '#/services/fileEmailTemplateLoader'
 import { createDefaultFileEmailTemplateRenderContext } from '#/services/fileEmailTemplatePreviewContext'
 import { newsletterDeliveryService } from '#/services/newsletterDeliveryService'
+import { resolveAuthPreviewFamily } from '#/services/authDirectoryPreview'
 import { readerService } from '#/services/readerService'
 import { runSerializedQuery, type SerializedQuery } from '#/lib/query'
 import type { DeliveryAudienceSelection } from '#/types/emailDelivery'
@@ -195,7 +198,7 @@ async function handleRpc(body: unknown): Promise<unknown> {
   return method.apply(service, args)
 }
 
-async function publishAndEnqueueDelivery(newsletterId: string, audience?: DeliveryAudienceSelection): Promise<unknown> {
+async function publishAndEnqueueDelivery(newsletterId: string, audience?: DeliveryAudienceSelection, templateRevisionId?: string | null): Promise<unknown> {
   return withTransaction(async client => {
     const { rows } = await client.query<{ status: string; is_template: boolean }>(
       'SELECT status, is_template FROM newsletters WHERE id = $1 FOR UPDATE', [newsletterId],
@@ -205,12 +208,17 @@ async function publishAndEnqueueDelivery(newsletterId: string, audience?: Delive
     const readiness = await adminService.getNewsletterPublishReadiness(newsletterId, audience)
     if (!readiness.canPublish || !readiness.audienceSummary) throw new HttpError(422, 'Newsletter or delivery audience is not ready')
     const newsletter = await adminService.publishNewsletter(newsletterId)
-    const batch = await newsletterDeliveryService.createPublishBatch({ newsletterId, audience: audience ?? { mode: 'all' } })
+    const batch = await newsletterDeliveryService.createPublishBatch({ newsletterId, audience: audience ?? { mode: 'all' }, templateRevisionId })
     return { newsletter, batch }
   })
 }
 
-export async function handleApiRequest(
+export async function handleApiRequest(request: IncomingMessage, response: ServerResponse, context: RouteContext): Promise<void> {
+ const rawSessionId=sessionId(request)
+ const sessionHash=rawSessionId ? hashSessionId(rawSessionId) : undefined
+ return withIdentityDirectory({ sessionId:sessionHash, directory: () => serverSessionsEnabled() && sessionId(request) ? directoryForCookie(request) : directoryForToken(String(request.headers.authorization ?? '').replace(/^Bearer\s+/i,'')), contacts:async () => { if(!sessionHash) throw new HttpError(403,'Server session required for delivery'); return (await deliveryIdentityForSessionHash(sessionHash)).contacts() } }, () => handleScopedApiRequest(request,response,context))
+}
+async function handleScopedApiRequest(
   request: IncomingMessage,
   response: ServerResponse,
   context: RouteContext,
@@ -274,6 +282,17 @@ export async function handleApiRequest(
       return
     }
 
+    if (method === 'GET' && url.pathname === '/api/admin/directory/families') {
+      // Email preview is an operator action. SMZ Auth remains the source of
+      // the visible family list; CMS only bridges the authenticated session.
+      await requireAdmin(request)
+      const directory = serverSessionsEnabled() && sessionId(request)
+        ? await directoryForCookie(request)
+        : await directoryForToken(String(request.headers.authorization ?? '').replace(/^Bearer\s+/i, ''))
+      sendJson(response, 200, { families: directory.families }, context.corsOrigin)
+      return
+    }
+
     if (method === 'POST' && url.pathname === '/api/auth/events') {
       const viewer = await requireViewer(request)
       const body = await readJson(request)
@@ -319,8 +338,7 @@ export async function handleApiRequest(
         throw new HttpError(400, 'Invalid query filters')
       }
       // The compatibility gateway is CMS-admin-only and cannot alter identity or delivery state.
-      const readTables = new Set(['articles', 'newsletters', 'newsletter_articles', 'classes', 'families',
-        'students', 'user_roles', 'family_enrollment', 'student_class_enrollment', 'teacher_class_assignment',
+      const readTables = new Set(['articles', 'newsletters', 'newsletter_articles',
         'article_categories', 'article_tags', 'article_category_assignments', 'article_tag_assignments',
         'media_files', 'media_usage', 'analytics_events', 'analytics_snapshots', 'email_opens', 'email_clicks', 'auth_events'])
       const writeTables = new Set(['media_files', 'media_usage', 'analytics_snapshots'])
@@ -460,14 +478,22 @@ export async function handleApiRequest(
 
     const previewMatch = url.pathname.match(/^\/api\/admin\/newsletters\/([^/]+)\/preview-email$/)
     if (method === 'POST' && previewMatch?.[1]) {
+      await requireAdmin(request)
       const body = await readJson(request)
       if (!isRecord(body)) throw new HttpError(400, 'Invalid JSON body')
       const familyId = stringValue(body.familyId)
       if (!familyId) throw new HttpError(400, 'familyId is required')
+      const directory = serverSessionsEnabled() && sessionId(request)
+        ? await directoryForCookie(request)
+        : await directoryForToken(String(request.headers.authorization ?? '').replace(/^Bearer\s+/i, ''))
+      if (!resolveAuthPreviewFamily(directory, familyId)) {
+        throw new HttpError(404, 'SMZ family is not available in the current directory scope', 'directory_family_not_found')
+      }
       const preview = await newsletterDeliveryService.previewPersonalizationForFamily({
         newsletterId: previewMatch[1],
         familyId,
         templateId: stringValue(body.templateId),
+        directory,
       })
       sendJson(response, 200, preview, context.corsOrigin)
       return
@@ -476,7 +502,9 @@ export async function handleApiRequest(
     const publishMatch = url.pathname.match(/^\/api\/admin\/newsletters\/([^/]+)\/publish-and-deliver$/)
     if (method === 'POST' && publishMatch?.[1]) {
       const body = await readJson(request)
-      const result = await publishAndEnqueueDelivery(publishMatch[1], audienceFromBody(body))
+      if (isRecord(body) && body.templateRevisionId !== undefined && body.templateRevisionId !== null && typeof body.templateRevisionId !== 'string') throw new HttpError(400, 'Invalid template revision')
+      const revisionId = isRecord(body) && body.templateRevisionId === null ? null : isRecord(body) ? stringValue(body.templateRevisionId) : undefined
+      const result = await publishAndEnqueueDelivery(publishMatch[1], audienceFromBody(body), revisionId)
       sendJson(response, 202, result, context.corsOrigin)
       return
     }

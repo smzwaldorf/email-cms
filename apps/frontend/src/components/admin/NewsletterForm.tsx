@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { addWeeks, format, getISOWeek, getISOWeekYear, nextSunday, parseISO } from 'date-fns'
 import { useNavigate } from 'react-router-dom'
 import { adminService, AdminServiceError } from '@/services/adminService'
 import type { AdminNewsletter } from '@/types/admin'
@@ -40,7 +41,8 @@ export function NewsletterForm({
     setWeekNumber(newsletter.weekNumber || '')
     setTitle(newsletter.title || '')
     setDescription(newsletter.description || '')
-    setReleaseDate(newsletter.releaseDate || '')
+    // The API may serialize a SQL date as an ISO timestamp; date inputs need YYYY-MM-DD.
+    setReleaseDate(newsletter.releaseDate ? format(parseISO(newsletter.releaseDate), 'yyyy-MM-dd') : '')
   }, [newsletter])
 
   useEffect(() => {
@@ -145,15 +147,11 @@ export function NewsletterForm({
   // Set default week number to next week
   const handleSetNextWeek = () => {
     const today = new Date()
-    const year = today.getFullYear()
-    // Simple approximation, for production use a library like date-fns
-    const week = Math.ceil((today.getDate() - 1 - today.getDay()) / 7) + 1
-    setWeekNumber(`${year}-W${String(week + 1).padStart(2, '0')}`)
-    
-    // Set release date to next Sunday
-    const nextSunday = new Date(today)
-    nextSunday.setDate(today.getDate() + (7 - today.getDay()))
-    setReleaseDate(nextSunday.toISOString().split('T')[0])
+    const nextWeek = addWeeks(today, 1)
+    setWeekNumber(`${getISOWeekYear(nextWeek)}-W${String(getISOWeek(nextWeek)).padStart(2, '0')}`)
+
+    // Prepare the following week's newsletter on the upcoming Sunday, in local time.
+    setReleaseDate(format(nextSunday(today), 'yyyy-MM-dd'))
   }
 
   const heading = mode === 'edit'

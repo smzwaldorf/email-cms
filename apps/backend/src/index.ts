@@ -17,7 +17,9 @@ export async function main(): Promise<void> {
   console.info(`Email CMS backend listening on http://localhost:${config.port}`)
 }
 
-if (require.main === module) {
+const invokedDirectly = require.main === module || /(?:^|\/)src\/index\.ts$|(?:^|\/)dist\/index\.js$/.test(process.argv[1] ?? '')
+
+if (invokedDirectly) {
   void main().catch(error => {
     console.error('CMS backend startup failed:', error)
     process.exitCode = 1

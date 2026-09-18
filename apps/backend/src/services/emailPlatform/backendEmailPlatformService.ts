@@ -1,17 +1,12 @@
 import { runtimeEnvironment } from '#/runtime/environment'
+import { assertNewsletterDeliveryAllowed, DeliveryPolicyError } from '#/services/emailDeliveryPolicy'
 import { getSupabaseClient } from '#/lib/supabase'
 import { resolveEmailPlatformConfig } from '#/services/emailPlatform/config'
-import { KitAdapter } from '#/services/emailPlatform/kitAdapter'
-import { mapRecipientToKitPayload } from '#/services/emailPlatform/kitMapping'
 import {
-  loadRecipientRecord,
   persistWebhookEvent,
-  processPendingSyncJobs,
   processPendingWebhookEvents,
-  replayFailedEmailPlatformWork,
 } from '#/services/emailPlatform/runtime'
 
-const CMS_NEWSLETTER_BODY_FIELD = 'cms_newsletter_body_html'
 
 export interface SendNewsletterRecipientInput {
   recipientId: string
@@ -30,7 +25,8 @@ export interface SendNewsletterRequest {
 
 export interface SendNewsletterResult {
   sent: boolean
-  provider: 'kit'
+  provider: 'resend'
+  providerMessageIds: Record<string, string>
   providerMessageId: string | null
   broadcastId: string | null
   sendAt: string | null
@@ -48,23 +44,9 @@ function getKitConfig() {
   return resolveEmailPlatformConfig((key) => runtimeEnvironment()[key])
 }
 
-function stripHtml(input: string): string {
-  return input.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
-}
-
-function toPreviewText(html: string): string {
-  const plain = stripHtml(html)
-  if (!plain) return 'Newsletter update'
-  return plain.length > 120 ? `${plain.slice(0, 117)}...` : plain
-}
-
-function renderBroadcastMergeBody(): string {
-  return `{{ subscriber.${CMS_NEWSLETTER_BODY_FIELD} }}`
-}
-
 function assertSendNewsletterRequest(input: SendNewsletterRequest): void {
   if (!input.batchId || !input.newsletterId || !Array.isArray(input.recipients) || input.recipients.length === 0) {
-    throw new Error('Missing required fields for Kit newsletter send.')
+    throw new Error('Missing required fields for Resend newsletter send.')
   }
 }
 
@@ -96,36 +78,15 @@ async function handleWorker(handler: () => Promise<Record<string, unknown>>): Pr
 }
 
 export const backendEmailPlatformService = {
-  async processSyncWorker(body: Record<string, unknown>): Promise<Record<string, unknown>> {
-    const config = getKitConfig()
-    return processPendingSyncJobs(getSupabaseClient(), config, {
-      jobId: typeof body.jobId === 'string' ? body.jobId : undefined,
-      limit: typeof body.limit === 'number' ? body.limit : undefined,
-    })
+  // Legacy endpoints remain explicit tombstones, never an alternate outbound path.
+  async processSyncWorker(_body: Record<string, unknown>): Promise<Record<string, unknown>> {
+    throw new Error('Kit sync is retired; newsletter sending uses Resend')
   },
-
-  async reconcile(body: Record<string, unknown>): Promise<Record<string, unknown>> {
-    const config = getKitConfig()
-    const webhookResult = await processPendingWebhookEvents(getSupabaseClient(), config, {
-      eventId: typeof body.eventId === 'string' ? body.eventId : undefined,
-      includeUnresolved: true,
-    })
-    const syncResult = await processPendingSyncJobs(getSupabaseClient(), config, {
-      jobId: typeof body.jobId === 'string' ? body.jobId : undefined,
-      limit: typeof body.limit === 'number' ? body.limit : config.reconciliationBatchSize,
-    })
-
-    return { webhookResult, syncResult }
+  async reconcile(_body: Record<string, unknown>): Promise<Record<string, unknown>> {
+    throw new Error('Kit reconciliation is retired; reconcile Resend email IDs')
   },
-
-  async replay(body: Record<string, unknown>): Promise<Record<string, unknown>> {
-    return replayFailedEmailPlatformWork(getSupabaseClient(), {
-      jobIds: Array.isArray(body.jobIds) ? body.jobIds.filter((value): value is string => typeof value === 'string') : undefined,
-      webhookEventIds: Array.isArray(body.webhookEventIds)
-        ? body.webhookEventIds.filter((value): value is string => typeof value === 'string')
-        : undefined,
-      replayAllFailed: body.replayAllFailed === true,
-    })
+  async replay(_body: Record<string, unknown>): Promise<Record<string, unknown>> {
+    throw new Error('Kit replay is retired; newsletter sending uses Resend')
   },
 
   async handleKitWebhook(input: {
@@ -174,106 +135,57 @@ export const backendEmailPlatformService = {
 
   async sendNewsletter(input: SendNewsletterRequest): Promise<SendNewsletterResult> {
     assertSendNewsletterRequest(input)
+    assertNewsletterDeliveryAllowed(input.recipients)
 
-    const config = getKitConfig()
-    const adminClient = getSupabaseClient()
-    const adapter = new KitAdapter(config)
-    const batchTag = `delivery-batch:${input.batchId}`
-    const sentRecipientIds: string[] = []
+    const env = runtimeEnvironment()
+    if (!env.RESEND_API_KEY || !env.RESEND_FROM_EMAIL) {
+      throw new DeliveryPolicyError('Resend requires RESEND_API_KEY and RESEND_FROM_EMAIL')
+    }
+    const providerMessageIds: Record<string, string> = {}
     const failedRecipients: Array<{ recipientId: string; error: string }> = []
-
-    for (const recipientInput of input.recipients) {
-      if (
-        !recipientInput?.recipientId ||
-        !recipientInput?.familyId ||
-        !recipientInput?.parentEmail ||
-        !recipientInput?.subject ||
-        !recipientInput?.htmlContent
-      ) {
-        failedRecipients.push({
-          recipientId: recipientInput?.recipientId ?? 'unknown',
-          error: 'missing_recipient_fields',
-        })
+    for (const recipient of input.recipients) {
+      if (!recipient.recipientId || !recipient.familyId || !recipient.parentEmail || !recipient.subject || !recipient.htmlContent) {
+        failedRecipients.push({ recipientId: recipient.recipientId, error: 'missing_recipient_fields' })
         continue
       }
-
-      const recipient = await loadRecipientRecord(adminClient, recipientInput.familyId)
-      if (!recipient) {
-        failedRecipients.push({
-          recipientId: recipientInput.recipientId,
-          error: `family_not_found:${recipientInput.familyId}`,
-        })
+      // One immutable message per parent; never share provider merge fields.
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST', signal: AbortSignal.timeout(10_000),
+        headers: {
+          Authorization: `Bearer ${env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+          'Idempotency-Key': `newsletter/${input.batchId}/${recipient.recipientId}`,
+        },
+        body: JSON.stringify({
+          from: env.RESEND_FROM_EMAIL, to: [recipient.parentEmail.trim().toLowerCase()],
+          subject: recipient.subject, html: recipient.htmlContent,
+          tags: [{ name: 'batch_id', value: input.batchId }, { name: 'recipient_id', value: recipient.recipientId }],
+        }),
+      })
+      // Do not expose provider response bodies, which can contain recipient data.
+      if (!response.ok) {
+        if (response.status >= 500 || response.status === 408 || response.status === 409) {
+          throw new Error(`Resend outcome uncertain (HTTP ${response.status}); reconcile before retrying`)
+        }
+        failedRecipients.push({ recipientId: recipient.recipientId, error: `resend_http_${response.status}` })
         continue
       }
-
-      try {
-        const mapped = mapRecipientToKitPayload(recipient, { classTagPrefix: config.classTagPrefix })
-        const payload = {
-          ...mapped,
-          externalIdentityKey: `newsletter-recipient:${recipientInput.recipientId}`,
-          emailAddress: recipientInput.parentEmail.trim().toLowerCase(),
-          customFields: {
-            ...mapped.customFields,
-            cms_newsletter_subject: recipientInput.subject,
-            [CMS_NEWSLETTER_BODY_FIELD]: recipientInput.htmlContent,
-            cms_newsletter_id: input.newsletterId,
-            cms_delivery_batch_id: input.batchId,
-            cms_recipient_id: recipientInput.recipientId,
-            cms_journey_correlation_id: recipientInput.journeyCorrelationId ?? '',
-          },
-          tagNames: Array.from(new Set([...mapped.tagNames, batchTag])),
-        }
-        const syncOutcome = await adapter.upsertSubscriber({ payload })
-        if ((syncOutcome.providerState ?? '').toLowerCase() !== 'active') {
-          failedRecipients.push({
-            recipientId: recipientInput.recipientId,
-            error: `inactive_or_unconfirmed:${syncOutcome.providerState ?? 'unknown'}`,
-          })
-          continue
-        }
-        sentRecipientIds.push(recipientInput.recipientId)
-      } catch (upsertError) {
-        failedRecipients.push({
-          recipientId: recipientInput.recipientId,
-          error: upsertError instanceof Error ? upsertError.message : String(upsertError),
-        })
-      }
+      const data = await response.json() as { id?: unknown }
+      if (typeof data.id !== 'string' || !data.id) throw new Error('Resend outcome uncertain: missing email ID')
+      // Persist each acceptance before sending the next message, so a later timeout
+      // cannot erase successful recipients or cause them to be sent again.
+      const { error } = await getSupabaseClient().from('newsletter_delivery_batch_recipients')
+        .update({ send_status: 'sent', provider_message_id: data.id, provider_error: null,
+          failure_reason: null, sent_at: new Date().toISOString(), campaign_ready: true })
+        .eq('id', recipient.recipientId).eq('batch_id', input.batchId)
+      if (error) throw new Error('Resend accepted email but outcome persistence failed; reconcile before retrying')
+      providerMessageIds[recipient.recipientId] = data.id
     }
-
-    if (sentRecipientIds.length === 0) {
-      return {
-        sent: false,
-        provider: 'kit',
-        providerMessageId: null,
-        broadcastId: null,
-        sendAt: null,
-        publicUrl: null,
-        sentRecipientIds,
-        failedRecipients,
-      }
-    }
-
-    const sampleRecipient = input.recipients.find((recipient) => sentRecipientIds.includes(recipient.recipientId))
-    const sendAt = new Date().toISOString()
-    const broadcast = await adapter.createBroadcast({
-      subject: sampleRecipient?.subject?.trim() || 'Newsletter update',
-      content: renderBroadcastMergeBody(),
-      description: `newsletter:${input.newsletterId} batch:${input.batchId}`,
-      previewText: toPreviewText(sampleRecipient?.htmlContent ?? ''),
-      sendAt,
-      emailAddress: null,
-      tagNames: [batchTag],
-    })
-
+    const sentRecipientIds = Object.keys(providerMessageIds)
     return {
-      sent: true,
-      provider: 'kit',
-      providerMessageId: `kit-broadcast-${broadcast.broadcastId}`,
-      broadcastId: broadcast.broadcastId,
-      sendAt: broadcast.sendAt,
-      publicUrl: broadcast.publicUrl,
-      sentRecipientIds,
-      failedRecipients,
+      sent: sentRecipientIds.length > 0, provider: 'resend', providerMessageIds,
+      providerMessageId: null, broadcastId: null, sendAt: null, publicUrl: null,
+      sentRecipientIds, failedRecipients,
     }
   },
 }

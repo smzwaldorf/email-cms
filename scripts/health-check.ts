@@ -393,13 +393,14 @@ async function checkPerformance(
       .limit(10)
     timings.push({ query: 'Filter + sort (10 articles)', duration: Date.now() - start2 })
 
-    // Test 3: Join-like query
+    // Test 3: CMS-owned delivery history query. Identity relationships are
+    // resolved through SMZ Auth and must not be queried from local masters.
     const start3 = Date.now()
     await supabase
-      .from('families')
-      .select('id, family_enrollment(parent_id)')
+      .from('newsletter_delivery_batches')
+      .select('id, newsletter_delivery_batch_recipients(id)')
       .limit(5)
-    timings.push({ query: 'Related data fetch', duration: Date.now() - start3 })
+    timings.push({ query: 'Delivery history fetch', duration: Date.now() - start3 })
 
     const details = timings.map(
       (t) => `${t.query}: ${t.duration}ms`

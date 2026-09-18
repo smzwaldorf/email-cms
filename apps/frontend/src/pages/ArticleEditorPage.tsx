@@ -35,7 +35,7 @@ export function ArticleEditorPage() {
 
   const { user } = useAuth()
   const [article, setArticle] = useState<AdminArticle | null>(null)
-  const [availableClasses, setAvailableClasses] = useState<Array<{ id: string; name: string }>>([])
+  const [availableClasses, setAvailableClasses] = useState<Array<{ id: string; name: string; legacyIds?: string[] }>>([])
   const [availableFamilies, setAvailableFamilies] = useState<Array<{ id: string; name: string }>>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -82,7 +82,7 @@ export function ArticleEditorPage() {
         adminService.fetchFamilies(),
       ])
 
-      setAvailableClasses(classes.map((c) => ({ id: c.id, name: c.name })))
+      setAvailableClasses(classes.map((c) => ({ id: c.id, name: c.name, legacyIds: c.legacyIds })))
       setAvailableFamilies(families.map((f) => ({ id: f.id, name: f.name })))
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : '無法載入文章'

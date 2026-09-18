@@ -52,13 +52,20 @@ export function isValidWeekNumber(weekNumber: string): boolean {
   return /^\d{4}-W\d{2}$/.test(weekNumber)
 }
 
-const ALLOWED_REDIRECT_PREFIXES = ['/week/', '/newsletter/', '/article/']
+const ALLOWED_REDIRECT_PREFIXES = ['/week/', '/newsletter/', '/article/', '/admin/']
 
 export function isSafeAppRedirectPath(path: string | null | undefined): path is string {
   if (!path) return false
   if (!path.startsWith('/')) return false
   if (path.startsWith('//')) return false
-  return ALLOWED_REDIRECT_PREFIXES.some((prefix) => path.startsWith(prefix))
+  if (path.includes('\\') || [...path].some(character => character.charCodeAt(0) <= 32)) return false
+  try {
+    const destination = new URL(path, 'https://cms.invalid')
+    if (destination.origin !== 'https://cms.invalid') return false
+    return destination.pathname === '/admin' || ALLOWED_REDIRECT_PREFIXES.some((prefix) => destination.pathname.startsWith(prefix))
+  } catch {
+    return false
+  }
 }
 
 export function buildLoginRedirectPath(currentPathname: string, currentSearch = ''): string {

@@ -24,6 +24,7 @@ export interface AdminUser {
  * 用於組織學生和發布課程內容
  */
 export interface Class {
+  legacyIds?: string[] // Explicit aliases of this Auth class, for historical content targets
   id: string // UUID
   code?: string // 穩定識別碼（例如：G6A）
   name: string // 班級名稱（例如：6年級A班、高二英文班）
@@ -43,6 +44,7 @@ export interface Class {
  */
 export interface Family {
   id: string // UUID
+  code?: string // Stable directory code used to reconcile SMZ Identity families
   name: string // 家族名稱（例如：升學進路、親子教育）
   description?: string
   relatedTopics?: string[] // 相關主題清單
@@ -201,6 +203,8 @@ export interface NewsletterPublishReadiness {
   canPublish: boolean
   issues: string[]
   audienceSummary?: {
+    eligibleRecipientCount?: number
+    exclusionReasons?: Record<string, number>
     mode: 'all' | 'classes' | 'families' | 'family'
     totalCandidates: number
     eligibleCount: number

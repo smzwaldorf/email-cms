@@ -40,6 +40,8 @@ export interface DeliveryAudienceRecipient {
 }
 
 export interface DeliveryAudienceSummary {
+  eligibleRecipientCount?: number
+  exclusionReasons?: Record<string, number>
   selection: DeliveryAudienceSelection
   totalCandidates: number
   eligibleCount: number
@@ -105,6 +107,7 @@ export interface NewsletterDeliveryRecipient {
 }
 
 export interface PublishDeliveryRequest {
+  templateRevisionId?: string | null
   newsletterId: string
   audience: DeliveryAudienceSelection
 }

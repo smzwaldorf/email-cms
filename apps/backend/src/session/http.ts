@@ -1,9 +1,9 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { runtimeEnvironment } from '#/runtime/environment'
-import { HttpError, viewerForToken, type AuthenticatedViewer } from '#/auth'
+import { deliveryContactsForToken, directoryForToken, HttpError, viewerForToken, type AuthenticatedViewer, type SmzDirectoryGraph } from '#/auth'
 import { randomSessionId } from './crypto'
 import { appOrigin, authorization, redeem, issuer } from './oidc'
-import { consumeFlow, createFlow, createSession, readSession, rememberViewer, revokeSession, sessionCredentials, type BrowserSession } from './store'
+import { consumeFlow, createFlow, createSession, readSessionByHash, readSession, rememberViewer, revokeSession, sessionCredentials, type BrowserSession } from './store'
 
 export const serverSessionsEnabled = () => runtimeEnvironment().CMS_SESSION_ENABLED === 'true'
 function cookieName(): string { return new URL(appOrigin()).protocol === 'https:' ? '__Host-cms-session' : 'cms-session' }
@@ -27,6 +27,20 @@ export async function cookieViewer(request: IncomingMessage): Promise<Authentica
   let pending = requestViewers.get(request)
   if (!pending) { pending = resolveCookieViewer(request); requestViewers.set(request, pending) }
   return pending
+}
+export async function directoryForCookie(request: IncomingMessage): Promise<SmzDirectoryGraph> {
+  // Verify the central session and current CMS admission before using its
+  // sealed directory credential. The returned catalogue contains no token.
+  await cookieViewer(request)
+  const id = sessionId(request)
+  const session = id ? await readSession(id) : null
+  if (!session || session.issuer !== issuer()) throw new HttpError(401, 'Sign in to continue', 'session_missing')
+  const credentials = await sessionCredentials(session)
+  return directoryForToken(credentials.access_token, 'email-cms-server', session.subject)
+}
+
+export async function directoryFamiliesForCookie(request: IncomingMessage) {
+  return (await directoryForCookie(request)).families
 }
 async function verified(session: BrowserSession): Promise<AuthenticatedViewer> {
   let credentials = await sessionCredentials(session)
@@ -110,4 +124,12 @@ export async function handleSessionRequest(request: IncomingMessage, response: S
     return true
   }
   throw new HttpError(404, 'Unknown session endpoint')
+}
+
+export async function deliveryIdentityForSessionHash(hash:string) {
+ const session=await readSessionByHash(hash)
+ if(!session || session.issuer!==issuer()) throw new HttpError(401,'Delivery authorization expired; sign in again')
+ await verified(session)
+ const credentials=await sessionCredentials(session)
+ return {directory:()=>directoryForToken(credentials.access_token,'email-cms-server',session.subject), contacts:()=>deliveryContactsForToken(credentials.access_token,session.subject),sessionId:hash}
 }

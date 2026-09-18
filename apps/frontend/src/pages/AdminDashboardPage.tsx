@@ -1,3 +1,4 @@
+import { IdentityDirectoryPage } from './IdentityDirectoryPage'
 import { smzAuthIssuer } from '@/services/smzAuth'
 /**
  * Admin Dashboard Page
@@ -251,6 +252,12 @@ const ACCESS_CONTROL_ROLE_OPTIONS: AccessControlRole[] = ['admin', 'teacher', 'p
  * Admin Dashboard Page Component
  */
 export function AdminDashboardPage() {
+  const [searchParams] = useSearchParams()
+  if (searchParams.get('tab') === 'users') return <IdentityDirectoryPage kind="users" />
+  return <NewsletterAdminDashboard />
+}
+
+function NewsletterAdminDashboard() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { user } = useAuth()

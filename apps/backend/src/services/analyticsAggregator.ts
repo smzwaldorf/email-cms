@@ -1,3 +1,5 @@
+import { currentDirectory, personAliases } from './identityDirectory'
+import { directoryAudience } from './directoryAudience'
 import { getSupabaseClient } from '#/lib/supabase';
 import type {
   AnalyticsSnapshot,
@@ -34,15 +36,6 @@ interface SessionEndArticleRow {
   metadata: Record<string, unknown> | null;
 }
 
-interface StudentEnrollmentCountRow {
-  count: number;
-}
-
-interface ClassRowWithEnrollmentCount {
-  class_name: string;
-  student_class_enrollment: StudentEnrollmentCountRow[] | null;
-}
-
 interface NewsletterJunctionArticleRow {
   id: string;
   title: string;
@@ -52,23 +45,6 @@ interface NewsletterJunctionArticleRow {
 interface NewsletterJunctionRow {
   article_order: number;
   articles: NewsletterJunctionArticleRow;
-}
-
-interface ClassNameNestedRow {
-  class_name: string;
-}
-
-interface StudentClassEnrollmentNestedRow {
-  classes: ClassNameNestedRow | null;
-}
-
-interface FamilyNestedForClassRow {
-  student_class_enrollment: StudentClassEnrollmentNestedRow[] | null;
-}
-
-interface FamilyEnrollmentParentClassesRow {
-  parent_id: string;
-  families: FamilyNestedForClassRow | null;
 }
 
 interface AnalyticsEventWithUserRow {
@@ -84,29 +60,6 @@ interface TopicHotnessEventRow {
   articles: ArticleTitleCreatedRow | ArticleTitleCreatedRow[] | null;
 }
 
-interface FamilyEnrollmentParentRow {
-  parent_id: string;
-}
-
-/** student_class_enrollment row joined to family_enrollment for parent IDs */
-interface StudentClassEnrollmentParentRow {
-  family_enrollment: FamilyEnrollmentParentRow | FamilyEnrollmentParentRow[] | null;
-}
-
-interface StudentClassEnrollmentReaderRow {
-  classes: ClassNameNestedRow | null;
-  students: { name: string } | null;
-}
-
-interface FamilyNestedForReadersRow {
-  student_class_enrollment: StudentClassEnrollmentReaderRow[] | null;
-}
-
-interface FamilyEnrollmentReadersRow {
-  parent_id: string;
-  families: FamilyNestedForReadersRow | null;
-}
-
 interface PageViewUserRow {
   user_id: string | null;
   created_at: string;
@@ -114,10 +67,6 @@ interface PageViewUserRow {
 
 interface NewsletterWeekFromJoin {
   week_number: string | null;
-}
-
-interface ClassRowWithEnrollmentCountSingle {
-  student_class_enrollment: StudentEnrollmentCountRow[] | null;
 }
 
 function unwrapSingle<T>(value: T | T[] | null | undefined): T | null {
@@ -310,7 +259,7 @@ export const analyticsAggregator = {
       // 1. Get Unique Opens
       let openEventsQuery = supabase
         .from('analytics_events')
-        .select('user_id')
+        .select('user_id, metadata')
         .eq('newsletter_id', newsletterId)
         .eq('event_type', 'email_open');
 
@@ -320,25 +269,25 @@ export const analyticsAggregator = {
                openEventsQuery = openEventsQuery.in('user_id', classUsers);
            } else {
                // Class has no users or not found, return 0 metrics
-               return { openRate: 0, clickRate: 0, avgTimeSpent: 0, totalViews: 0 };
+               return { openRate: 0, clickRate: 0, avgTimeSpent: 0, totalViews: 0, emailMetricsAvailable: false, sentRecipients: 0 };
            }
       }
       
       const openResult = await Promise.race([
         openEventsQuery,
         createTimeout(QUERY_TIMEOUT_MS)
-      ]) as { data: { user_id: string }[] | null; error: Error | null };
+      ]) as { data: { user_id: string; metadata?: Record<string, unknown> }[] | null; error: Error | null };
       
       if (openResult.error) {
         console.error('[Analytics] Error fetching open events:', openResult.error);
         throw openResult.error;
       }
-      const uniqueOpenCount = new Set(openResult.data?.map((e: { user_id: string }) => e.user_id)).size;
+      const openUsers = new Set(openResult.data?.filter(e => e.metadata?.qualification !== 'automated_or_proxy').map(e => e.user_id));
 
       // 2. Get Unique Clicks
       let clickEventsQuery = supabase
         .from('analytics_events')
-        .select('user_id')
+        .select('user_id, metadata')
         .eq('newsletter_id', newsletterId)
         .eq('event_type', 'link_click');
         
@@ -352,14 +301,14 @@ export const analyticsAggregator = {
       const clickResult = await Promise.race([
         clickEventsQuery,
         createTimeout(QUERY_TIMEOUT_MS)
-      ]) as { data: { user_id: string }[] | null; error: Error | null };
+      ]) as { data: { user_id: string; metadata?: Record<string, unknown> }[] | null; error: Error | null };
       
       if (clickResult.error) {
         console.error('[Analytics] Error fetching click events:', clickResult.error);
         throw clickResult.error;
       }
       
-      const uniqueClickCount = new Set(clickResult.data?.map((e: { user_id: string }) => e.user_id)).size;
+      const clickUsers = new Set(clickResult.data?.filter(e => e.metadata?.qualification !== 'automated_or_proxy').map(e => e.user_id));
 
       // 3. Get Total Views (Page Views)
       let viewEventsQuery = supabase
@@ -422,23 +371,29 @@ export const analyticsAggregator = {
       
       const avgTimeSpent = timedSessionCount > 0 ? Math.round(totalTimeSeconds / timedSessionCount) : 0;
 
-      // Mock Total Sent (since we don't have email log table yet, usually distinct students count)
-      // If className provided, get total families in that class.
-      let totalSent = 100; 
+      // Count distinct recipients accepted by the provider, including resends only once.
+      const batches = await supabase.from('newsletter_delivery_batches').select('id').eq('newsletter_id', newsletterId);
+      if (batches.error) throw batches.error;
+      const batchIds = (batches.data ?? []).map(row => row.id);
+      let sentUsers = new Set<string>();
+      if (batchIds.length) {
+        const recipients = await supabase.from('newsletter_delivery_batch_recipients').select('parent_id').in('batch_id', batchIds).eq('send_status', 'sent');
+        if (recipients.error) throw recipients.error;
+        sentUsers = new Set((recipients.data ?? []).map(row => row.parent_id).filter((id): id is string => !!id));
+      }
       if (className) {
-           const { data: classData } = await supabase
-             .from('classes')
-             .select('student_class_enrollment (count)')
-             .eq('class_name', className)
-             .single();
-           const enrollmentRow = classData as ClassRowWithEnrollmentCountSingle | null;
-           const countBucket = enrollmentRow?.student_class_enrollment?.[0]?.count;
-           totalSent = typeof countBucket === 'number' ? countBucket : 20;
-      } 
+        const classUsers = new Set(await this.getUsersInClass(className));
+        sentUsers = new Set([...sentUsers].filter(id => classUsers.has(id)));
+      }
+      const totalSent = sentUsers.size;
+      const uniqueOpenCount = [...openUsers].filter(id => sentUsers.has(id)).length;
+      const uniqueClickCount = [...clickUsers].filter(id => sentUsers.has(id)).length;
 
       return {
         openRate: totalSent > 0 ? (uniqueOpenCount / totalSent) * 100 : 0,
-        clickRate: uniqueOpenCount > 0 ? (uniqueClickCount / uniqueOpenCount) * 100 : 0, // Clicks / Opens
+        emailMetricsAvailable: totalSent > 0,
+        sentRecipients: totalSent,
+        clickRate: totalSent > 0 ? (uniqueClickCount / totalSent) * 100 : 0,
         avgTimeSpent,
         totalViews
       };
@@ -446,6 +401,7 @@ export const analyticsAggregator = {
       console.error(`[Analytics] getNewsletterMetrics failed for ${newsletterId}:`, err);
       // Return default metrics instead of throwing to prevent cascade failures
       return {
+        emailMetricsAvailable: false,
         openRate: 0,
         clickRate: 0,
         avgTimeSpent: 0,
@@ -742,6 +698,9 @@ export const analyticsAggregator = {
    */
   async getClassEngagement(newsletterId: string, client?: AppSupabaseClient): Promise<ClassEngagement[]> {
         const supabase = client ?? getSupabaseClient();
+        const directory = await currentDirectory();
+        const audience = directoryAudience(directory);
+        const aliases = new Map((await personAliases(directory)).map(({ id, authId }) => [id, authId]));
         try {
              // 1. Fetch all events for this newsletter (views, clicks, sessions)
              const { data: events } = await supabase
@@ -754,31 +713,8 @@ export const analyticsAggregator = {
              
              // 2. Map Users to Classes
              const typedEvents = events as AnalyticsEventWithUserRow[];
-             const userIds = Array.from(new Set(typedEvents.map((e) => e.user_id)));
-             
-             // Fetch Family Enrollments for these Parents to identify their classes
-             // Note: A parent might belong to multiple classes. We'll credit their activity to ALL their classes for now.
-             const { data: familyEnrollments } = await supabase
-                 .from('family_enrollment')
-                 .select('parent_id, families ( student_class_enrollment ( class_id, classes ( class_name ) ) )')
-                 .in('parent_id', userIds);
-             
-             const userClasses = new Map<string, string[]>();
-             const typedEnrollments = familyEnrollments as FamilyEnrollmentParentClassesRow[] | null;
-             typedEnrollments?.forEach((fe) => {
-                 const classes: string[] = [];
-                 if (fe.families?.student_class_enrollment) {
-                     const enrolls = fe.families.student_class_enrollment;
-                     if (Array.isArray(enrolls)) {
-                         enrolls.forEach((enc) => {
-                             const className = enc.classes?.class_name;
-                             if (className) classes.push(className);
-                         });
-                     }
-                 }
-                 if (classes.length > 0) userClasses.set(fe.parent_id, classes);
-             });
-             
+             const userClasses = new Map([...aliases].map(([id, authId]) => [id, audience.get(authId)?.classNames ?? []]));
+
              // 3. Aggregate Stats per Class
              // Structure: ClassName -> Stats
              const classStats = new Map<string, {
@@ -810,7 +746,7 @@ export const analyticsAggregator = {
                      
                      // Page View -> Active User
                      if (event.event_type === 'page_view') {
-                         stats.activeUsers.add(event.user_id);
+                         stats.activeUsers.add(aliases.get(event.user_id) ?? event.user_id);
                      }
                      // Link Click -> Click Count
                      else if (event.event_type === 'link_click') {
@@ -827,34 +763,16 @@ export const analyticsAggregator = {
                  });
              });
  
-             // 4. Fetch Total Users per Class (Census)
-             // We need to know the total number of parents in each class to calculate "Open Rate" (Participation)
-             // This requires querying the DB for all enrollments, not just active ones.
-             // Optimization: We fetch ALL classes and their parent counts.
-             
-             // For this MVP, we might just query student_class_enrollment count.
-             // Ideally: Count distinct families.id where student_class_enrollment.class_id = X
-             
-             const { data: allClassData } = await supabase
-                .from('classes')
-                .select(`
-                    class_name,
-                    student_class_enrollment (count)
-                `);
-                
+             // Current Auth adults are the denominator, never an estimated student count.
              const classCensus = new Map<string, number>();
-             const typedClassData = allClassData as ClassRowWithEnrollmentCount[] | null;
-             typedClassData?.forEach((c) => {
-                 // Assuming 1 student approx 1.5 parents? Or just count students as proxies for families?
-                 // Let's use student count as the denominator for "Families"
-                 const count = c.student_class_enrollment?.[0]?.count || 0;
-                 classCensus.set(c.class_name, count || 1); // Avoid div by zero
-             });
- 
+             for (const row of audience.values()) {
+                 for (const name of row.classNames) classCensus.set(name, (classCensus.get(name) ?? 0) + 1);
+             }
+
              // 5. Build Result
              const result: ClassEngagement[] = [];
              for (const [className, stats] of classStats.entries()) {
-                 const totalFamilies = classCensus.get(className) || 20; // Default fallback
+                 const totalFamilies = classCensus.get(className) || 0;
                  
                  // Avg Time per Active User (or Session?) -> Let's do per Active User
                  const avgTime = stats.activeUsers.size > 0 
@@ -865,7 +783,7 @@ export const analyticsAggregator = {
                      className,
                      activeUsers: stats.activeUsers.size,
                      totalUsers: totalFamilies,
-                     openRate: (stats.activeUsers.size / totalFamilies) * 100,
+                     openRate: totalFamilies ? (stats.activeUsers.size / totalFamilies) * 100 : 0,
                      clickRate: (stats.activeUsers.size > 0 ? (stats.clicks / stats.activeUsers.size) : 0),
                      clickCount: stats.clicks,
                      avgDailyTime: avgTime 
@@ -974,32 +892,9 @@ export const analyticsAggregator = {
   },
 
   async getUsersInClass(className: string): Promise<string[]> {
-      const supabase = getSupabaseClient();
-      const { data: classes } = await supabase
-        .from('classes')
-        .select('id')
-        .eq('class_name', className);
-        
-      if (!classes || classes.length === 0) return [];
-      const classIds = classes.map(c => c.id);
-
-      const { data: parents } = await supabase
-          .from('student_class_enrollment')
-          .select('family_enrollment ( parent_id )')
-          .in('class_id', classIds);
-          
-      if (!parents) return [];
-      
-      const userIds = new Set<string>();
-      const parentRows = parents as StudentClassEnrollmentParentRow[];
-      parentRows.forEach((p) => {
-          const fe = unwrapSingle(p.family_enrollment);
-          if (fe?.parent_id) {
-              userIds.add(fe.parent_id);
-          }
-      });
-      
-      return Array.from(userIds);
+      const directory = await currentDirectory();
+      const audience = directoryAudience(directory);
+      return (await personAliases(directory)).filter(({ authId }) => audience.get(authId)?.classNames.includes(className)).map(({ id }) => id);
   },
 
   async getClassHistory(className: string, limit: number = 12) {
@@ -1067,50 +962,26 @@ export const analyticsAggregator = {
       const userIds = Array.from(userViewerMap.keys());
       if (userIds.length === 0) return [];
       
-      const { data: families } = await supabase
-        .from('family_enrollment')
-        .select('parent_id, families ( family_code, student_class_enrollment ( classes ( class_name ), students ( name ) ) )')
-        .in('parent_id', userIds);
-      
-      const results: ArticleReader[] = [];
-      const readerFamilies = families as FamilyEnrollmentReadersRow[] | null | undefined;
-      
-      userIds.forEach(uid => {
-          const family = readerFamilies?.find(f => f.parent_id === uid);
+      const directory = await currentDirectory();
+      const audience = directoryAudience(directory);
+      const aliases = new Map((await personAliases(directory)).map(row => [row.id, row.authId]));
+      const results: ArticleReader[] = userIds.map(uid => {
+          const current = audience.get(aliases.get(uid) ?? uid);
           const viewerStats = userViewerMap.get(uid)!;
-          
-          const classNames: string[] = [];
-          const studentNames: string[] = [];
-          
-          const enrollments = family?.families?.student_class_enrollment;
-          if (enrollments) {
-              enrollments.forEach((enroll) => {
-                  if (enroll.classes?.class_name) classNames.push(enroll.classes.class_name);
-                  if (enroll.students?.name) studentNames.push(enroll.students.name);
-              });
-          }
-          
-          results.push({
+          return {
               userId: uid,
-              email: `User ${uid.slice(0,4)}...`, 
-              role: 'Parent',
-              className: Array.from(new Set(classNames)),
-              studentNames: Array.from(new Set(studentNames)),
+              email: current?.displayName ?? 'Unknown historical reader',
+              role: current ? 'Parent' : 'Unknown',
+              className: current?.classNames ?? [],
+              studentNames: current?.studentNames ?? [],
               lastViewed: viewerStats.lastViewed,
               viewCount: viewerStats.count
-          });
+          };
       });
-      
+
       return results;
   },
   async getAllClasses(): Promise<string[]> {
-      const supabase = getSupabaseClient();
-      const { data, error } = await supabase
-        .from('classes')
-        .select('class_name')
-        .order('class_name', { ascending: true });
-        
-      if (error) throw error;
-      return data?.map(c => c.class_name) || [];
+      return [...new Set((await currentDirectory()).classes.map(row => row.displayName))].sort();
   }
 };

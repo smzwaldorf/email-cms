@@ -39,24 +39,6 @@ de71b602-caf3-4957-9d21-0c635eca0bb0	2026-W02	Test	\N	2026-07-04	draft	\N	2026-0
 ALTER TABLE public.newsletters ENABLE TRIGGER ALL;
 
 --
--- Data for Name: user_roles; Type: TABLE DATA; Schema: public; Owner: -
---
-
-ALTER TABLE public.user_roles DISABLE TRIGGER ALL;
-
-COPY public.user_roles (id, email, role, created_at, updated_at, display_name) FROM stdin;
-cc6458b6-dfe9-445e-9c61-415626a243fc	parent1@example.com	parent	2026-06-17 02:01:42.109564+00	2026-06-17 02:01:42.109564+00	\N
-36670ae6-960e-457a-aa5e-a89ffa944e1d	parent2@example.com	parent	2026-06-17 02:01:42.215205+00	2026-06-17 02:01:42.215205+00	\N
-9faddd05-0cab-4b63-b364-cacbccbad936	teacher@example.com	teacher	2026-06-17 02:01:42.319566+00	2026-06-17 02:01:42.319566+00	\N
-fcc5f10f-4297-496a-9759-a7ff55436367	admin@example.com	admin	2026-06-17 02:01:42.424945+00	2026-06-17 02:01:42.424945+00	\N
-892b058d-064f-4711-9b8f-782d7f2cbf49	harryworld@gmail.com	parent	2026-06-17 02:01:42.533547+00	2026-06-17 02:01:42.533547+00	\N
-e997d6c9-9be8-4196-9723-9866a0ad0f40	hacktofire@gmail.com	parent	2026-06-17 02:01:42.668621+00	2026-06-17 02:01:42.668621+00	\N
-\.
-
-
-ALTER TABLE public.user_roles ENABLE TRIGGER ALL;
-
---
 -- Data for Name: articles; Type: TABLE DATA; Schema: public; Owner: -
 --
 
@@ -121,24 +103,6 @@ ac18d818-0639-4a68-9c05-04dc2df80598	36670ae6-960e-457a-aa5e-a89ffa944e1d	f00000
 
 
 ALTER TABLE public.analytics_events ENABLE TRIGGER ALL;
-
---
--- Data for Name: classes; Type: TABLE DATA; Schema: public; Owner: -
---
-
-ALTER TABLE public.classes DISABLE TRIGGER ALL;
-
-COPY public.classes (id, class_name, class_grade_year, created_at, class_code, description, is_active, updated_at, deactivated_at) FROM stdin;
-A1	Grade 1A (一年級甲班)	1	2026-06-17 02:01:41.895794+00	A1	\N	t	2026-06-17 02:01:41.895794+00	\N
-A2	Grade 1B (一年級乙班)	1	2026-06-17 02:01:41.901844+00	A2	\N	t	2026-06-17 02:01:41.901844+00	\N
-B1	Grade 2A (二年級甲班)	2	2026-06-17 02:01:41.906482+00	B1	\N	t	2026-06-17 02:01:41.906482+00	\N
-B2	Grade 2B (二年級乙班)	2	2026-06-17 02:01:41.909595+00	B2	\N	t	2026-06-17 02:01:41.909595+00	\N
-XCYB	辛丑乙	5	2026-06-17 02:01:41.912958+00	辛丑乙	\N	t	2026-06-17 02:01:41.912958+00	\N
-JIACHEN	甲辰	2	2026-06-17 02:01:41.917205+00	甲辰	\N	t	2026-06-17 02:01:41.917205+00	\N
-\.
-
-
-ALTER TABLE public.classes ENABLE TRIGGER ALL;
 
 --
 -- Data for Name: analytics_snapshots; Type: TABLE DATA; Schema: public; Owner: -
@@ -285,21 +249,6 @@ COPY public.class_audit_log (id, class_id, action, actor_id, prior_state, new_st
 ALTER TABLE public.class_audit_log ENABLE TRIGGER ALL;
 
 --
--- Data for Name: families; Type: TABLE DATA; Schema: public; Owner: -
---
-
-ALTER TABLE public.families DISABLE TRIGGER ALL;
-
-COPY public.families (id, family_code, created_at, family_name, guardian_email, description, related_topics, is_active, updated_at, deactivated_at, newsletter_subscription_status, newsletter_subscription_source, newsletter_subscription_updated_at, newsletter_subscribed_at, newsletter_unsubscribed_at) FROM stdin;
-f1111111-1111-1111-1111-111111111111	FAMILY001	2026-06-17 02:01:41.921285+00	Family 001	guardian1@example.com	\N	[]	t	2026-06-17 02:01:41.921285+00	\N	pending	\N	\N	\N	\N
-f2222222-2222-2222-2222-222222222222	FAMILY002	2026-06-17 02:01:41.924926+00	Family 002	guardian2@example.com	\N	[]	t	2026-06-17 02:01:41.924926+00	\N	pending	\N	\N	\N	\N
-eebe9de9-4fa8-46d6-a6ca-5bff46d072a3	BB	2026-06-17 02:01:41.927838+00	HACK Family	harryworld@gmail.com	\N	[]	t	2026-06-17 02:01:41.927838+00	\N	pending	\N	\N	\N	\N
-\.
-
-
-ALTER TABLE public.families ENABLE TRIGGER ALL;
-
---
 -- Data for Name: email_platform_subscriber_mappings; Type: TABLE DATA; Schema: public; Owner: -
 --
 
@@ -386,44 +335,6 @@ COPY public.family_audit_log (id, family_id, action, actor_id, prior_state, new_
 
 
 ALTER TABLE public.family_audit_log ENABLE TRIGGER ALL;
-
---
--- Data for Name: students; Type: TABLE DATA; Schema: public; Owner: -
---
-
-ALTER TABLE public.students DISABLE TRIGGER ALL;
-
-COPY public.students (id, name, created_at, updated_at, student_code, is_active, deactivated_at) FROM stdin;
-c1111111-1111-1111-1111-111111111111	Child One	2026-06-17 02:01:42.679987+00	2026-06-17 02:01:42.679987+00	CHILD-ONE-C1111111	t	\N
-c2222222-2222-2222-2222-222222222222	Child Two	2026-06-17 02:01:42.701158+00	2026-06-17 02:01:42.701158+00	CHILD-TWO-C2222222	t	\N
-c3333333-3333-3333-3333-333333333333	Child Three	2026-06-17 02:01:42.714531+00	2026-06-17 02:01:42.714531+00	CHILD-THREE-C3333333	t	\N
-278f016a-68f9-48fc-a3de-9ad25915bba3	Alton	2026-06-17 02:01:42.732001+00	2026-06-17 02:01:42.732001+00	ALTON-278F016A	t	\N
-b9f9f6c4-c31c-4cd5-9f9d-0f8206a6b7d1	Caton	2026-06-17 02:01:42.743502+00	2026-06-17 02:01:42.743502+00	CATON-B9F9F6C4	t	\N
-\.
-
-
-ALTER TABLE public.students ENABLE TRIGGER ALL;
-
---
--- Data for Name: family_enrollment; Type: TABLE DATA; Schema: public; Owner: -
---
-
-ALTER TABLE public.family_enrollment DISABLE TRIGGER ALL;
-
-COPY public.family_enrollment (id, family_id, parent_id, relationship, enrolled_at, student_id) FROM stdin;
-2282577e-e594-4eba-bebf-3903f5bb3489	f1111111-1111-1111-1111-111111111111	cc6458b6-dfe9-445e-9c61-415626a243fc	mother	2026-06-17 02:01:42.112942+00	\N
-9a10690a-42dd-45dc-aed4-f987088c3971	f2222222-2222-2222-2222-222222222222	36670ae6-960e-457a-aa5e-a89ffa944e1d	mother	2026-06-17 02:01:42.218995+00	\N
-9f668b1c-9daa-4c13-83c9-d35ac9eb2eed	eebe9de9-4fa8-46d6-a6ca-5bff46d072a3	892b058d-064f-4711-9b8f-782d7f2cbf49	father	2026-06-17 02:01:42.536901+00	\N
-4983a9e3-fd15-42ef-93df-1cb8c3ce66ba	eebe9de9-4fa8-46d6-a6ca-5bff46d072a3	e997d6c9-9be8-4196-9723-9866a0ad0f40	mother	2026-06-17 02:01:42.673339+00	\N
-0073913d-c9de-4e37-9ba9-b94838d2db5a	f1111111-1111-1111-1111-111111111111	\N	child	2026-06-17 02:01:42.687751+00	c1111111-1111-1111-1111-111111111111
-f14d3757-246a-47cc-a90b-038b2a2c4326	f1111111-1111-1111-1111-111111111111	\N	child	2026-06-17 02:01:42.705818+00	c2222222-2222-2222-2222-222222222222
-f237a533-f542-48ad-bd1d-d5eb15ddc7b3	f2222222-2222-2222-2222-222222222222	\N	child	2026-06-17 02:01:42.718407+00	c3333333-3333-3333-3333-333333333333
-98a19869-6b62-44d6-be4c-c98b0f15cff0	eebe9de9-4fa8-46d6-a6ca-5bff46d072a3	\N	child	2026-06-17 02:01:42.736189+00	278f016a-68f9-48fc-a3de-9ad25915bba3
-04c9c48d-3c77-4e7c-a1d1-756cdd26d1d2	eebe9de9-4fa8-46d6-a6ca-5bff46d072a3	\N	child	2026-06-17 02:01:42.74775+00	b9f9f6c4-c31c-4cd5-9f9d-0f8206a6b7d1
-\.
-
-
-ALTER TABLE public.family_enrollment ENABLE TRIGGER ALL;
 
 --
 -- Data for Name: media_deletion_audit; Type: TABLE DATA; Schema: public; Owner: -
@@ -561,23 +472,6 @@ COPY public.student_audit_log (id, student_id, action, actor_id, prior_state, ne
 ALTER TABLE public.student_audit_log ENABLE TRIGGER ALL;
 
 --
--- Data for Name: student_class_enrollment; Type: TABLE DATA; Schema: public; Owner: -
---
-
-ALTER TABLE public.student_class_enrollment DISABLE TRIGGER ALL;
-
-COPY public.student_class_enrollment (id, student_id, family_id, class_id, enrolled_at, graduated_at) FROM stdin;
-55e6e2c9-ffed-437f-ba78-29888794e4c0	c1111111-1111-1111-1111-111111111111	f1111111-1111-1111-1111-111111111111	A1	2026-06-17 02:01:42.693582+00	\N
-7f9a89ac-9833-4893-bc9b-121b685fdfef	c2222222-2222-2222-2222-222222222222	f1111111-1111-1111-1111-111111111111	B1	2026-06-17 02:01:42.710322+00	\N
-6dc802b7-63be-4320-9e66-2e7ab4cc2f11	c3333333-3333-3333-3333-333333333333	f2222222-2222-2222-2222-222222222222	A2	2026-06-17 02:01:42.72279+00	\N
-de35a4aa-f3a7-4d3f-a94b-553827a491d8	278f016a-68f9-48fc-a3de-9ad25915bba3	eebe9de9-4fa8-46d6-a6ca-5bff46d072a3	XCYB	2026-06-17 02:01:42.739229+00	\N
-04813b3a-3864-4901-9e42-d42e9b659764	b9f9f6c4-c31c-4cd5-9f9d-0f8206a6b7d1	eebe9de9-4fa8-46d6-a6ca-5bff46d072a3	JIACHEN	2026-06-17 02:01:42.756382+00	\N
-\.
-
-
-ALTER TABLE public.student_class_enrollment ENABLE TRIGGER ALL;
-
---
 -- Data for Name: teacher_audit_log; Type: TABLE DATA; Schema: public; Owner: -
 --
 
@@ -588,31 +482,6 @@ COPY public.teacher_audit_log (id, teacher_id, action, actor_id, prior_state, ne
 
 
 ALTER TABLE public.teacher_audit_log ENABLE TRIGGER ALL;
-
---
--- Data for Name: teacher_class_assignment; Type: TABLE DATA; Schema: public; Owner: -
---
-
-ALTER TABLE public.teacher_class_assignment DISABLE TRIGGER ALL;
-
-COPY public.teacher_class_assignment (id, teacher_id, class_id, assigned_at) FROM stdin;
-d49678cd-228a-40fb-a5cc-585c5649da49	9faddd05-0cab-4b63-b364-cacbccbad936	A1	2026-06-17 02:01:42.323063+00
-\.
-
-
-ALTER TABLE public.teacher_class_assignment ENABLE TRIGGER ALL;
-
---
--- Data for Name: teacher_profiles; Type: TABLE DATA; Schema: public; Owner: -
---
-
-ALTER TABLE public.teacher_profiles DISABLE TRIGGER ALL;
-
-COPY public.teacher_profiles (user_id, display_name, status, is_active, deactivated_at, created_at, updated_at) FROM stdin;
-\.
-
-
-ALTER TABLE public.teacher_profiles ENABLE TRIGGER ALL;
 
 --
 -- Data for Name: tracking_tokens; Type: TABLE DATA; Schema: public; Owner: -
@@ -626,21 +495,27 @@ COPY public.tracking_tokens (id, user_id, token_hash, token_payload, is_revoked,
 
 ALTER TABLE public.tracking_tokens ENABLE TRIGGER ALL;
 
---
--- Data for Name: user_role_assignments; Type: TABLE DATA; Schema: public; Owner: -
---
 
-ALTER TABLE public.user_role_assignments DISABLE TRIGGER ALL;
-
-COPY public.user_role_assignments (id, user_id, role, created_at, updated_at) FROM stdin;
+COPY public.identity_reference_mappings (entity_type, legacy_id, auth_id) FROM stdin;
+person	cc6458b6-dfe9-445e-9c61-415626a243fc	\N
+person	36670ae6-960e-457a-aa5e-a89ffa944e1d	\N
+person	9faddd05-0cab-4b63-b364-cacbccbad936	\N
+person	fcc5f10f-4297-496a-9759-a7ff55436367	\N
+person	892b058d-064f-4711-9b8f-782d7f2cbf49	\N
+person	e997d6c9-9be8-4196-9723-9866a0ad0f40	\N
+class	A1	\N
+class	A2	\N
+class	B1	\N
+class	B2	\N
+class	XCYB	\N
+class	JIACHEN	\N
+family	f1111111-1111-1111-1111-111111111111	\N
+family	f2222222-2222-2222-2222-222222222222	\N
+family	eebe9de9-4fa8-46d6-a6ca-5bff46d072a3	\N
 \.
 
-
-ALTER TABLE public.user_role_assignments ENABLE TRIGGER ALL;
-
---
--- PostgreSQL database dump complete
---
-
-\unrestrict X1fCMPSvP69sRT1fyPtewbSDJh69zmtKaVYjXtXRkKi0iYzPCPw5bgP0Vidtark
-
+COPY public.newsletter_family_preferences (family_id, auth_family_id, newsletter_subscription_status, newsletter_subscription_source, newsletter_subscription_updated_at, newsletter_subscribed_at, newsletter_unsubscribed_at, related_topics) FROM stdin;
+f1111111-1111-1111-1111-111111111111	\N	pending	\N	\N	\N	\N	[]
+f2222222-2222-2222-2222-222222222222	\N	pending	\N	\N	\N	\N	[]
+eebe9de9-4fa8-46d6-a6ca-5bff46d072a3	\N	pending	\N	\N	\N	\N	[]
+\.

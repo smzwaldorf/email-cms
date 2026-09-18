@@ -1,11 +1,11 @@
 import { Readable } from 'node:stream'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-const m = vi.hoisted(() => ({ viewer: vi.fn(), admin: vi.fn(), runQuery: vi.fn(), publish: vi.fn(), createBatch: vi.fn(), edit: vi.fn(), webhook: vi.fn(), readiness: vi.fn(), lock: vi.fn() }))
+const m = vi.hoisted(() => ({ viewer: vi.fn(), admin: vi.fn(), directory: vi.fn(), preview: vi.fn(), runQuery: vi.fn(), publish: vi.fn(), createBatch: vi.fn(), edit: vi.fn(), webhook: vi.fn(), readiness: vi.fn(), lock: vi.fn() }))
 vi.mock('#/lib/db', () => ({ withTransaction: (fn: (client: { query: typeof m.lock }) => unknown) => fn({ query: m.lock }) }))
-vi.mock('#/auth', async () => ({ ...await vi.importActual<typeof import('#/auth')>('#/auth'), requireViewer: m.viewer, requireAdmin: m.admin }))
+vi.mock('#/auth', async () => ({ ...await vi.importActual<typeof import('#/auth')>('#/auth'), requireViewer: m.viewer, requireAdmin: m.admin, directoryForToken: m.directory }))
 vi.mock('#/services/adminService', () => ({ adminService: { publishNewsletter: m.publish, getNewsletterPublishReadiness: m.readiness } }))
-vi.mock('#/services/newsletterDeliveryService', () => ({ newsletterDeliveryService: { createPublishBatch: m.createBatch } }))
+vi.mock('#/services/newsletterDeliveryService', () => ({ newsletterDeliveryService: { createPublishBatch: m.createBatch, previewPersonalizationForFamily: m.preview } }))
 vi.mock('#/services/cmsArticleService', () => ({ cmsArticleService: { update: m.edit } }))
 vi.mock('#/lib/query', () => ({ runSerializedQuery: m.runQuery, from: vi.fn() }))
 vi.mock('#/services/emailPlatform/backendEmailPlatformService', () => ({ backendEmailPlatformService: { handleKitWebhook: m.webhook } }))
@@ -22,13 +22,31 @@ async function call(path: string, body: unknown = {}, method = 'POST') {
   return { status, body: result ? JSON.parse(result) : null }
 }
 beforeEach(() => {
-  vi.clearAllMocks(); m.viewer.mockResolvedValue(actor); m.admin.mockResolvedValue(actor); m.lock.mockResolvedValue({ rows: [{ status: 'draft', is_template: false }] }); m.readiness.mockResolvedValue({ canPublish: true, audienceSummary: {} })
+  vi.clearAllMocks(); m.viewer.mockResolvedValue(actor); m.admin.mockResolvedValue(actor); m.directory.mockResolvedValue({ people: [], families: [{ id: 'auth-family', code: 'F1', displayName: 'Auth family' }], classes: [], familyMemberships: [], classMemberships: [] }); m.lock.mockResolvedValue({ rows: [{ status: 'draft', is_template: false }] }); m.readiness.mockResolvedValue({ canPublish: true, audienceSummary: {} })
 })
 describe('CMS HTTP boundary and publish handoff', () => {
+ it('returns verified graph to admin without touching legacy queries',async()=>{ const r=await call('/api/admin/directory/families',undefined,'GET');expect(r.status).toBe(200);expect(r.body.families[0].id).toBe('auth-family');expect(m.runQuery).not.toHaveBeenCalled() })
   it('stops unauthenticated data access before query execution', async () => {
     m.admin.mockRejectedValue(new HttpError(401, 'Missing bearer token'))
     expect((await call('/api/data/query', { table: 'user_roles' })).status).toBe(401)
     expect(m.runQuery).not.toHaveBeenCalled()
+  })
+  it('requires CMS admin authorization before exposing the SMZ family catalogue', async () => {
+    m.admin.mockRejectedValue(new HttpError(403, 'Admin role required'))
+    expect((await call('/api/admin/directory/families', undefined, 'GET')).status).toBe(403)
+    expect(m.directory).not.toHaveBeenCalled()
+  })
+  it('passes the Auth family and validated graph to non-delivery preview composition', async () => {
+    m.preview.mockResolvedValue({ renderedSubject: 'Preview', renderedBody: '<p>Preview</p>', warnings: [], template: undefined, guardianEmail: null })
+    const result = await call('/api/admin/newsletters/w47/preview-email', { familyId: 'auth-family', templateId: 'template-1' })
+    expect(result.status).toBe(200)
+    expect(m.preview).toHaveBeenCalledWith(expect.objectContaining({
+      newsletterId: 'w47', familyId: 'auth-family', templateId: 'template-1', directory: expect.objectContaining({ families: [{ id: 'auth-family', code: 'F1', displayName: 'Auth family' }] }),
+    }))
+  })
+  it('rejects a family outside the current Auth directory scope before composition', async () => {
+    expect((await call('/api/admin/newsletters/w47/preview-email', { familyId: 'not-visible' })).status).toBe(404)
+    expect(m.preview).not.toHaveBeenCalled()
   })
   it('blocks role writes, unknown tables and dynamic query method attacks', async () => {
     for (const body of [
@@ -41,7 +59,7 @@ describe('CMS HTTP boundary and publish handoff', () => {
     expect(m.runQuery).not.toHaveBeenCalled()
   })
   it('denies unknown/internal RPC and legacy plain publication', async () => {
-    for (const [service, method] of [['admin', 'getCurrentAuthUserId'], ['admin', 'publishNewsletter'], ['admin', 'updateUserAccessControl'], ['newsletterDelivery', 'processQueuedBatch']]) {
+    for (const [service, method] of [['admin', 'getCurrentAuthUserId'], ['admin', 'publishNewsletter'], ['admin', 'updateUserAccessControl'], ['newsletterDelivery', 'processQueuedBatch'], ['newsletterDelivery', 'previewPersonalizationForFamily']]) {
       expect((await call('/api/admin/rpc', { service, method, args: ['fixture'] })).status).toBe(403)
     }
     expect(m.publish).not.toHaveBeenCalled()

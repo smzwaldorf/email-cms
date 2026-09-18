@@ -1,7 +1,7 @@
 -- Vanilla Postgres schema for email-cms.
 -- Generated from the local Supabase public schema.
 -- Stripped: auth.users FKs, RLS policies, Storage, auth-only RPCs.
--- Auth/OCID is out of scope; identity FKs point at public.user_roles(id).
+-- Identity masters live in Auth. Historical external IDs have no cross-domain cascading FKs.
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
@@ -138,18 +138,6 @@ SET default_tablespace = '';
 
 SET default_table_access_method = heap;
 
-CREATE TABLE public.user_roles (
-    id uuid NOT NULL,
-    email character varying(255) NOT NULL,
-    role character varying(20) DEFAULT 'student'::character varying NOT NULL,
-    created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone DEFAULT now(),
-    display_name text,
-    CONSTRAINT user_roles_role_check CHECK (((role)::text = ANY ((ARRAY['admin'::character varying, 'teacher'::character varying, 'parent'::character varying, 'student'::character varying])::text[])))
-);
-
-COMMENT ON TABLE public.user_roles IS 'User roles lookup table with optimized indexes for role-based RLS policy evaluation and admin dashboard queries.';
-
 CREATE TABLE public.user_auth_identities (
     issuer text NOT NULL,
     subject text NOT NULL,
@@ -157,7 +145,7 @@ CREATE TABLE public.user_auth_identities (
     created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
-COMMENT ON TABLE public.user_auth_identities IS 'Stable OIDC issuer and subject links for application-local users. Email is used only to bootstrap an exact verified match.';
+COMMENT ON TABLE public.user_auth_identities IS 'Stable OIDC issuer and subject links to historical CMS actor identifiers. No profile or email-based identity authority.';
 
 CREATE FUNCTION public.audit_article_changes() RETURNS trigger
     LANGUAGE plpgsql
@@ -281,20 +269,6 @@ BEGIN
 END;
 $$;
 
-CREATE FUNCTION public.set_students_updated_at() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  NEW.updated_at = NOW();
-  IF NEW.is_active = false AND OLD.is_active = true THEN
-    NEW.deactivated_at = COALESCE(NEW.deactivated_at, NOW());
-  ELSIF NEW.is_active = true THEN
-    NEW.deactivated_at = NULL;
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
 CREATE FUNCTION public.sync_article_taxonomy_lifecycle_timestamps() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
@@ -303,79 +277,6 @@ BEGIN
     NEW.deactivated_at := COALESCE(NEW.deactivated_at, NOW());
   ELSIF NEW.is_active = true AND (OLD.is_active IS DISTINCT FROM NEW.is_active) THEN
     NEW.deactivated_at := NULL;
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-CREATE FUNCTION public.sync_class_lifecycle_timestamps() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  IF NEW.is_active = FALSE AND OLD.is_active = TRUE THEN
-    NEW.deactivated_at = COALESCE(NEW.deactivated_at, NOW());
-  ELSIF NEW.is_active = TRUE AND OLD.is_active = FALSE THEN
-    NEW.deactivated_at = NULL;
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-CREATE FUNCTION public.sync_family_lifecycle_timestamps() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  IF NEW.is_active = false AND (OLD.is_active IS DISTINCT FROM NEW.is_active) THEN
-    NEW.deactivated_at := COALESCE(NEW.deactivated_at, NOW());
-  ELSIF NEW.is_active = true AND (OLD.is_active IS DISTINCT FROM NEW.is_active) THEN
-    NEW.deactivated_at := NULL;
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-CREATE FUNCTION public.sync_primary_role_from_assignments() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-  target_user_id UUID;
-  resolved_role VARCHAR(20);
-BEGIN
-  target_user_id := COALESCE(NEW.user_id, OLD.user_id);
-
-  SELECT ura.role
-  INTO resolved_role
-  FROM public.user_role_assignments ura
-  WHERE ura.user_id = target_user_id
-  ORDER BY CASE ura.role
-    WHEN 'admin' THEN 1
-    WHEN 'teacher' THEN 2
-    WHEN 'parent' THEN 3
-    WHEN 'student' THEN 4
-    ELSE 99
-  END
-  LIMIT 1;
-
-  UPDATE public.user_roles
-  SET
-    role = COALESCE(resolved_role, 'student'),
-    updated_at = NOW()
-  WHERE id = target_user_id;
-
-  RETURN NULL;
-END;
-$$;
-
-CREATE FUNCTION public.sync_teacher_profile_lifecycle() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  IF NEW.is_active = FALSE AND OLD.is_active = TRUE THEN
-    NEW.deactivated_at = COALESCE(NEW.deactivated_at, NOW());
-    NEW.status = 'disabled';
-  ELSIF NEW.is_active = TRUE AND OLD.is_active = FALSE THEN
-    NEW.deactivated_at = NULL;
-    NEW.status = 'active';
   END IF;
   RETURN NEW;
 END;
@@ -395,24 +296,6 @@ CREATE FUNCTION public.update_articles_updated_at() RETURNS trigger
     AS $$
 BEGIN
   NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$$;
-
-CREATE FUNCTION public.update_classes_updated_at() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$$;
-
-CREATE FUNCTION public.update_families_updated_at() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  NEW.updated_at := NOW();
   RETURN NEW;
 END;
 $$;
@@ -446,25 +329,7 @@ BEGIN
 END;
 $$;
 
-CREATE FUNCTION public.update_teacher_profiles_updated_at() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$$;
-
 CREATE FUNCTION public.update_updated_at_column() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$$;
-
-CREATE FUNCTION public.update_user_role_assignments_updated_at() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -634,19 +499,6 @@ CREATE TABLE public.class_audit_log (
     CONSTRAINT class_audit_log_action_check CHECK (((action)::text = ANY ((ARRAY['create'::character varying, 'update'::character varying, 'activate'::character varying, 'deactivate'::character varying])::text[])))
 );
 
-CREATE TABLE public.classes (
-    id character varying(10) NOT NULL,
-    class_name text NOT NULL,
-    class_grade_year integer NOT NULL,
-    created_at timestamp with time zone DEFAULT now(),
-    class_code text NOT NULL,
-    description text,
-    is_active boolean DEFAULT true NOT NULL,
-    updated_at timestamp with time zone DEFAULT now(),
-    deactivated_at timestamp with time zone,
-    CONSTRAINT valid_grade_year CHECK (((class_grade_year >= 1) AND (class_grade_year <= 12)))
-);
-
 CREATE TABLE public.email_platform_subscriber_mappings (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     family_id uuid NOT NULL,
@@ -762,24 +614,6 @@ CREATE TABLE public.email_templates (
     CONSTRAINT email_templates_state_check CHECK ((state = ANY (ARRAY['draft'::text, 'active'::text, 'inactive'::text])))
 );
 
-CREATE TABLE public.families (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    family_code character varying(20) NOT NULL,
-    created_at timestamp with time zone DEFAULT now(),
-    family_name text,
-    guardian_email text,
-    description text,
-    related_topics jsonb DEFAULT '[]'::jsonb NOT NULL,
-    is_active boolean DEFAULT true NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    deactivated_at timestamp with time zone,
-    newsletter_subscription_status public.newsletter_subscription_status DEFAULT 'pending'::public.newsletter_subscription_status NOT NULL,
-    newsletter_subscription_source text,
-    newsletter_subscription_updated_at timestamp with time zone,
-    newsletter_subscribed_at timestamp with time zone,
-    newsletter_unsubscribed_at timestamp with time zone
-);
-
 CREATE TABLE public.family_audit_log (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     family_id uuid NOT NULL,
@@ -789,17 +623,6 @@ CREATE TABLE public.family_audit_log (
     new_state jsonb,
     changed_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT family_audit_log_action_check CHECK ((action = ANY (ARRAY['create'::text, 'update'::text, 'activate'::text, 'deactivate'::text, 'add_child'::text, 'remove_child'::text])))
-);
-
-CREATE TABLE public.family_enrollment (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    family_id uuid NOT NULL,
-    parent_id uuid,
-    relationship character varying(20) NOT NULL,
-    enrolled_at timestamp with time zone DEFAULT now(),
-    student_id uuid,
-    CONSTRAINT family_enrollment_relationship_check CHECK (((relationship)::text = ANY ((ARRAY['father'::character varying, 'mother'::character varying, 'guardian'::character varying, 'child'::character varying, 'student'::character varying])::text[]))),
-    CONSTRAINT family_member_check CHECK ((((parent_id IS NOT NULL) AND (student_id IS NULL)) OR ((parent_id IS NULL) AND (student_id IS NOT NULL))))
 );
 
 CREATE TABLE public.media_deletion_audit (
@@ -1007,28 +830,6 @@ CREATE TABLE public.student_audit_log (
     CONSTRAINT student_audit_log_action_check CHECK ((action = ANY (ARRAY['create'::text, 'update'::text, 'activate'::text, 'deactivate'::text, 'add_class'::text, 'remove_class'::text, 'add_family'::text, 'remove_family'::text])))
 );
 
-CREATE TABLE public.student_class_enrollment (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    student_id uuid NOT NULL,
-    family_id uuid NOT NULL,
-    class_id character varying(10) NOT NULL,
-    enrolled_at timestamp with time zone DEFAULT now(),
-    graduated_at timestamp with time zone,
-    CONSTRAINT valid_enrollment_dates CHECK (((enrolled_at <= graduated_at) OR (graduated_at IS NULL)))
-);
-
-COMMENT ON TABLE public.student_class_enrollment IS 'Student class enrollment tracking with partial indexes optimized for active enrollments (graduated_at IS NULL) to reduce query scope.';
-
-CREATE TABLE public.students (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    name text NOT NULL,
-    created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone DEFAULT now(),
-    student_code text NOT NULL,
-    is_active boolean DEFAULT true NOT NULL,
-    deactivated_at timestamp with time zone
-);
-
 CREATE TABLE public.teacher_audit_log (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     teacher_id uuid NOT NULL,
@@ -1038,24 +839,6 @@ CREATE TABLE public.teacher_audit_log (
     new_state jsonb,
     changed_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT teacher_audit_log_action_check CHECK (((action)::text = ANY ((ARRAY['create'::character varying, 'update'::character varying, 'activate'::character varying, 'deactivate'::character varying])::text[])))
-);
-
-CREATE TABLE public.teacher_class_assignment (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    teacher_id uuid NOT NULL,
-    class_id character varying(10) NOT NULL,
-    assigned_at timestamp with time zone DEFAULT now()
-);
-
-CREATE TABLE public.teacher_profiles (
-    user_id uuid NOT NULL,
-    display_name text NOT NULL,
-    status character varying(20) DEFAULT 'active'::character varying NOT NULL,
-    is_active boolean DEFAULT true NOT NULL,
-    deactivated_at timestamp with time zone,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT teacher_profiles_status_check CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'disabled'::character varying])::text[])))
 );
 
 CREATE TABLE public.tracking_tokens (
@@ -1069,15 +852,6 @@ CREATE TABLE public.tracking_tokens (
 );
 
 COMMENT ON TABLE public.tracking_tokens IS 'Stores JWT hashes/identifiers for validating email tracking links and magic entry.';
-
-CREATE TABLE public.user_role_assignments (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid NOT NULL,
-    role character varying(20) NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT user_role_assignments_role_check CHECK (((role)::text = ANY ((ARRAY['admin'::character varying, 'teacher'::character varying, 'parent'::character varying, 'student'::character varying])::text[])))
-);
 
 ALTER TABLE ONLY public.analytics_events
     ADD CONSTRAINT analytics_events_pkey PRIMARY KEY (id);
@@ -1118,14 +892,8 @@ ALTER TABLE ONLY public.auth_events
 ALTER TABLE ONLY public.authorization_decision_trace
     ADD CONSTRAINT authorization_decision_trace_pkey PRIMARY KEY (id);
 
-ALTER TABLE ONLY public.student_class_enrollment
-    ADD CONSTRAINT child_class_enrollment_pkey PRIMARY KEY (id);
-
 ALTER TABLE ONLY public.class_audit_log
     ADD CONSTRAINT class_audit_log_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY public.classes
-    ADD CONSTRAINT classes_pkey PRIMARY KEY (id);
 
 ALTER TABLE ONLY public.email_platform_subscriber_mappings
     ADD CONSTRAINT email_platform_subscriber_mappings_pkey PRIMARY KEY (id);
@@ -1148,17 +916,8 @@ ALTER TABLE ONLY public.email_template_revisions
 ALTER TABLE ONLY public.email_templates
     ADD CONSTRAINT email_templates_pkey PRIMARY KEY (id);
 
-ALTER TABLE ONLY public.families
-    ADD CONSTRAINT families_family_code_key UNIQUE (family_code);
-
-ALTER TABLE ONLY public.families
-    ADD CONSTRAINT families_pkey PRIMARY KEY (id);
-
 ALTER TABLE ONLY public.family_audit_log
     ADD CONSTRAINT family_audit_log_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY public.family_enrollment
-    ADD CONSTRAINT family_enrollment_pkey PRIMARY KEY (id);
 
 ALTER TABLE ONLY public.media_deletion_audit
     ADD CONSTRAINT media_deletion_audit_pkey PRIMARY KEY (id);
@@ -1196,17 +955,8 @@ ALTER TABLE ONLY public.permission_mutation_audit_log
 ALTER TABLE ONLY public.student_audit_log
     ADD CONSTRAINT student_audit_log_pkey PRIMARY KEY (id);
 
-ALTER TABLE ONLY public.students
-    ADD CONSTRAINT students_pkey PRIMARY KEY (id);
-
 ALTER TABLE ONLY public.teacher_audit_log
     ADD CONSTRAINT teacher_audit_log_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY public.teacher_class_assignment
-    ADD CONSTRAINT teacher_class_assignment_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY public.teacher_profiles
-    ADD CONSTRAINT teacher_profiles_pkey PRIMARY KEY (user_id);
 
 ALTER TABLE ONLY public.tracking_tokens
     ADD CONSTRAINT tracking_tokens_pkey PRIMARY KEY (id);
@@ -1214,35 +964,14 @@ ALTER TABLE ONLY public.tracking_tokens
 ALTER TABLE ONLY public.tracking_tokens
     ADD CONSTRAINT tracking_tokens_token_hash_key UNIQUE (token_hash);
 
-ALTER TABLE ONLY public.student_class_enrollment
-    ADD CONSTRAINT unique_active_enrollment UNIQUE (student_id, class_id) DEFERRABLE INITIALLY DEFERRED;
-
 ALTER TABLE ONLY public.newsletter_articles
     ADD CONSTRAINT unique_article_per_newsletter UNIQUE (newsletter_id, article_id);
 
 ALTER TABLE ONLY public.newsletter_articles
     ADD CONSTRAINT unique_order_per_newsletter UNIQUE (newsletter_id, article_order);
 
-ALTER TABLE ONLY public.family_enrollment
-    ADD CONSTRAINT unique_parent_per_family UNIQUE (family_id, parent_id);
-
-ALTER TABLE ONLY public.teacher_class_assignment
-    ADD CONSTRAINT unique_teacher_per_class UNIQUE (teacher_id, class_id);
-
-ALTER TABLE ONLY public.user_role_assignments
-    ADD CONSTRAINT unique_user_role_assignment UNIQUE (user_id, role);
-
 ALTER TABLE ONLY public.newsletters
     ADD CONSTRAINT unique_week_number UNIQUE (week_number);
-
-ALTER TABLE ONLY public.user_role_assignments
-    ADD CONSTRAINT user_role_assignments_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY public.user_roles
-    ADD CONSTRAINT user_roles_email_key UNIQUE (email);
-
-ALTER TABLE ONLY public.user_roles
-    ADD CONSTRAINT user_roles_pkey PRIMARY KEY (id);
 
 ALTER TABLE ONLY public.user_auth_identities
     ADD CONSTRAINT user_auth_identities_pkey PRIMARY KEY (issuer, subject);
@@ -1324,14 +1053,6 @@ CREATE INDEX idx_authorization_decision_created_at ON public.authorization_decis
 
 CREATE INDEX idx_class_audit_log_class_changed_at ON public.class_audit_log USING btree (class_id, changed_at DESC);
 
-CREATE UNIQUE INDEX idx_classes_class_code_unique ON public.classes USING btree (lower(btrim(class_code)));
-
-CREATE UNIQUE INDEX idx_classes_class_name_unique ON public.classes USING btree (lower(btrim(class_name)));
-
-CREATE INDEX idx_classes_grade_year ON public.classes USING btree (class_grade_year DESC);
-
-CREATE INDEX idx_classes_is_active ON public.classes USING btree (is_active, class_grade_year DESC, class_name);
-
 CREATE INDEX idx_delivery_batches_newsletter_created ON public.newsletter_delivery_batches USING btree (newsletter_id, created_at DESC);
 
 CREATE INDEX idx_delivery_batches_parent ON public.newsletter_delivery_batches USING btree (parent_batch_id);
@@ -1376,12 +1097,6 @@ CREATE INDEX idx_email_template_revisions_template_id ON public.email_template_r
 
 CREATE INDEX idx_email_templates_state ON public.email_templates USING btree (state);
 
-CREATE UNIQUE INDEX idx_families_active_code_unique ON public.families USING btree (lower((family_code)::text)) WHERE (is_active = true);
-
-CREATE UNIQUE INDEX idx_families_active_guardian_email_unique ON public.families USING btree (lower(guardian_email)) WHERE (is_active = true);
-
-CREATE INDEX idx_families_code ON public.families USING btree (family_code);
-
 CREATE INDEX idx_family_audit_log_family_changed_at ON public.family_audit_log USING btree (family_id, changed_at DESC);
 
 CREATE INDEX idx_media_deletion_audit_media_id ON public.media_deletion_audit USING btree (media_id, deleted_at DESC);
@@ -1424,27 +1139,11 @@ CREATE INDEX idx_permission_mutation_action_changed_at ON public.permission_muta
 
 CREATE INDEX idx_permission_mutation_target_changed_at ON public.permission_mutation_audit_log USING btree (target_user_id, changed_at DESC);
 
-CREATE INDEX idx_student_enrollment_family ON public.student_class_enrollment USING btree (family_id);
 
-CREATE INDEX idx_student_enrollment_family_active ON public.student_class_enrollment USING btree (family_id, class_id) WHERE (graduated_at IS NULL);
 
-COMMENT ON INDEX public.idx_student_enrollment_family_active IS 'Partial index for active enrollments only. Optimizes family view queries and RLS policy evaluation for parents.';
 
-CREATE INDEX idx_student_enrollment_student ON public.student_class_enrollment USING btree (student_id, graduated_at);
-
-CREATE UNIQUE INDEX idx_students_code_active_unique ON public.students USING btree (student_code) WHERE (is_active = true);
-
-CREATE UNIQUE INDEX idx_students_name_active_unique ON public.students USING btree (lower(btrim(name))) WHERE (is_active = true);
-
-CREATE INDEX idx_teacher_assignment_teacher ON public.teacher_class_assignment USING btree (teacher_id);
-
-CREATE INDEX idx_teacher_assignment_teacher_class ON public.teacher_class_assignment USING btree (teacher_id, class_id);
-
-COMMENT ON INDEX public.idx_teacher_assignment_teacher_class IS 'Composite index for RLS policy evaluation when checking if teacher can access class-restricted articles.';
 
 CREATE INDEX idx_teacher_audit_log_teacher_changed_at ON public.teacher_audit_log USING btree (teacher_id, changed_at DESC);
-
-CREATE INDEX idx_teacher_profiles_status ON public.teacher_profiles USING btree (status, is_active, display_name);
 
 CREATE INDEX idx_tracking_tokens_expiry ON public.tracking_tokens USING btree (expires_at);
 
@@ -1452,17 +1151,11 @@ CREATE INDEX idx_tracking_tokens_hash ON public.tracking_tokens USING btree (tok
 
 CREATE INDEX idx_tracking_tokens_user ON public.tracking_tokens USING btree (user_id);
 
-CREATE INDEX idx_user_role_assignments_user_id ON public.user_role_assignments USING btree (user_id, role);
-
-CREATE INDEX idx_user_roles_role ON public.user_roles USING btree (role);
-
 CREATE INDEX idx_user_auth_identities_user_id ON public.user_auth_identities USING btree (user_id);
 
-COMMENT ON INDEX public.idx_user_roles_role IS 'Optimizes RLS policy evaluation for role-based access control. Supports fast admin/teacher role lookups when filtering articles.';
+
 
 CREATE TRIGGER trg_email_templates_updated_at BEFORE UPDATE ON public.email_templates FOR EACH ROW EXECUTE FUNCTION public.set_email_templates_updated_at();
-
-CREATE TRIGGER trg_students_updated_at BEFORE UPDATE ON public.students FOR EACH ROW EXECUTE FUNCTION public.set_students_updated_at();
 
 CREATE TRIGGER trigger_article_categories_lifecycle_timestamps BEFORE UPDATE ON public.article_categories FOR EACH ROW EXECUTE FUNCTION public.sync_article_taxonomy_lifecycle_timestamps();
 
@@ -1476,27 +1169,11 @@ CREATE TRIGGER trigger_articles_updated_at BEFORE UPDATE ON public.articles FOR 
 
 CREATE TRIGGER trigger_audit_article_changes AFTER INSERT OR DELETE OR UPDATE ON public.articles FOR EACH ROW EXECUTE FUNCTION public.audit_article_changes();
 
-CREATE TRIGGER trigger_classes_lifecycle_timestamps BEFORE UPDATE ON public.classes FOR EACH ROW EXECUTE FUNCTION public.sync_class_lifecycle_timestamps();
-
-CREATE TRIGGER trigger_classes_updated_at BEFORE UPDATE ON public.classes FOR EACH ROW EXECUTE FUNCTION public.update_classes_updated_at();
-
-CREATE TRIGGER trigger_families_lifecycle_timestamps BEFORE UPDATE ON public.families FOR EACH ROW EXECUTE FUNCTION public.sync_family_lifecycle_timestamps();
-
-CREATE TRIGGER trigger_families_updated_at BEFORE UPDATE ON public.families FOR EACH ROW EXECUTE FUNCTION public.update_families_updated_at();
-
 CREATE TRIGGER trigger_newsletters_updated_at BEFORE UPDATE ON public.newsletters FOR EACH ROW EXECUTE FUNCTION public.update_newsletters_updated_at();
 
 CREATE TRIGGER trigger_set_article_short_id BEFORE INSERT ON public.articles FOR EACH ROW EXECUTE FUNCTION public.set_article_short_id();
 
-CREATE TRIGGER trigger_sync_primary_role_from_assignments AFTER INSERT OR DELETE OR UPDATE ON public.user_role_assignments FOR EACH ROW EXECUTE FUNCTION public.sync_primary_role_from_assignments();
-
-CREATE TRIGGER trigger_teacher_profile_lifecycle BEFORE UPDATE ON public.teacher_profiles FOR EACH ROW EXECUTE FUNCTION public.sync_teacher_profile_lifecycle();
-
-CREATE TRIGGER trigger_teacher_profiles_updated_at BEFORE UPDATE ON public.teacher_profiles FOR EACH ROW EXECUTE FUNCTION public.update_teacher_profiles_updated_at();
-
 CREATE TRIGGER trigger_update_media_usage_count AFTER INSERT OR DELETE ON public.article_media_references FOR EACH ROW EXECUTE FUNCTION public.update_media_usage_count();
-
-CREATE TRIGGER trigger_user_role_assignments_updated_at BEFORE UPDATE ON public.user_role_assignments FOR EACH ROW EXECUTE FUNCTION public.update_user_role_assignments_updated_at();
 
 CREATE TRIGGER update_email_platform_subscriber_mappings_updated_at BEFORE UPDATE ON public.email_platform_subscriber_mappings FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
@@ -1522,14 +1199,8 @@ ALTER TABLE ONLY public.analytics_events
 ALTER TABLE ONLY public.analytics_events
     ADD CONSTRAINT analytics_events_newsletter_id_fkey FOREIGN KEY (newsletter_id) REFERENCES public.newsletters(id) ON DELETE CASCADE;
 
-ALTER TABLE ONLY public.analytics_events
-    ADD CONSTRAINT analytics_events_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.user_roles(id) ON DELETE SET NULL;
-
 ALTER TABLE ONLY public.analytics_snapshots
     ADD CONSTRAINT analytics_snapshots_article_id_fkey FOREIGN KEY (article_id) REFERENCES public.articles(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.analytics_snapshots
-    ADD CONSTRAINT analytics_snapshots_class_id_fkey FOREIGN KEY (class_id) REFERENCES public.classes(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.analytics_snapshots
     ADD CONSTRAINT analytics_snapshots_newsletter_id_fkey FOREIGN KEY (newsletter_id) REFERENCES public.newsletters(id) ON DELETE CASCADE;
@@ -1553,40 +1224,7 @@ ALTER TABLE ONLY public.article_tag_assignments
     ADD CONSTRAINT article_tag_assignments_tag_id_fkey FOREIGN KEY (tag_id) REFERENCES public.article_tags(id) ON DELETE RESTRICT;
 
 ALTER TABLE ONLY public.articles
-    ADD CONSTRAINT articles_author_id_fkey FOREIGN KEY (author_id) REFERENCES public.user_roles(id);
-
-ALTER TABLE ONLY public.articles
-    ADD CONSTRAINT articles_deleted_by_fkey FOREIGN KEY (deleted_by) REFERENCES public.user_roles(id);
-
-ALTER TABLE ONLY public.articles
-    ADD CONSTRAINT articles_last_edited_by_fkey FOREIGN KEY (last_edited_by) REFERENCES public.user_roles(id);
-
-ALTER TABLE ONLY public.articles
-    ADD CONSTRAINT articles_week_number_fkey FOREIGN KEY (week_number) REFERENCES public.newsletters(week_number) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.auth_events
-    ADD CONSTRAINT auth_events_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.user_roles(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.authorization_decision_trace
-    ADD CONSTRAINT authorization_decision_trace_actor_id_fkey FOREIGN KEY (actor_id) REFERENCES public.user_roles(id) ON DELETE SET NULL;
-
-ALTER TABLE ONLY public.student_class_enrollment
-    ADD CONSTRAINT child_class_enrollment_class_id_fkey FOREIGN KEY (class_id) REFERENCES public.classes(id) ON DELETE RESTRICT;
-
-ALTER TABLE ONLY public.student_class_enrollment
-    ADD CONSTRAINT child_class_enrollment_family_id_fkey FOREIGN KEY (family_id) REFERENCES public.families(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.class_audit_log
-    ADD CONSTRAINT class_audit_log_actor_id_fkey FOREIGN KEY (actor_id) REFERENCES public.user_roles(id) ON DELETE SET NULL;
-
-ALTER TABLE ONLY public.class_audit_log
-    ADD CONSTRAINT class_audit_log_class_id_fkey FOREIGN KEY (class_id) REFERENCES public.classes(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.email_platform_subscriber_mappings
-    ADD CONSTRAINT email_platform_subscriber_mappings_family_id_fkey FOREIGN KEY (family_id) REFERENCES public.families(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.email_platform_subscription_audit
-    ADD CONSTRAINT email_platform_subscription_audit_family_id_fkey FOREIGN KEY (family_id) REFERENCES public.families(id) ON DELETE CASCADE;
+    ADD CONSTRAINT articles_week_number_fkey FOREIGN KEY (week_number) REFERENCES public.newsletters(week_number) ON UPDATE CASCADE ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.email_platform_subscription_audit
     ADD CONSTRAINT email_platform_subscription_audit_mapping_id_fkey FOREIGN KEY (mapping_id) REFERENCES public.email_platform_subscriber_mappings(id) ON DELETE SET NULL;
@@ -1595,19 +1233,10 @@ ALTER TABLE ONLY public.email_platform_subscription_audit
     ADD CONSTRAINT email_platform_subscription_audit_webhook_event_id_fkey FOREIGN KEY (webhook_event_id) REFERENCES public.email_platform_webhook_events(id) ON DELETE SET NULL;
 
 ALTER TABLE ONLY public.email_platform_sync_jobs
-    ADD CONSTRAINT email_platform_sync_jobs_family_id_fkey FOREIGN KEY (family_id) REFERENCES public.families(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.email_platform_sync_jobs
     ADD CONSTRAINT email_platform_sync_jobs_mapping_id_fkey FOREIGN KEY (mapping_id) REFERENCES public.email_platform_subscriber_mappings(id) ON DELETE SET NULL;
 
 ALTER TABLE ONLY public.email_platform_webhook_events
-    ADD CONSTRAINT email_platform_webhook_events_resolved_family_id_fkey FOREIGN KEY (resolved_family_id) REFERENCES public.families(id) ON DELETE SET NULL;
-
-ALTER TABLE ONLY public.email_platform_webhook_events
     ADD CONSTRAINT email_platform_webhook_events_resolved_mapping_id_fkey FOREIGN KEY (resolved_mapping_id) REFERENCES public.email_platform_subscriber_mappings(id) ON DELETE SET NULL;
-
-ALTER TABLE ONLY public.email_template_revisions
-    ADD CONSTRAINT email_template_revisions_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.user_roles(id) ON DELETE SET NULL;
 
 ALTER TABLE ONLY public.email_template_revisions
     ADD CONSTRAINT email_template_revisions_template_id_fkey FOREIGN KEY (template_id) REFERENCES public.email_templates(id) ON DELETE CASCADE;
@@ -1615,38 +1244,11 @@ ALTER TABLE ONLY public.email_template_revisions
 ALTER TABLE ONLY public.email_templates
     ADD CONSTRAINT email_templates_current_revision_fk FOREIGN KEY (current_revision_id) REFERENCES public.email_template_revisions(id) ON DELETE SET NULL;
 
-ALTER TABLE ONLY public.family_audit_log
-    ADD CONSTRAINT family_audit_log_actor_id_fkey FOREIGN KEY (actor_id) REFERENCES public.user_roles(id);
-
-ALTER TABLE ONLY public.family_audit_log
-    ADD CONSTRAINT family_audit_log_family_id_fkey FOREIGN KEY (family_id) REFERENCES public.families(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.family_enrollment
-    ADD CONSTRAINT family_enrollment_family_id_fkey FOREIGN KEY (family_id) REFERENCES public.families(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.family_enrollment
-    ADD CONSTRAINT family_enrollment_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.user_roles(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.family_enrollment
-    ADD CONSTRAINT family_enrollment_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.media_deletion_audit
-    ADD CONSTRAINT media_deletion_audit_deleted_by_fkey FOREIGN KEY (deleted_by) REFERENCES public.user_roles(id) ON DELETE SET NULL;
-
-ALTER TABLE ONLY public.media_files
-    ADD CONSTRAINT media_files_uploaded_by_fkey FOREIGN KEY (uploaded_by) REFERENCES public.user_roles(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.media_usage
-    ADD CONSTRAINT media_usage_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.user_roles(id) ON DELETE SET NULL;
-
 ALTER TABLE ONLY public.media_usage
     ADD CONSTRAINT media_usage_media_id_fkey FOREIGN KEY (media_id) REFERENCES public.media_files(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.media_variants
     ADD CONSTRAINT media_variants_media_id_fkey FOREIGN KEY (media_id) REFERENCES public.media_files(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.newsletter_articles
-    ADD CONSTRAINT newsletter_articles_added_by_fkey FOREIGN KEY (added_by) REFERENCES public.user_roles(id);
 
 ALTER TABLE ONLY public.newsletter_articles
     ADD CONSTRAINT newsletter_articles_article_id_fkey FOREIGN KEY (article_id) REFERENCES public.articles(id) ON DELETE CASCADE;
@@ -1657,12 +1259,6 @@ ALTER TABLE ONLY public.newsletter_articles
 ALTER TABLE ONLY public.newsletter_delivery_batch_recipients
     ADD CONSTRAINT newsletter_delivery_batch_recipients_batch_id_fkey FOREIGN KEY (batch_id) REFERENCES public.newsletter_delivery_batches(id) ON DELETE CASCADE;
 
-ALTER TABLE ONLY public.newsletter_delivery_batch_recipients
-    ADD CONSTRAINT newsletter_delivery_batch_recipients_family_id_fkey FOREIGN KEY (family_id) REFERENCES public.families(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.newsletter_delivery_batch_recipients
-    ADD CONSTRAINT newsletter_delivery_batch_recipients_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.user_roles(id) ON DELETE SET NULL;
-
 ALTER TABLE ONLY public.newsletter_delivery_batches
     ADD CONSTRAINT newsletter_delivery_batches_newsletter_id_fkey FOREIGN KEY (newsletter_id) REFERENCES public.newsletters(id) ON DELETE CASCADE;
 
@@ -1672,41 +1268,22 @@ ALTER TABLE ONLY public.newsletter_delivery_batches
 ALTER TABLE ONLY public.newsletter_delivery_jobs
     ADD CONSTRAINT newsletter_delivery_jobs_batch_id_fkey FOREIGN KEY (batch_id) REFERENCES public.newsletter_delivery_batches(id) ON DELETE CASCADE;
 
-ALTER TABLE ONLY public.permission_mutation_audit_log
-    ADD CONSTRAINT permission_mutation_audit_log_actor_id_fkey FOREIGN KEY (actor_id) REFERENCES public.user_roles(id) ON DELETE SET NULL;
 
-ALTER TABLE ONLY public.permission_mutation_audit_log
-    ADD CONSTRAINT permission_mutation_audit_log_target_user_id_fkey FOREIGN KEY (target_user_id) REFERENCES public.user_roles(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.student_audit_log
-    ADD CONSTRAINT student_audit_log_actor_id_fkey FOREIGN KEY (actor_id) REFERENCES public.user_roles(id) ON DELETE SET NULL;
-
-ALTER TABLE ONLY public.student_audit_log
-    ADD CONSTRAINT student_audit_log_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.student_class_enrollment
-    ADD CONSTRAINT student_class_enrollment_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.teacher_audit_log
-    ADD CONSTRAINT teacher_audit_log_actor_id_fkey FOREIGN KEY (actor_id) REFERENCES public.user_roles(id) ON DELETE SET NULL;
-
-ALTER TABLE ONLY public.teacher_audit_log
-    ADD CONSTRAINT teacher_audit_log_teacher_id_fkey FOREIGN KEY (teacher_id) REFERENCES public.user_roles(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.teacher_class_assignment
-    ADD CONSTRAINT teacher_class_assignment_class_id_fkey FOREIGN KEY (class_id) REFERENCES public.classes(id) ON DELETE RESTRICT;
-
-ALTER TABLE ONLY public.teacher_class_assignment
-    ADD CONSTRAINT teacher_class_assignment_teacher_id_fkey FOREIGN KEY (teacher_id) REFERENCES public.user_roles(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.teacher_profiles
-    ADD CONSTRAINT teacher_profiles_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.user_roles(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.tracking_tokens
-    ADD CONSTRAINT tracking_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.user_roles(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.user_role_assignments
-    ADD CONSTRAINT user_role_assignments_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.user_roles(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.user_auth_identities
-    ADD CONSTRAINT user_auth_identities_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.user_roles(id) ON DELETE CASCADE;
+CREATE TABLE public.identity_reference_mappings (
+  entity_type text NOT NULL CHECK (entity_type IN ('person','family','class','student')),
+  legacy_id text NOT NULL,
+  auth_id uuid,
+  PRIMARY KEY (entity_type, legacy_id)
+);
+CREATE TABLE public.newsletter_family_preferences (
+  family_id uuid PRIMARY KEY,
+  auth_family_id uuid UNIQUE,
+  newsletter_subscription_status public.newsletter_subscription_status NOT NULL DEFAULT 'subscribed',
+  newsletter_subscription_source text,
+  newsletter_subscription_updated_at timestamptz,
+  newsletter_subscribed_at timestamptz,
+  newsletter_unsubscribed_at timestamptz,
+  related_topics jsonb NOT NULL DEFAULT '[]'::jsonb
+);
+COMMENT ON TABLE public.newsletter_family_preferences IS 'CMS newsletter preferences only; family identity and membership are owned by Auth.';
+COMMENT ON TABLE public.identity_reference_mappings IS 'Identifier-only aliases for legacy CMS references; no directory profiles or authority.';

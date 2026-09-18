@@ -4,6 +4,41 @@ vi.mock('#/lib/db', () => database)
 import { from, runSerializedQuery } from '#/lib/query'
 
 describe('explicit upsert conflict keys', () => {
+  it('encodes JSONB arrays while preserving native SQL array parameters', async () => {
+    await from('email_template_revisions').insert({
+      template_id: 'template',
+      revision_number: 1,
+      subject_template: 'Subject',
+      body_template: 'Body',
+      blocks: [{ type: 'custom-html', order: 0 }],
+    })
+    expect(database.query.mock.lastCall![1]).toEqual([
+      'template',
+      1,
+      'Subject',
+      'Body',
+      '[{"type":"custom-html","order":0}]',
+    ])
+
+    await from('articles').update({
+      restricted_to_classes: ['C6'],
+      class_ids: ['C6'],
+    }).eq('id', 'article')
+    expect(database.query.mock.lastCall![1]).toEqual(['["C6"]', ['C6'], 'article'])
+
+    await from('email_template_revisions').upsert({
+      id: 'revision',
+      blocks: [],
+    }, { onConflict: 'id' })
+    expect(database.query.mock.lastCall![1]).toEqual(['revision', '[]'])
+
+    await from('newsletter_articles').upsert({
+      id: 'junction',
+      target_class_ids: [],
+    }, { onConflict: 'id' })
+    expect(database.query.mock.lastCall![1]).toEqual(['junction', []])
+  })
+
   it('preserves the provider/family uniqueness contract', async () => {
     const result = await from('email_platform_subscriber_mappings').upsert({ provider: 'kit', family_id: 'family', email: 'test@example.test' }, { onConflict: 'provider,family_id' })
     expect(result.error).toBeNull()

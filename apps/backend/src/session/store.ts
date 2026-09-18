@@ -95,3 +95,8 @@ export async function sessionCredentials(session: BrowserSession, force = false)
     throw new HttpError(503, 'Reconnecting to Identity', 'identity_unavailable')
   }
 }
+
+export async function readSessionByHash(hash:string):Promise<BrowserSession|null> {
+ const {rows}=await query<BrowserSession>('SELECT * FROM cms_browser_sessions WHERE id_hash=$1 AND remembered_until>now()',[hash])
+ return rows[0]??null
+}

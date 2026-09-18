@@ -1,5 +1,7 @@
 # Email CMS
 
+For authoring, class audiences, template preview, controlled sending and reading analytics, see the [newsletter journey runbook](specs/docs/NEWSLETTER-JOURNEY.md).
+
 React/TypeScript newsletter CMS with a Node backend, PostgreSQL and a separate delivery worker. SMZ Auth owns login eligibility, roles and school-directory relationships. CMS enforces action permissions and owns content and email delivery.
 
 See [runtime adapters](specs/docs/RUNTIME_ADAPTERS.md) for the reusable Node request handler, HTTP and worker lifecycle, shared pool ownership and Cloudflare invocation boundaries. Importing application and guarded entrypoint modules starts no listener or delivery.
@@ -30,6 +32,6 @@ Shared, backend and frontend production builds now pass. Deployment still requir
 
 See the [Cloudflare deployment guide](specs/docs/CLOUDFLARE.md) for the deployed Pages/Workers topology, existing CMS database, commit-triggered CI, session secrets and release evidence.
 
-Authoritative runtime code lives under `apps/frontend`, `apps/backend`, and `packages/shared`. OpenSpec capability requirements are under `openspec/specs`; the ownership implementation is `openspec/changes/delegate-auth-and-enforce-cms-permissions`. Kit is the current provider. The unimplemented Resend proposal is not deployment authorization.
+Authoritative runtime code lives under `apps/frontend`, `apps/backend`, and `packages/shared`. OpenSpec capability requirements are under `openspec/specs`; the ownership implementation is `openspec/changes/delegate-auth-and-enforce-cms-permissions`. Resend is the newsletter sending provider; Identity login emails also use Resend. See [delivery configuration and verification](specs/docs/NEWSLETTER-JOURNEY.md). Kit broadcast sending and outbound sync endpoints are disabled; historical records are retained.
 
 The [previous README](specs/docs/history/README-before-auth-separation.md) preserves earlier architecture, completion reports and Supabase-era instructions as history. Those are not current setup or security guidance.

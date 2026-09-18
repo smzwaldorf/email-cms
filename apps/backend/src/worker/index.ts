@@ -20,7 +20,9 @@ export async function main(): Promise<void> {
   runtime.start()
 }
 
-if (require.main === module) {
+const invokedDirectly = require.main === module || /(?:^|\/)src\/worker\/index\.ts$|(?:^|\/)dist\/worker\/index\.js$/.test(process.argv[1] ?? '')
+
+if (invokedDirectly) {
   void main().catch(error => {
     console.error('CMS worker startup failed:', error)
     process.exitCode = 1

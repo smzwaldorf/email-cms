@@ -219,25 +219,26 @@ export const AnalyticsDashboardPage: React.FC = () => {
                 </div>
 
                 {/* KPI Grid */}
+                {metrics?.emailMetricsAvailable === false && <p className="text-sm text-brand-neutral-500">Email rates are unavailable: no recorded sends for this selection, or delivery data could not be loaded.</p>}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <KPICard 
                         title="Open Rate" 
-                        value={`${metrics?.openRate.toFixed(1) || 0}%`} 
-                        animateValue={metrics?.openRate}
+                        value={metrics?.emailMetricsAvailable === false ? '—' : `${metrics?.openRate.toFixed(1) || 0}%`}
+                        animateValue={metrics?.emailMetricsAvailable === false ? undefined : metrics?.openRate}
                         suffix="%"
                         loading={metricsLoading}
                         trend={0} 
-                        tooltip="Percentage of recipients who opened the email. (Unique Opens / Total Sent)"
+                        tooltip="Unique recorded opens / provider-accepted recipients. Known proxy/scanner events are excluded; image loads do not prove reading."
                         icon={<div className="p-2 bg-purple-50 rounded-lg text-purple-600"><EyeIcon /></div>}
                     />
                     <KPICard 
                         title="Click Rate" 
-                        value={`${metrics?.clickRate.toFixed(1) || 0}%`} 
-                        animateValue={metrics?.clickRate}
+                        value={metrics?.emailMetricsAvailable === false ? '—' : `${metrics?.clickRate.toFixed(1) || 0}%`}
+                        animateValue={metrics?.emailMetricsAvailable === false ? undefined : metrics?.clickRate}
                         suffix="%"
                         loading={metricsLoading}
                         trend={0} 
-                        tooltip="Percentage of openers who clicked at least one link. (Unique Clicks / Unique Opens)"
+                        tooltip="Unique recorded clickers / provider-accepted recipients. Known proxy/scanner events are excluded."
                         icon={<div className="p-2 bg-emerald-50 rounded-lg text-emerald-600"><ClickIcon /></div>}
                     />
                     <KPICard 

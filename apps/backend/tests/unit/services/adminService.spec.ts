@@ -422,6 +422,22 @@ describe('AdminService', () => {
   })
 
   describe('getNewsletterPublishReadiness', () => {
+    it('blocks sending with zero eligible parents and exposes exclusion reasons', async () => {
+      mockBuilder.then
+        .mockImplementationOnce((resolve) => resolve({ data: {
+          id: 'newsletter-1', week_number: '2026-W39', release_date: '2026-09-20', status: 'draft',
+        }, error: null }))
+        .mockImplementationOnce((resolve) => resolve({ data: [{ articles: { id: 'article-1' } }], error: null }))
+      mockPreviewAudience.mockResolvedValueOnce({
+        selection: { mode: 'all' }, totalCandidates: 3, eligibleCount: 0, ineligibleCount: 3,
+        eligibleRecipientCount: 0, exclusionReasons: { missing_parent_guardian_email: 3 },
+      })
+      const result = await adminService.getNewsletterPublishReadiness('newsletter-1')
+      expect(result.canPublish).toBe(false)
+      expect(result.issues).toContain('沒有可投遞的家長，請檢查班級、家庭訂閱及家長電子郵件')
+      expect(result.audienceSummary?.exclusionReasons).toEqual({ missing_parent_guardian_email: 3 })
+    })
+
     it('flags newsletters without articles as not publishable', async () => {
       mockBuilder.then
         .mockImplementationOnce((resolve) => resolve({

@@ -57,7 +57,7 @@ export default {
       }) } finally { await cleanupPool.end() }
     }
     if (env.DELIVERY_ENABLED !== 'true') return
-    if (!env.KIT_API_TOKEN || !env.KIT_WEBHOOK_SECRET || !env.JWT_SECRET) throw new Error('Delivery secrets are required before activation')
+    if (!env.RESEND_API_KEY || !env.RESEND_FROM_EMAIL || !env.JWT_SECRET) throw new Error('Delivery secrets are required before activation')
     const pool = poolFor(env)
     try {
       await withRuntimeEnvironment(config, () => withDatabasePool(pool, () => new NewsletterDeliveryWorker({

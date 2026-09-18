@@ -1,6 +1,6 @@
 import { cookieViewer, serverSessionsEnabled, sessionId } from '#/session/http'
 import { identityFetch, runtimeEnvironment } from '#/runtime/environment'
-import { randomUUID } from 'node:crypto'
+import { classAliases } from '#/services/identityDirectory'
 import { canPerformCmsAction, cmsRoles, type CmsActor } from '@email-cms/shared'
 import type { IncomingMessage } from 'node:http'
 import { withClient } from '#/lib/db'
@@ -33,6 +33,51 @@ interface SmzUserInfo {
   email_verified?: boolean
 }
 
+export interface SmzDirectoryFamily {
+  id: string
+  code: string
+  displayName: string
+}
+
+export interface SmzDirectoryPerson {
+  id: string
+  displayName: string
+  kind: 'adult' | 'student'
+}
+
+export interface SmzDirectoryClass {
+  id: string
+  code: string
+  displayName: string
+}
+
+export type SmzDirectoryFamilyRelationship = 'father' | 'mother' | 'guardian' | 'child'
+export type SmzDirectoryClassRelationship = 'teacher' | 'student'
+
+export interface SmzDirectoryFamilyMembership {
+  familyId: string
+  personId: string
+  relationship: SmzDirectoryFamilyRelationship
+}
+
+export interface SmzDirectoryClassMembership {
+  classId: string
+  personId: string
+  relationship: SmzDirectoryClassRelationship
+}
+
+export interface SmzDirectoryGraph {
+  people: SmzDirectoryPerson[]
+  families: SmzDirectoryFamily[]
+  classes: SmzDirectoryClass[]
+  familyMemberships: SmzDirectoryFamilyMembership[]
+  classMemberships: SmzDirectoryClassMembership[]
+}
+
+interface SmzDirectoryContext {
+  directory?: unknown
+}
+
 interface SmzIdentity {
   issuer: string
   subject: string
@@ -41,12 +86,6 @@ interface SmzIdentity {
   classScopes: SmzAccessContext['classScopes']
 }
 
-interface LocalViewerRow {
-  id: string
-  email: string
-  role: string
-  display_name: string | null
-}
 
 const EMAIL_CMS_CLIENT_ID = 'email-cms'
 
@@ -90,6 +129,63 @@ function readBearerToken(request: IncomingMessage): string {
 
 function stringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every(item => typeof item === 'string' && item.length > 0)
+}
+
+function invalidDirectoryResponse(): never {
+  throw new HttpError(502, 'SMZ Identity returned an invalid directory response', 'identity_invalid_directory_response')
+}
+
+function directoryString(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0
+}
+
+function directoryGraph(value: unknown): SmzDirectoryGraph {
+  if (!value || typeof value !== 'object') return invalidDirectoryResponse()
+  const graph = value as Record<string, unknown>
+  const people = graph.people
+  const families = graph.families
+  const classes = graph.classes
+  const familyMemberships = graph.familyMemberships
+  const classMemberships = graph.classMemberships
+  if (!Array.isArray(people) || !Array.isArray(families) || !Array.isArray(classes) || !Array.isArray(familyMemberships) || !Array.isArray(classMemberships)) {
+    return invalidDirectoryResponse()
+  }
+
+  if (people.some((person) => {
+    if (!person || typeof person !== 'object') return true
+    const row = person as Record<string, unknown>
+    return !directoryString(row.id) || !directoryString(row.displayName) || (row.kind !== 'adult' && row.kind !== 'student')
+  })) return invalidDirectoryResponse()
+  if (families.some((family) => {
+    if (!family || typeof family !== 'object') return true
+    const row = family as Record<string, unknown>
+    return !directoryString(row.id) || !directoryString(row.code) || !directoryString(row.displayName)
+  })) return invalidDirectoryResponse()
+  if (classes.some((schoolClass) => {
+    if (!schoolClass || typeof schoolClass !== 'object') return true
+    const row = schoolClass as Record<string, unknown>
+    return !directoryString(row.id) || !directoryString(row.code) || !directoryString(row.displayName)
+  })) return invalidDirectoryResponse()
+  if (familyMemberships.some((membership) => {
+    if (!membership || typeof membership !== 'object') return true
+    const row = membership as Record<string, unknown>
+    return !directoryString(row.familyId) || !directoryString(row.personId) ||
+      !['father', 'mother', 'guardian', 'child'].includes(String(row.relationship))
+  })) return invalidDirectoryResponse()
+  if (classMemberships.some((membership) => {
+    if (!membership || typeof membership !== 'object') return true
+    const row = membership as Record<string, unknown>
+    return !directoryString(row.classId) || !directoryString(row.personId) ||
+      !['teacher', 'student'].includes(String(row.relationship))
+  })) return invalidDirectoryResponse()
+
+  return {
+    people: people as SmzDirectoryPerson[],
+    families: families as SmzDirectoryFamily[],
+    classes: classes as SmzDirectoryClass[],
+    familyMemberships: familyMemberships as SmzDirectoryFamilyMembership[],
+    classMemberships: classMemberships as SmzDirectoryClassMembership[],
+  }
 }
 
 async function identityRequest<T>(url: string, token: string): Promise<{ status: number; body: T | null }> {
@@ -160,85 +256,54 @@ export async function verifySmzAccessToken(token: string, clientId = EMAIL_CMS_C
   return { issuer, subject: directory.sub, verifiedEmail: email, roles: cmsRoles(directory.roles), classScopes: directory.classScopes }
 }
 
-async function resolveLocalViewer(identity: SmzIdentity): Promise<AuthenticatedViewer> {
-  return withClient(async (client) => {
-    await client.query('BEGIN')
-    try {
-      // Serialize initial linking per verified email without changing existing issuer/subject links.
-      await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [identity.verifiedEmail])
-      let result = await client.query<LocalViewerRow>(
-        `SELECT ur.id, ur.email, ur.role, ur.display_name
-         FROM user_auth_identities AS identity
-         INNER JOIN user_roles AS ur ON ur.id = identity.user_id
-         WHERE identity.issuer = $1 AND identity.subject = $2
-         LIMIT 1`,
-        [identity.issuer, identity.subject],
-      )
+/**
+ * Returns only the scoped family catalogue needed by the CMS preview selector.
+ * The caller keeps the Identity token server-side; no credential is returned
+ * to the browser.
+ */
+export async function directoryFamiliesForToken(
+  token: string,
+  clientId = EMAIL_CMS_CLIENT_ID,
+  subject?: string,
+): Promise<SmzDirectoryFamily[]> {
+  return (await directoryForToken(token, clientId, subject)).families
+}
 
-      if (!result.rows[0]) {
-        const matchingUsers = await client.query<LocalViewerRow>(
-          `SELECT id, email, role, display_name
-           FROM user_roles
-           WHERE lower(email) = $1
-           LIMIT 2`,
-          [identity.verifiedEmail],
-        )
-        if (matchingUsers.rows.length > 1) {
-          throw new HttpError(409, 'Ambiguous Email CMS data association')
-        }
-        if (matchingUsers.rows.length === 0) {
-          const created = await client.query<LocalViewerRow>(
-            `INSERT INTO user_roles (id, email, role) VALUES ($1, $2, 'student')
-             RETURNING id, email, role, display_name`,
-            [randomUUID(), identity.verifiedEmail],
-          )
-          matchingUsers.rows.push(created.rows[0])
-        }
+/**
+ * Fetches the already-scoped Identity directory graph for internal preview
+ * composition. The bearer credential is never returned to the browser.
+ */
+export async function directoryForToken(
+  token: string,
+  clientId = EMAIL_CMS_CLIENT_ID,
+  subject?: string,
+): Promise<SmzDirectoryGraph> {
+  await verifySmzAccessToken(token, clientId, subject)
+  const result = await identityRequest<SmzDirectoryContext>(
+    new URL('/api/directory/v1/me/directory', authIssuer()).toString(),
+    token,
+  )
+  if (result.status >= 500) throw new HttpError(503, 'SMZ Identity is unavailable')
+  if (result.status === 401) throw new HttpError(401, 'Please verify your identity to resume', 'session_expired')
+  if (result.status === 403) throw new HttpError(403, 'This identity does not have access to Email CMS', 'access_revoked')
+  if (result.status !== 200 || !result.body) throw new HttpError(401, 'Invalid or expired SMZ Identity token')
+  return directoryGraph(result.body.directory)
+}
 
-        await client.query(
-          `INSERT INTO user_auth_identities (issuer, subject, user_id)
-           VALUES ($1, $2, $3)
-           ON CONFLICT DO NOTHING`,
-          [identity.issuer, identity.subject, matchingUsers.rows[0].id],
-        )
-        result = await client.query<LocalViewerRow>(
-          `SELECT ur.id, ur.email, ur.role, ur.display_name
-           FROM user_auth_identities AS identity
-           INNER JOIN user_roles AS ur ON ur.id = identity.user_id
-           WHERE identity.issuer = $1 AND identity.subject = $2
-           LIMIT 1`,
-          [identity.issuer, identity.subject],
-        )
-      }
-
-      const row = result.rows[0]
-      if (!row) {
-        throw new HttpError(403, 'This Email CMS user is already linked to another SMZ identity')
-      }
-      const codes = [...new Set([...identity.classScopes.teacher, ...identity.classScopes.parent])]
-      const classes = codes.length ? await client.query<{ id: string; class_code: string }>(
-        'SELECT id, class_code FROM classes WHERE class_code = ANY($1::text[]) AND is_active = true', [codes],
-      ) : { rows: [] }
-      const mapCodes = (scope: string[]) => classes.rows.filter(row => scope.includes(row.class_code) && classes.rows.filter(candidate => candidate.class_code === row.class_code).length === 1).map(row => row.id)
-      await client.query('COMMIT')
-      return {
-        id: row.id,
-        email: row.email,
-        role: identity.roles[0] ?? null,
-        roles: identity.roles,
-        teacherClassIds: mapCodes(identity.classScopes.teacher),
-        parentClassIds: mapCodes(identity.classScopes.parent),
-        displayName: row.display_name,
-      }
-    } catch (error) {
-      await client.query('ROLLBACK')
-      throw error
-    }
+async function resolveLocalViewer(identity: SmzIdentity, directory: SmzDirectoryGraph): Promise<AuthenticatedViewer> {
+  return withClient(async client => {
+    const result = await client.query<{user_id:string}>(`INSERT INTO user_auth_identities (issuer, subject, user_id) VALUES ($1,$2,$3) ON CONFLICT (issuer,subject) DO UPDATE SET subject=EXCLUDED.subject RETURNING user_id`, [identity.issuer, identity.subject, identity.subject])
+    const row = result.rows[0]
+    if (!row) throw new HttpError(403, 'This Email CMS identity could not be associated')
+    const aliases = await classAliases(directory)
+    const mapCodes = (codes:string[]) => aliases.filter(c => codes.includes(c.code)).map(c => c.id)
+    return { id: row.user_id, email: identity.verifiedEmail, role: identity.roles[0] ?? null, roles:identity.roles,
+      teacherClassIds:mapCodes(identity.classScopes.teacher), parentClassIds:mapCodes(identity.classScopes.parent), displayName:directory.people.find(p => p.id===identity.subject)?.displayName ?? null }
   })
 }
 
 export async function viewerForToken(token: string, clientId = EMAIL_CMS_CLIENT_ID, subject?: string): Promise<AuthenticatedViewer> {
-  return resolveLocalViewer(await verifySmzAccessToken(token, clientId, subject))
+  return resolveLocalViewer(await verifySmzAccessToken(token, clientId, subject), await directoryForToken(token, clientId, subject))
 }
 
 export async function requireViewer(request: IncomingMessage): Promise<AuthenticatedViewer> {
@@ -258,4 +323,15 @@ export async function optionalViewer(request: IncomingMessage): Promise<Authenti
   if (serverSessionsEnabled() && sessionId(request)) return cookieViewer(request)
   const token = readOptionalBearerToken(request)
   return token ? viewerForToken(token) : null
+}
+
+export async function deliveryContactsForToken(token:string, subject:string) {
+ await verifySmzAccessToken(token, 'email-cms-server', subject)
+ const result=await identityRequest<{contractVersion:number;contacts:import('#/services/identityDirectory').DeliveryContact[]}>(new URL('/api/directory/v1/me/delivery-contacts',authIssuer()).toString(),token)
+ if(result.status===401 || result.status===403) throw new HttpError(result.status,'Delivery authorization expired or revoked')
+ if(result.status!==200 || result.body?.contractVersion!==1 || !Array.isArray(result.body.contacts)) throw new HttpError(503,'Authorized delivery contacts unavailable')
+ for(const c of result.body.contacts) {
+  if(!c || typeof c !== 'object' || typeof c.personId!=='string' || typeof c.displayName!=='string' || typeof c.email!=='string' || !c.email.includes('@') || !Array.isArray(c.families) || c.families.some(f=>!f || typeof f !== 'object' || typeof f.familyId!=='string' || typeof f.familyCode!=='string' || !Array.isArray(f.classCodes) || f.classCodes.some(code=>typeof code!=='string') || !Array.isArray(f.classIds) || f.classIds.some(id=>typeof id!=='string'))) throw new HttpError(502,'Invalid delivery contact response')
+ }
+ return result.body.contacts
 }

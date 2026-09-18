@@ -30,7 +30,7 @@ describe('scheduled delivery activation', () => {
       throw new Error('simulated job failure')
     })
     const close = vi.spyOn(Pool.prototype, 'end')
-    await expect(worker.scheduled({} as ScheduledController, { ...env, DELIVERY_ENABLED: 'true', KIT_API_TOKEN: 'fake', KIT_WEBHOOK_SECRET: 'fake', JWT_SECRET: 'fake' })).rejects.toThrow('simulated job failure')
+    await expect(worker.scheduled({} as ScheduledController, { ...env, DELIVERY_ENABLED: 'true', RESEND_API_KEY: 'fake', RESEND_FROM_EMAIL: 'test@example.test', JWT_SECRET: 'fake' })).rejects.toThrow('simulated job failure')
     expect(close).toHaveBeenCalledOnce()
     expect(runtimeEnvironment()).toBe(process.env)
   })

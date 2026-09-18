@@ -14,6 +14,11 @@ interface TrackingPayload {
   nwl: string
   jti: string
   exp?: number
+  target?: string
+  article?: string
+  cls?: string
+  batch?: string
+  recipient?: string
 }
 
 export interface TrackingRequestMetadata {
@@ -71,14 +76,16 @@ function isValidPayload(payload: unknown): payload is TrackingPayload {
 function isValidRedirectUrl(targetUrl: string): boolean {
   try {
     const parsed = new URL(targetUrl)
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+    const appUrl = runtimeEnvironment().APP_URL ?? runtimeEnvironment().VITE_APP_URL ?? 'http://localhost:5173'
+    return parsed.origin === new URL(appUrl).origin && !parsed.username && !parsed.password &&
+      /^\/(article|newsletter|week)\//.test(parsed.pathname)
   } catch {
     return false
   }
 }
 
 function getJwtSecret(): string {
-  const secret = runtimeEnvironment().JWT_SECRET ?? runtimeEnvironment().VITE_JWT_SECRET
+  const secret = runtimeEnvironment().JWT_SECRET
   if (!secret) {
     throw new Error('Missing JWT_SECRET configuration')
   }
@@ -127,7 +134,8 @@ async function hasRecentEvent(input: {
     query = query.eq('metadata->>target_url', input.targetUrl)
   }
 
-  const { count } = await query
+  const { count, error } = await query
+  if (error) throw new Error('Tracking lookup failed')
   return !!count && count > 0
 }
 
@@ -137,20 +145,26 @@ async function insertTrackingEvent(input: {
   metadata: TrackingRequestMetadata
   targetUrl?: string
 }): Promise<void> {
-  await getSupabaseClient()
+  const { error } = await getSupabaseClient()
     .from('analytics_events')
     .insert({
       event_type: input.eventType,
       user_id: input.payload.sub,
       newsletter_id: input.payload.nwl,
+      article_id: input.payload.article ?? null,
       metadata: {
         source: input.eventType === 'email_open' ? 'email_open' : 'email_click',
         correlation_id: input.payload.jti,
+        journey_correlation_id: input.payload.jti,
+        batch_id: input.payload.batch,
+        recipient_id: input.payload.recipient,
+        class_id: input.payload.cls,
+        qualification: /bot|crawler|scanner|proxy|GoogleImageProxy/i.test(input.metadata.userAgent ?? '') ? 'automated_or_proxy' : 'unverified',
         target_url: input.targetUrl,
         user_agent: input.metadata.userAgent ?? null,
-        ip: input.metadata.ip ?? null,
       },
     })
+  if (error) throw new Error('Tracking event could not be saved')
 }
 
 export const emailTrackingEndpointService = {
@@ -202,6 +216,7 @@ export const emailTrackingEndpointService = {
       if (!payload) {
         return { status: 302, redirectUrl: targetUrl }
       }
+      if (payload.target && payload.target !== targetUrl) return { status: 400, body: 'Tracking destination mismatch' }
 
       const duplicate = await hasRecentEvent({
         eventType: 'link_click',

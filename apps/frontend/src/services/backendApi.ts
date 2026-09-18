@@ -120,7 +120,7 @@ export const adminApi = {
       `/api/admin/newsletters/${encodeURIComponent(request.newsletterId)}/publish-and-deliver`,
       {
         method: 'POST',
-        body: JSON.stringify({ audience: request.audience }),
+        body: JSON.stringify({ audience: request.audience, templateRevisionId: request.templateRevisionId }),
       },
     )
   },

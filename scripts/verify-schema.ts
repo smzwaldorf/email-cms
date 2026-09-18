@@ -33,13 +33,10 @@ async function verifyTables(): Promise<SchemaVerificationResult[]> {
   const requiredTables = [
     'newsletters',
     'articles',
-    'classes',
-    'user_roles',
-    'families',
-    'family_enrollment',
-    'student_class_enrollment',
-    'teacher_class_assignment',
     'article_audit_log',
+    'newsletter_family_preferences',
+    'identity_reference_mappings',
+    'user_auth_identities',
   ]
 
   const results: SchemaVerificationResult[] = []
@@ -82,11 +79,6 @@ async function verifyIndexes(): Promise<SchemaVerificationResult[]> {
     'idx_articles_week_published',
     'idx_articles_order',
     'idx_articles_created_by',
-    'idx_classes_grade_year',
-    'idx_teacher_assignment_teacher',
-    'idx_child_enrollment_child',
-    'idx_child_enrollment_family',
-    'idx_families_code',
     'idx_audit_article_date',
   ]
 
@@ -103,7 +95,6 @@ async function verifyIndexes(): Promise<SchemaVerificationResult[]> {
  */
 async function verifySchema(): Promise<void> {
   console.log('🔍 Verifying Postgres schema...\n')
-  console.log(`Database URL: ${process.env.DATABASE_URL}`)
   console.log('━'.repeat(80))
 
   const tables = await verifyTables()

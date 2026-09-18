@@ -1,5 +1,11 @@
+import { currentDirectory, currentDeliveryContacts, classAliases, projectFamilyChildren, identityContext, withIdentityDirectory } from '#/services/identityDirectory'
+import { deliveryIdentityForSessionHash } from '#/session/http'
 import { runtimeEnvironment } from '#/runtime/environment'
+import type { SmzDirectoryGraph } from '#/auth'
+import { composeTrackedEmail } from '#/services/emailTrackingComposer'
+import { DeliveryPolicyError } from '#/services/emailDeliveryPolicy'
 import { getSupabaseClient } from '#/lib/supabase'
+import { query } from '#/lib/db'
 import {
   buildFallbackArticleImageUrl,
   extractFirstArticleImageUrl,
@@ -7,8 +13,8 @@ import {
 } from '#/services/articleEmailPresentation'
 import { emailContentPreparationService } from '#/services/emailContentPreparationService'
 import { backendEmailPlatformService } from '#/services/emailPlatform/backendEmailPlatformService'
-import { enqueueSyncJob } from '#/services/emailPlatform/runtime'
 import { coerceEmailTemplateBlocks } from '#/services/emailTemplateBlocks'
+import { resolveAuthPreviewFamily } from '#/services/authDirectoryPreview'
 import { composePersonalizedEmails } from '#/services/personalizedEmailComposer'
 import { EMAIL_HTML_STORAGE_SIGN_TTL_SECONDS, replaceStorageTokens } from '#/utils/contentParser'
 import type {
@@ -70,23 +76,7 @@ interface NewsletterArticleJoinRow {
   }> | null
 }
 
-interface FamilyEnrollmentJoinRow {
-  family_id: string
-  student_id: string
-  class_id: string
-  students?: { name?: string | null; is_active?: boolean } | Array<{ name?: string | null; is_active?: boolean }> | null
-  classes?: { class_name?: string | null; class_code?: string | null; is_active?: boolean } | Array<{ class_name?: string | null; class_code?: string | null; is_active?: boolean }> | null
-}
-
-interface FamilyParentEnrollmentRow {
-  family_id: string
-  parent_id: string
-}
-
-interface ParentUserEmailRow {
-  id: string
-  email: string
-}
+const PREVIEW_GUARDIAN_EMAIL = 'preview@example.invalid'
 
 function asArrayValue<T>(value: T | T[] | null | undefined): T[] {
   if (value == null) return []
@@ -104,7 +94,7 @@ function canonicalNewsletterRevision(value: string | Date): string {
 }
 
 function getPublicAppBaseUrl(): string {
-  return (runtimeEnvironment().VITE_APP_URL ?? runtimeEnvironment().APP_URL ?? 'http://localhost:5174').replace(/\/+$/, '')
+  return (runtimeEnvironment().APP_URL ?? runtimeEnvironment().VITE_APP_URL ?? 'http://localhost:5173').replace(/\/+$/, '')
 }
 
 function buildPublicArticleUrl(
@@ -181,6 +171,15 @@ export function validateRecipientEligibility(family: RecipientEligibilityInput):
   return { eligible: true, reason: null }
 }
 
+/**
+ * Family identity, membership, and delivery contacts are Auth-owned.  CMS only
+ * retains an explicit opt-out; an absent or pre-cutover `pending` preference
+ * must not suppress an Auth-discovered family from the delivery count.
+ */
+function effectiveSubscriptionStatus(status: string | null | undefined): 'subscribed' | 'unsubscribed' {
+  return status === 'unsubscribed' ? 'unsubscribed' : 'subscribed'
+}
+
 export function filterAudienceCandidateFamilyIds(
   candidates: AudienceCandidateShape[],
   selectionInput?: DeliveryAudienceSelection,
@@ -202,6 +201,24 @@ export function filterAudienceCandidateFamilyIds(
     return selection.familyId ? [selection.familyId] : []
   }
   return candidates.map((candidate) => candidate.familyId)
+}
+
+/**
+ * Targeted rows must name at least one class. Returning null means the row is
+ * explicitly shared; malformed targeted rows fail closed instead of becoming
+ * shared content for every family.
+ */
+export function resolveArticleTargetClassIds(input: {
+  articleId: string
+  targetingMode?: 'shared' | 'targeted' | null
+  targetClassIds?: string[] | null
+}): string[] | null {
+  if (input.targetingMode !== 'targeted') return null
+  const targetClassIds = input.targetClassIds?.filter((classId) => typeof classId === 'string' && classId.length > 0) ?? []
+  if (targetClassIds.length === 0) {
+    throw new Error(`Newsletter article ${input.articleId} is targeted but has no class targets`)
+  }
+  return targetClassIds
 }
 
 export function selectCampaignReadyDeliveryRecipients(
@@ -305,9 +322,10 @@ class NewsletterDeliveryService {
     }
   }
 
-  private async sendPreparedBatchViaKit(input: {
+  private async sendPreparedBatchViaResend(input: {
     batchId: string
     newsletterId: string
+    expectedDirectory: string
     recipients: Array<{
       recipientId: string
       familyId: string
@@ -318,9 +336,17 @@ class NewsletterDeliveryService {
     }>
   }): Promise<{
     providerMessageId: string | null
+    providerMessageIds: Record<string, string>
     sentRecipientIds: string[]
     failedRecipients: Array<{ recipientId: string; error: string }>
   }> {
+    try {
+      const contacts=await currentDeliveryContacts()
+      if(JSON.stringify(await currentDirectory())!==input.expectedDirectory) throw new Error('Directory changed during preparation; review and prepare again')
+      for(const recipient of input.recipients) if(!contacts.some(c=>c.email===recipient.parentEmail && c.families.some(f=>f.familyId===recipient.familyId))) throw new Error('Recipient access or address changed; review and prepare again')
+      const families=await this.loadFamiliesWithEnrollments(input.recipients.map(r=>r.familyId))
+      if(input.recipients.some(r=>!families.some(f=>f.id===r.familyId && validateRecipientEligibility(f).eligible))) throw new Error('Recipient consent or eligibility changed')
+    } catch(error) { throw new DeliveryPolicyError(error instanceof Error ? error.message : String(error)) }
     const data = await backendEmailPlatformService.sendNewsletter({
       batchId: input.batchId,
       newsletterId: input.newsletterId,
@@ -329,51 +355,20 @@ class NewsletterDeliveryService {
 
     return {
       providerMessageId: data.providerMessageId ?? null,
+      providerMessageIds: data.providerMessageIds ?? {},
       sentRecipientIds: data.sentRecipientIds,
       failedRecipients: data.failedRecipients,
     }
   }
 
   private async loadFamiliesWithEnrollments(candidateFamilyIds?: string[]): Promise<FamilyWithEnrollments[]> {
-    const supabase = getSupabaseClient()
-
-    let familyQuery = supabase
-      .from('families')
-      .select('id, is_active, newsletter_subscription_status')
-    if (candidateFamilyIds && candidateFamilyIds.length > 0) {
-      familyQuery = familyQuery.in('id', candidateFamilyIds)
-    }
-    const { data: families, error: familyError } = await familyQuery
-    if (familyError) {
-      throw new Error(`Failed to load families for delivery: ${familyError.message}`)
-    }
-
-    const familyIds = (families ?? []).map((family) => family.id)
-    if (familyIds.length === 0) {
-      return []
-    }
-
-    const { data: enrollments, error: enrollmentError } = await supabase
-      .from('student_class_enrollment')
-      .select('family_id, class_id')
-      .in('family_id', familyIds)
-      .is('graduated_at', null)
-    if (enrollmentError) {
-      throw new Error(`Failed to load family enrollments for delivery: ${enrollmentError.message}`)
-    }
-
-    const classIdsByFamily = new Map<string, Set<string>>()
-    for (const enrollment of enrollments ?? []) {
-      const existing = classIdsByFamily.get(enrollment.family_id) ?? new Set<string>()
-      existing.add(enrollment.class_id)
-      classIdsByFamily.set(enrollment.family_id, existing)
-    }
-
-    return (families ?? []).map((family) => ({
-      id: family.id,
-      is_active: family.is_active === true,
-      newsletter_subscription_status: family.newsletter_subscription_status,
-      classIds: Array.from(classIdsByFamily.get(family.id) ?? []),
+    const directory=await currentDirectory()
+    const aliases=await classAliases(directory)
+    const {data:preferences,error}=await getSupabaseClient().from('newsletter_family_preferences').select('family_id,auth_family_id,newsletter_subscription_status')
+    if(error) throw new Error(`Failed to load newsletter preferences: ${error.message}`)
+    return directory.families.filter(f=>!candidateFamilyIds?.length || candidateFamilyIds.includes(f.id)).map(f=>({
+      id:f.id,is_active:true,newsletter_subscription_status:effectiveSubscriptionStatus(((preferences??[]) as Array<{auth_family_id:string;newsletter_subscription_status:string}>).find(p=>p.auth_family_id===f.id)?.newsletter_subscription_status),
+      classIds:[...new Set(projectFamilyChildren(directory,f.id,aliases).map(c=>c.classId))],
     }))
   }
 
@@ -395,40 +390,10 @@ class NewsletterDeliveryService {
     )
     const candidates = families.filter((family) => candidateFamilyIds.has(family.id))
 
-    const candidateFamilyIdList = candidates.map((family) => family.id)
-    const { data: parentEnrollments, error: parentEnrollmentError } = candidateFamilyIdList.length > 0
-      ? await getSupabaseClient()
-        .from('family_enrollment')
-        .select('family_id, parent_id')
-        .in('family_id', candidateFamilyIdList)
-        .not('parent_id', 'is', null)
-      : { data: [], error: null }
-    if (parentEnrollmentError) {
-      throw new Error(`Failed to load parent enrollments for delivery: ${parentEnrollmentError.message}`)
-    }
-
-    const parentIds = Array.from(
-      new Set((parentEnrollments ?? []).map((row) => (row as FamilyParentEnrollmentRow).parent_id)),
-    )
-    const { data: parentUsers, error: parentUserError } = parentIds.length > 0
-      ? await getSupabaseClient()
-        .from('user_roles')
-        .select('id, email')
-        .in('id', parentIds)
-      : { data: [], error: null }
-    if (parentUserError) {
-      throw new Error(`Failed to load parent emails for delivery: ${parentUserError.message}`)
-    }
-
-    const parentEmailById = new Map(
-      (parentUsers ?? []).map((row) => [(row as ParentUserEmailRow).id, (row as ParentUserEmailRow).email]),
-    )
-    const parentIdsByFamily = new Map<string, string[]>()
-    for (const enrollment of (parentEnrollments ?? []) as FamilyParentEnrollmentRow[]) {
-      const existing = parentIdsByFamily.get(enrollment.family_id) ?? []
-      existing.push(enrollment.parent_id)
-      parentIdsByFamily.set(enrollment.family_id, existing)
-    }
+    const contacts=await currentDeliveryContacts()
+    const parentEmailById=new Map(contacts.map(c=>[c.personId,c.email]))
+    const parentIdsByFamily=new Map<string,string[]>()
+    for(const contact of contacts) for(const family of contact.families) parentIdsByFamily.set(family.familyId,[...(parentIdsByFamily.get(family.familyId)??[]),contact.personId])
 
     const recipients = candidates.flatMap<DeliveryAudienceRecipient>((family) => {
       const eligibility = validateRecipientEligibility(family)
@@ -436,7 +401,7 @@ class NewsletterDeliveryService {
         familyId: family.id,
         classIds: family.classIds,
         isActive: family.is_active,
-        subscriptionStatus: 'subscribed' as const,
+        subscriptionStatus: effectiveSubscriptionStatus(family.newsletter_subscription_status) as DeliveryAudienceRecipient['subscriptionStatus'],
         hasEnrollment: family.classIds.length > 0,
       }
 
@@ -484,12 +449,23 @@ class NewsletterDeliveryService {
     return {
       selection,
       recipients,
-      totalCandidates: recipients.length,
+      totalCandidates: candidates.length,
       eligibleCount: eligibleFamilyIds.length,
       ineligibleCount: ineligibleFamilyIds.length,
-      candidateFamilyIds: recipients.map((recipient) => recipient.familyId),
+      candidateFamilyIds: candidates.map((family) => family.id),
       eligibleFamilyIds,
       ineligibleFamilyIds,
+    }
+  }
+
+  async resolveTemplateRevision(revisionId: string): Promise<PersonalizationInputTemplate> {
+    const { data: revision, error } = await getSupabaseClient().from('email_template_revisions')
+      .select('*').eq('id', revisionId).single()
+    if (error || !revision) throw new Error('The previewed template revision is unavailable; preview again')
+    return {
+      templateId: revision.template_id, templateRevisionId: revision.id,
+      subjectTemplate: revision.subject_template, bodyTemplate: revision.body_template,
+      blocks: coerceEmailTemplateBlocks(revision.blocks),
     }
   }
 
@@ -569,12 +545,33 @@ class NewsletterDeliveryService {
    * Build a `PrepareEmailContentInput`-compatible composition for a single
    * (newsletter × family × template) tuple without touching delivery batches.
    * Used by the admin "Apply for merge" preview to render exactly what the
-   * recipient would receive at send time.
+   * recipient would receive at send time. When an Auth directory is supplied,
+   * its already-scoped family/child/class graph is the only source of preview
+   * membership scope; local delivery rows are intentionally not consulted.
    */
+  private async loadAuthDirectoryPreviewInputs(directory: SmzDirectoryGraph, familyId: string): Promise<{
+    guardianId: string
+    guardianEmail: string
+    children: Array<{ studentId: string; studentName: string | null; classId: string }>
+    classes: PersonalizationInputClass[]
+    missingClassCodes: string[]
+  }> {
+    const scope = resolveAuthPreviewFamily(directory, familyId)
+    if (!scope) {
+      throw new Error(`SMZ family ${familyId} was not found in the current directory scope`)
+    }
+
+    const aliases=await classAliases(directory)
+    return { guardianId:scope.guardianId,guardianEmail:PREVIEW_GUARDIAN_EMAIL,
+      children:projectFamilyChildren(directory,familyId,aliases),
+      classes:aliases.map(c=>({id:c.id,classCode:c.code,className:c.name,canonicalSortKey:c.code})),missingClassCodes:[] }
+  }
+
   async previewPersonalizationForFamily(args: {
     newsletterId: string
     familyId: string
     templateId?: string
+    directory?: SmzDirectoryGraph
   }): Promise<{
     renderedSubject: string
     renderedBody: string
@@ -583,61 +580,39 @@ class NewsletterDeliveryService {
     guardianEmail: string | null
   }> {
     const supabase = getSupabaseClient()
-    const [{ data: newsletter, error: newsletterError }, { data: parentEnrollments, error: parentsError }] = await Promise.all([
-      supabase.from('newsletters').select('*').eq('id', args.newsletterId).maybeSingle(),
-      supabase
-        .from('family_enrollment')
-        .select('parent_id, family_id')
-        .eq('family_id', args.familyId)
-        .not('parent_id', 'is', null)
-        .limit(1),
-    ])
+    const { data: newsletter, error: newsletterError } = await supabase
+      .from('newsletters')
+      .select('*')
+      .eq('id', args.newsletterId)
+      .maybeSingle()
     if (newsletterError || !newsletter) {
       throw new Error(`Failed to load newsletter for preview: ${newsletterError?.message ?? 'not found'}`)
     }
-    if (parentsError) {
-      throw new Error(`Failed to load family parents: ${parentsError.message}`)
-    }
-    const parentEnrollment = (parentEnrollments ?? [])[0] as { parent_id: string } | undefined
-    let parentEmail: string | null = null
-    if (parentEnrollment?.parent_id) {
-      const { data: parentUser, error: parentUserError } = await supabase
-        .from('user_roles')
-        .select('email')
-        .eq('id', parentEnrollment.parent_id)
-        .maybeSingle()
-      if (parentUserError) {
-        throw new Error(`Failed to load parent email: ${parentUserError.message}`)
-      }
-      parentEmail = (parentUser as { email?: string | null } | null)?.email ?? null
+
+    let guardianId = `preview:${args.familyId}`
+    const parentEmail: string | null = null
+    let guardians: PersonalizationInputGuardian[]
+    let classes: PersonalizationInputClass[]
+    let missingClassCodes: string[] = []
+    if (args.directory) {
+      const directoryInputs = await this.loadAuthDirectoryPreviewInputs(args.directory, args.familyId)
+      guardianId = directoryInputs.guardianId
+      guardians = [{
+        guardianId,
+        guardianEmail: directoryInputs.guardianEmail,
+        familyId: args.familyId,
+        children: directoryInputs.children,
+      }]
+      classes = directoryInputs.classes
+      missingClassCodes = directoryInputs.missingClassCodes
+    } else {
+      throw new Error('A current Auth directory is required for preview')
     }
 
     const template = args.templateId
       ? await this.resolveTemplateInputForPreview(args.templateId)
       : await this.resolveActiveTemplate()
     const personalizationNewsletter = await this.buildNewsletterPersonalizationInput(newsletter as NewsletterRow)
-    const recipientRow: NewsletterDeliveryBatchRecipientRow = {
-      id: `preview-${args.familyId}`,
-      family_id: args.familyId,
-      parent_id: parentEnrollment?.parent_id ?? null,
-      parent_email: parentEmail,
-      guardian_email: null,
-      journey_correlation_id: 'preview',
-      eligibility_status: 'eligible',
-      preparation_status: 'pending',
-      send_status: 'pending',
-      failure_reason: null,
-      provider_message_id: null,
-      provider_error: null,
-      sent_at: null,
-      last_attempted_at: null,
-      batch_id: 'preview',
-      eligibility_reason: null,
-      prepared_payload: null,
-      preparation_findings: null,
-    } as unknown as NewsletterDeliveryBatchRecipientRow
-
-    const { guardians, classes } = await this.loadGuardianInputs([recipientRow])
     const composition = composePersonalizedEmails({
       rulesVersion: 'v1',
       newsletter: personalizationNewsletter,
@@ -645,6 +620,14 @@ class NewsletterDeliveryService {
       classes,
       guardians,
     })
+    for (const classCode of missingClassCodes) {
+      composition.warnings.push({
+        code: 'missing_class_mapping',
+        guardianId,
+        message: `Class mapping is missing for class '${classCode}'.`,
+        details: { classCode },
+      })
+    }
     const payload = composition.payloads[0]
     let renderedBody = payload?.renderedBody ?? ''
     if (renderedBody.includes('storage://')) {
@@ -701,8 +684,12 @@ class NewsletterDeliveryService {
         editorialOrder: row.article_order,
         personalizationKey: `article:${article.id}`,
       }
-      const targetClassIds = row.targeting_mode === 'targeted' ? row.target_class_ids ?? [] : []
-      if (targetClassIds.length === 0) {
+      const targetClassIds = resolveArticleTargetClassIds({
+        articleId: article.id,
+        targetingMode: row.targeting_mode,
+        targetClassIds: row.target_class_ids,
+      })
+      if (targetClassIds === null) {
         sharedBlocks.push(block)
         continue
       }
@@ -750,67 +737,16 @@ class NewsletterDeliveryService {
     guardians: PersonalizationInputGuardian[]
     classes: PersonalizationInputClass[]
   }> {
-    const supabase = getSupabaseClient()
-    if (recipientRows.length === 0) {
-      return { guardians: [], classes: [] }
+    const directory=await currentDirectory()
+    const aliases=await classAliases(directory)
+    const contacts=await currentDeliveryContacts()
+    const authorizedRows=recipientRows.filter(row=>contacts.some(c=>c.personId===row.parent_id && c.email===row.parent_email && c.families.some(f=>f.familyId===row.family_id)))
+    for(const row of recipientRows.filter(r=>!authorizedRows.includes(r) && r.send_status!=='sent')) {
+      const {error}=await getSupabaseClient().from('newsletter_delivery_batch_recipients').update({preparation_status:'failed',send_status:'skipped',failure_reason:'recipient_access_or_address_changed'}).eq('id',row.id)
+      if(error) throw new Error('Could not record revoked recipient: '+error.message)
     }
-    const familyIds = Array.from(new Set(recipientRows.map((row) => row.family_id)))
-
-    const [{ data: enrollments, error: enrollmentError }, { data: classes, error: classesError }] = await Promise.all([
-      supabase
-        .from('student_class_enrollment')
-        .select('family_id, student_id, class_id, students(name, is_active), classes(class_name, class_code, is_active)')
-        .in('family_id', familyIds)
-        .is('graduated_at', null),
-      supabase
-        .from('classes')
-        .select('id, class_code, class_name')
-        .eq('is_active', true),
-    ])
-
-    if (enrollmentError) {
-      throw new Error(`Failed to load batch enrollments: ${enrollmentError.message}`)
-    }
-    if (classesError) {
-      throw new Error(`Failed to load class catalog for batch: ${classesError.message}`)
-    }
-
-    const enrollmentByFamily = new Map<string, FamilyEnrollmentJoinRow[]>()
-    for (const enrollment of (enrollments ?? []) as FamilyEnrollmentJoinRow[]) {
-      const student = asArrayValue(enrollment.students)[0]
-      const klass = asArrayValue(enrollment.classes)[0]
-      if (student?.is_active === false || klass?.is_active === false) {
-        continue
-      }
-      const existing = enrollmentByFamily.get(enrollment.family_id) ?? []
-      existing.push(enrollment)
-      enrollmentByFamily.set(enrollment.family_id, existing)
-    }
-
-    const guardians: PersonalizationInputGuardian[] = recipientRows
-      .filter((row) => !!row.parent_email)
-      .map((row) => {
-        const familyEnrollments = enrollmentByFamily.get(row.family_id) ?? []
-        return {
-          guardianId: row.id,
-          guardianEmail: row.parent_email as string,
-          familyId: row.family_id,
-          children: familyEnrollments.map((enrollment) => ({
-            studentId: enrollment.student_id,
-            studentName: asArrayValue(enrollment.students)[0]?.name ?? null,
-            classId: enrollment.class_id,
-          })),
-        }
-      })
-
-    const inputClasses: PersonalizationInputClass[] = (classes ?? []).map((klass) => ({
-      id: klass.id,
-      classCode: klass.class_code,
-      className: klass.class_name,
-      canonicalSortKey: klass.class_code,
-    }))
-
-    return { guardians, classes: inputClasses }
+    return { guardians:authorizedRows.map(row=>({guardianId:row.id,guardianEmail:row.parent_email!,familyId:row.family_id,children:projectFamilyChildren(directory,row.family_id,aliases)})),
+      classes:aliases.map(c=>({id:c.id,classCode:c.code,className:c.name,canonicalSortKey:c.code})) }
   }
 
   private async updateBatchAggregateState(batchId: string): Promise<void> {
@@ -873,23 +809,14 @@ class NewsletterDeliveryService {
       }
 
       const eligibleRecipientRows = (recipients ?? []) as NewsletterDeliveryBatchRecipientRow[]
-      const familyIds = Array.from(new Set(eligibleRecipientRows.map((recipient) => recipient.family_id)))
-      for (const familyId of familyIds) {
-        await enqueueSyncJob(supabase, {
-          familyId,
-          mappingId: null,
-          jobType: 'upsert_subscriber',
-          enqueueReason: 'newsletter_delivery_batch',
-          payload: {
-            source: 'newsletter_delivery_batch',
-            batch_id: batch.id,
-            family_id: familyId,
-          },
-        })
+      if (eligibleRecipientRows.some(recipient => recipient.send_status === 'handoff_pending')) {
+        throw new Error('Provider outcome is uncertain; reconcile the prior handoff before retrying')
       }
-
+      const expectedDirectory=JSON.stringify(await currentDirectory())
       const { guardians, classes } = await this.loadGuardianInputs(eligibleRecipientRows)
-      const template = await this.resolveActiveTemplate()
+      const template = batch.pinnedTemplateRevisionId
+        ? await this.resolveTemplateRevision(batch.pinnedTemplateRevisionId)
+        : undefined
       const personalizationNewsletter = await this.buildNewsletterPersonalizationInput(newsletter)
 
       const preparationJob = await emailContentPreparationService.prepare({
@@ -931,7 +858,7 @@ class NewsletterDeliveryService {
 
       for (const prepared of preparationJob.recipients) {
         const row = recipientsByGuardian.get(prepared.guardianId)
-        if (!row) {
+        if (!row || row.send_status === 'sent') {
           continue
         }
         const isDeliverable = prepared.status === 'ready'
@@ -964,7 +891,12 @@ class NewsletterDeliveryService {
             parentEmail: row.parent_email ?? null,
             journeyCorrelationId: row.journey_correlation_id,
             subject: prepared.payload.renderedSubject ?? '',
-            htmlContent: prepared.payload.renderedBody ?? '',
+            htmlContent: composeTrackedEmail({
+              html: prepared.payload.renderedBody ?? '', parentId: row.parent_id!,
+              newsletterId: newsletter.id, batchId: batch.id, recipientId: row.id,
+              journeyId: row.journey_correlation_id, appUrl: getPublicAppBaseUrl(),
+              blocks: [...prepared.payload.sharedBlocks, ...prepared.payload.classBlocks],
+            }),
           })
           updates = {
             ...baseUpdates,
@@ -988,9 +920,10 @@ class NewsletterDeliveryService {
 
       if (readyRecipientsToSend.length > 0) {
         try {
-          const sendResult = await this.sendPreparedBatchViaKit({
+          const sendResult = await this.sendPreparedBatchViaResend({
             batchId: batch.id,
             newsletterId: newsletter.id,
+            expectedDirectory,
             recipients: readyRecipientsToSend.map((recipient) => ({
               recipientId: recipient.rowId,
               familyId: recipient.familyId,
@@ -1016,7 +949,7 @@ class NewsletterDeliveryService {
               .update({
                 send_status: isSent ? 'sent' : 'failed',
                 failure_reason: isSent ? null : recipientFailure,
-                provider_message_id: isSent ? sendResult.providerMessageId : null,
+                provider_message_id: isSent ? (sendResult.providerMessageIds[recipient.rowId] ?? sendResult.providerMessageId) : null,
                 provider_error: isSent ? null : recipientFailure,
                 kit_merge_sync_status: isSent ? 'synced' : 'failed',
                 kit_merge_last_synced_at: isSent ? sentAt : null,
@@ -1034,7 +967,7 @@ class NewsletterDeliveryService {
             await supabase
               .from('newsletter_delivery_batch_recipients')
               .update({
-                send_status: 'failed',
+                send_status: sendError instanceof DeliveryPolicyError ? 'failed' : 'handoff_pending',
                 failure_reason: errorMessage,
                 provider_message_id: null,
                 provider_error: errorMessage,
@@ -1045,7 +978,9 @@ class NewsletterDeliveryService {
                 last_attempted_at: attemptedAt,
               })
               .eq('id', recipient.rowId)
+              .eq('send_status', 'handoff_pending')
           }
+          throw sendError
         }
       }
 
@@ -1056,6 +991,7 @@ class NewsletterDeliveryService {
         .update({
           state: 'failed',
           metadata: {
+            ...batch.metadata,
             last_error: error instanceof Error ? error.message : String(error),
           },
         })
@@ -1070,9 +1006,11 @@ class NewsletterDeliveryService {
     audience: DeliveryAudienceSelection,
     audienceSummary: DeliveryAudienceSummary & { recipients: DeliveryAudienceRecipient[] },
     parentBatchId: string | null,
+    templateRevisionId?: string | null,
   ): Promise<NewsletterDeliveryBatch> {
     const supabase = getSupabaseClient()
-    const template = await this.resolveActiveTemplate()
+    const template = templateRevisionId === undefined ? await this.resolveActiveTemplate()
+      : templateRevisionId === null ? undefined : await this.resolveTemplateRevision(templateRevisionId)
 
     const { data: batchRow, error: batchError } = await supabase
       .from('newsletter_delivery_batches')
@@ -1086,14 +1024,15 @@ class NewsletterDeliveryService {
           : (audience.familyIds ?? []),
         parent_batch_id: parentBatchId,
         state: 'queued',
+        metadata: { identity_session_hash: identityContext().sessionId },
         pinned_newsletter_revision_id: canonicalNewsletterRevision(newsletter.updated_at),
         pinned_template_id: template?.templateId ?? null,
         pinned_template_revision_id: template?.templateRevisionId ?? null,
         recipient_snapshot_captured_at: new Date().toISOString(),
         rules_version: 'v1',
-        total_recipients: audienceSummary.totalCandidates,
-        eligible_recipients: audienceSummary.eligibleCount,
-        invalid_recipients: audienceSummary.ineligibleCount,
+        total_recipients: audienceSummary.recipients.length,
+        eligible_recipients: audienceSummary.recipients.filter((recipient) => recipient.eligibilityStatus === 'eligible').length,
+        invalid_recipients: audienceSummary.recipients.filter((recipient) => recipient.eligibilityStatus === 'ineligible').length,
       })
       .select('*')
       .single()
@@ -1130,6 +1069,14 @@ class NewsletterDeliveryService {
     const resolved = await this.resolveAudience(selection)
     return {
       selection: resolved.selection,
+      eligibleRecipientCount: resolved.recipients.filter((recipient) => recipient.eligibilityStatus === 'eligible').length,
+      exclusionReasons: resolved.recipients.reduce<Record<string, number>>((counts, recipient) => {
+        if (recipient.eligibilityStatus === 'ineligible') {
+          const reason = recipient.eligibilityReason ?? 'unknown'
+          counts[reason] = (counts[reason] ?? 0) + 1
+        }
+        return counts
+      }, {}),
       totalCandidates: resolved.totalCandidates,
       eligibleCount: resolved.eligibleCount,
       ineligibleCount: resolved.ineligibleCount,
@@ -1152,9 +1099,51 @@ class NewsletterDeliveryService {
 
     const audience = defaultAudienceSelection(request.audience)
     const resolvedAudience = await this.resolveAudience(audience)
-    const batch = await this.createBatch(newsletter, 'publish', audience, resolvedAudience, null)
+    if (resolvedAudience.eligibleCount === 0) {
+      throw new Error('No eligible parents in the selected delivery audience')
+    }
+    const batch = await this.createBatch(newsletter, 'publish', audience, resolvedAudience, null, request.templateRevisionId)
     await this.enqueueDeliveryJob(batch.id, 'prepare_batch')
     return this.fetchBatch(batch.id)
+  }
+
+  /**
+   * A resend may originate from a batch created before directory ownership
+   * moved to SMZ Auth. Convert only stable historical identifiers here; the
+   * family graph and delivery contacts remain Auth-provided in resolveAudience.
+   */
+  private async resolveAuthFamilyIds(familyIds: string[]): Promise<string[]> {
+    if (familyIds.length === 0) return []
+    const directory = await currentDirectory()
+    const authFamilyIds = new Set(directory.families.map((family) => family.id))
+    const unresolved = familyIds.filter((familyId) => !authFamilyIds.has(familyId))
+    if (unresolved.length === 0) return Array.from(new Set(familyIds))
+
+    const { rows } = await query<{ legacy_id: string; auth_id: string | null }>(
+      `SELECT legacy_id, auth_id
+       FROM identity_reference_mappings
+       WHERE entity_type = $1
+         AND legacy_id = ANY($2::text[])
+         AND auth_id IS NOT NULL`,
+      ['family', unresolved],
+    )
+    const mappedIdsByLegacyId = new Map<string, string[]>()
+    for (const row of rows) {
+      if (!row.auth_id || !authFamilyIds.has(row.auth_id)) continue
+      const mapped = mappedIdsByLegacyId.get(row.legacy_id) ?? []
+      mapped.push(row.auth_id)
+      mappedIdsByLegacyId.set(row.legacy_id, mapped)
+    }
+    for (const legacyId of unresolved) {
+      const mapped = Array.from(new Set(mappedIdsByLegacyId.get(legacyId) ?? []))
+      if (mapped.length !== 1) {
+        throw new Error(`Historical family ${legacyId} cannot be resolved unambiguously to SMZ Auth`)
+      }
+    }
+    return Array.from(new Set([
+      ...familyIds.filter((familyId) => authFamilyIds.has(familyId)),
+      ...unresolved.flatMap((legacyId) => mappedIdsByLegacyId.get(legacyId) ?? []),
+    ]))
   }
 
   async createResendBatch(request: ResendDeliveryRequest): Promise<NewsletterDeliveryBatch> {
@@ -1176,7 +1165,9 @@ class NewsletterDeliveryService {
     if (priorRecipientError) {
       throw new Error(`Failed to load resend candidate recipients: ${priorRecipientError.message}`)
     }
-    const priorCandidateFamilyIds = Array.from(new Set((priorRecipients ?? []).map((recipient) => recipient.family_id)))
+    const priorCandidateFamilyIds = await this.resolveAuthFamilyIds(
+      Array.from(new Set((priorRecipients ?? []).map((recipient) => recipient.family_id))),
+    )
     const resolvedAudience = await this.resolveAudience(request.audience, {
       constrainedFamilyIds: priorCandidateFamilyIds,
     })
@@ -1222,7 +1213,12 @@ class NewsletterDeliveryService {
     }
 
     const batch = mapBatchRow(batchRow as NewsletterDeliveryBatchRow)
-    await this.processBatch(batch, newsletter as NewsletterRow)
+    if (batch.state === 'completed' || batch.state === 'completed_with_failures') return batch
+    const hash=batch.metadata.identity_session_hash
+    if(typeof hash!=='string') throw new Error('Delivery requires renewed administrator authorization')
+    const identity=await deliveryIdentityForSessionHash(hash)
+    await identity.contacts()
+    await withIdentityDirectory(identity,()=>this.processBatch(batch, newsletter as NewsletterRow))
     return this.fetchBatch(batch.id)
   }
 

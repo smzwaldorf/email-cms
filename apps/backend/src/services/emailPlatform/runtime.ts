@@ -1,6 +1,8 @@
+import { currentDirectory, currentDeliveryContacts } from '#/services/identityDirectory'
+import type { EmailPlatformRecipientRecord } from '../../types/emailPlatform'
 import type { SupabaseClient } from '#/lib/supabase'
 
-import type { EmailPlatformSyncJobRow, EmailPlatformWebhookEventRow, FamilyRow } from '../../types/database'
+import type { EmailPlatformSyncJobRow, EmailPlatformWebhookEventRow } from '../../types/database'
 
 import { KitAdapter } from './kitAdapter'
 import { mapRecipientToKitPayload } from './kitMapping'
@@ -23,31 +25,6 @@ import {
   EmailPlatformSyncJobStatus,
   EmailPlatformWebhookStatus,
 } from '../../types/emailPlatform'
-
-type JoinedStudent = { name?: string | null; is_active?: boolean }
-type JoinedClass = {
-  class_name?: string | null
-  class_code?: string | null
-  is_active?: boolean
-}
-
-/** Nested shape from `student_class_enrollment` with student/class joins (object or array from PostgREST) */
-interface StudentClassEnrollmentJoinRow {
-  student_id: string
-  class_id: string
-  students?: JoinedStudent | JoinedStudent[] | null
-  classes?: JoinedClass | JoinedClass[] | null
-}
-
-interface FamilyParentEnrollmentJoinRow {
-  parent_id: string
-  relationship: string
-}
-
-function pickJoin<T>(value: T | T[] | null | undefined): T | undefined {
-  if (value == null) return undefined
-  return Array.isArray(value) ? value[0] : value
-}
 
 export const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -76,11 +53,6 @@ function createDefaultDependencies(): Required<EmailPlatformRuntimeDependencies>
   }
 }
 
-function normalizeLowercase(value: string | null | undefined): string | null {
-  const trimmedValue = value?.trim().toLowerCase()
-  return trimmedValue ? trimmedValue : null
-}
-
 export function buildJsonResponse(body: Record<string, unknown>, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -99,111 +71,39 @@ function getRetryConfig(
   }
 }
 
-async function resolveFamilyByEmail(adminClient: AdminClientLike, emailAddress: string | null) {
-  const normalizedEmail = normalizeLowercase(emailAddress)
-
-  if (!normalizedEmail) {
-    return null
+/** Resolve only canonical Auth IDs or an explicit historical identifier mapping. */
+export async function loadRecipientRecord(adminClient: AdminClientLike, familyId: string): Promise<EmailPlatformRecipientRecord | null> {
+  const directory = await currentDirectory()
+  let canonicalId = familyId
+  if (!directory.families.some(family => family.id === canonicalId)) {
+    const { data: rawMapping, error } = await adminClient.from('identity_reference_mappings')
+      .select('auth_id').eq('entity_type', 'family').eq('legacy_id', familyId).maybeSingle()
+    if (error) throw new Error(error.message)
+    const mapping = rawMapping as { auth_id: string | null } | null
+    if (!mapping?.auth_id) return null
+    canonicalId = mapping.auth_id
   }
-
-  const { data, error } = await adminClient
-    .from('families')
-    .select(
-      'id, family_name, guardian_email, is_active, newsletter_subscription_status, newsletter_subscription_updated_at',
-    )
-    .ilike('guardian_email', normalizedEmail)
-    .maybeSingle()
-
-  if (error) {
-    throw new Error(error.message)
-  }
-
-  return data
-}
-
-export async function loadRecipientRecord(adminClient: AdminClientLike, familyId: string) {
-  const { data: family, error: familyError } = await adminClient
-    .from('families')
-    .select(
-      'id, family_name, is_active, newsletter_subscription_status, newsletter_subscription_updated_at',
-    )
-    .eq('id', familyId)
-    .maybeSingle()
-
-  if (familyError) {
-    throw new Error(familyError.message)
-  }
-
-  if (!family) {
-    return null
-  }
-
-  const { data: parentEnrollments, error: parentError } = await adminClient
-    .from('family_enrollment')
-    .select('parent_id, relationship')
-    .eq('family_id', familyId)
-    .not('parent_id', 'is', null)
-
-  if (parentError) {
-    throw new Error(parentError.message)
-  }
-
-  const parentRows = (parentEnrollments ?? []) as FamilyParentEnrollmentJoinRow[]
-  const parentIds = Array.from(new Set(parentRows.map((row) => row.parent_id)))
-  const { data: parentUsers, error: parentUsersError } = parentIds.length > 0
-    ? await adminClient
-      .from('user_roles')
-      .select('id, email')
-      .in('id', parentIds)
-    : { data: [], error: null }
-  if (parentUsersError) {
-    throw new Error(parentUsersError.message)
-  }
-
-  const emailByParentId = new Map(
-    (parentUsers ?? []).map((row) => [row.id as string, row.email as string]),
-  )
-  const parentEmails = parentRows
-    .map((row) => emailByParentId.get(row.parent_id) ?? null)
-    .filter((email): email is string => !!email)
-  const primaryEmail = parentEmails[0] ?? null
-
-  const { data: childEnrollments, error: childError } = await adminClient
-    .from('student_class_enrollment')
-    .select(
-      'student_id, class_id, students(name, is_active), classes(class_name, class_code, is_active)',
-    )
-    .eq('family_id', familyId)
-    .is('graduated_at', null)
-
-  if (childError) {
-    throw new Error(childError.message)
-  }
-
+  const family = directory.families.find(row => row.id === canonicalId)
+  if (!family) return null
+  const contacts = (await currentDeliveryContacts()).filter(contact => contact.families.some(row => row.familyId === canonicalId))
+  const { data: rawPreference, error } = await adminClient.from('newsletter_family_preferences')
+    .select('newsletter_subscription_status').eq('auth_family_id', canonicalId).maybeSingle()
+  if (error) throw new Error(error.message)
+  const preference = rawPreference as { newsletter_subscription_status: EmailPlatformRecipientRecord['subscriptionStatus'] } | null
+  const children = new Set(directory.familyMemberships.filter(row => row.familyId === canonicalId && row.relationship === 'child').map(row => row.personId))
   return {
-    familyId: family.id,
-    primaryEmail,
-    familyName: family.family_name,
-    isActive: family.is_active ?? true,
-    subscriptionStatus: family.newsletter_subscription_status ?? 'pending',
-    parentRelationships: parentRows.map((row) => row.relationship),
-    children: ((childEnrollments ?? []) as StudentClassEnrollmentJoinRow[])
-      .filter((row) => {
-        const student = pickJoin(row.students)
-        const klass = pickJoin(row.classes)
-        return student?.is_active !== false && klass?.is_active !== false
-      })
-      .map((row) => {
-        const student = pickJoin(row.students)
-        const klass = pickJoin(row.classes)
-        return {
-          studentId: row.student_id,
-          name: student?.name ?? 'Unknown Student',
-          classId: row.class_id,
-          classCode: klass?.class_code ?? row.class_id,
-          className: klass?.class_name ?? row.class_id,
-        }
-      }),
+    familyId,
+    familyName: family.displayName,
+    // A family-level provider mapping cannot safely choose between multiple adult addresses.
+    primaryEmail: contacts.length === 1 ? contacts[0].email : null,
+    isActive: true,
+    subscriptionStatus: preference?.newsletter_subscription_status ?? 'pending',
+    parentRelationships: directory.familyMemberships.filter(row => row.familyId === canonicalId && row.relationship !== 'child' && contacts.some(contact => contact.personId === row.personId)).map(row => row.relationship),
+    children: directory.classMemberships.filter(row => row.relationship === 'student' && children.has(row.personId)).flatMap(row => {
+      const student = directory.people.find(person => person.id === row.personId && person.kind === 'student')
+      const klass = directory.classes.find(klass => klass.id === row.classId)
+      return student && klass ? [{ studentId: student.id, name: student.displayName, classId: klass.id, classCode: klass.code, className: klass.displayName }] : []
+    }),
   }
 }
 
@@ -529,7 +429,7 @@ export async function processSyncJob(
       })
     }
 
-    if (!recipient.isActive || !recipient.primaryEmail || recipient.children.length === 0) {
+    if (!recipient.isActive || !recipient.primaryEmail || recipient.children.length === 0 || recipient.subscriptionStatus === 'pending') {
       throw new EmailPlatformError(
         `Family ${familyId} is not eligible for outbound Kit sync.`,
         {
@@ -650,14 +550,7 @@ async function processReconciliationJob(
   adapter: KitAdapter,
   config: EmailPlatformConfig,
 ): Promise<EmailPlatformSyncJobStatus> {
-  let familyId = job.family_id ?? null
-
-  const payloadEmail =
-    typeof job.payload.email_address === 'string' ? job.payload.email_address : null
-  if (!familyId && payloadEmail) {
-    const family = await resolveFamilyByEmail(adminClient, payloadEmail)
-    familyId = family?.id ?? null
-  }
+  const familyId = job.family_id ?? null
 
   if (!familyId) {
     throw new EmailPlatformError('Reconciliation job could not resolve a local family.', {
@@ -668,7 +561,7 @@ async function processReconciliationJob(
 
   const recipient = await loadRecipientRecord(adminClient, familyId)
 
-  if (!recipient || !recipient.primaryEmail) {
+  if (!recipient || !recipient.primaryEmail || recipient.subscriptionStatus === 'pending') {
     throw new EmailPlatformError(`Family ${familyId} is unavailable for reconciliation.`, {
       code: 'family_not_found',
       retryable: false,
@@ -894,47 +787,18 @@ export async function processWebhookEvent(
       event.payload as Record<string, unknown>,
       event.provider_event_id,
     )
-    let mapping = await getMappingForExternalSubscriber(
+    const mapping = await getMappingForExternalSubscriber(
       adminClient,
       envelope.subscriber.externalSubscriberId,
     )
-    let family: FamilyRow | null = (mapping
-      ? await resolveFamilyByEmail(adminClient, mapping.external_email_address ?? null)
-      : await resolveFamilyByEmail(adminClient, envelope.subscriber.emailAddress ?? null)) as FamilyRow | null
-
-    if (!family && mapping?.family_id) {
-      const recipient = await loadRecipientRecord(adminClient, mapping.family_id)
-      family = recipient
-        ? ({
-            id: recipient.familyId,
-            guardian_email: recipient.primaryEmail,
-            newsletter_subscription_status: recipient.subscriptionStatus,
-            newsletter_subscription_updated_at: null,
-          } as FamilyRow)
-        : null
-    }
-
-    if (!family && envelope.subscriber.emailAddress) {
-      family = (await resolveFamilyByEmail(
-        adminClient,
-        envelope.subscriber.emailAddress,
-      )) as FamilyRow | null
-    }
-
-    if (family && !mapping) {
-      mapping = await upsertMapping(adminClient, {
-        family_id: family.id,
-        provider: 'kit',
-        external_identity_key: `family:${family.id}`,
-        external_subscriber_id: envelope.subscriber.externalSubscriberId ?? null,
-        external_email_address: envelope.subscriber.emailAddress ?? null,
-        provider_state: envelope.subscriber.state ?? null,
-        last_provider_version_marker: event.payload_hash,
-        sync_metadata: {
-          created_from: 'webhook_resolution',
-        },
-      })
-    }
+    // Subscription history is CMS-owned; provider IDs must already be explicitly linked.
+    // Never infer family identity from an email address in an incoming webhook.
+    const { data: rawPreference, error: preferenceError } = mapping?.family_id
+      ? await adminClient.from('newsletter_family_preferences').select('*').eq('family_id', mapping.family_id).maybeSingle()
+      : { data: null, error: null }
+    if (preferenceError) throw new Error(preferenceError.message)
+    const preference = rawPreference as { family_id: string; newsletter_subscription_status: EmailPlatformRecipientRecord['subscriptionStatus']; newsletter_subscription_updated_at: string | null } | null
+    const family = preference ? { ...preference, id: preference.family_id } : null
 
     if (!family) {
       await enqueueSyncJob(adminClient, {
@@ -989,9 +853,9 @@ export async function processWebhookEvent(
       }
 
       const { error: familyUpdateError } = await adminClient
-        .from('families')
+        .from('newsletter_family_preferences')
         .update(familyUpdate)
-        .eq('id', family.id)
+        .eq('family_id', family.id)
 
       if (familyUpdateError) {
         throw new Error(familyUpdateError.message)
@@ -1004,7 +868,7 @@ export async function processWebhookEvent(
         provider: 'kit',
         external_identity_key: `family:${family.id}`,
         external_subscriber_id: envelope.subscriber.externalSubscriberId ?? mapping.external_subscriber_id,
-        external_email_address: envelope.subscriber.emailAddress ?? family.guardian_email ?? null,
+        external_email_address: envelope.subscriber.emailAddress ?? mapping.external_email_address ?? null,
         provider_state: envelope.subscriber.state ?? null,
         last_provider_version_marker: event.payload_hash,
         last_reconciled_at: new Date().toISOString(),

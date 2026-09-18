@@ -1,3 +1,4 @@
+import { canonicalClassReferences } from '@/utils/classReferences'
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { adminService, AdminServiceError } from '@/services/adminService'
@@ -23,7 +24,7 @@ export function AdminArticleListPage() {
   const [newsletter, setNewsletter] = useState<AdminNewsletter | null>(null)
   const [articles, setArticles] = useState<AdminArticle[]>([])
   const [availableArticles, setAvailableArticles] = useState<AdminArticle[]>([])
-  const [availableClasses, setAvailableClasses] = useState<Array<{ id: string; name: string }>>([])
+  const [availableClasses, setAvailableClasses] = useState<Array<{ id: string; name: string; legacyIds?: string[] }>>([])
   const [selectedArticleId, setSelectedArticleId] = useState('')
   const [targetingDrafts, setTargetingDrafts] = useState<
     Record<string, { mode: 'shared' | 'targeted'; classIds: string[] }>
@@ -91,7 +92,7 @@ export function AdminArticleListPage() {
       setArticles(articlesData)
       setAvailableArticles(availableArticlesData)
       setPublishReadiness(readiness)
-      setAvailableClasses(classes.map((classItem) => ({ id: classItem.id, name: classItem.name })))
+      setAvailableClasses(classes.map((classItem) => ({ id: classItem.id, name: classItem.name, legacyIds: classItem.legacyIds })))
       setAvailableFamilies(families.map((family) => ({ id: family.id, name: family.name })))
       setDeliveryBatches(batches)
       const validBatchIds = new Set(batches.map((batch) => batch.id))
@@ -106,7 +107,7 @@ export function AdminArticleListPage() {
           (acc, article) => {
             acc[article.id] = {
               mode: article.newsletterTargetingMode ?? 'shared',
-              classIds: article.newsletterTargetClassIds ?? [],
+              classIds: canonicalClassReferences(article.newsletterTargetClassIds, classes),
             }
             return acc
           },
@@ -279,7 +280,7 @@ export function AdminArticleListPage() {
   const getDraftTargeting = (article: AdminArticle) => {
     return targetingDrafts[article.id] || {
       mode: article.newsletterTargetingMode ?? 'shared',
-      classIds: article.newsletterTargetClassIds ?? [],
+      classIds: canonicalClassReferences(article.newsletterTargetClassIds, availableClasses),
     }
   }
 
@@ -361,10 +362,12 @@ export function AdminArticleListPage() {
     const confirmationMessage = [
       '確認要發布並啟動投遞嗎？',
       `投遞模式：${formatAudienceModeLabel(publishAudience.mode)}`,
-      audienceSummary ? `候選：${audienceSummary.totalCandidates}` : null,
-      audienceSummary ? `可投遞：${audienceSummary.eligibleCount}` : null,
-      audienceSummary ? `排除：${audienceSummary.ineligibleCount}` : null,
+      audienceSummary ? `候選家庭：${audienceSummary.totalCandidates}` : null,
+      audienceSummary ? `可投遞家庭：${audienceSummary.eligibleCount}` : null,
+      audienceSummary ? `排除家庭：${audienceSummary.ineligibleCount}` : null,
+      audienceSummary ? `可寄送家長電子郵件：${audienceSummary.eligibleRecipientCount ?? audienceSummary.eligibleCount}` : null,
       '',
+      '前三項以家庭計算；最後一項以 SMZ Auth 授權的家長電子郵件計算。',
       '此操作會同時發布電子報並建立投遞批次。',
     ].filter(Boolean).join('\n')
     if (!window.confirm(confirmationMessage)) return
@@ -543,7 +546,7 @@ export function AdminArticleListPage() {
                     disabled={isMutating || !publishReadiness.canPublish}
                     className="rounded-lg bg-waldorf-sage-500 px-4 py-2 text-white transition-colors hover:bg-waldorf-sage-600 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    發布電子報
+                    發布並寄送電子報
                   </button>
                 )}
                 {newsletter.status === 'published' && !newsletter.isTemplate && (
@@ -579,14 +582,19 @@ export function AdminArticleListPage() {
             onSuccess={(updatedNewsletter) => {
               setNewsletter(updatedNewsletter)
               setSuccessMessage('電子報資訊已更新')
-              void loadData()
+              setError(null)
+              if (weekNumber && weekNumber !== updatedNewsletter.weekNumber) {
+                navigate(`/admin/newsletters/id/${encodeURIComponent(updatedNewsletter.id)}`, { replace: true })
+              } else {
+                void loadData()
+              }
             }}
           />
 
           <div className="rounded-xl border border-waldorf-cream-200 bg-white p-6 shadow-sm">
             <h2 className="font-display text-2xl font-semibold text-waldorf-clay-800">發布檢查</h2>
             {publishReadiness.canPublish ? (
-              <p className="mt-3 text-sm text-waldorf-sage-700">這份電子報已符合發布條件。</p>
+              <p className="mt-3 text-sm text-waldorf-sage-700">內容與投遞對象已通過檢查，可發布並建立寄送批次。</p>
             ) : (
               <ul className="mt-3 list-disc pl-6 text-sm text-waldorf-rose-700">
                 {publishReadiness.issues.map((issue) => (
@@ -617,9 +625,14 @@ export function AdminArticleListPage() {
               </label>
               {publishReadiness.audienceSummary && (
                 <div className="rounded-lg border border-waldorf-cream-200 bg-waldorf-cream-50 p-3 text-sm text-waldorf-clay-700">
-                  <p>候選：{publishReadiness.audienceSummary.totalCandidates}</p>
-                  <p>可投遞：{publishReadiness.audienceSummary.eligibleCount}</p>
-                  <p>排除：{publishReadiness.audienceSummary.ineligibleCount}</p>
+                  <p>候選家庭：{publishReadiness.audienceSummary.totalCandidates}</p>
+                  <p>可投遞家庭：{publishReadiness.audienceSummary.eligibleCount}</p>
+                  <p>排除家庭：{publishReadiness.audienceSummary.ineligibleCount}</p>
+                  <p>可寄送家長電子郵件：{publishReadiness.audienceSummary.eligibleRecipientCount ?? publishReadiness.audienceSummary.eligibleCount}</p>
+                  <p className="mt-2 text-xs text-waldorf-clay-500">前三項以家庭計算；最後一項以 SMZ Auth 授權的家長電子郵件計算。一個家庭可有多位可寄送家長。</p>
+                  {Object.entries(publishReadiness.audienceSummary.exclusionReasons ?? {}).map(([reason, count]) => (
+                    <p key={reason}>{({ family_inactive: '家庭已停用', no_active_enrollment: '沒有在學班級', not_subscribed: '未訂閱電子報', missing_parent_guardian_email: '缺少家長電子郵件' } as Record<string, string>)[reason] ?? '其他排除原因'}（家庭）：{count}</p>
+                  ))}
                 </div>
               )}
             </div>

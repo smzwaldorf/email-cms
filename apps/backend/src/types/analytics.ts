@@ -42,6 +42,8 @@ export interface TrackingToken {
 }
 
 export interface AnalyticsMetrics {
+  emailMetricsAvailable?: boolean;
+  sentRecipients?: number;
   openRate: number;
   clickRate: number;
   avgTimeSpent: number;

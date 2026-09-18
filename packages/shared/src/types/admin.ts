@@ -43,6 +43,7 @@ export interface Class {
  */
 export interface Family {
   id: string // UUID
+  code?: string // Stable directory code used to reconcile SMZ Identity families
   name: string // 家族名稱（例如：升學進路、親子教育）
   description?: string
   relatedTopics?: string[] // 相關主題清單
@@ -201,6 +202,8 @@ export interface NewsletterPublishReadiness {
   canPublish: boolean
   issues: string[]
   audienceSummary?: {
+    eligibleRecipientCount?: number
+    exclusionReasons?: Record<string, number>
     mode: 'all' | 'classes' | 'families' | 'family'
     totalCandidates: number
     eligibleCount: number

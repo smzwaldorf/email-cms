@@ -38,6 +38,58 @@ interface OrderBy {
   ascending: boolean
 }
 
+/**
+ * PostgreSQL's node driver serializes JavaScript arrays as native SQL arrays.
+ * That is correct for text[]/uuid[] columns, but JSONB columns need a JSON
+ * string instead. Keep this small schema map explicit so mutation encoding
+ * does not infer from the JavaScript value and accidentally change native
+ * array parameters.
+ */
+const JSONB_COLUMN_KEYS = new Set([
+  'analytics_events.metadata',
+  'article_audit_log.old_values',
+  'article_audit_log.new_values',
+  'articles.restricted_to_classes',
+  'auth_events.metadata',
+  'authorization_decision_trace.resolved_scope',
+  'authorization_decision_trace.metadata',
+  'class_audit_log.prior_state',
+  'class_audit_log.new_state',
+  'cms_browser_sessions.identity_snapshot',
+  'email_platform_subscriber_mappings.sync_metadata',
+  'email_platform_subscription_audit.metadata',
+  'email_platform_sync_jobs.payload',
+  'email_platform_sync_jobs.metrics',
+  'email_platform_webhook_events.payload',
+  'email_platform_webhook_events.metrics',
+  'email_template_revisions.blocks',
+  'newsletter_family_preferences.related_topics',
+  'family_audit_log.prior_state',
+  'family_audit_log.new_state',
+  'media_deletion_audit.metadata',
+  'newsletter_delivery_batch_recipients.prepared_payload',
+  'newsletter_delivery_batch_recipients.preparation_findings',
+  'newsletter_delivery_batch_recipients.kit_merge_payload',
+  'newsletter_delivery_batch_recipients.kit_merge_provider_field_ids',
+  'newsletter_delivery_batches.metadata',
+  'newsletter_delivery_jobs.details',
+  'permission_mutation_audit_log.before_state',
+  'permission_mutation_audit_log.after_state',
+  'permission_mutation_audit_log.metadata',
+  'student_audit_log.prior_state',
+  'student_audit_log.new_state',
+  'teacher_audit_log.prior_state',
+  'teacher_audit_log.new_state',
+  'tracking_tokens.token_payload',
+])
+
+function encodeMutationValue(tableName: string, column: string, value: unknown): unknown {
+  if (!JSONB_COLUMN_KEYS.has(`${tableName}.${column}`) || value == null || typeof value === 'string') {
+    return value
+  }
+  return JSON.stringify(value)
+}
+
 interface Embed {
   alias: string
   inner: boolean
@@ -433,7 +485,7 @@ export class QueryBuilder<T = unknown> {
       const valueGroups = rows.map((row) => {
         const record = row as Record<string, unknown>
         const placeholders = columns.map((column) => {
-          values.push(record[column])
+          values.push(encodeMutationValue(this.tableName, column, record[column]))
           return `$${values.length}`
         })
         return `(${placeholders.join(', ')})`
@@ -449,7 +501,7 @@ export class QueryBuilder<T = unknown> {
     } else if (this.mutation.type === 'update') {
       const record = this.mutation.payload as Record<string, unknown>
       const assignments = Object.entries(record).map(([column, value]) => {
-        values.push(value)
+        values.push(encodeMutationValue(this.tableName, column, value))
         return `${quoteIdent(column)} = $${values.length}`
       })
       const where = buildWhere(this.tableName, this.filters, values)

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { NewsletterForm } from '@/components/admin/NewsletterForm'
 import { adminService } from '@/services/adminService'
@@ -28,6 +28,22 @@ vi.mock('react-router-dom', async () => {
 })
 
 describe('NewsletterForm', () => {
+  afterEach(() => vi.useRealTimers())
+
+  it.each([
+    [2026, 8, 16, '2026-W39', '2026-09-20'],
+    [2025, 11, 28, '2026-W01', '2026-01-04'],
+    [2020, 11, 27, '2020-W53', '2021-01-03'],
+    [2021, 0, 1, '2021-W01', '2021-01-03'],
+  ])('uses ISO week-year and local release date for %s-%s-%s', (year, month, day, week, date) => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(year, month, day, 0, 30))
+    render(<BrowserRouter><NewsletterForm /></BrowserRouter>)
+    fireEvent.click(screen.getByText('自動填寫下週'))
+    expect(screen.getByLabelText(/週次/)).toHaveValue(week)
+    expect(screen.getByLabelText(/預計發布日期/)).toHaveValue(date)
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(adminService.fetchNewsletterTemplates).mockResolvedValue([])
@@ -193,7 +209,7 @@ describe('NewsletterForm', () => {
             weekNumber: '2025-W48',
             title: 'Original title',
             description: 'Original description',
-            releaseDate: '2025-11-29',
+            releaseDate: new Date(2025, 10, 29).toISOString(),
             status: 'draft',
             articleCount: 1,
             createdAt: '2025-11-01',
@@ -207,6 +223,7 @@ describe('NewsletterForm', () => {
       </BrowserRouter>
     )
 
+    expect(screen.getByLabelText(/預計發布日期/)).toHaveValue('2025-11-29')
     fireEvent.change(screen.getByLabelText(/標題/), { target: { value: 'Updated title' } })
     fireEvent.change(screen.getByLabelText(/摘要/), { target: { value: 'Updated description' } })
     fireEvent.change(screen.getByLabelText(/預計發布日期/), { target: { value: '2025-11-30' } })

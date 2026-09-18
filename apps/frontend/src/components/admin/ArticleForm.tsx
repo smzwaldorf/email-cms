@@ -1,3 +1,4 @@
+import { canonicalClassReferences } from '@/utils/classReferences'
 import { usePersistentDraft } from '@/hooks/usePersistentDraft'
 /**
  * Article Form Component
@@ -21,7 +22,7 @@ export interface ArticleFormProps {
   onSave?: (article: AdminArticle) => void | Promise<void>
   onError?: (error: Error) => void
   onCancel?: () => void
-  availableClasses?: Array<{ id: string; name: string }>
+  availableClasses?: Array<{ id: string; name: string; legacyIds?: string[] }>
   availableFamilies?: Array<{ id: string; name: string }>
   showNewsletterTargeting?: boolean
 }
@@ -46,7 +47,8 @@ export function ArticleForm({
   availableFamilies = [],
   showNewsletterTargeting = false,
 }: ArticleFormProps) {
-  const [formData, setFormData, clearDraft, conflictingDraft, restoreDraft] = usePersistentDraft<AdminArticle>(`admin-article:${article.id}`, article)
+  const [draftData, setFormData, clearDraft, conflictingDraft, restoreDraft] = usePersistentDraft<AdminArticle>(`admin-article:${article.id}`, article)
+  const formData = { ...draftData, classIds: canonicalClassReferences(draftData.classIds, availableClasses), newsletterTargetClassIds: canonicalClassReferences(draftData.newsletterTargetClassIds, availableClasses) }
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [hasConflict, setHasConflict] = useState(false)

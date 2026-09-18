@@ -157,49 +157,10 @@ describe('KitAdapter', () => {
     ])
   })
 
-  it('creates a broadcast targeted to a specific tag', async () => {
-    fetchMock
-      .mockResolvedValueOnce(
-        jsonResponse({
-          tags: [{ id: 77, name: 'family:family-1' }],
-        }),
-      )
-      .mockResolvedValueOnce(
-        jsonResponse(
-          {
-            broadcast: {
-              id: 501,
-              send_at: '2026-03-23T12:00:00Z',
-              public_url: null,
-            },
-          },
-          201,
-        ),
-      )
-
+  it('rejects legacy Kit broadcasts without network access', async () => {
     const adapter = new KitAdapter(config, fetchMock as unknown as typeof fetch)
-    const result = await adapter.createBroadcast({
-      subject: 'Weekly Update',
-      content: '<p>Hello family</p>',
-      description: 'newsletter:1 batch:2 recipient:3',
-      previewText: 'Hello family',
-      sendAt: '2026-03-23T12:00:00Z',
-      tagNames: ['family:family-1'],
-      emailAddress: 'sender@example.com',
-    })
-
-    expect(fetchMock).toHaveBeenCalledWith(
-      'https://api.kit.com/v4/broadcasts',
-      expect.objectContaining({
-        method: 'POST',
-        body: expect.stringContaining('"subject":"Weekly Update"'),
-      }),
-    )
-    expect(result).toEqual({
-      broadcastId: '501',
-      sendAt: '2026-03-23T12:00:00Z',
-      publicUrl: null,
-    })
+    await expect(adapter.createBroadcast({ subject: 'Weekly', content: '<p>Hello</p>', description: '', previewText: '', sendAt: '', tagNames: [] })).rejects.toThrow('Kit email sending is disabled')
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('creates newsletter merge fields and updates subscriber merge properties', async () => {

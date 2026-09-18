@@ -2,6 +2,8 @@
 
 This runbook covers ingestion, qualification, rollups, exports, and reconciliation for the `analytics-and-reporting` OpenSpec change.
 
+Implementation status (2026-09-16): this change remains a target workflow, not proof that every setting or job below is implemented. See [the current newsletter journey](../../../specs/docs/NEWSLETTER-JOURNEY.md). Current email rates use recorded provider-accepted parents; tracked clicks are restricted to reader routes on `APP_URL`, and known proxy/scanner events are classified separately. Full export, freshness SLA, reconciliation and received-mailbox verification remain open.
+
 ### 1) Runtime configuration
 
 - `ANALYTICS_FRESHNESS_SLA_MINUTES` - freshness threshold before dashboard data is marked stale (default: `30`).

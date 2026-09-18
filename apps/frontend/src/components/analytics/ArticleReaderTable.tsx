@@ -35,7 +35,7 @@ export const ArticleReaderTable: React.FC<ArticleReaderTableProps> = ({ data }) 
                 <table className="min-w-full divide-y divide-brand-neutral-200">
                     <thead className="bg-brand-neutral-50">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-brand-neutral-500 uppercase tracking-wider">User</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-brand-neutral-500 uppercase tracking-wider">Name</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-brand-neutral-500 uppercase tracking-wider">Role</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-brand-neutral-500 uppercase tracking-wider">Class / Students</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-brand-neutral-500 uppercase tracking-wider">Last Viewed</th>

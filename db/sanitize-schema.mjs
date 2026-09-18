@@ -24,6 +24,10 @@ const AUTH_ONLY_FUNCTIONS = new Set([
 ])
 
 const raw = fs.readFileSync(inputPath, 'utf8')
+if (/CREATE TABLE public\.(families|family_enrollment|students|student_class_enrollment|teacher_profiles|teacher_class_assignment|classes|user_roles|user_role_assignments)\s*\(/i.test(raw)) {
+  throw new Error('Identity masters belong to Auth. Apply the retirement migration before exporting a CMS schema.')
+}
+
 const withoutRestrict = raw
   .replace(/^\\restrict .*$/gm, '')
   .replace(/^\\unrestrict .*$/gm, '')
@@ -42,7 +46,7 @@ for (const statement of statements) {
 const header = `-- Vanilla Postgres schema for email-cms.
 -- Generated from the local Supabase public schema.
 -- Stripped: auth.users FKs, RLS policies, Storage, auth-only RPCs.
--- Auth/OCID is out of scope; identity FKs point at public.user_roles(id).
+-- Identity masters live in Auth; historical external IDs have no cascading directory FKs.
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
@@ -128,7 +132,7 @@ function isDroppedStatement(statement) {
 
 function rewriteStatement(statement) {
   let next = statement
-  next = next.replace(/REFERENCES auth\.users\(id\)/g, 'REFERENCES public.user_roles(id)')
+  if (/REFERENCES auth\.users\(id\)/.test(next)) throw new Error('Remove cross-domain identity foreign keys before exporting CMS schema')
   next = next.replace(/CREATE SCHEMA public;?/i, 'CREATE SCHEMA IF NOT EXISTS public;')
   next = next.replace(
     /DEFAULT auth\.uid\(\)/g,

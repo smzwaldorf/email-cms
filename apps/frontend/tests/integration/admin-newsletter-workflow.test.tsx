@@ -243,6 +243,29 @@ describe('Admin newsletter workflow page', () => {
     expect(screen.getByText('Article Two')).toBeInTheDocument()
   })
 
+  it('labels readiness counts by family and parent email', async () => {
+    vi.mocked(adminService.getNewsletterPublishReadiness).mockResolvedValue({
+      canPublish: true,
+      issues: [],
+      audienceSummary: {
+        mode: 'all',
+        totalCandidates: 2,
+        eligibleCount: 2,
+        ineligibleCount: 0,
+        eligibleRecipientCount: 3,
+        selectedClassIds: [],
+        selectedFamilyIds: [],
+      },
+    })
+    renderPage()
+
+    expect(await screen.findByText('候選家庭：2')).toBeInTheDocument()
+    expect(screen.getByText('可投遞家庭：2')).toBeInTheDocument()
+    expect(screen.getByText('排除家庭：0')).toBeInTheDocument()
+    expect(screen.getByText('可寄送家長電子郵件：3')).toBeInTheDocument()
+    expect(screen.getByText(/前三項以家庭計算；最後一項以 SMZ Auth/)).toBeInTheDocument()
+  })
+
   it('reorders articles from the newsletter composition view', async () => {
     renderPage()
 
@@ -287,14 +310,24 @@ describe('Admin newsletter workflow page', () => {
 
   // multi-step workflow is load-sensitive when the full suite runs in parallel
   it('updates lifecycle actions from publish to archive in the same workflow', { timeout: 15000, retry: 2 }, async () => {
+    vi.mocked(adminService.getNewsletterPublishReadiness).mockResolvedValue({
+      canPublish: true,
+      issues: [],
+      audienceSummary: {
+        mode: 'all', totalCandidates: 2, eligibleCount: 2, ineligibleCount: 0,
+        eligibleRecipientCount: 3, selectedClassIds: [], selectedFamilyIds: [],
+      },
+    })
     renderPage()
 
-    fireEvent.click(await screen.findByRole('button', { name: '發布電子報' }))
+    fireEvent.click(await screen.findByRole('button', { name: '發布並寄送電子報' }))
 
     await waitFor(() => {
+      expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('可寄送家長電子郵件：3'))
+      expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('前三項以家庭計算'))
       expect(adminService.publishNewsletterWithDelivery).toHaveBeenCalledWith('newsletter-1', { mode: 'all' })
       expect(screen.getByRole('button', { name: '封存電子報' })).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: '發布電子報' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: '發布並寄送電子報' })).not.toBeInTheDocument()
     })
 
     fireEvent.click(screen.getByRole('button', { name: '封存電子報' }))
