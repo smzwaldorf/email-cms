@@ -31,6 +31,7 @@
     "cloudflare:templates": "node scripts/cloudflare-templates.mjs",
     "cloudflare:configure": "node scripts/cloudflare-config.mjs",
     "cloudflare:pages:build": "node scripts/cloudflare-pages.mjs",
+    "cloudflare:email-assets": "node scripts/email-assets-deploy.mjs",
     "cloudflare:schema": "node scripts/cloudflare-schema.mjs",
     "cloudflare:check": "npm run cloudflare:templates && npm run cloudflare:typecheck && wrangler deploy --dry-run --config apps/backend/wrangler.jsonc",
     "cloudflare:typecheck": "tsc -p apps/backend/tsconfig.cloudflare.json",

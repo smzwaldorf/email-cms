@@ -1,11 +1,12 @@
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;">
   <tr>
     <td style="padding:6px 36px 0;font-size:0;line-height:0;">
-      <div style="height:5px;border-radius:3px;background-color:#f0cf72;background-image:repeating-linear-gradient(90deg,#e8a07f 0,#e8a07f 14px,rgba(255,255,255,0) 14px,rgba(255,255,255,0) 22px,#f0cf72 22px,#f0cf72 34px,rgba(255,255,255,0) 34px,rgba(255,255,255,0) 42px,#b8d8c0 42px,#b8d8c0 54px,rgba(255,255,255,0) 54px,rgba(255,255,255,0) 62px,#98bee5 62px,#98bee5 76px,rgba(255,255,255,0) 76px,rgba(255,255,255,0) 84px,#e89eab 84px,#e89eab 98px,rgba(255,255,255,0) 98px,rgba(255,255,255,0) 106px);">&nbsp;</div>
+      <!-- Rainbow dashed rule sliced from the design -->
+      <img src="{{> assetRule}}" width="568" height="16" alt="" style="display:block;width:100%;max-width:568px;height:auto;border:0;" />
     </td>
   </tr>
   <tr>
-    <td align="center" style="padding:24px 36px 0;text-align:center;">
+    <td align="center" style="padding:22px 36px 0;text-align:center;">
       <div style="font-family:'Noto Sans TC','PingFang TC','Microsoft JhengHei',Arial,Helvetica,sans-serif;font-size:19px;line-height:1.3;font-weight:700;letter-spacing:3px;color:#4a4039;">{{schoolName}}</div>
       <div style="margin-top:12px;font-family:Arial,Helvetica,'Noto Sans TC','PingFang TC',sans-serif;font-size:14px;line-height:1.6;letter-spacing:1px;color:#b89467;"><span style="display:inline-block;padding:0 12px;white-space:nowrap;">TEL : {{tel}}</span><span style="display:inline-block;padding:0 12px;white-space:nowrap;">FAX : {{fax}}</span></div>
       <div style="margin-top:4px;font-family:'Noto Sans TC','PingFang TC','Microsoft JhengHei',Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;letter-spacing:1px;color:#b89467;">地址：{{address}}</div>
@@ -13,26 +14,27 @@
   </tr>
   <tr>
     <td align="center" style="padding:18px 36px 34px;text-align:center;">
+      <!-- Social icons sliced from the design; each renders only when its destination is configured -->
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto;">
         <tr>
           {{#if facebookUrl}}
-          <td style="padding:0 9px;">
-            <a href="{{facebookUrl}}" title="{{facebookLabel}}" style="display:block;width:34px;height:34px;line-height:34px;border:2px solid #c39f70;border-radius:50%;text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#c39f70;text-decoration:none;">f</a>
+          <td style="padding:0 14px;">
+            <a href="{{facebookUrl}}" title="{{facebookLabel}}" style="display:block;text-decoration:none;"><img src="{{> assetIconFacebook}}" width="44" height="44" alt="Facebook" style="display:block;width:44px;height:44px;border:0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#c39f70;" /></a>
           </td>
           {{/if}}
           {{#if instagramUrl}}
-          <td style="padding:0 9px;">
-            <a href="{{instagramUrl}}" title="Instagram" style="display:block;width:34px;height:34px;line-height:34px;border:2px solid #c39f70;border-radius:50%;text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;color:#c39f70;text-decoration:none;">IG</a>
+          <td style="padding:0 14px;">
+            <a href="{{instagramUrl}}" title="Instagram" style="display:block;text-decoration:none;"><img src="{{> assetIconInstagram}}" width="44" height="44" alt="Instagram" style="display:block;width:44px;height:44px;border:0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#c39f70;" /></a>
           </td>
           {{/if}}
           {{#if contactEmail}}
-          <td style="padding:0 9px;">
-            <a href="mailto:{{contactEmail}}" title="{{contactEmail}}" style="display:block;width:34px;height:34px;line-height:34px;border:2px solid #c39f70;border-radius:50%;text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#c39f70;text-decoration:none;">@</a>
+          <td style="padding:0 14px;">
+            <a href="mailto:{{contactEmail}}" title="{{contactEmail}}" style="display:block;text-decoration:none;"><img src="{{> assetIconEmail}}" width="44" height="44" alt="Email" style="display:block;width:44px;height:44px;border:0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#c39f70;" /></a>
           </td>
           {{/if}}
           {{#if websiteUrl}}
-          <td style="padding:0 9px;">
-            <a href="{{websiteUrl}}" title="{{websiteUrl}}" style="display:block;width:34px;height:34px;line-height:34px;border:2px solid #c39f70;border-radius:50%;text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:9px;font-weight:700;letter-spacing:0.5px;color:#c39f70;text-decoration:none;">WWW</a>
+          <td style="padding:0 14px;">
+            <a href="{{websiteUrl}}" title="{{websiteUrl}}" style="display:block;text-decoration:none;"><img src="{{> assetIconWebsite}}" width="44" height="44" alt="Website" style="display:block;width:44px;height:44px;border:0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#c39f70;" /></a>
           </td>
           {{/if}}
         </tr>

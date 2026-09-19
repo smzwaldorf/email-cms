@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs'
+import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import {
@@ -8,6 +10,9 @@ import { createDefaultFileEmailTemplateRenderContext } from '@/services/fileEmai
 import { composePersonalizedEmails } from '@/services/personalizedEmailComposer'
 import type { ComposePersonalizedEmailInput } from '@/types/personalization'
 import type { FileEmailTemplatePreviewResult } from '@/types/fileEmailTemplate'
+
+/** Cloudflare Pages project that serves the sliced design artwork (scripts/email-assets-deploy.mjs). */
+const ASSET_BASE_URL = 'https://smz-email-assets.pages.dev/smz-school-news'
 
 function loadPreview(): FileEmailTemplatePreviewResult {
   const loaded = loadFileEmailTemplateSource('smz-school-news')
@@ -135,24 +140,53 @@ describe('smz-school-news file template bundle', () => {
       preview.blocks.map((block) => [String(block.config.fileTemplateBlockId), block]),
     )
 
-    // No logo URL configured: the header falls back to the CSS watercolor mark.
+    // The masthead is a single slice of the design (logo, lettering and script title).
     const header = blockById.get('header')
-    expect(header?.bodyHtml).not.toContain('<img')
-    expect(header?.bodyHtml).toContain('border-radius:50%')
+    expect(header?.bodyHtml).toContain(`<img src="${ASSET_BASE_URL}/header-banner.jpg" width="640"`)
+    expect(header?.bodyHtml).toContain('alt="善美真華德福教育 — SMZ School News"')
 
     // About panel renders the mission text-only when no portrait is configured.
     const about = blockById.get('about')
     expect(about?.bodyHtml).toContain('認識 善美真')
     expect(about?.bodyHtml).toContain('取名「善美真」')
-    expect(about?.bodyHtml).not.toContain('<img')
+    expect(about?.bodyHtml).toContain(`src="${ASSET_BASE_URL}/about-title.png"`)
+    expect(about?.bodyHtml).not.toContain('border-radius:46%')
 
     // Footer only renders social icons for configured destinations.
     const footer = blockById.get('footer')
     expect(footer?.bodyHtml).toContain('https://www.facebook.com/smzwaldorf')
+    expect(footer?.bodyHtml).toContain('alt="Facebook"')
     expect(footer?.bodyHtml).toContain('04-26263111')
     expect(footer?.bodyHtml).not.toContain('mailto:')
-    expect(footer?.bodyHtml).not.toContain('>IG<')
-    expect(footer?.bodyHtml).not.toContain('>WWW<')
+    expect(footer?.bodyHtml).not.toContain('alt="Instagram"')
+    expect(footer?.bodyHtml).not.toContain('alt="Website"')
+  })
+
+  it('references the sliced design artwork over https (Resend rejects data: URIs)', () => {
+    const preview = loadPreview()
+    const blockById = new Map(
+      preview.blocks.map((block) => [String(block.config.fileTemplateBlockId), block]),
+    )
+
+    // Partials are resolved at sync time, so no `{{> asset...}}` references leak into blocks.
+    for (const block of preview.blocks) {
+      expect(block.bodyHtml).not.toContain('{{>')
+      expect(block.bodyHtml).not.toContain('data:image/')
+    }
+    expect(blockById.get('weekly-divider')?.bodyHtml).toContain(
+      `<img src="${ASSET_BASE_URL}/weekly-banner.jpg" width="640"`,
+    )
+    expect(blockById.get('footer')?.bodyHtml).toContain(`<img src="${ASSET_BASE_URL}/rule.jpg" width="568"`)
+    expect(blockById.get('footer')?.bodyHtml).toContain(`<img src="${ASSET_BASE_URL}/icon-facebook.jpg"`)
+
+    // Every referenced asset ships in the template's assets/ folder (published by scripts/email-assets-deploy.mjs).
+    const referenced = Array.from(preview.bodyHtml.matchAll(new RegExp(`${ASSET_BASE_URL}/([a-z0-9.-]+)`, 'g'))).map(
+      (match) => match[1],
+    )
+    expect(referenced.length).toBeGreaterThan(0)
+    for (const file of new Set(referenced)) {
+      expect(existsSync(path.resolve(__dirname, '../../../templates/email/smz-school-news/assets', file))).toBe(true)
+    }
   })
 
   it('preserves delivery tokens in the synced block snapshot', () => {
@@ -223,6 +257,8 @@ describe('smz-school-news file template bundle', () => {
     expect(bodyA).toContain('CLASS NEWS &amp; EVENTS · 癸卯班')
     expect(bodyA).toContain('About us')
     expect(bodyA).toContain('善美真華德福實驗教育機構')
+    // Hosted artwork survives personalization untouched.
+    expect(bodyA).toContain(`src="${ASSET_BASE_URL}/header-banner.jpg"`)
 
     // Wrapped as a complete HTML document for delivery.
     expect(bodyA).toContain('<!doctype html>')

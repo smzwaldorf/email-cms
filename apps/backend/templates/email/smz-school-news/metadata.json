@@ -1,13 +1,49 @@
 {
   "sourceId": "smz-school-news",
   "name": "SMZ School News",
-  "description": "Watercolor-style weekly newsletter matching the SMZ School News design: featured school cards, per-class news cards, the weekly announcement list (本週重要事情佈達), an About us panel and the contact footer.",
-  "version": "1.1.0",
+  "description": "Watercolor-style weekly newsletter matching the SMZ School News design: featured school cards, per-class news cards, the weekly announcement list (本週重要事情佈達), an About us panel and the contact footer. Decorative artwork (logo, script titles, watercolor banner, rainbow rule, social icons) is sliced from the design and served from https://smz-email-assets.pages.dev (see scripts/email-assets-deploy.mjs).",
+  "version": "1.3.0",
   "subject": "subject.hbs",
   "partials": [
     {
       "name": "ctaButton",
       "file": "partials/cta-button.hbs"
+    },
+    {
+      "name": "assetHeaderBanner",
+      "file": "partials/assets/header-banner.hbs"
+    },
+    {
+      "name": "assetWeeklyBanner",
+      "file": "partials/assets/weekly-banner.hbs"
+    },
+    {
+      "name": "assetAboutTitle",
+      "file": "partials/assets/about-title.hbs"
+    },
+    {
+      "name": "assetSwatches",
+      "file": "partials/assets/swatches.hbs"
+    },
+    {
+      "name": "assetRule",
+      "file": "partials/assets/rule.hbs"
+    },
+    {
+      "name": "assetIconFacebook",
+      "file": "partials/assets/icon-facebook.hbs"
+    },
+    {
+      "name": "assetIconInstagram",
+      "file": "partials/assets/icon-instagram.hbs"
+    },
+    {
+      "name": "assetIconEmail",
+      "file": "partials/assets/icon-email.hbs"
+    },
+    {
+      "name": "assetIconWebsite",
+      "file": "partials/assets/icon-website.hbs"
     }
   ],
   "blocks": [
@@ -20,8 +56,7 @@
       "order": 0,
       "config": {
         "brandName": "善美真華德福教育",
-        "scriptTitle": "SMZ School News",
-        "logoUrl": ""
+        "scriptTitle": "SMZ School News"
       }
     },
     {
