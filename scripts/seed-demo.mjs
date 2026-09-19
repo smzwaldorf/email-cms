@@ -3,7 +3,9 @@ import { demoId as id, row, runSeed, isMain } from './demo-seed-support.mjs';
 const savedTemplate = JSON.parse(readFileSync(new URL('../db/seeds/current-email-template.json', import.meta.url), 'utf8'));
 export function buildDemoPlan(env = {}) {
   if (env.DEMO_SUBSCRIPTIONS_CONFIRMED && !['true', 'false'].includes(env.DEMO_SUBSCRIPTIONS_CONFIRMED)) throw Error('DEMO_SUBSCRIPTIONS_CONFIRMED must be true or false');
-  const subscribed = env.DEMO_SUBSCRIPTIONS_CONFIRMED === 'true';
+  // Demo recipients are explicitly synthetic and start ready for the
+  // newsletter rehearsal. Set this to false only when testing consent gates.
+  const subscribed = env.DEMO_SUBSCRIPTIONS_CONFIRMED !== 'false';
   const rows = [row('public.newsletters','id',{id:id(301),title:'[DEMO] Two-family school newsletter',description:'Synthetic demo v1. Family A: shared + Grade 1A + Grade 1B. Family B: shared + Grade 2A.',week_number:null,release_date:new Date().toISOString().slice(0,10),status:'draft'})];
   ['Shared school news','Grade 1A garden story','Grade 1B music story','Grade 2A nature story'].forEach((title,i)=>{
     const classIds = i ? [id(200+i)] : [];

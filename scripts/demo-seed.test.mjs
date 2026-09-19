@@ -9,6 +9,10 @@ test('fixture contains no delivery events, jobs, sessions or verified/demo admin
  assert(rows.every(r=>!/(delivery|analytics|session|oauth)/.test(r.table)));
  assert(rows.filter(r=>r.table==='auth.user').every(r=>r.values.email_verified===false));
  assert(rows.filter(r=>r.table==='directory.person_roles').every(r=>r.values.role!=='admin'));
+ assert(rows.filter(r=>r.table==='public.newsletter_family_preferences').every(r=>r.values.newsletter_subscription_status==='subscribed'));
+});
+test('explicit demo consent-gate mode seeds pending preferences',()=>{
+ const rows=buildDemoPlan({...env,DEMO_SUBSCRIPTIONS_CONFIRMED:'false'});
  assert(rows.filter(r=>r.table==='public.newsletter_family_preferences').every(r=>r.values.newsletter_subscription_status==='pending'));
 });
 test('partial fixture aborts and does not recreate missing rows',async()=>{
