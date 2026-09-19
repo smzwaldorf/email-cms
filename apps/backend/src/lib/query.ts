@@ -127,7 +127,20 @@ function quoteIdent(identifier: string): string {
   return `"${identifier}"`
 }
 
+/** PostgREST JSON path column, e.g. `metadata->>target_url` or `payload->meta->>id`. */
+const JSON_PATH_COLUMN_PATTERN = /^([A-Za-z_][A-Za-z0-9_]*)((?:->>?[A-Za-z_][A-Za-z0-9_]*)+)$/
+const JSON_PATH_STEP_PATTERN = /->>?[A-Za-z_][A-Za-z0-9_]*/g
+
 function qualify(tableName: string, column: string): string {
+  const jsonPath = column.match(JSON_PATH_COLUMN_PATTERN)
+  if (jsonPath) {
+    // Keys are restricted to identifier characters by the pattern above, so they are
+    // safe to inline as SQL string literals: `"table"."metadata"->>'target_url'`.
+    const steps = (jsonPath[2].match(JSON_PATH_STEP_PATTERN) ?? [])
+      .map((step) => (step.startsWith('->>') ? `->>'${step.slice(3)}'` : `->'${step.slice(2)}'`))
+      .join('')
+    return `${quoteIdent(tableName)}.${quoteIdent(jsonPath[1])}${steps}`
+  }
   if (column.includes('.')) {
     const [table, col] = column.split('.')
     return `${quoteIdent(table)}.${quoteIdent(col)}`
