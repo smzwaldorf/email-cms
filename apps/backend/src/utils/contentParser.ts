@@ -3,8 +3,8 @@ import { storageService } from '#/services/storageService'
 /** Default signed URL TTL for inline previews (short). */
 const DEFAULT_STORAGE_SIGN_TTL_SECONDS = 300
 
-/** Signed URL TTL for email HTML (images must load when the message is opened days later). */
-export const EMAIL_HTML_STORAGE_SIGN_TTL_SECONDS = 60 * 60 * 24 * 7 // 7 days
+/** Signed URL TTL for email HTML (images must load when the message is opened weeks later). */
+export const EMAIL_HTML_STORAGE_SIGN_TTL_SECONDS = 60 * 60 * 24 * 30 // 30 days
 
 /**
  * Replace storage:// tokens in HTML with signed URLs

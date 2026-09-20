@@ -1,4 +1,4 @@
-import { replaceStorageTokens } from './contentParser'
+import { EMAIL_HTML_STORAGE_SIGN_TTL_SECONDS, replaceStorageTokens } from './contentParser'
 import { storageService } from '#/services/storageService'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
@@ -11,6 +11,10 @@ vi.mock('#/services/storageService', () => ({
 describe('replaceStorageTokens', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('keeps outbound email image URLs valid for 30 days', () => {
+    expect(EMAIL_HTML_STORAGE_SIGN_TTL_SECONDS).toBe(60 * 60 * 24 * 30)
   })
 
   it('replaces storage:// tokens with signed URLs', async () => {
