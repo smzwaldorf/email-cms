@@ -6,6 +6,7 @@ import {
   loadFileEmailTemplateSource,
   renderLoadedFileEmailTemplatePreview,
 } from '@/services/fileEmailTemplateLoader'
+import { renderPrecompiledEmailTemplate } from '@/generated/emailTemplateSpecs'
 import { createDefaultFileEmailTemplateRenderContext } from '@/services/fileEmailTemplatePreviewContext'
 import { composePersonalizedEmails } from '@/services/personalizedEmailComposer'
 import type { ComposePersonalizedEmailInput } from '@/types/personalization'
@@ -116,6 +117,41 @@ function countOccurrences(haystack: string, needle: string): number {
 }
 
 describe('smz-school-news file template bundle', () => {
+  it('renders when runtime string-to-code generation is disabled like Cloudflare Workers', () => {
+    const originalFunctionApply = Function.apply
+    Object.defineProperty(Function, 'apply', {
+      configurable: true,
+      writable: true,
+      value: function disabledDynamicFunctionApply(): never {
+        throw new EvalError('Code generation from strings disallowed for this context')
+      },
+    })
+
+    try {
+      const header = renderPrecompiledEmailTemplate(
+        '/templates/email/smz-school-news/blocks/header.hbs',
+        { brandName: '善美真華德福教育', scriptTitle: 'SMZ School News' },
+        {
+          assetHeaderBanner:
+            '/templates/email/smz-school-news/partials/assets/header-banner.hbs',
+        },
+      )
+      expect(header).toContain(`${ASSET_BASE_URL}/header-banner.jpg`)
+
+      const preview = loadPreview()
+
+      expect(preview.renderedSubject).toBe('SMZ School News｜Preview Weekly Newsletter')
+      expect(preview.bodyHtml).toContain(`${ASSET_BASE_URL}/header-banner.jpg`)
+      expect(preview.blocks.every((block) => block.bodyHtml.length > 0)).toBe(true)
+    } finally {
+      Object.defineProperty(Function, 'apply', {
+        configurable: true,
+        writable: true,
+        value: originalFunctionApply,
+      })
+    }
+  })
+
   it('loads from disk and passes validation', () => {
     const preview = loadPreview()
 

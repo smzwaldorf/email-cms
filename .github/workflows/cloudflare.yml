@@ -63,6 +63,7 @@ jobs:
           node-version: 24
       - run: npm install --no-audit --no-fund
       - run: npm run build -w @email-cms/shared
+      - run: npm run cloudflare:templates
       - run: npm run cloudflare:configure
       - name: Validate Pages configuration
         run: npx wrangler pages functions build-env .wrangler/deploy --outfile .wrangler/deploy/pages-build-env.json

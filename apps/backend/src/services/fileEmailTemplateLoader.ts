@@ -1,4 +1,8 @@
 import bundledTemplateFiles from '../generated/emailTemplates.json'
+import {
+  hasPrecompiledEmailTemplate,
+  renderPrecompiledEmailTemplate,
+} from '../generated/emailTemplateSpecs'
 import Handlebars from 'handlebars'
 import { isEmailBlockType } from '#/services/emailTemplateBlocks'
 import type { EmailBlockType, EmailTemplateBlock } from '#/types/emailTemplate'
@@ -163,10 +167,16 @@ export function renderLoadedFileEmailTemplatePreview(
 ): FileEmailTemplatePreviewResult {
   const issues = validateLoadedFileEmailTemplateSource(loadedSource)
   const partials = readPartials(loadedSource)
-  const subjectTemplate = loadedSource.files.get(normalizeTemplatePath(loadedSource.manifest.subject)) ?? ''
-  const renderedSubject = renderFileHandlebarsTemplate(subjectTemplate, context, { partials }).html
-  const blocks = convertFileEmailTemplateBlocks(loadedSource, context, partials)
-  const blockPreviews = renderBlockPreviews(loadedSource, context, blocks, partials)
+  const partialPaths = readPartialPaths(loadedSource)
+  const subjectPath = normalizeTemplatePath(loadedSource.manifest.subject)
+  const subjectTemplate = loadedSource.files.get(subjectPath) ?? ''
+  const renderedSubject = renderFileHandlebarsTemplate(subjectTemplate, context, {
+    partials,
+    partialPaths,
+    templatePath: bundledTemplatePath(loadedSource.source.sourceId, subjectPath),
+  }).html
+  const blocks = convertFileEmailTemplateBlocks(loadedSource, context, partials, partialPaths)
+  const blockPreviews = renderBlockPreviews(loadedSource, context, blocks, partials, partialPaths)
   return {
     valid: !hasBlockingIssues(issues),
     issues,
@@ -202,16 +212,20 @@ export function convertFileEmailTemplateBlocks(
   loadedSource: LoadedFileEmailTemplateSource,
   context: FileEmailTemplateRenderContext,
   partials: Record<string, string> = readPartials(loadedSource),
+  partialPaths: Record<string, string> = readPartialPaths(loadedSource),
 ): EmailTemplateBlock[] {
   const placeholderContext = createTokenPlaceholderContext(context)
   return [...loadedSource.manifest.blocks]
     .sort(compareManifestBlockOrder)
     .map((manifestBlock, index) => {
       const type = resolveEmailBlockType(manifestBlock)
-      const template = loadedSource.files.get(normalizeTemplatePath(manifestBlock.file)) ?? ''
+      const templatePath = normalizeTemplatePath(manifestBlock.file)
+      const template = loadedSource.files.get(templatePath) ?? ''
       const bodyHtml = renderFileHandlebarsTemplate(template, placeholderContext, {
         config: manifestBlock.config,
         partials,
+        partialPaths,
+        templatePath: bundledTemplatePath(loadedSource.source.sourceId, templatePath),
         ...placeholderRenderDataForMode(manifestBlock.mode, placeholderContext),
       }).html
       return {
@@ -233,16 +247,24 @@ export function renderFileHandlebarsTemplate(
     class?: RecipientClass
     weeklyItem?: RecipientArticle
     partials?: Record<string, string>
+    partialPaths?: Record<string, string>
+    templatePath?: string
   },
 ): FileHandlebarsRenderResult {
-  const runtime = createHandlebarsRuntime(options?.partials ?? {})
   try {
+    const scope = buildRenderScope(context, options)
+    if (options?.templatePath && hasPrecompiledEmailTemplate(options.templatePath)) {
+      return {
+        html: renderPrecompiledEmailTemplate(options.templatePath, scope, options.partialPaths),
+      }
+    }
+    const runtime = createHandlebarsRuntime(options?.partials ?? {})
     const compiled = runtime.compile(template, {
       noEscape: false,
       strict: false,
     })
     return {
-      html: compiled(buildRenderScope(context, options)),
+      html: compiled(scope),
     }
   } catch (error) {
     return {
@@ -257,14 +279,23 @@ function renderBlockPreviews(
   context: FileEmailTemplateRenderContext,
   blocks: EmailTemplateBlock[],
   partials: Record<string, string>,
+  partialPaths: Record<string, string>,
 ): FileEmailTemplateBlockPreview[] {
   const orderedManifestBlocks = [...loadedSource.manifest.blocks].sort(compareManifestBlockOrder)
   return orderedManifestBlocks.map((manifestBlock, index) => {
-    const template = loadedSource.files.get(normalizeTemplatePath(manifestBlock.file)) ?? ''
+    const templatePath = normalizeTemplatePath(manifestBlock.file)
+    const template = loadedSource.files.get(templatePath) ?? ''
     return {
       manifestBlock,
       block: blocks[index],
-      renderedFragments: renderManifestBlockFragments(manifestBlock, template, context, partials),
+      renderedFragments: renderManifestBlockFragments(
+        manifestBlock,
+        template,
+        context,
+        partials,
+        partialPaths,
+        bundledTemplatePath(loadedSource.source.sourceId, templatePath),
+      ),
     }
   })
 }
@@ -274,6 +305,8 @@ function renderManifestBlockFragments(
   template: string,
   context: FileEmailTemplateRenderContext,
   partials: Record<string, string>,
+  partialPaths: Record<string, string>,
+  templatePath: string,
 ): string[] {
   if (manifestBlock.mode === 'article-repeat') {
     return selectArticleRepeatItems(manifestBlock, context).map(
@@ -282,6 +315,8 @@ function renderManifestBlockFragments(
           config: manifestBlock.config,
           article,
           partials,
+          partialPaths,
+          templatePath,
         }).html,
     )
   }
@@ -297,6 +332,8 @@ function renderManifestBlockFragments(
             article,
             class: klass,
             partials,
+            partialPaths,
+            templatePath,
           }).html,
         )
       }
@@ -311,6 +348,8 @@ function renderManifestBlockFragments(
           article: weeklyItem,
           weeklyItem,
           partials,
+          partialPaths,
+          templatePath,
         }).html,
     )
   }
@@ -318,6 +357,8 @@ function renderManifestBlockFragments(
     renderFileHandlebarsTemplate(template, context, {
       config: manifestBlock.config,
       partials,
+      partialPaths,
+      templatePath,
     }).html,
   ]
 }
@@ -359,6 +400,17 @@ function readPartials(loadedSource: LoadedFileEmailTemplateSource): Record<strin
     }
   }
   return partials
+}
+
+function readPartialPaths(loadedSource: LoadedFileEmailTemplateSource): Record<string, string> {
+  const partialPaths: Record<string, string> = {}
+  for (const partial of loadedSource.manifest.partials ?? []) {
+    const filePath = normalizeTemplatePath(partial.file)
+    if (loadedSource.files.has(filePath)) {
+      partialPaths[partial.name] = bundledTemplatePath(loadedSource.source.sourceId, filePath)
+    }
+  }
+  return partialPaths
 }
 
 function validateMetadataFields(
@@ -516,6 +568,7 @@ function validateHandlebarsCompiles(
   loadedSource: LoadedFileEmailTemplateSource,
 ): FileEmailTemplateValidationIssue[] {
   const partials = readPartials(loadedSource)
+  const partialPaths = readPartialPaths(loadedSource)
   const runtime = createHandlebarsRuntime(partials)
   const templates = [
     { path: normalizeTemplatePath(loadedSource.manifest.subject), field: 'subject' },
@@ -533,7 +586,14 @@ function validateHandlebarsCompiles(
       continue
     }
     try {
-      runtime.compile(content)
+      const bundledPath = bundledTemplatePath(loadedSource.source.sourceId, template.path)
+      if (hasPrecompiledEmailTemplate(bundledPath)) {
+        renderPrecompiledEmailTemplate(bundledPath, {}, partialPaths)
+      } else {
+        // Handlebars compilation is lazy. Execute once so validation catches
+        // runtime code-generation failures instead of accepting an empty sync.
+        runtime.compile(content)({})
+      }
     } catch (error) {
       issues.push({
         code: 'handlebars_compile_error',
@@ -884,6 +944,10 @@ function normalizeTemplatePath(filePath: string): string {
     .split('/')
     .filter((part: string) => part.length > 0 && part !== '.')
     .join('/')
+}
+
+function bundledTemplatePath(sourceId: FileEmailTemplateSourceId, filePath: string): string {
+  return `/${TEMPLATE_ROOT}/${sourceId}/${normalizeTemplatePath(filePath)}`
 }
 
 function isStableSourceId(value: string | undefined): value is FileEmailTemplateSourceId {
