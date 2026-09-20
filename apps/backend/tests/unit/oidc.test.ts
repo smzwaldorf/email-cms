@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
+import { exportJWK, generateKeyPair, SignJWT } from 'jose'
 import { withRuntimeEnvironment } from '#/runtime/environment'
-import { authorization, renew } from '#/session/oidc'
+import { authorization, redeem, renew } from '#/session/oidc'
 
 const environment = {
   APP_URL: 'https://cms.school.test',
@@ -49,6 +50,40 @@ describe('OIDC configuration', () => {
       expect(publicFetch).toHaveBeenCalledOnce()
       expect(String(publicFetch.mock.calls[0][0])).toBe('https://auth.school.test/api/auth/oauth2/token')
       expect(serviceFetch).not.toHaveBeenCalled()
+    } finally {
+      publicFetch.mockRestore()
+    }
+  })
+
+  it('accepts the EdDSA ID tokens advertised by SMZ Identity', async () => {
+    const { privateKey, publicKey } = await generateKeyPair('EdDSA')
+    const jwk = { ...await exportJWK(publicKey), kid: 'identity-key', use: 'sig' }
+    const idToken = await new SignJWT({ nonce: 'nonce' })
+      .setProtectedHeader({ alg: 'EdDSA', kid: jwk.kid })
+      .setIssuer(environment.SMZ_AUTH_ISSUER)
+      .setAudience('email-cms-server')
+      .setSubject('person-1')
+      .setIssuedAt()
+      .setExpirationTime('5m')
+      .sign(privateKey)
+    const publicFetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async input => {
+      const url = String(input)
+      if (url.endsWith('/oauth2/token')) return new Response(JSON.stringify({
+        access_token: 'access', refresh_token: 'refresh', expires_in: 900, token_type: 'Bearer', id_token: idToken,
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      if (url.endsWith('/jwks')) return new Response(JSON.stringify({ keys: [jwk] }), {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      })
+      throw new Error(`Unexpected Identity request: ${url}`)
+    })
+
+    try {
+      await expect(withRuntimeEnvironment(environment, () => redeem(new URL(
+        'https://cms.school.test/api/session/callback?code=code&state=state',
+      ), { verifier: 'v'.repeat(43), nonce: 'nonce', state: 'state', redirectTo: '/admin' }))).resolves.toMatchObject({
+        subject: 'person-1',
+        credentials: { access_token: 'access', refresh_token: 'refresh' },
+      })
     } finally {
       publicFetch.mockRestore()
     }

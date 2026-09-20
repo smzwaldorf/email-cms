@@ -22,6 +22,12 @@ function configuration(): oauth.Configuration {
     userinfo_endpoint: endpoint('/oauth2/userinfo'),
     revocation_endpoint: endpoint('/oauth2/revoke'),
     end_session_endpoint: endpoint('/oauth2/end-session'),
+    id_token_signing_alg_values_supported: ['EdDSA'],
+    response_types_supported: ['code'],
+    subject_types_supported: ['public'],
+    grant_types_supported: ['authorization_code', 'refresh_token'],
+    token_endpoint_auth_methods_supported: ['client_secret_basic', 'client_secret_post', 'private_key_jwt'],
+    code_challenge_methods_supported: ['S256'],
   }, SERVER_CLIENT_ID, secret, oauth.ClientSecretPost(secret))
 
   // Keep transport request scoped: bindings must not leak between Workers invocations.
