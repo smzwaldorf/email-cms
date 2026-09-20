@@ -3,6 +3,12 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { configuration } from './cloudflare-config.mjs'
 
+test('Pages API proxy returns Worker redirects so the session cookie can be stored', async () => {
+  const source = await readFile(new URL('./cloudflare-pages.mjs', import.meta.url), 'utf8')
+  assert.match(source, /redirect: 'manual'/, 'OAuth callback is a 303 with Set-Cookie; service-binding fetch must not follow it')
+  assert.match(source, /new Request\(request\.url,/, 'Pages must rebuild the downstream request without Pages-only request metadata')
+})
+
 test('both CMS Worker configurations bind directly to the production SMZ Auth Worker', async () => {
   const generated = configuration({
     CLOUDFLARE_ACCOUNT_ID: 'a'.repeat(32), CLOUDFLARE_HYPERDRIVE_ID: 'b'.repeat(32),

@@ -13,13 +13,18 @@ export function HomePage() {
 
   useEffect(() => {
     if (!user) return
+    if (isAdmin) {
+      setDestination('/admin')
+      setLoading(false)
+      return
+    }
     let active = true
     void WeekService.getLatestPublishedWeek().then(week => {
       if (active) setError(false)
       if (active && week) setDestination(week.week_number ? `/week/${week.week_number}` : `/newsletter/${week.id}`)
     }).catch(() => { if (active) setError(true) }).finally(() => { if (active) setLoading(false) })
     return () => { active = false }
-  }, [user])
+  }, [user, isAdmin])
 
   if (isLoading) return <p className="p-8">正在載入…</p>
   if (!user) return <Navigate to="/login" replace />

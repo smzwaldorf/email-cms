@@ -11,7 +11,7 @@ describe('invocation-scoped Auth service transport', () => {
       return response.text()
     }, { fetch: async (url, init) => {
       calls.push(`${id}:${new Headers(init?.headers).get('Authorization')}`)
-      expect(url).toBe('https://auth.school.test/api/auth/oauth2/userinfo')
+      expect(typeof url === 'string' ? url : url.url).toBe('https://auth.school.test/api/auth/oauth2/userinfo')
       return new Response(id)
     } })
     expect(await Promise.all([invoke('a'), invoke('b')])).toEqual(['a', 'b'])

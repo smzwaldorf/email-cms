@@ -115,12 +115,20 @@ class ServerAuthService implements AuthServiceInterface {
   async sendMagicLink(_email: string, redirectTo?: string): Promise<boolean> { await this.signInWithGoogle(redirectTo); return true }
   async verifyMagicLink(_token: string): Promise<AuthUser | null> { return (await this.completeSignIn()).user }
   async completeSignIn(): Promise<CompletedSignIn> {
-    await this.revalidate()
-    if (!this.user || this.status !== 'active') throw new Error('Reconnecting to Identity. Retry to complete sign-in.')
-    // Only now remove the old browser credentials, after the server cookie is verified.
-    for (const key of Object.keys(sessionStorage)) if (key.startsWith('oidc.') || key === 'email-cms-access-token') sessionStorage.removeItem(key)
-    const next = new URLSearchParams(location.search).get('next')
-    return { user: this.user, redirectTo: next?.startsWith('/') && !next.startsWith('//') && !next.includes('\\') ? next : undefined }
+    for (let attempt = 0; attempt < 4; attempt++) {
+      await this.revalidate()
+      if (this.user && this.status === 'active') {
+        for (const key of Object.keys(sessionStorage)) if (key.startsWith('oidc.') || key === 'email-cms-access-token') sessionStorage.removeItem(key)
+        const next = new URLSearchParams(location.search).get('next')
+        return { user: this.user, redirectTo: next?.startsWith('/') && !next.startsWith('//') && !next.includes('\\') ? next : undefined }
+      }
+      if (this.status === 'signed_out' || this.status === 'revoked') break
+      await new Promise(resolve => setTimeout(resolve, 400 * (attempt + 1)))
+    }
+    if (this.status === 'signed_out') throw new Error('Sign-in did not establish a CMS session. Retry from the login page.')
+    if (this.status === 'revoked') throw new Error('This identity does not have access to Email CMS.')
+    if (this.status === 'reauthentication_required') throw new Error('Please verify your identity to resume.')
+    throw new Error('Reconnecting to Identity. Retry to complete sign-in.')
   }
   async clearSessionForGlobalLogout(): Promise<void> {
     localStorage.setItem(PENDING_LOGOUT, '1')

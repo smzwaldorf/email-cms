@@ -62,7 +62,7 @@ export const UserMenu: React.FC = () => {
           {/* Menu Items */}
           <div className="py-2">
             {/* Admin Dashboard Link */}
-            {user.role === 'admin' && (
+            {(user.role === 'admin' || user.roles?.includes('admin')) && (
               <a
                 href="/admin"
                 className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"

@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { runtimeEnvironment } from '#/runtime/environment'
-import { deliveryContactsForToken, directoryForToken, HttpError, viewerForToken, type AuthenticatedViewer, type SmzDirectoryGraph } from '#/auth'
+import { deliveryContactsForToken, directoryForToken, HttpError, viewerAndDirectoryForToken, viewerForToken, type AuthenticatedViewer, type SmzDirectoryGraph } from '#/auth'
 import { randomSessionId } from './crypto'
 import { appOrigin, authorization, redeem, issuer } from './oidc'
 import { consumeFlow, createFlow, createSession, readSessionByHash, readSession, rememberViewer, revokeSession, sessionCredentials, type BrowserSession } from './store'
@@ -22,43 +22,42 @@ export function checkSessionCsrf(request: IncomingMessage): void {
     throw new HttpError(403, 'Request origin could not be verified', 'csrf_rejected')
   }
 }
-const requestViewers = new WeakMap<IncomingMessage, Promise<AuthenticatedViewer>>()
-export async function cookieViewer(request: IncomingMessage): Promise<AuthenticatedViewer> {
-  let pending = requestViewers.get(request)
-  if (!pending) { pending = resolveCookieViewer(request); requestViewers.set(request, pending) }
+interface CookieIdentity { viewer: AuthenticatedViewer; directory: SmzDirectoryGraph }
+const requestIdentities = new WeakMap<IncomingMessage, Promise<CookieIdentity>>()
+function cookieIdentity(request: IncomingMessage): Promise<CookieIdentity> {
+  let pending = requestIdentities.get(request)
+  if (!pending) { pending = resolveCookieIdentity(request); requestIdentities.set(request, pending) }
   return pending
 }
+export async function cookieViewer(request: IncomingMessage): Promise<AuthenticatedViewer> {
+  return (await cookieIdentity(request)).viewer
+}
 export async function directoryForCookie(request: IncomingMessage): Promise<SmzDirectoryGraph> {
-  // Verify the central session and current CMS admission before using its
-  // sealed directory credential. The returned catalogue contains no token.
-  await cookieViewer(request)
-  const id = sessionId(request)
-  const session = id ? await readSession(id) : null
-  if (!session || session.issuer !== issuer()) throw new HttpError(401, 'Sign in to continue', 'session_missing')
-  const credentials = await sessionCredentials(session)
-  return directoryForToken(credentials.access_token, 'email-cms-server', session.subject)
+  // The catalogue comes from the same verified admission as the viewer, so a
+  // request never pays for a second Identity round trip. It contains no token.
+  return (await cookieIdentity(request)).directory
 }
 
 export async function directoryFamiliesForCookie(request: IncomingMessage) {
   return (await directoryForCookie(request)).families
 }
-async function verified(session: BrowserSession): Promise<AuthenticatedViewer> {
+async function verified(session: BrowserSession): Promise<CookieIdentity> {
   let credentials = await sessionCredentials(session)
-  try { return await viewerForToken(credentials.access_token, 'email-cms-server', session.subject) } catch (error) {
+  try { return await viewerAndDirectoryForToken(credentials.access_token, 'email-cms-server', session.subject) } catch (error) {
     if (!(error instanceof HttpError) || error.status !== 401 || error.code === 'session_expired') throw error
     credentials = await sessionCredentials(session, true)
-    return viewerForToken(credentials.access_token, 'email-cms-server', session.subject)
+    return viewerAndDirectoryForToken(credentials.access_token, 'email-cms-server', session.subject)
   }
 }
-async function resolveCookieViewer(request: IncomingMessage): Promise<AuthenticatedViewer> {
+async function resolveCookieIdentity(request: IncomingMessage): Promise<CookieIdentity> {
   checkSessionCsrf(request)
   const id = sessionId(request)
   const session = id ? await readSession(id) : null
   if (!session || session.issuer !== issuer()) throw new HttpError(401, 'Sign in to continue', 'session_missing')
   try {
-    const viewer = await verified(session)
-    await rememberViewer(session, viewer)
-    return viewer
+    const identity = await verified(session)
+    await rememberViewer(session, identity.viewer)
+    return identity
   } catch (error) {
     if (error instanceof HttpError && error.code === 'access_revoked') await revokeSession(id!)
     throw error
@@ -87,15 +86,35 @@ export async function handleSessionRequest(request: IncomingMessage, response: S
   }
   if (url.pathname === '/api/session/callback' && request.method === 'GET') {
     const flow = await consumeFlow(url.searchParams.get('state') ?? '', cookies(request)[`${cookieName()}-flow`] ?? '')
-    setCookie(response, `${cookieName()}-flow`, '', 0)
     const result = await redeem(url, flow)
     const id = await createSession(result.subject, result.credentials)
     // Rotate the browser session only after the new OIDC exchange succeeds.
     const previous = sessionId(request)
     if (previous) await revokeSession(previous)
-    setCookie(response, cookieName(), id, 400 * 86400)
-    response.writeHead(303, { Location: `/auth/callback?server=1&next=${encodeURIComponent(flow.redirectTo)}` })
-    response.end(); return true
+    const created = await readSession(id)
+    try {
+      const viewer = await viewerForToken(result.credentials.access_token, 'email-cms-server', result.subject)
+      if (created) await rememberViewer(created, viewer)
+    } catch (error) {
+      console.warn('CMS callback identity resolution failed', {
+        status: error instanceof HttpError ? error.status : 0,
+        code: error instanceof HttpError ? error.code ?? null : null,
+        message: error instanceof Error ? error.message : 'unknown',
+      })
+    }
+    const secure = new URL(appOrigin()).protocol === 'https:' ? '; Secure' : ''
+    const location = `/auth/callback?server=1&next=${encodeURIComponent(flow.redirectTo)}`
+    // 200+refresh keeps Set-Cookie on the Pages service-binding hop; 303s can drop it.
+    response.writeHead(200, {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'private, no-store',
+      'Set-Cookie': [
+        `${cookieName()}-flow=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure}`,
+        `${cookieName()}=${id}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${400 * 86400}${secure}`,
+      ],
+    })
+    response.end(`<!doctype html><meta http-equiv="refresh" content="0;url=${location}"><p>Signing in…</p>`)
+    return true
   }
   if (url.pathname === '/api/session/logout' && request.method === 'POST') {
     const id = sessionId(request)
@@ -118,7 +137,11 @@ export async function handleSessionRequest(request: IncomingMessage, response: S
       if (error instanceof HttpError && error.code === 'access_revoked') {
         json(response, 200, { user: null, authorizationStatus: 'revoked' })
       } else {
-        json(response, 200, { user: session.identity_snapshot, authorizationStatus: error instanceof HttpError && error.status === 401 ? 'reauthentication_required' : 'reconnecting' })
+        json(response, 200, {
+          user: session.identity_snapshot,
+          authorizationStatus: error instanceof HttpError && error.status === 401 ? 'reauthentication_required' : 'reconnecting',
+          reason: error instanceof HttpError ? error.code ?? error.message : 'identity_unavailable',
+        })
       }
     }
     return true

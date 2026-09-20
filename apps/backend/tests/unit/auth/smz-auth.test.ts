@@ -13,11 +13,27 @@ function mockIdentity(directory: unknown = context, status = 200, user: unknown 
   ), { status: url.includes('access-context') ? status : 200 }))))
 }
 const request = { headers: { authorization: 'Bearer token' } } as IncomingMessage
-beforeEach(() => { query.mockReset(); mockIdentity() })
-afterEach(() => vi.unstubAllGlobals())
+const previousIssuer = process.env.SMZ_AUTH_ISSUER
+beforeEach(() => {
+  process.env.SMZ_AUTH_ISSUER = 'http://localhost:3000/api/auth'
+  query.mockReset()
+  mockIdentity()
+})
+afterEach(() => {
+  vi.unstubAllGlobals()
+  if (previousIssuer === undefined) delete process.env.SMZ_AUTH_ISSUER
+  else process.env.SMZ_AUTH_ISSUER = previousIssuer
+})
 describe('central authentication authority', () => {
   it('retains live roles and scopes and binds issuer/subject', async () => {
     expect(await verifySmzAccessToken('token')).toMatchObject({ subject: 'person-1', verifiedEmail: 'parent@example.com', roles: ['parent'], classScopes: context.classScopes })
+  })
+  it('accepts the confidential CMS client against shared email-cms admission', async () => {
+    expect(await verifySmzAccessToken('token', 'email-cms-server')).toMatchObject({ subject: 'person-1', verifiedEmail: 'parent@example.com' })
+  })
+  it('accepts verified email from either UserInfo claim name', async () => {
+    mockIdentity(context, 200, { sub: 'person-1', email: 'Parent@Example.com', emailVerified: true })
+    expect(await verifySmzAccessToken('token', 'email-cms-server')).toMatchObject({ verifiedEmail: 'parent@example.com' })
   })
   it.each([401, 403, 503])('preserves central %i without local fallback', async status => {
     mockIdentity({}, status)
@@ -80,6 +96,33 @@ describe('central authentication authority', () => {
     expect(await requireViewer(request)).toMatchObject({id:'person-1',roles:['parent']})
     expect(query).toHaveBeenCalledWith(expect.stringContaining('ON CONFLICT (issuer,subject)'), ['http://localhost:3000/api/auth','person-1','person-1'])
     expect(query.mock.calls.every(([sql]) => !/user_roles|lower\(email\)/.test(sql))).toBe(true)
+  })
+  it('anchors an admitted identity that has no row in the legacy actor table', async () => {
+    const statements: string[] = []
+    query.mockImplementation((sql: string) => {
+      statements.push(sql)
+      if (sql.includes('INSERT INTO user_auth_identities') && statements.filter(s => s.includes('INSERT INTO user_auth_identities')).length === 1) {
+        return Promise.reject(Object.assign(new Error('foreign key'), { code: '23503' }))
+      }
+      if (sql.includes('INSERT INTO user_auth_identities')) return Promise.resolve({ rows: [{ user_id: 'person-1' }] })
+      return Promise.resolve({ rows: [] })
+    })
+    expect(await requireViewer(request)).toMatchObject({ id: 'person-1', roles: ['parent'] })
+    expect(statements.some(sql => /INSERT INTO user_roles/.test(sql))).toBe(true)
+  })
+  it('refuses to move a historical actor that belongs to another central identity', async () => {
+    let links = 0
+    query.mockImplementation((sql: string) => {
+      if (sql.includes('INSERT INTO user_auth_identities')) {
+        links += 1
+        if (links === 1) return Promise.reject(Object.assign(new Error('foreign key'), { code: '23503' }))
+        return Promise.resolve({ rows: [{ user_id: 'legacy-actor' }] })
+      }
+      if (sql.includes('FROM user_roles')) return Promise.resolve({ rows: [{ id: 'legacy-actor' }] })
+      if (sql.includes('SELECT subject FROM user_auth_identities')) return Promise.resolve({ rows: [{ subject: 'retired-person' }] })
+      return Promise.resolve({ rows: [] })
+    })
+    await expect(requireViewer(request)).rejects.toMatchObject({ status: 403, code: 'identity_link_conflict' })
   })
   it('fails closed when association cannot be established', async () => {
     query.mockResolvedValue({rows:[]})

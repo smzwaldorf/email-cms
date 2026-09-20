@@ -5,7 +5,8 @@ import WeekService from '@/services/WeekService'
 
 type CallbackStatus = 'processing' | 'success' | 'error'
 
-async function defaultDestination(): Promise<string> {
+async function defaultDestination(user: { role?: string; roles?: string[] } | null): Promise<string> {
+  if (user?.role === 'admin' || user?.roles?.includes('admin')) return '/admin'
   const latestWeek = await WeekService.getLatestPublishedWeek()
   if (latestWeek) {
     const routeKey = latestWeek.week_number || latestWeek.id
@@ -29,7 +30,7 @@ export const AuthCallbackPage: React.FC = () => {
         const result = await authService.completeSignIn()
         if (!active) return
         setStatus('success')
-        navigate(result.redirectTo || await defaultDestination(), { replace: true })
+        navigate(result.redirectTo || await defaultDestination(result.user), { replace: true })
       } catch (caught) {
         if (!active) return
         console.error('SMZ Identity callback failed', caught)

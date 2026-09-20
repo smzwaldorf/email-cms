@@ -42,6 +42,20 @@ describe('persistent browser identity', () => {
     expect(service.getCurrentUser()).toBeNull()
     expect(localStorage.getItem('email-cms-remembered-identity-v1')).toBeNull()
   })
+  it('retries session resolution after a temporary identity outage during callback', async () => {
+    vi.useFakeTimers()
+    try {
+      request
+        .mockResolvedValueOnce(new Response(JSON.stringify({ user: null, authorizationStatus: 'reconnecting' })))
+        .mockResolvedValueOnce(new Response(JSON.stringify({ user, authorizationStatus: 'active' })))
+      const pending = service.completeSignIn()
+      await vi.runAllTimersAsync()
+      await expect(pending).resolves.toMatchObject({ user: { id: user.id } })
+      expect(request).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
   it('retries an offline logout before attempting session restoration on reload', async () => {
     localStorage.setItem('email-cms-pending-server-logout', '1')
     localStorage.setItem('email-cms-remembered-identity-v1', JSON.stringify(user))
