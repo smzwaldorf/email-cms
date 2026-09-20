@@ -28,7 +28,13 @@ function configuration(): oauth.Configuration {
   config[oauth.customFetch] = (url, options) => {
     const target = new URL(String(url))
     if (target.origin !== issuerUrl.origin) throw new Error('Unexpected Identity endpoint origin')
-    return identityFetch(target.toString(), { ...options, body: options.body as BodyInit | null | undefined, signal: AbortSignal.timeout(12_000) })
+    const init = { ...options, body: options.body as BodyInit | null | undefined, signal: AbortSignal.timeout(12_000) }
+    // The public HTTPS hop gets its own Worker CPU budget. A Pages -> CMS -> Auth
+    // service-binding chain shares one budget and can terminate the token exchange.
+    if (issuerUrl.protocol === 'https:' && runtimeEnvironment().NODE_ENV === 'production') {
+      return fetch(target.toString(), init)
+    }
+    return identityFetch(target.toString(), init)
   }
   if (issuerUrl.protocol === 'http:' && runtimeEnvironment().NODE_ENV !== 'production') oauth.allowInsecureRequests(config)
   return config
