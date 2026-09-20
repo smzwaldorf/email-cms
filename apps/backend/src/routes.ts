@@ -544,6 +544,18 @@ async function handleScopedApiRequest(
   } catch (error) {
     const status = error instanceof HttpError ? error.status : 500
     const message = error instanceof Error ? error.message : String(error)
+    if (status >= 500) {
+      const cause = error instanceof Error ? error.cause : undefined
+      console.error('CMS API request failed', {
+        method: request.method ?? 'GET',
+        path: new URL(request.url ?? '/', 'http://localhost').pathname,
+        errorName: error instanceof Error ? error.name : typeof error,
+        message,
+        stack: error instanceof Error ? error.stack : undefined,
+        causeName: cause instanceof Error ? cause.name : undefined,
+        causeMessage: cause instanceof Error ? cause.message : undefined,
+      })
+    }
     sendJson(response, status, { error: message, code: error instanceof HttpError ? error.code : undefined }, context.corsOrigin)
   }
 }
