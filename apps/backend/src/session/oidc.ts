@@ -8,18 +8,30 @@ export function appOrigin(): string { return runtimeEnvironment().APP_URL ?? 'ht
 export function issuer(): string { return runtimeEnvironment().SMZ_AUTH_ISSUER ?? 'http://localhost:3000/api/auth' }
 export function directoryResource(): string { return new URL('/api/directory/v1', issuer()).toString() }
 
-async function configuration(): Promise<oauth.Configuration> {
+function configuration(): oauth.Configuration {
   const secret = runtimeEnvironment().CMS_OIDC_CLIENT_SECRET
   if (!secret || secret.length < 32) throw new Error('Missing CMS confidential client secret')
-  // Keep discovery/transport request scoped: bindings must not leak between Workers invocations.
-  return oauth.discovery(new URL(issuer()), SERVER_CLIENT_ID, secret, oauth.ClientSecretPost(secret), {
-    [oauth.customFetch]: (url, options) => {
-      const target = new URL(String(url))
-      if (target.origin !== new URL(issuer()).origin) throw new Error('Unexpected Identity endpoint origin')
-      return identityFetch(target.toString(), { ...options, body: options.body as BodyInit | null | undefined, signal: AbortSignal.timeout(12_000) })
-    },
-    ...(new URL(issuer()).protocol === 'http:' && runtimeEnvironment().NODE_ENV !== 'production' ? { execute: [oauth.allowInsecureRequests] } : {}),
-  })
+  const issuerUrl = new URL(issuer())
+  const issuerValue = issuerUrl.toString().replace(/\/$/, '')
+  const endpoint = (path: string) => `${issuerValue}${path}`
+  const config = new oauth.Configuration({
+    issuer: issuerValue,
+    authorization_endpoint: endpoint('/oauth2/authorize'),
+    token_endpoint: endpoint('/oauth2/token'),
+    jwks_uri: endpoint('/jwks'),
+    userinfo_endpoint: endpoint('/oauth2/userinfo'),
+    revocation_endpoint: endpoint('/oauth2/revoke'),
+    end_session_endpoint: endpoint('/oauth2/end-session'),
+  }, SERVER_CLIENT_ID, secret, oauth.ClientSecretPost(secret))
+
+  // Keep transport request scoped: bindings must not leak between Workers invocations.
+  config[oauth.customFetch] = (url, options) => {
+    const target = new URL(String(url))
+    if (target.origin !== issuerUrl.origin) throw new Error('Unexpected Identity endpoint origin')
+    return identityFetch(target.toString(), { ...options, body: options.body as BodyInit | null | undefined, signal: AbortSignal.timeout(12_000) })
+  }
+  if (issuerUrl.protocol === 'http:' && runtimeEnvironment().NODE_ENV !== 'production') oauth.allowInsecureRequests(config)
+  return config
 }
 export async function authorization(flow: LoginFlow): Promise<string> {
   return oauth.buildAuthorizationUrl(await configuration(), {
