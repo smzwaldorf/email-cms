@@ -6,6 +6,17 @@ import { createServer } from 'node:net'
 import { fileURLToPath } from 'node:url'
 import { configuration } from './cloudflare-config.mjs'
 
+export const additiveMigrationFiles = [
+  '20260913_cms_sessions.sql',
+  '20260916_newsletter_week_updates.sql',
+  '20260920_identity_coexistence.sql',
+]
+
+export function migrationFilesFor(env) {
+  const retirementRequested = env.CMS_IDENTITY_RETIREMENT_APPROVED === 'true' || Boolean(env.CMS_IDENTITY_BACKUP_REFERENCE?.trim())
+  return retirementRequested ? [...additiveMigrationFiles, '20260918_retire_identity_masters.sql'] : additiveMigrationFiles
+}
+
 // Use production's Hyperdrive credential without a permanent admin endpoint.
 export async function checkHyperdriveDatabase({ initialize = false, migrateSessions = false, migrateAll = false } = {}) {
   const config = configuration(process.env)
@@ -20,7 +31,7 @@ export async function checkHyperdriveDatabase({ initialize = false, migrateSessi
   await new Promise(resolve => server.close(resolve))
   const schema = initialize ? await readFile(new URL('../db/schema.sql', import.meta.url), 'utf8') : ''
   const sessionSchema = migrateSessions ? await readFile(new URL('../db/migrations/20260913_cms_sessions.sql', import.meta.url), 'utf8') : ''
-  const migrations = migrateAll ? await Promise.all(['20260913_cms_sessions.sql','20260916_newsletter_week_updates.sql','20260918_retire_identity_masters.sql'].map(async name => ({name, sql:await readFile(new URL('../db/migrations/' + name, import.meta.url),'utf8')}))) : []
+  const migrations = migrateAll ? await Promise.all(migrationFilesFor(process.env).map(async name => ({name, sql:await readFile(new URL('../db/migrations/' + name, import.meta.url),'utf8')}))) : []
   const migrationOptions = {retirementApproved:process.env.CMS_IDENTITY_RETIREMENT_APPROVED === 'true',backupReference:process.env.CMS_IDENTITY_BACKUP_REFERENCE ?? ''}
   await writeFile(`${directory}/worker.mjs`, `
 import pg from 'pg';

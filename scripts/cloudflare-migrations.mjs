@@ -18,7 +18,8 @@ export async function applyMigrations(client, migrations, { retirementApproved =
     const {rows} = await client.query("SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename")
     const tables = rows.map(row => row.tablename)
     const legacy = tables.filter(table => retiredTables.includes(table))
-    if (legacy.length && (!retirementApproved || !backupReference.trim())) throw new Error('Identity retirement requires reviewed Auth mappings and a verified backup reference')
+    const retiresIdentity = migrations.some(({name}) => name === '20260918_retire_identity_masters.sql')
+    if (retiresIdentity && legacy.length && (!retirementApproved || !backupReference.trim())) throw new Error('Identity retirement requires reviewed Auth mappings and a verified backup reference')
     // Lock data before comparing it: a concurrent editor must not create a false mismatch.
     for (const table of tables) await client.query(`LOCK TABLE public.${identifier(table)} IN SHARE ROW EXCLUSIVE MODE`)
     const preserved = tables.filter(table => !retiredTables.includes(table) && !['identity_reference_mappings','newsletter_family_preferences','cms_schema_migrations'].includes(table))
