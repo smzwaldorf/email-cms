@@ -54,7 +54,7 @@ function buildComposeInput(preview: FileEmailTemplatePreviewResult): ComposePers
           title: '行政處公告',
           content: '<p>一早孩子和開心的在校園預備，像小螞蟻一樣合力搬著大桌椅。</p>',
           url: 'https://school.example/week/2025-W38/weekly-admin-notice',
-          imageUrl: 'https://school.example/media/weekly-admin-notice.jpg',
+          imageUrl: `${ASSET_BASE_URL}/demo-article-garden.jpg`,
           date: displayDate,
           sourceTag: 'weekly',
           editorialOrder: 2,
@@ -243,6 +243,7 @@ describe('smz-school-news file template bundle', () => {
 
     const weeklyItems = blockById.get('weekly-items')
     expect(weeklyItems?.bodyHtml).toContain('{{article.date}}')
+    expect(weeklyItems?.bodyHtml).toContain('{{article.image_url}}')
     expect(weeklyItems?.config.sourceTag).toBe('weekly')
 
     const readMore = blockById.get('read-more-cta')
@@ -276,9 +277,10 @@ describe('smz-school-news file template bundle', () => {
     // Shared featured card renders for everyone (title appears in image alt + heading).
     expect(countOccurrences(bodyA, '中小學善話')).toBe(2)
 
-    // Weekly-tagged article renders once in the announcements list, not as a card.
-    expect(countOccurrences(bodyA, '行政處公告')).toBe(1)
+    // Weekly-tagged article renders in the announcements list (image alt + link), not as a card.
+    expect(countOccurrences(bodyA, '行政處公告')).toBe(2)
     expect(bodyA).toContain('Monday September 2025')
+    expect(bodyA).toContain(`src="${ASSET_BASE_URL}/demo-article-garden.jpg"`)
 
     // Mail-merge values resolve: images, article links, newsletter link.
     expect(bodyA).toContain('https://school.example/media/shared-feature.jpg')

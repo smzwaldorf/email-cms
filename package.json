@@ -37,6 +37,7 @@
     "cloudflare:typecheck": "tsc -p apps/backend/tsconfig.cloudflare.json",
     "db:types": "node scripts/generate-sql-types.mjs",
     "seed:demo": "node scripts/seed-demo.mjs",
+    "seed:demo:weekly-articles": "node scripts/add-demo-weekly-articles.mjs",
     "test:seed": "node --test scripts/demo-seed.test.mjs"
   },
   "dependencies": {

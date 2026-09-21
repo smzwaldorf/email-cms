@@ -39,6 +39,7 @@
         "eyebrow": "School News",
         "ctaLabel": "Read the story",
         "maxItems": 3,
+        "excludeSourceTag": "weekly",
         "excerptLength": 220
       }
     },

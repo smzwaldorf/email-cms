@@ -15,6 +15,26 @@ test('explicit demo consent-gate mode seeds pending preferences',()=>{
  const rows=buildDemoPlan({...env,DEMO_SUBSCRIPTIONS_CONFIRMED:'false'});
  assert(rows.filter(r=>r.table==='public.newsletter_family_preferences').every(r=>r.values.newsletter_subscription_status==='pending'));
 });
+test('fixture routes four illustrated shared articles to the weekly summary',()=>{
+ const rows=buildDemoPlan(env);
+ assert(rows.some(r=>r.table==='public.article_tags'&&r.values.name==='weekly'&&r.values.is_active===true));
+ const weeklyIds=['000000000405','000000000406','000000000407','000000000408'];
+ const articles=rows.filter(r=>r.table==='public.articles'&&weeklyIds.some(id=>r.values.id.endsWith(id)));
+ assert.equal(articles.length,4);
+ assert(articles.every(r=>/<img src="https:\/\/smz-email-assets\.pages\.dev\/smz-school-news\/demo-article-[a-z]+\.jpg"/.test(r.values.content)));
+ assert(weeklyIds.every(id=>rows.some(r=>r.table==='public.article_tag_assignments'&&r.values.article_id.endsWith(id)&&r.values.tag_id.endsWith('000000000601'))));
+ assert(weeklyIds.every(id=>rows.some(r=>r.table==='public.newsletter_articles'&&r.values.article_id.endsWith(id)&&r.values.targeting_mode==='shared')));
+ const revision=rows.find(r=>r.table==='public.email_template_revisions');
+ const blocks=JSON.parse(revision.values.blocks);
+ assert.equal(blocks.find(block=>block.type==='shared-article-feature').config.excludeSourceTag,'weekly');
+ assert.equal(blocks.find(block=>block.type==='weekly-summary-list').config.sourceTag,'weekly');
+ assert.match(blocks.find(block=>block.type==='weekly-summary-list').bodyHtml,/article\.image_url/);
+});
+test('every seeded article includes an email-safe hosted image',()=>{
+ const articles=buildDemoPlan(env).filter(r=>r.table==='public.articles');
+ assert.equal(articles.length,8);
+ assert(articles.every(r=>/<img src="https:\/\/smz-email-assets\.pages\.dev\/smz-school-news\/demo-article-[a-z]+\.jpg"/.test(r.values.content)));
+});
 test('partial fixture aborts and does not recreate missing rows',async()=>{
  const rows=[row('public.fixture','id',{id:'one'}),row('public.fixture','id',{id:'two'})];let n=0;const log=[];
  const client={query:async(sql)=>{log.push(sql);return {rows:sql.startsWith('SELECT *')&&n++===0?[{id:'one'}]:[]}}};

@@ -6,10 +6,10 @@ This is an insert-only synthetic fixture for local rehearsal and a reviewed host
 
 | Recipient | Auth membership | Email content |
 | --- | --- | --- |
-| Demo Parent A / Demo Family A | Two children: Demo Grade 1A and 1B | Shared news + 1A garden story + 1B music story (3 articles) |
-| Demo Parent B / Demo Family B | One child: Demo Grade 2A | Shared news + 2A nature story (2 articles); no 1A/1B content or links |
+| Demo Parent A / Demo Family A | Two children: Demo Grade 1A and 1B | Shared news + four illustrated weekly items + 1A garden story + 1B music story (7 articles) |
+| Demo Parent B / Demo Family B | One child: Demo Grade 2A | Shared news + four illustrated weekly items + 2A nature story (6 articles); no 1A/1B content or links |
 
-All IDs use `de900000-0000-4000-8000-*`. Family suffixes are 101/102; class suffixes 201/202/203; newsletter 301; articles 401–404; template 501, revision 502. Both repositories' `scripts/seed-demo.mjs` implement profile `smz-newsletter-demo-v1`. These are distinct from existing local school fixtures; no real family is relinked. CMS stores canonical IDs only, and runtime reads the directory via Auth APIs.
+All IDs use `de900000-0000-4000-8000-*`. Family suffixes are 101/102; class suffixes 201/202/203; newsletter 301; articles 401–408; template 501, revision 502; the `weekly` tag is 601. Both repositories' `scripts/seed-demo.mjs` implement profile `smz-newsletter-demo-v1`. These are distinct from existing local school fixtures; no real family is relinked. CMS stores canonical IDs only, and runtime reads the directory via Auth APIs.
 
 ## Practical setup for a first real send
 
@@ -37,6 +37,10 @@ export DEMO_SUBSCRIPTIONS_CONFIRMED=true
 npm run seed:demo
 npm run seed:demo -- --check
 npm run seed:demo -- --apply
+
+# Existing four-article demo fixture only: safely add the illustrated weekly articles.
+npm run seed:demo:weekly-articles -- --check
+npm run seed:demo:weekly-articles -- --apply
 ```
 
 `DEMO_DATABASE_CONFIRM` is hostname plus `/database-name`, without password, username or port. Explicit shell variables override local env files. Auth uses `.env`; CMS uses `.env.local` then `.env`. For production execution set `NODE_ENV=production`; placeholder `.invalid`/`.test` addresses and development login are rejected by the Auth demo seed. If either real address already exists, stop and choose a separate demo address; this seed intentionally does not merge real identities.
@@ -65,7 +69,7 @@ Auth's `development:school` and development login remain local-only, user-specif
 
 ## Saved email template
 
-The demo seed uses `db/seeds/current-email-template.json`, captured from the active **SMZ Waldorf Weekly** revision 4. It preserves the subject, HTML, and all six blocks with their order, visibility, and configuration. A new demo installation creates a draft copy at revision 1; it does not activate the copy or overwrite existing templates on rerun. The snapshot retains the current sample announcement and placeholder telephone/fax values; edit these in the CMS before a public presentation if needed.
+The demo seed uses `db/seeds/current-email-template.json`, captured from the active **SMZ Waldorf Weekly** revision 4. It preserves the subject, HTML, and all six blocks with their order, visibility, and configuration. The featured shared-article block excludes `sourceTag: weekly`, while the weekly-summary block includes that tag. A new demo installation creates a draft copy at revision 1; it does not activate the copy or overwrite existing templates on rerun. The snapshot retains the current sample announcement and placeholder telephone/fax values; edit these in the CMS before a public presentation if needed.
 
 ## Clean-start boundary
 

@@ -75,6 +75,7 @@ export const DEFAULT_EMAIL_TEMPLATE_PREVIEW_SAMPLES: {
       title: 'Weekly item',
       excerpt: 'Weekly excerpt.',
       url: 'https://example.com/w1',
+      imageUrl: 'https://picsum.photos/seed/smz-weekly/600/340',
       date: 'Monday September 2025',
       sourceTag: 'weekly',
     },
@@ -677,4 +678,3 @@ class EmailTemplateService {
 }
 
 export const emailTemplateService = new EmailTemplateService()
-

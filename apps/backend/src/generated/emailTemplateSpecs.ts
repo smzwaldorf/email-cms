@@ -252,7 +252,11 @@ const precompiledTemplateSpecs: Record<string, TemplateSpecification> = {
         return undefined
     };
 
-  return "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background-color:#ffffff;\">\n  <tr>\n    <td style=\"padding:10px 36px 8px;\">\n      <table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\">\n        <tr>\n          <td width=\"18\" valign=\"top\" style=\"width:18px;padding-top:7px;\">\n            <table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\">\n              <tr>\n                <td width=\"9\" height=\"9\" style=\"width:9px;height:9px;border-radius:50%;background-color:#df97a7;font-size:0;line-height:0;\">&nbsp;</td>\n              </tr>\n            </table>\n          </td>\n          <td valign=\"top\" style=\"padding-left:6px;\">\n            <a href=\""
+  return "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background-color:#ffffff;\">\n  <tr>\n    <td style=\"padding:10px 36px 8px;\">\n      <table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\">\n        <tr>\n          <td width=\"112\" valign=\"top\" style=\"width:112px;padding-right:14px;\">\n            <img src=\""
+    + alias2(alias1(((stack1 = (depth0 != null ? lookupProperty(depth0,"article") : depth0)) != null ? lookupProperty(stack1,"image_url") : stack1), depth0))
+    + "\" width=\"98\" alt=\""
+    + alias2(alias1(((stack1 = (depth0 != null ? lookupProperty(depth0,"article") : depth0)) != null ? lookupProperty(stack1,"title") : stack1), depth0))
+    + "\" style=\"display:block;width:98px;height:72px;object-fit:cover;border:0;border-radius:12px;background-color:#f1ddd2;\" />\n          </td>\n          <td width=\"18\" valign=\"top\" style=\"width:18px;padding-top:7px;\">\n            <table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\">\n              <tr>\n                <td width=\"9\" height=\"9\" style=\"width:9px;height:9px;border-radius:50%;background-color:#df97a7;font-size:0;line-height:0;\">&nbsp;</td>\n              </tr>\n            </table>\n          </td>\n          <td valign=\"top\" style=\"padding-left:6px;\">\n            <a href=\""
     + alias2(alias1(((stack1 = (depth0 != null ? lookupProperty(depth0,"article") : depth0)) != null ? lookupProperty(stack1,"url") : stack1), depth0))
     + "\" style=\"font-family:'Noto Sans TC','PingFang TC','Microsoft JhengHei',Arial,Helvetica,sans-serif;font-size:16px;line-height:1.35;font-weight:700;color:#4a4039;text-decoration:underline;\">"
     + alias2(alias1(((stack1 = (depth0 != null ? lookupProperty(depth0,"article") : depth0)) != null ? lookupProperty(stack1,"title") : stack1), depth0))
@@ -263,7 +267,7 @@ const precompiledTemplateSpecs: Record<string, TemplateSpecification> = {
     + " <a href=\""
     + alias2(alias1(((stack1 = (depth0 != null ? lookupProperty(depth0,"article") : depth0)) != null ? lookupProperty(stack1,"url") : stack1), depth0))
     + "\" style=\"color:#6e6057;text-decoration:none;\">"
-    + alias2(((helper = (helper = lookupProperty(helpers,"readMoreLabel") || (depth0 != null ? lookupProperty(depth0,"readMoreLabel") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"readMoreLabel","hash":{},"data":data,"loc":{"start":{"line":16,"column":266},"end":{"line":16,"column":283}}}) : helper)))
+    + alias2(((helper = (helper = lookupProperty(helpers,"readMoreLabel") || (depth0 != null ? lookupProperty(depth0,"readMoreLabel") : depth0)) != null ? helper : container.hooks.helperMissing),(typeof helper === "function" ? helper.call(depth0 != null ? depth0 : (container.nullContext || {}),{"name":"readMoreLabel","hash":{},"data":data,"loc":{"start":{"line":19,"column":266},"end":{"line":19,"column":283}}}) : helper)))
     + "</a></div>\n          </td>\n        </tr>\n      </table>\n    </td>\n  </tr>\n</table>\n";
 },"useData":true},
   "/templates/email/smz-school-news/partials/assets/about-title.hbs": {"compiler":[8,">= 4.3.0"],"main":function(container,depth0,helpers,partials,data) {
@@ -423,7 +427,11 @@ const precompiledTemplateSpecs: Record<string, TemplateSpecification> = {
 
   return "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"margin:12px 0;\">\n  <tr>\n    <td style=\"padding:14px 18px;background:#f8f4ea;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#3c2f24;\">\n"
     + ((stack1 = container.invokePartial(lookupProperty(partials,"sectionTitle"),depth0,{"name":"sectionTitle","hash":{"title":(depth0 != null ? lookupProperty(depth0,"sectionTitle") : depth0)},"data":data,"indent":"      ","helpers":helpers,"partials":partials,"decorators":container.decorators})) != null ? stack1 : "")
-    + "      <div style=\"font-size:15px;line-height:1.6;\">\n        <a href=\""
+    + "      <img src=\""
+    + alias2(alias1(((stack1 = (depth0 != null ? lookupProperty(depth0,"article") : depth0)) != null ? lookupProperty(stack1,"image_url") : stack1), depth0))
+    + "\" width=\"120\" alt=\""
+    + alias2(alias1(((stack1 = (depth0 != null ? lookupProperty(depth0,"article") : depth0)) != null ? lookupProperty(stack1,"title") : stack1), depth0))
+    + "\" style=\"display:block;width:120px;height:90px;object-fit:cover;border:0;border-radius:10px;margin:0 0 10px;\" />\n      <div style=\"font-size:15px;line-height:1.6;\">\n        <a href=\""
     + alias2(alias1(((stack1 = (depth0 != null ? lookupProperty(depth0,"article") : depth0)) != null ? lookupProperty(stack1,"url") : stack1), depth0))
     + "\" style=\"color:#8b5a3c;text-decoration:none;font-weight:600;\">"
     + alias2(alias1(((stack1 = (depth0 != null ? lookupProperty(depth0,"article") : depth0)) != null ? lookupProperty(stack1,"title") : stack1), depth0))
