@@ -12,7 +12,7 @@ export function createCmsMemoryStore() {
     let selection = '*'
     const api = {
       select(value = '*') { selection = value; return api },
-      eq(key: string, value: unknown) { predicates.push(row => row[key] === value); return api },
+      eq(key: string, value: unknown) { predicates.push(row => { const [column, field] = key.split('->>'); return (field ? (row[column] as Row | undefined)?.[field] : row[key]) === value }); return api },
       neq(key: string, value: unknown) { predicates.push(row => row[key] !== value); return api },
       in(key: string, value: unknown[]) { predicates.push(row => value.includes(row[key])); return api },
       is(key: string, value: unknown) { predicates.push(row => (row[key] ?? null) === value); return api },

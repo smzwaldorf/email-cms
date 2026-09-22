@@ -12,3 +12,5 @@ test('production migration selection excludes identity retirement until its cont
 })
 test('migration wrappers cannot commit before historical preservation checks',async()=>{const c=fake(['articles'],true);await assert.rejects(applyMigrations(c,[{name:'test',sql:'BEGIN;\nSELECT 1;\nCOMMIT;'}]),/historical/);assert(!c.log.includes('COMMIT'));assert.equal(c.log.at(-1),'ROLLBACK');assert(c.log.some(s=>s.trim()==='SELECT 1;'))})
 test('empty baseline receives migrations in a single commit',async()=>{const c=fake();await applyMigrations(c,[{name:'test',sql:'SELECT 1;'}]);assert.equal(c.log.filter(s=>s==='COMMIT').length,1)})
+
+test('Resend webhook migration is included in normal deployment',()=>{assert(migrationFilesFor({}).includes('20260922_resend_webhooks.sql'))})

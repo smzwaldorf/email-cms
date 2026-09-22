@@ -261,7 +261,8 @@ export const analyticsAggregator = {
         .from('analytics_events')
         .select('user_id, metadata')
         .eq('newsletter_id', newsletterId)
-        .eq('event_type', 'email_open');
+        .eq('event_type', 'email_open')
+        .eq('metadata->>source', 'resend');
 
       if (className) {
            const classUsers = await this.getUsersInClass(className);
@@ -289,7 +290,8 @@ export const analyticsAggregator = {
         .from('analytics_events')
         .select('user_id, metadata')
         .eq('newsletter_id', newsletterId)
-        .eq('event_type', 'link_click');
+        .eq('event_type', 'email_click')
+        .eq('metadata->>source', 'resend');
         
       if (className) {
            const classUsers = await this.getUsersInClass(className);
@@ -386,14 +388,25 @@ export const analyticsAggregator = {
         sentUsers = new Set([...sentUsers].filter(id => classUsers.has(id)));
       }
       const totalSent = sentUsers.size;
-      const uniqueOpenCount = [...openUsers].filter(id => sentUsers.has(id)).length;
-      const uniqueClickCount = [...clickUsers].filter(id => sentUsers.has(id)).length;
+      const deliveries = await supabase.from('analytics_events').select('user_id')
+        .eq('newsletter_id', newsletterId).eq('event_type', 'email_delivered')
+        .eq('metadata->>source', 'resend');
+      if (deliveries.error) throw deliveries.error;
+      let deliveredUsers = new Set((deliveries.data ?? []).map(row => row.user_id).filter((id): id is string => !!id));
+      if (className) {
+        const classUsers = new Set(await this.getUsersInClass(className));
+        deliveredUsers = new Set([...deliveredUsers].filter(id => classUsers.has(id)));
+      }
+      const totalDelivered = deliveredUsers.size;
+      const uniqueOpenCount = [...openUsers].filter(id => deliveredUsers.has(id)).length;
+      const uniqueClickCount = [...clickUsers].filter(id => deliveredUsers.has(id)).length;
 
       return {
-        openRate: totalSent > 0 ? (uniqueOpenCount / totalSent) * 100 : 0,
-        emailMetricsAvailable: totalSent > 0,
+        openRate: totalDelivered > 0 ? (uniqueOpenCount / totalDelivered) * 100 : 0,
+        emailMetricsAvailable: totalDelivered > 0,
         sentRecipients: totalSent,
-        clickRate: totalSent > 0 ? (uniqueClickCount / totalSent) * 100 : 0,
+        deliveredRecipients: totalDelivered,
+        clickRate: totalDelivered > 0 ? (uniqueClickCount / totalDelivered) * 100 : 0,
         avgTimeSpent,
         totalViews
       };

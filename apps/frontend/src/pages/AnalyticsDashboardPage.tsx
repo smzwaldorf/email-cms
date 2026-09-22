@@ -219,7 +219,7 @@ export const AnalyticsDashboardPage: React.FC = () => {
                 </div>
 
                 {/* KPI Grid */}
-                {metrics?.emailMetricsAvailable === false && <p className="text-sm text-brand-neutral-500">Email rates are unavailable: no recorded sends for this selection, or delivery data could not be loaded.</p>}
+                {metrics?.emailMetricsAvailable === false && <p className="text-sm text-brand-neutral-500">Email rates are unavailable: no Resend delivery confirmations for this selection, or delivery data could not be loaded.</p>}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <KPICard 
                         title="Open Rate" 
@@ -228,7 +228,7 @@ export const AnalyticsDashboardPage: React.FC = () => {
                         suffix="%"
                         loading={metricsLoading}
                         trend={0} 
-                        tooltip="Unique recorded opens / provider-accepted recipients. Known proxy/scanner events are excluded; image loads do not prove reading."
+                        tooltip="Unique recipients with Resend opens / unique recipients with Resend delivery confirmations. Image blocking and preloading affect accuracy."
                         icon={<div className="p-2 bg-purple-50 rounded-lg text-purple-600"><EyeIcon /></div>}
                     />
                     <KPICard 
@@ -238,7 +238,7 @@ export const AnalyticsDashboardPage: React.FC = () => {
                         suffix="%"
                         loading={metricsLoading}
                         trend={0} 
-                        tooltip="Unique recorded clickers / provider-accepted recipients. Known proxy/scanner events are excluded."
+                        tooltip="Unique recipients with Resend clicks / unique recipients with Resend delivery confirmations. Includes links anywhere in the email; automated clicks may be counted."
                         icon={<div className="p-2 bg-emerald-50 rounded-lg text-emerald-600"><ClickIcon /></div>}
                     />
                     <KPICard 

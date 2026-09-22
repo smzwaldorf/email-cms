@@ -116,10 +116,6 @@ interface NewsletterWeekFromJoin {
   week_number: string | null;
 }
 
-interface ClassRowWithEnrollmentCountSingle {
-  student_class_enrollment: StudentEnrollmentCountRow[] | null;
-}
-
 function unwrapSingle<T>(value: T | T[] | null | undefined): T | null {
   if (value == null) return null;
   return Array.isArray(value) ? value[0] ?? null : value;
@@ -310,9 +306,10 @@ export const analyticsAggregator = {
       // 1. Get Unique Opens
       let openEventsQuery = supabase
         .from('analytics_events')
-        .select('user_id')
+        .select('user_id, metadata')
         .eq('newsletter_id', newsletterId)
-        .eq('event_type', 'email_open');
+        .eq('event_type', 'email_open')
+        .eq('metadata->>source', 'resend');
 
       if (className) {
            const classUsers = await this.getUsersInClass(className);
@@ -320,27 +317,28 @@ export const analyticsAggregator = {
                openEventsQuery = openEventsQuery.in('user_id', classUsers);
            } else {
                // Class has no users or not found, return 0 metrics
-               return { openRate: 0, clickRate: 0, avgTimeSpent: 0, totalViews: 0 };
+               return { openRate: 0, clickRate: 0, avgTimeSpent: 0, totalViews: 0, emailMetricsAvailable: false, sentRecipients: 0 };
            }
       }
       
       const openResult = await Promise.race([
         openEventsQuery,
         createTimeout(QUERY_TIMEOUT_MS)
-      ]) as { data: { user_id: string }[] | null; error: Error | null };
+      ]) as { data: { user_id: string; metadata?: Record<string, unknown> }[] | null; error: Error | null };
       
       if (openResult.error) {
         console.error('[Analytics] Error fetching open events:', openResult.error);
         throw openResult.error;
       }
-      const uniqueOpenCount = new Set(openResult.data?.map((e: { user_id: string }) => e.user_id)).size;
+      const openUsers = new Set(openResult.data?.filter(e => e.metadata?.qualification !== 'automated_or_proxy').map(e => e.user_id));
 
       // 2. Get Unique Clicks
       let clickEventsQuery = supabase
         .from('analytics_events')
-        .select('user_id')
+        .select('user_id, metadata')
         .eq('newsletter_id', newsletterId)
-        .eq('event_type', 'link_click');
+        .eq('event_type', 'email_click')
+        .eq('metadata->>source', 'resend');
         
       if (className) {
            const classUsers = await this.getUsersInClass(className);
@@ -352,14 +350,14 @@ export const analyticsAggregator = {
       const clickResult = await Promise.race([
         clickEventsQuery,
         createTimeout(QUERY_TIMEOUT_MS)
-      ]) as { data: { user_id: string }[] | null; error: Error | null };
+      ]) as { data: { user_id: string; metadata?: Record<string, unknown> }[] | null; error: Error | null };
       
       if (clickResult.error) {
         console.error('[Analytics] Error fetching click events:', clickResult.error);
         throw clickResult.error;
       }
       
-      const uniqueClickCount = new Set(clickResult.data?.map((e: { user_id: string }) => e.user_id)).size;
+      const clickUsers = new Set(clickResult.data?.filter(e => e.metadata?.qualification !== 'automated_or_proxy').map(e => e.user_id));
 
       // 3. Get Total Views (Page Views)
       let viewEventsQuery = supabase
@@ -422,23 +420,40 @@ export const analyticsAggregator = {
       
       const avgTimeSpent = timedSessionCount > 0 ? Math.round(totalTimeSeconds / timedSessionCount) : 0;
 
-      // Mock Total Sent (since we don't have email log table yet, usually distinct students count)
-      // If className provided, get total families in that class.
-      let totalSent = 100; 
+      // Count distinct recipients accepted by the provider, including resends only once.
+      const batches = await supabase.from('newsletter_delivery_batches').select('id').eq('newsletter_id', newsletterId);
+      if (batches.error) throw batches.error;
+      const batchIds = (batches.data ?? []).map(row => row.id);
+      let sentUsers = new Set<string>();
+      if (batchIds.length) {
+        const recipients = await supabase.from('newsletter_delivery_batch_recipients').select('parent_id').in('batch_id', batchIds).eq('send_status', 'sent');
+        if (recipients.error) throw recipients.error;
+        sentUsers = new Set((recipients.data ?? []).map(row => row.parent_id).filter((id): id is string => !!id));
+      }
       if (className) {
-           const { data: classData } = await supabase
-             .from('classes')
-             .select('student_class_enrollment (count)')
-             .eq('class_name', className)
-             .single();
-           const enrollmentRow = classData as ClassRowWithEnrollmentCountSingle | null;
-           const countBucket = enrollmentRow?.student_class_enrollment?.[0]?.count;
-           totalSent = typeof countBucket === 'number' ? countBucket : 20;
-      } 
+        const classUsers = new Set(await this.getUsersInClass(className));
+        sentUsers = new Set([...sentUsers].filter(id => classUsers.has(id)));
+      }
+      const totalSent = sentUsers.size;
+      const deliveries = await supabase.from('analytics_events').select('user_id')
+        .eq('newsletter_id', newsletterId).eq('event_type', 'email_delivered')
+        .eq('metadata->>source', 'resend');
+      if (deliveries.error) throw deliveries.error;
+      let deliveredUsers = new Set((deliveries.data ?? []).map(row => row.user_id).filter((id): id is string => !!id));
+      if (className) {
+        const classUsers = new Set(await this.getUsersInClass(className));
+        deliveredUsers = new Set([...deliveredUsers].filter(id => classUsers.has(id)));
+      }
+      const totalDelivered = deliveredUsers.size;
+      const uniqueOpenCount = [...openUsers].filter(id => deliveredUsers.has(id)).length;
+      const uniqueClickCount = [...clickUsers].filter(id => deliveredUsers.has(id)).length;
 
       return {
-        openRate: totalSent > 0 ? (uniqueOpenCount / totalSent) * 100 : 0,
-        clickRate: uniqueOpenCount > 0 ? (uniqueClickCount / uniqueOpenCount) * 100 : 0, // Clicks / Opens
+        openRate: totalDelivered > 0 ? (uniqueOpenCount / totalDelivered) * 100 : 0,
+        emailMetricsAvailable: totalDelivered > 0,
+        sentRecipients: totalSent,
+        deliveredRecipients: totalDelivered,
+        clickRate: totalDelivered > 0 ? (uniqueClickCount / totalDelivered) * 100 : 0,
         avgTimeSpent,
         totalViews
       };
@@ -446,6 +461,7 @@ export const analyticsAggregator = {
       console.error(`[Analytics] getNewsletterMetrics failed for ${newsletterId}:`, err);
       // Return default metrics instead of throwing to prevent cascade failures
       return {
+        emailMetricsAvailable: false,
         openRate: 0,
         clickRate: 0,
         avgTimeSpent: 0,

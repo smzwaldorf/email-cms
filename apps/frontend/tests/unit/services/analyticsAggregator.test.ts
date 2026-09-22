@@ -21,7 +21,7 @@ const mockOrder = vi.fn()
 const mockLimit = vi.fn()
 const mockIn = vi.fn()
 
-const mockFrom = vi.fn((_table: string) => {
+const mockFrom = vi.fn((_table: string): unknown => {
   return {
     select: mockSelect,
     insert: mockInsert,
@@ -192,7 +192,7 @@ describe('analyticsAggregator', () => {
   it('should derive avgTimeSpent from session_end payloads in newsletter metrics', async () => {
     let eventType = ''
 
-    const eventsBuilder = {
+    const eventsBuilder: { select: ReturnType<typeof vi.fn>; eq: ReturnType<typeof vi.fn>; in: ReturnType<typeof vi.fn>; then: (resolve: QueryResolver<Array<{ user_id: string } | { metadata: Record<string, unknown> }>>) => unknown } = {
       select: vi.fn(),
       eq: vi.fn((field: string, value: string) => {
         if (field === 'event_type') {
@@ -202,10 +202,11 @@ describe('analyticsAggregator', () => {
       }),
       in: vi.fn(() => eventsBuilder),
       then: (resolve: QueryResolver<Array<{ user_id: string } | { metadata: Record<string, unknown> }>>) => {
+        if (eventType === 'email_delivered') return resolveQuery([{ user_id: 'u1' }, { user_id: 'u2' }])(resolve)
         if (eventType === 'email_open') {
           return resolveQuery([{ user_id: 'u1' }, { user_id: 'u2' }])(resolve)
         }
-        if (eventType === 'link_click') {
+        if (eventType === 'email_click') {
           return resolveQuery([{ user_id: 'u1' }])(resolve)
         }
         if (eventType === 'page_view') {
@@ -226,19 +227,15 @@ describe('analyticsAggregator', () => {
       if (table === 'analytics_events') {
         return eventsBuilder as unknown
       }
-      return {
-        select: vi.fn(),
-        eq: vi.fn(),
-        single: vi.fn(),
-        then: resolveQuery([]),
-      } as unknown
+      const empty = { select: () => empty, eq: () => empty, in: () => empty, then: resolveQuery([]) }
+      return empty as unknown
     })
 
     const metrics = await analyticsAggregator.getNewsletterMetrics(mockNewsletterId)
 
     expect(metrics.totalViews).toBe(2)
     expect(metrics.avgTimeSpent).toBe(60)
-    expect(metrics.openRate).toBe(2)
+    expect(metrics.openRate).toBe(100)
     expect(metrics.clickRate).toBe(50)
   })
 

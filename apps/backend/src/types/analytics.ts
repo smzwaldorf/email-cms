@@ -5,6 +5,8 @@ export type AnalyticsEventType =
   | 'scroll_50' 
   | 'scroll_90' 
   | 'link_click' 
+  | 'email_delivered'
+  | 'email_click'
   | 'email_open' 
   | 'session_start' 
   | 'session_end';
@@ -44,6 +46,7 @@ export interface TrackingToken {
 export interface AnalyticsMetrics {
   emailMetricsAvailable?: boolean;
   sentRecipients?: number;
+  deliveredRecipients?: number;
   openRate: number;
   clickRate: number;
   avgTimeSpent: number;

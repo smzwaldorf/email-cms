@@ -31,6 +31,7 @@ jobs:
           tests/unit/lib/relation-select.test.ts tests/unit/auth/smz-auth.test.ts
           tests/integration/parent-readonly.test.ts tests/integration/cms-boundary.test.ts
           tests/integration/delivery-workflow.test.ts tests/unit/runtime-adapters.test.ts
+          tests/unit/services/resendWebhook.test.ts tests/unit/services/newsletterMetrics.test.ts tests/integration/resend-webhook-route.test.ts
       - name: Frontend authentication and media regression tests
         run: >-
           npm run test -w @email-cms/frontend --

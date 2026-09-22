@@ -1,3 +1,4 @@
+import { handleResendWebhook } from '#/services/resendWebhookService'
 import { withIdentityDirectory } from '#/services/identityDirectory'
 import { hashSessionId } from '#/session/crypto'
 import { deliveryIdentityForSessionHash, directoryForCookie, handleSessionRequest, serverSessionsEnabled, sessionId } from '#/session/http'
@@ -37,10 +38,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object'
 }
 
-async function readText(request: IncomingMessage): Promise<string> {
+async function readText(request: IncomingMessage, maxBytes = Infinity): Promise<string> {
   const chunks: Buffer[] = []
+  let size = 0
   for await (const chunk of request) {
-    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk)
+    const buffer = typeof chunk === 'string' ? Buffer.from(chunk) : chunk
+    size += buffer.length
+    if (size > maxBytes) throw new HttpError(413, 'Request body too large')
+    chunks.push(buffer)
   }
   return chunks.length === 0 ? '' : Buffer.concat(chunks).toString('utf8')
 }
@@ -253,6 +258,12 @@ async function handleScopedApiRequest(
       } else {
         sendText(response, result.status, result.body ?? '', context.corsOrigin, result.headers)
       }
+      return
+    }
+
+    if (method === 'POST' && url.pathname === '/api/webhooks/resend') {
+      const result = await handleResendWebhook(await readText(request, 256 * 1024), new Headers(headersFromRequest(request)))
+      sendJson(response, result.status, result.body, context.corsOrigin)
       return
     }
 
