@@ -203,6 +203,15 @@ describe('AnalyticsDashboardPage Integration', () => {
         expect(screen.getByText('Article Performance')).toBeInTheDocument();
     });
     
+    it('switches both metrics and trends to the selected tracker', async () => {
+        renderDashboard();
+        fireEvent.change(screen.getByLabelText('Email tracker'), { target: { value: 'cms' } });
+        await waitFor(() => {
+            expect(useAnalyticsQuery.useTrendStats).toHaveBeenLastCalledWith(expect.anything(), 'cms');
+            expect(useAnalyticsQuery.useNewsletterMetrics).toHaveBeenLastCalledWith(expect.anything(), expect.anything(), 'cms');
+        });
+    });
+
     it('handles manual refresh', async () => {
         renderDashboard();
         

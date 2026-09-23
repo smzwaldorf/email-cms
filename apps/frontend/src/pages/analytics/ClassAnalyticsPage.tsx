@@ -18,11 +18,13 @@ export const ClassAnalyticsPage: React.FC = () => {
     // Calculate average stats from history
     const avgStats = React.useMemo(() => {
         if (!history || history.length === 0) return null;
-        const totalOpen = history.reduce((acc, curr) => acc + curr.openRate, 0);
-        const totalClick = history.reduce((acc, curr) => acc + curr.clickRate, 0);
+        const average = (values: (number | null)[]) => {
+            const available = values.filter((value): value is number => value !== null);
+            return available.length ? available.reduce((sum, value) => sum + value, 0) / available.length : null;
+        };
         return {
-            openRate: totalOpen / history.length,
-            clickRate: totalClick / history.length
+            openRate: average(history.map(point => point.openRate)),
+            clickRate: average(history.map(point => point.clickRate))
         };
     }, [history]);
 
@@ -53,11 +55,11 @@ export const ClassAnalyticsPage: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="bg-white p-6 rounded-xl border border-brand-neutral-100 shadow-sm">
                             <div className="text-sm text-brand-neutral-500 mb-1">Avg. Open Rate (12 Weeks)</div>
-                            <div className="text-2xl font-bold text-brand-neutral-900">{avgStats.openRate.toFixed(1)}%</div>
+                            <div className="text-2xl font-bold text-brand-neutral-900">{avgStats.openRate === null ? '—' : `${avgStats.openRate.toFixed(1)}%`}</div>
                         </div>
                         <div className="bg-white p-6 rounded-xl border border-brand-neutral-100 shadow-sm">
                             <div className="text-sm text-brand-neutral-500 mb-1">Avg. Click Rate (12 Weeks)</div>
-                            <div className="text-2xl font-bold text-brand-neutral-900">{avgStats.clickRate.toFixed(1)}%</div>
+                            <div className="text-2xl font-bold text-brand-neutral-900">{avgStats.clickRate === null ? '—' : `${avgStats.clickRate.toFixed(1)}%`}</div>
                         </div>
                         <div className="bg-white p-6 rounded-xl border border-brand-neutral-100 shadow-sm">
                             <div className="text-sm text-brand-neutral-500 mb-1">Data Points</div>

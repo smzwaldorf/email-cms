@@ -408,6 +408,8 @@ export const analyticsAggregator = {
         emailMetricsAvailable: denominator > 0,
         sentRecipients: totalSent,
         deliveredRecipients: totalDelivered,
+        uniqueOpenCount,
+        uniqueClickCount,
         clickRate: denominator > 0 ? (uniqueClickCount / denominator) * 100 : 0,
         avgTimeSpent,
         totalViews
@@ -644,7 +646,7 @@ export const analyticsAggregator = {
    * Fetches trend data for the last N snapshots.
    * If snapshots are missing, it might return empty or sparse data.
    */
-  async getTrendStats(limit: number = 12, className?: string): Promise<NewsletterTrendPoint[]> {
+  async getTrendStats(limit: number = 12, className?: string, tracker: 'resend' | 'cms' = 'resend'): Promise<NewsletterTrendPoint[]> {
       const supabase = getSupabaseClient();
       
       // Query analytics_snapshots for daily metrics
@@ -660,8 +662,8 @@ export const analyticsAggregator = {
       
       const { data: newsletters } = await supabase
         .from('newsletters')
-        .select('id, week_number')
-        .order('week_number', { ascending: false })
+        .select('id, week_number, release_date, title')
+        .order('release_date', { ascending: false })
         .limit(limit);
         
       if (!newsletters) return [];
@@ -672,20 +674,24 @@ export const analyticsAggregator = {
       // Reverse to show oldest first in chart
       for (const nl of newsletters.reverse()) {
           try {
-              const metrics = await this.getNewsletterMetrics(nl.id, className);
+              const metrics = await this.getNewsletterMetrics(nl.id, className, tracker);
               results.push({
-                  name: nl.week_number as string,
-                  openRate: parseFloat(metrics.openRate.toFixed(1)),
-                  clickRate: parseFloat(metrics.clickRate.toFixed(1)),
+                  name: nl.week_number || (nl.release_date ? `Edition ${new Date(nl.release_date).toLocaleDateString('en-CA')}` : nl.title || nl.id),
+                  uniqueOpenCount: metrics.emailMetricsAvailable === false ? null : metrics.uniqueOpenCount ?? null,
+                  uniqueClickCount: metrics.emailMetricsAvailable === false ? null : metrics.uniqueClickCount ?? null,
+                  openRate: metrics.emailMetricsAvailable === false ? null : parseFloat(metrics.openRate.toFixed(1)),
+                  clickRate: metrics.emailMetricsAvailable === false ? null : parseFloat(metrics.clickRate.toFixed(1)),
                   avgTimeSpent: metrics.avgTimeSpent
               });
           } catch (err) {
               console.error(`[Analytics] Failed to process week ${nl.week_number}:`, err);
               // Push placeholder or skip
               results.push({
-                name: nl.week_number as string,
-                openRate: 0,
-                clickRate: 0,
+                name: nl.week_number || (nl.release_date ? `Edition ${new Date(nl.release_date).toLocaleDateString('en-CA')}` : nl.title || nl.id),
+                uniqueOpenCount: null,
+                uniqueClickCount: null,
+                openRate: null,
+                clickRate: null,
                 avgTimeSpent: 0
               });
           }
@@ -702,7 +708,7 @@ export const analyticsAggregator = {
       const { data, error } = await supabase
           .from('newsletters')
           .select('id, week_number, release_date')
-          .order('week_number', { ascending: false });
+          .order('release_date', { ascending: false });
           
       if (error) throw error;
       return (data as AnalyticsNewsletterWeekOption[]) || [];

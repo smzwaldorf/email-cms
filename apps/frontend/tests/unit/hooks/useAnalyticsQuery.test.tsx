@@ -1,6 +1,6 @@
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { useNewsletterMetrics } from '@/hooks/useAnalyticsQuery'
+import { useNewsletterMetrics, useTrendStats } from '@/hooks/useAnalyticsQuery'
 import { analyticsAggregator } from '@/services/analyticsAggregator'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import React from 'react'
@@ -156,3 +156,13 @@ describe('useAllClasses', () => {
         expect(result.current.classes).toEqual(mockClasses);
     });
 });
+
+ it('isolates trend caches when switching trackers and preserves unavailable values', async () => {
+   vi.mocked(analyticsAggregator.getTrendStats).mockImplementation(async (_limit, _class, tracker) => [{ name: 'W1', openRate: tracker === 'cms' ? 80 : null, clickRate: 0, avgTimeSpent: 0 }]);
+   const { result, rerender } = renderHook(({ tracker }: { tracker: 'resend' | 'cms' }) => useTrendStats(undefined, tracker), { initialProps: { tracker: 'resend' }, wrapper: createWrapper() });
+   await waitFor(() => expect(result.current.trend[0]?.openRate).toBeNull());
+   rerender({ tracker: 'cms' });
+   await waitFor(() => expect(result.current.trend[0]?.openRate).toBe(80));
+   rerender({ tracker: 'resend' });
+   await waitFor(() => expect(result.current.trend[0]?.openRate).toBeNull());
+ });

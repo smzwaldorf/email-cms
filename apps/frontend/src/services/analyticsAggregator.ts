@@ -37,8 +37,8 @@ export const analyticsAggregator = {
   getArticleStatsWithFallback(newsletterId: string): Promise<ArticleStats[]> {
     return adminRpc('analytics', 'getArticleStatsWithFallback', [newsletterId])
   },
-  getTrendStats(limit = 12, className?: string): Promise<NewsletterTrendPoint[]> {
-    return adminRpc('analytics', 'getTrendStats', [limit, className])
+  getTrendStats(limit = 12, className?: string, tracker: 'resend' | 'cms' = 'resend'): Promise<NewsletterTrendPoint[]> {
+    return adminRpc('analytics', 'getTrendStats', [limit, className, tracker])
   },
   getAvailableWeeks(): Promise<AnalyticsNewsletterWeekOption[]> {
     return adminRpc('analytics', 'getAvailableWeeks', [])

@@ -45,6 +45,8 @@ export interface TrackingToken {
 
 export interface AnalyticsMetrics {
   emailMetricsAvailable?: boolean;
+  uniqueOpenCount?: number;
+  uniqueClickCount?: number;
   sentRecipients?: number;
   deliveredRecipients?: number;
   openRate: number;
@@ -70,9 +72,11 @@ export type AnalyticsNewsletterWeekOption = Pick<NewsletterRow, 'id' | 'release_
 
 /** One point in the engagement trend series (per newsletter week). */
 export interface NewsletterTrendPoint {
+  uniqueOpenCount?: number | null;
+  uniqueClickCount?: number | null;
   name: string;
-  openRate: number;
-  clickRate: number;
+  openRate: number | null;
+  clickRate: number | null;
   avgTimeSpent: number;
 }
 

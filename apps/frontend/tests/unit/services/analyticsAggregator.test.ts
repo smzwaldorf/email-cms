@@ -24,3 +24,10 @@ describe('authorized analytics client', () => {
   await expect(analyticsAggregator.getNewsletterMetrics('n1')).rejects.toThrow('Unauthorized')
  })
 })
+
+it('forwards the trend tracker and retains unavailable rates', async () => {
+ const trend = [{ name: 'W1', openRate: null, clickRate: null, avgTimeSpent: 0 }]
+ rpc.mockResolvedValue(trend)
+ expect(await analyticsAggregator.getTrendStats(12, undefined, 'cms')).toEqual(trend)
+ expect(rpc).toHaveBeenCalledWith('analytics', 'getTrendStats', [12, undefined, 'cms'])
+})

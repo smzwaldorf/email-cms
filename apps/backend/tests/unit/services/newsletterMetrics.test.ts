@@ -22,7 +22,7 @@ describe('newsletter rates use Resend delivery confirmations', () => {
       { newsletter_id: 'other', user_id: 'p3', event_type: 'email_delivered', metadata: { source: 'resend' } },
       { newsletter_id: 'n1', user_id: 'p1', event_type: 'email_open', metadata: { source: 'resend' } },
       { newsletter_id: 'n1', user_id: 'p2', event_type: 'link_click', metadata: {} })
-    expect(await analyticsAggregator.getNewsletterMetrics('n1')).toMatchObject({ openRate: 50, clickRate: 50, deliveredRecipients: 2, sentRecipients: 3 })
+    expect(await analyticsAggregator.getNewsletterMetrics('n1')).toMatchObject({ openRate: 50, clickRate: 50, uniqueOpenCount: 1, uniqueClickCount: 1, deliveredRecipients: 2, sentRecipients: 3 })
   })
   it('handles opens arriving before delivery confirmations', async () => {
     holder.store!.rows('analytics_events').push({ newsletter_id: 'n1', user_id: 'p1', event_type: 'email_open', metadata: { source: 'resend' } })
@@ -61,4 +61,30 @@ describe('CMS newsletter engagement', () => {
     holder.store!.rows('analytics_events').push({ newsletter_id: 'n1', user_id: 'p1', event_type: 'email_open', metadata: { source: 'email_open' } })
     expect(await analyticsAggregator.getNewsletterMetrics('n1', undefined, 'cms')).toMatchObject({ openRate: 0, clickRate: 0, emailMetricsAvailable: false })
   })
+})
+
+describe('newsletter trends', () => {
+  it('keeps missing delivery data unavailable while preserving actual zero engagement', async () => {
+    holder.store!.rows('newsletters').push({ id: 'n1', week_number: '2026-W01' }, { id: 'n2', week_number: '2026-W02' })
+    holder.store!.rows('analytics_events').push({ newsletter_id: 'n2', user_id: 'p1', event_type: 'email_delivered', metadata: { source: 'resend' } })
+    expect(await analyticsAggregator.getTrendStats()).toEqual(expect.arrayContaining([
+      { name: '2026-W01', openRate: null, clickRate: null, uniqueOpenCount: null, uniqueClickCount: null, avgTimeSpent: 0 },
+      { name: '2026-W02', openRate: 0, clickRate: 0, uniqueOpenCount: 0, uniqueClickCount: 0, avgTimeSpent: 0 },
+    ]))
+  })
+  it('uses the selected tracker for every newsletter', async () => {
+    holder.store!.rows('newsletters').push({ id: 'n1', week_number: '2026-W01' })
+    holder.store!.rows('newsletter_delivery_batches').push({ id: 'b1', newsletter_id: 'n1' })
+    holder.store!.rows('newsletter_delivery_batch_recipients').push({ batch_id: 'b1', parent_id: 'p1', send_status: 'sent' })
+    holder.store!.rows('analytics_events').push({ newsletter_id: 'n1', user_id: 'p1', event_type: 'email_open', metadata: { source: 'email_open' } })
+    expect((await analyticsAggregator.getTrendStats(12, undefined, 'cms'))[0].openRate).toBe(100)
+    expect((await analyticsAggregator.getTrendStats())[0].openRate).toBeNull()
+  })
+})
+
+it('labels special editions without a week number', async () => {
+  holder.store!.rows('newsletters').push({ id: 'special', week_number: null, release_date: '2026-09-21T12:00:00Z' })
+  expect(await analyticsAggregator.getTrendStats()).toEqual(expect.arrayContaining([
+    expect.objectContaining({ name: 'Edition 2026-09-21' }),
+  ]))
 })

@@ -73,10 +73,10 @@ export function useArticleStats(newsletterId: string) {
   };
 }
 
-export function useTrendStats(className?: string) {
+export function useTrendStats(className?: string, tracker: 'resend' | 'cms' = 'resend') {
   const { data, isLoading, refetch, isRefetching } = useQuery({
-    queryKey: ['trendStats', className],
-    queryFn: () => analyticsAggregator.getTrendStats(12, className),
+    queryKey: ['trendStats', className, tracker],
+    queryFn: () => analyticsAggregator.getTrendStats(12, className, tracker),
     staleTime: 1000 * 60 * 60, // 1 hour (trends don't change often)
   });
 

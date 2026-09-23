@@ -197,8 +197,8 @@ async function handleRpc(body: unknown): Promise<unknown> {
   }
 
   if (!isAllowedRpc(serviceName, methodName)) throw new HttpError(403, 'RPC action is not permitted')
-  if (serviceName === 'analytics' && (args.length > (methodName === 'getNewsletterMetrics' ? 3 : 2) || args.some(arg => arg !== null && typeof arg !== 'string' && typeof arg !== 'number'))) throw new HttpError(400, 'Invalid analytics arguments')
-  if (serviceName === 'analytics' && methodName === 'getNewsletterMetrics' && args.length > 2 && !['resend', 'cms'].includes(args[2] as string)) throw new HttpError(400, 'Invalid analytics tracker')
+  if (serviceName === 'analytics' && (args.length > (['getNewsletterMetrics', 'getTrendStats'].includes(methodName) ? 3 : 2) || args.some(arg => arg !== null && typeof arg !== 'string' && typeof arg !== 'number'))) throw new HttpError(400, 'Invalid analytics arguments')
+  if (serviceName === 'analytics' && ['getNewsletterMetrics', 'getTrendStats'].includes(methodName) && args.length > 2 && !['resend', 'cms'].includes(args[2] as string)) throw new HttpError(400, 'Invalid analytics tracker')
   const service = getRpcService(serviceName) as Record<string, unknown>
   const method = service[methodName]
   if (typeof method !== 'function') {

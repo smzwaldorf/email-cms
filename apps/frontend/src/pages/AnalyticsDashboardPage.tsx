@@ -63,7 +63,7 @@ export const AnalyticsDashboardPage: React.FC = () => {
     
     const { metrics, loading: metricsLoading, refreshing: metricsRefreshing, refetch: refetchMetrics } = useNewsletterMetrics(selectedNewsletterId, selectedClass, tracker);
     const { stats: articleData, loading: articlesLoading, refreshing: articlesRefreshing, refetch: refetchArticles } = useArticleStats(selectedNewsletterId);
-    const { trend: trendData, loading: trendsLoading, refreshing: trendsRefreshing, refetch: refetchTrends } = useTrendStats(selectedClass);
+    const { trend: trendData, loading: trendsLoading, refreshing: trendsRefreshing, refetch: refetchTrends } = useTrendStats(selectedClass, tracker);
     const { data: classEngagement, loading: classLoading, refreshing: classesRefreshing, refetch: refetchClasses } = useClassEngagement(selectedNewsletterId);
     const { hotness: hotnessData, refreshing: hotnessRefreshing, refetch: refetchHotness } = useTopicHotness(selectedNewsletterId);
     const { generate, generating } = useGenerateSnapshots();
@@ -110,7 +110,7 @@ export const AnalyticsDashboardPage: React.FC = () => {
     const filteredTrendData = useMemo(() => {
         if (!trendData) return [];
         const limit = parseInt(timeRange);
-        return trendData.slice(0, limit).reverse();
+        return trendData.slice(-limit);
     }, [trendData, timeRange]);
 
     // Merge hotness score into article data
@@ -277,9 +277,9 @@ export const AnalyticsDashboardPage: React.FC = () => {
                     />
                 </div>
 
-                {/* Charts & Tables Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2 space-y-8">
+                {/* Engagement trend, class performance, and article details */}
+                <div className="space-y-8">
+                    <div className="space-y-8">
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-brand-neutral-100">
                              <div className="flex justify-between items-center mb-6">
                                 <h3 className="text-lg font-semibold text-brand-neutral-800">Engagement Trend</h3>
@@ -304,19 +304,14 @@ export const AnalyticsDashboardPage: React.FC = () => {
                                 </div>
                             ) : (
                                 <TrendChart 
-                                    data={filteredTrendData} 
+                                    data={filteredTrendData}
+                                    tracker={tracker}
                                     // Title removed from chart prop as we have it in header now
                                 />
                             )}
                         </div>
                         
-                        {articlesLoading ? (
-                            <div className="h-[200px] bg-white rounded-xl flex items-center justify-center font-medium text-brand-neutral-500">
-                                Loading Articles...
-                            </div>
-                        ) : (
-                            <ArticleAnalyticsTable data={enhancedArticleData} />
-                        )}
+
                     </div>
                     
                     <div className="space-y-6">
@@ -355,6 +350,13 @@ export const AnalyticsDashboardPage: React.FC = () => {
                             )}
                         </div>
                     </div>
+                    {articlesLoading ? (
+                        <div className="h-[200px] bg-white rounded-xl flex items-center justify-center font-medium text-brand-neutral-500">
+                            Loading Articles...
+                        </div>
+                    ) : (
+                        <ArticleAnalyticsTable data={enhancedArticleData} />
+                    )}
                 </div>
             </div>
         </AdminLayout>

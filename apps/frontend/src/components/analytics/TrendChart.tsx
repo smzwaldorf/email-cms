@@ -1,26 +1,27 @@
 import React from 'react';
 import type { DotItemDotProps } from 'recharts';
-import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
-  Legend 
+  Legend
 } from 'recharts';
 
 interface TrendData {
   name: string;
-  openRate: number;
-  clickRate: number;
+  uniqueOpenCount?: number | null;
+  uniqueClickCount?: number | null;
 }
 
 interface TrendChartProps {
   data: TrendData[];
   title?: string;
   height?: number;
+  tracker?: 'resend' | 'cms';
 }
 
 type TrendDotProps = DotItemDotProps & {
@@ -31,23 +32,23 @@ type TrendDotProps = DotItemDotProps & {
 
 const CustomDot = (props: TrendDotProps) => {
     const { cx, cy, value, data = [], dataKey, color } = props;
-    
-    if (!data.length || dataKey === undefined || color === undefined) return null;
 
-    const values = data.map((d) => d[dataKey as keyof TrendData] as number);
+    if (value == null || !data.length || dataKey === undefined || color === undefined) return null;
+
+    const values = data.map((d) => d[dataKey as keyof TrendData]).filter((value): value is number => typeof value === 'number');
     const min = Math.min(...values);
     const max = Math.max(...values);
-    
+
     const isMax = value === max;
     const isMin = value === min;
-    
+
     if (isMax) {
         // Larger Filled Dot for Max
         return (
             <circle cx={cx} cy={cy} r={6} fill={color} stroke="white" strokeWidth={2} />
         );
     }
-    
+
     if (isMin) {
          // Hollow Dot for Min
          return (
@@ -61,49 +62,66 @@ const CustomDot = (props: TrendDotProps) => {
     );
 };
 
-export const TrendChart: React.FC<TrendChartProps> = ({ data, title = 'Engagement Trends', height = 300 }) => {
+export const TrendChart: React.FC<TrendChartProps> = ({ data, title = 'Engagement Trends', height = 300, tracker = 'resend' }) => {
+  const hasCounts = data.some(point => point.uniqueOpenCount != null || point.uniqueClickCount != null);
+  if (!hasCounts) {
+    return (
+      <div role="status" className="flex flex-col items-center justify-center text-center text-brand-neutral-500 p-6" style={{ minHeight: height }}>
+        <p className="font-medium">No engagement trend data yet</p>
+        <p className="text-sm mt-2">{data.length === 0
+          ? 'No newsletters are available for this selection.'
+          : tracker === 'resend'
+            ? 'Resend counts need delivery confirmations. Try CMS tracker to see available CMS email activity.'
+            : 'CMS counts need successfully sent recipients. No counts are available for this selection.'}</p>
+      </div>
+    );
+  }
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm border border-brand-neutral-100">
       <h3 className="text-lg font-semibold text-brand-neutral-800 mb-6">{title}</h3>
+      <p className="text-sm text-brand-neutral-500 mb-3">Unique recipients per newsletter. Repeat opens and clicks count once.</p>
+      {data.some(point => point.uniqueOpenCount == null || point.uniqueClickCount == null) && (
+        <p className="text-sm text-brand-neutral-500 mb-3">Gaps indicate unavailable recipient counts for the selected tracker.</p>
+      )}
       <div style={{ width: '100%', height, minWidth: 0 }}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-            <XAxis 
-              dataKey="name" 
-              axisLine={false} 
-              tickLine={false} 
-              tick={{ fill: '#6B7280', fontSize: 12 }} 
+            <XAxis
+              dataKey="name"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: '#6B7280', fontSize: 12 }}
               dy={10}
             />
-            <YAxis 
-              axisLine={false} 
-              tickLine={false} 
-              tick={{ fill: '#6B7280', fontSize: 12 }} 
+            <YAxis
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: '#6B7280', fontSize: 12 }}
               dx={-10}
-              unit="%"
+              allowDecimals={false}
             />
-            <Tooltip 
+            <Tooltip
               contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
             />
             <Legend wrapperStyle={{ paddingTop: '20px' }} />
-            <Line 
-              type="monotone" 
-              dataKey="openRate" 
-              name="Open Rate" 
-              stroke="#8B5CF6" 
-              strokeWidth={3} 
-              dot={(props) => <CustomDot {...props} data={data} dataKey="openRate" color="#8B5CF6" />}
-              activeDot={{ r: 6 }} 
+            <Line
+              type="monotone"
+              dataKey="uniqueOpenCount"
+              name="Recipients who opened"
+              stroke="#8B5CF6"
+              strokeWidth={3}
+              dot={(props) => <CustomDot {...props} data={data} dataKey="uniqueOpenCount" color="#8B5CF6" />}
+              activeDot={{ r: 6 }}
             />
-            <Line 
-              type="monotone" 
-              dataKey="clickRate" 
-              name="Click Rate" 
-              stroke="#10B981" 
-              strokeWidth={3} 
-              dot={(props) => <CustomDot {...props} data={data} dataKey="clickRate" color="#10B981" />}
-              activeDot={{ r: 6 }} 
+            <Line
+              type="monotone"
+              dataKey="uniqueClickCount"
+              name="Recipients who clicked"
+              stroke="#10B981"
+              strokeWidth={3}
+              dot={(props) => <CustomDot {...props} data={data} dataKey="uniqueClickCount" color="#10B981" />}
+              activeDot={{ r: 6 }}
             />
           </LineChart>
         </ResponsiveContainer>
