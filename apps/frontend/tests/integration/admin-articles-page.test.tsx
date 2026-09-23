@@ -1,5 +1,7 @@
+import { backendRequest } from '@/services/backendApi'
+vi.mock('@/services/backendApi', () => ({ backendRequest: vi.fn() }))
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { AdminArticlesPage } from '@/pages/AdminArticlesPage'
 import type {
@@ -241,6 +243,26 @@ describe('AdminArticlesPage', () => {
     vi.mocked(adminService.deactivateArticleCategory).mockResolvedValue({} as ArticleCategory)
     vi.mocked(adminService.activateArticleTag).mockResolvedValue({} as ArticleTag)
     vi.mocked(adminService.deactivateArticleTag).mockResolvedValue({} as ArticleTag)
+  })
+
+  it('publishes only the selected article and updates its status', async () => {
+    vi.mocked(backendRequest).mockResolvedValue({ status: 'published', updated_at: '2026-09-23', published_at: '2026-09-23' })
+    render(<MemoryRouter><AdminArticlesPage /></MemoryRouter>)
+    const row = (await screen.findByText('All Article')).closest('tr')!
+    fireEvent.click(within(row).getByRole('button', { name: '發布', exact: true }))
+    await waitFor(() => expect(within(row).getByText('已發布')).toBeInTheDocument())
+    expect(backendRequest).toHaveBeenCalledWith('/api/cms/articles/article-1/publish', { method: 'POST' })
+    expect(within(row).queryByRole('button', { name: '發布', exact: true })).not.toBeInTheDocument()
+  })
+
+  it('keeps the draft status when publication fails', async () => {
+    vi.mocked(backendRequest).mockRejectedValue(new Error('Publication failed'))
+    render(<MemoryRouter><AdminArticlesPage /></MemoryRouter>)
+    const row = (await screen.findByText('All Article')).closest('tr')!
+    fireEvent.click(within(row).getByRole('button', { name: '發布', exact: true }))
+    expect(await screen.findByText('Publication failed')).toBeInTheDocument()
+    expect(within(row).getByText('草稿')).toBeInTheDocument()
+    expect(within(row).getByRole('button', { name: '發布', exact: true })).toBeEnabled()
   })
 
   it('lists all articles by default', async () => {

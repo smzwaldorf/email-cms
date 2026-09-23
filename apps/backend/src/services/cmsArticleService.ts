@@ -8,6 +8,19 @@ function permitted(viewer: AuthenticatedViewer, article: ArticleRow): boolean {
 }
 
 export const cmsArticleService = {
+  async publish(id: string, viewer: AuthenticatedViewer): Promise<ArticleRow> {
+    if (!canPerformCmsAction(viewer, 'cms:manage')) throw new HttpError(403, 'CMS management permission required')
+    return withClient(async client => {
+      const { rows } = await client.query<ArticleRow>(
+        `UPDATE articles SET status = 'published', published_at = COALESCE(published_at, now()),
+          updated_at = now(), last_edited_by = $2
+         WHERE id = $1 AND deleted_at IS NULL RETURNING *`,
+        [id, viewer.id],
+      )
+      if (!rows[0]) throw new HttpError(404, 'Active article not found')
+      return rows[0]
+    })
+  },
   async read(id: string, viewer: AuthenticatedViewer): Promise<ArticleRow> {
     return withClient(async client => {
       const { rows } = await client.query<ArticleRow>('SELECT * FROM articles WHERE id = $1', [id])

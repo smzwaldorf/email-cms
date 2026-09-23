@@ -297,6 +297,7 @@ describe('AdminService', () => {
       await adminService.publishNewsletter('a1111111-1111-1111-1111-111111111111')
 
       expect(inTransaction).toHaveBeenCalled()
+      expect(vi.mocked(query).mock.calls.find(([sql]) => sql.includes('UPDATE articles'))?.[0]).not.toContain('is_template')
       expect(query).toHaveBeenCalledWith(expect.stringContaining("UPDATE articles SET status = 'published'"), ['a1111111-1111-1111-1111-111111111111'])
       expect(mockSupabase.from).toHaveBeenCalledWith('newsletters')
       expect(mockBuilder.update).toHaveBeenCalledWith(expect.objectContaining({

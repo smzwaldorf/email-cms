@@ -1,3 +1,5 @@
+import { backendRequest } from '@/services/backendApi'
+import type { ArticleRow } from '@/types/database'
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { adminService, AdminServiceError } from '@/services/adminService'
 import type {
@@ -20,6 +22,7 @@ const ARTICLE_RETENTION_LABEL = '30 天'
 
 export function AdminArticlesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const [publishingArticleId, setPublishingArticleId] = useState<string | null>(null)
   const [articles, setArticles] = useState<AdminArticle[]>([])
   const [allLoadedArticles, setAllLoadedArticles] = useState<AdminArticle[]>([])
   const [newsletters, setNewsletters] = useState<AdminNewsletter[]>([])
@@ -99,6 +102,23 @@ export function AdminArticlesPage() {
     } catch (err) {
       const message = err instanceof AdminServiceError ? err.message : '無法載入電子報清單'
       setError(message)
+    }
+  }
+
+  const handlePublishArticle = async (article: AdminArticle) => {
+    if (publishingArticleId) return
+    setPublishingArticleId(article.id)
+    setError(null)
+    try {
+      const published = await backendRequest<ArticleRow>(`/api/cms/articles/${encodeURIComponent(article.id)}/publish`, { method: 'POST' })
+      const update = (rows: AdminArticle[]) => rows.map(row => row.id === article.id
+        ? { ...row, status: 'published' as const, updatedAt: published.updated_at } : row)
+      setArticles(update)
+      setAllLoadedArticles(update)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '發布文章失敗，請稍後再試')
+    } finally {
+      setPublishingArticleId(null)
     }
   }
 
@@ -908,7 +928,6 @@ export function AdminArticlesPage() {
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-waldorf-clay-500">標題</th>
                     <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-waldorf-clay-500">狀態</th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-waldorf-clay-500">is_template</th>
                     <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-waldorf-clay-500">所屬電子報</th>
                     <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-waldorf-clay-500">分類</th>
                     <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-waldorf-clay-500">標籤</th>
@@ -928,10 +947,7 @@ export function AdminArticlesPage() {
                       <Fragment key={article.id}>
                         <tr key={article.id} data-testid={`article-row-${article.id}`}>
                           <td className="px-6 py-4 text-sm font-medium text-waldorf-clay-800">{article.title}</td>
-                          <td className="px-6 py-4 text-sm text-waldorf-clay-600">{article.status}</td>
-                          <td className="px-6 py-4 text-sm text-waldorf-clay-600">
-                            {memberships.some((membership) => membership.isTemplate) ? 'true' : 'false'}
-                          </td>
+                          <td className="px-6 py-4 text-sm text-waldorf-clay-600">{article.status === 'published' ? '已發布' : '草稿'}</td>
                           <td className="px-6 py-4 text-sm text-waldorf-clay-600">
                             {memberships.length === 0 ? (
                               '-'
@@ -990,6 +1006,13 @@ export function AdminArticlesPage() {
                           </td>
                           <td className="px-6 py-4 text-right text-sm">
                             <div className="flex justify-end gap-2">
+                              {article.status === 'draft' && !showTemplateOnly && (
+                                <button type="button" onClick={() => void handlePublishArticle(article)}
+                                  disabled={publishingArticleId !== null || deletingArticleId === article.id}
+                                  className="rounded-lg border border-waldorf-sage-300 px-3 py-1.5 text-xs text-waldorf-sage-700 disabled:opacity-60">
+                                  {publishingArticleId === article.id ? '發布中...' : '發布'}
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => {
@@ -1026,7 +1049,7 @@ export function AdminArticlesPage() {
 
                         {editingArticleId === article.id && (
                           <tr>
-                            <td colSpan={8} className="bg-waldorf-cream-50 px-6 py-4">
+                            <td colSpan={7} className="bg-waldorf-cream-50 px-6 py-4">
                               <div className="grid gap-4 md:grid-cols-2">
                                 <div className="rounded-lg border border-waldorf-cream-200 bg-white p-3">
                                   <h4 className="text-sm font-semibold text-waldorf-clay-700">分類指派</h4>
@@ -1096,7 +1119,7 @@ export function AdminArticlesPage() {
 
                         {openVersionHistoryArticleId === article.id && (
                           <tr>
-                            <td colSpan={8} className="bg-waldorf-lavender-50 px-6 py-4">
+                            <td colSpan={7} className="bg-waldorf-lavender-50 px-6 py-4">
                               <div className="space-y-3">
                                 <div className="flex items-center justify-between">
                                   <h4 className="text-sm font-semibold text-waldorf-clay-700">版本紀錄</h4>

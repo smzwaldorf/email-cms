@@ -328,6 +328,13 @@ async function handleScopedApiRequest(
       return
     }
 
+    const publishArticleMatch = url.pathname.match(/^\/api\/cms\/articles\/([^/]+)\/publish$/)
+    if (method === 'POST' && publishArticleMatch) {
+      const viewer = await requireViewer(request)
+      sendJson(response, 200, await cmsArticleService.publish(decodeURIComponent(publishArticleMatch[1]), viewer), context.corsOrigin)
+      return
+    }
+
     const cmsArticleMatch = url.pathname.match(/^\/api\/cms\/articles\/([^/]+)$/)
     if (cmsArticleMatch && (method === 'GET' || method === 'PATCH')) {
       const viewer = await requireViewer(request)

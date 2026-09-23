@@ -1656,7 +1656,7 @@ class AdminService {
         // Publish only active articles included in this newsletter. Preserve prior publication times.
         await query(`UPDATE articles SET status = 'published',
           published_at = COALESCE(published_at, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP
-          WHERE deleted_at IS NULL AND COALESCE(is_template, false) = false
+          WHERE deleted_at IS NULL
             AND id IN (SELECT article_id FROM newsletter_articles WHERE newsletter_id = $1)`, [id])
 
         // Update status to published

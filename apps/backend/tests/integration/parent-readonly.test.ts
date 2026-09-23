@@ -63,6 +63,7 @@ describe('synthetic identities use ordinary CMS authorization', () => {
     ['/api/data/query', 'POST', { table: 'articles', mutation: { type: 'update', payload: { title: 'denied' } } }],
     ['/api/data/query', 'POST', { table: 'media_files', mutation: { type: 'insert', payload: { name: 'denied' } } }],
     ['/api/cms/articles/article-1', 'PATCH', { title: 'denied' }],
+    ['/api/cms/articles/article-1/publish', 'POST', {}],
   ])('denies parent operation %s without business writes', async (path, method, body) => {
     expect((await call(path as string, method as string, body)).status).toBe(403)
     expect(state.query.mock.calls.filter(([sql]) => /^\s*(UPDATE|INSERT|DELETE)\b/.test(sql) && !/^\s*INSERT INTO user_auth_identities\b/.test(sql))).toHaveLength(0)
