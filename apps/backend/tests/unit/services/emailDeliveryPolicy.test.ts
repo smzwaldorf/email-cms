@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { withRuntimeEnvironment } from '#/runtime/environment'
 import { assertNewsletterDeliveryAllowed } from '#/services/emailDeliveryPolicy'
 afterEach(() => vi.unstubAllEnvs())
 describe('controlled newsletter delivery', () => {
@@ -24,4 +25,10 @@ it('requires an exact recipient allowlist for a hosted production demo', () => {
   vi.stubEnv('NEWSLETTER_TEST_RECIPIENTS', 'a@example.test,b@example.test')
   expect(() => assertNewsletterDeliveryAllowed([{ parentEmail: 'a@example.test' }, { parentEmail: 'b@example.test' }])).not.toThrow()
   expect(() => assertNewsletterDeliveryAllowed([{ parentEmail: 'unexpected@example.test' }])).toThrow('outside the test allowlist')
+})
+
+it('allows the selected production audience without test recipient configuration', () => {
+  withRuntimeEnvironment({ NODE_ENV: 'production', DELIVERY_ENABLED: 'true', NEWSLETTER_DEMO_MODE: 'false' }, () => {
+    expect(() => assertNewsletterDeliveryAllowed([{ parentEmail: 'parent@school.test' }])).not.toThrow()
+  })
 })
