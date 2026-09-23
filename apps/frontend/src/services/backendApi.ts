@@ -74,7 +74,7 @@ export const readerApi = {
 }
 
 export async function adminRpc<T>(
-  service: 'admin' | 'emailTemplate' | 'newsletterDelivery' | 'fileEmailTemplate',
+  service: 'admin' | 'emailTemplate' | 'newsletterDelivery' | 'fileEmailTemplate' | 'analytics',
   method: string,
   args: unknown[] = [],
 ): Promise<T> {

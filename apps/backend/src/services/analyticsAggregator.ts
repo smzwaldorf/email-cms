@@ -438,7 +438,7 @@ export const analyticsAggregator = {
     // 1. Fetch Views per article
     // Note: articles no longer have week_number - we filter by newsletter_id on events
     const { data: viewEvents, error: viewError } = await supabase
-      .from('analytics_events')
+      .from<PageViewWithArticleRow>('analytics_events')
       .select('article_id, user_id, session_id, articles!inner ( title, created_at )')
       .eq('newsletter_id', newsletterId)
       .eq('event_type', 'page_view');
@@ -580,7 +580,7 @@ export const analyticsAggregator = {
         // We need article titles/metadata. Snapshots don't have them.
         // Use junction table since articles no longer have week_number
         const { data: junctionData } = await supabase
-           .from('newsletter_articles')
+           .from<NewsletterJunctionRow>('newsletter_articles')
            .select('article_order, articles!inner (id, title, created_at)')
            .eq('newsletter_id', newsletterId)
            .order('article_order', { ascending: true });
@@ -828,7 +828,7 @@ export const analyticsAggregator = {
 
           // 1. Fetch all page_view events with article publish time
           const { data: events, error } = await supabase
-            .from('analytics_events')
+            .from<TopicHotnessEventRow>('analytics_events')
             .select('article_id, user_id, created_at, articles ( title, created_at )')
             .eq('newsletter_id', newsletterId)
             .eq('event_type', 'page_view')
@@ -928,7 +928,7 @@ export const analyticsAggregator = {
       
       // Get newsletter info from junction table
       const { data: junction } = await supabase
-        .from('newsletter_articles')
+        .from<{ newsletter_id: string; newsletters: NewsletterWeekFromJoin | NewsletterWeekFromJoin[] | null }>('newsletter_articles')
         .select('newsletter_id, newsletters!inner (week_number)')
         .eq('article_id', articleId)
         .limit(1)

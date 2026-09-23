@@ -1,3 +1,4 @@
+import { analyticsAggregator } from '#/services/analyticsAggregator'
 import { handleResendWebhook } from '#/services/resendWebhookService'
 import { withIdentityDirectory } from '#/services/identityDirectory'
 import { hashSessionId } from '#/session/crypto'
@@ -32,7 +33,7 @@ export interface RouteContext {
   corsOrigin: string
 }
 
-type RpcServiceName = 'admin' | 'emailTemplate' | 'newsletterDelivery' | 'fileEmailTemplate'
+type RpcServiceName = 'admin' | 'emailTemplate' | 'newsletterDelivery' | 'fileEmailTemplate' | 'analytics'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object'
@@ -169,6 +170,7 @@ function isKitWebhookPath(pathname: string): boolean {
 }
 
 function getRpcService(name: RpcServiceName): unknown {
+  if (name === 'analytics') return analyticsAggregator
   if (name === 'admin') return adminService
   if (name === 'emailTemplate') return emailTemplateService
   if (name === 'newsletterDelivery') return newsletterDeliveryService
@@ -186,7 +188,7 @@ async function handleRpc(body: unknown): Promise<unknown> {
   const serviceName = stringValue(body.service) as RpcServiceName | undefined
   const methodName = stringValue(body.method)
   const args = Array.isArray(body.args) ? body.args : []
-  if (!serviceName || !['admin', 'emailTemplate', 'newsletterDelivery', 'fileEmailTemplate'].includes(serviceName)) {
+  if (!serviceName || !['admin', 'emailTemplate', 'newsletterDelivery', 'fileEmailTemplate', 'analytics'].includes(serviceName)) {
     throw new HttpError(400, 'Invalid RPC service')
   }
   if (!methodName || !/^[A-Za-z][A-Za-z0-9_]*$/.test(methodName) || methodName === 'constructor') {
@@ -194,6 +196,7 @@ async function handleRpc(body: unknown): Promise<unknown> {
   }
 
   if (!isAllowedRpc(serviceName, methodName)) throw new HttpError(403, 'RPC action is not permitted')
+  if (serviceName === 'analytics' && (args.length > 2 || args.some(arg => arg !== null && typeof arg !== 'string' && typeof arg !== 'number'))) throw new HttpError(400, 'Invalid analytics arguments')
   const service = getRpcService(serviceName) as Record<string, unknown>
   const method = service[methodName]
   if (typeof method !== 'function') {

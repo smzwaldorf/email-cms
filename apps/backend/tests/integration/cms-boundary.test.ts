@@ -1,7 +1,7 @@
 import { Readable } from 'node:stream'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-const m = vi.hoisted(() => ({ viewer: vi.fn(), admin: vi.fn(), directory: vi.fn(), preview: vi.fn(), runQuery: vi.fn(), publish: vi.fn(), createBatch: vi.fn(), edit: vi.fn(), webhook: vi.fn(), readiness: vi.fn(), lock: vi.fn() }))
+const m = vi.hoisted(() => ({ metrics: vi.fn(), viewer: vi.fn(), admin: vi.fn(), directory: vi.fn(), preview: vi.fn(), runQuery: vi.fn(), publish: vi.fn(), createBatch: vi.fn(), edit: vi.fn(), webhook: vi.fn(), readiness: vi.fn(), lock: vi.fn() }))
 vi.mock('#/lib/db', () => ({ withTransaction: (fn: (client: { query: typeof m.lock }) => unknown) => fn({ query: m.lock }) }))
 vi.mock('#/auth', async () => ({ ...await vi.importActual<typeof import('#/auth')>('#/auth'), requireViewer: m.viewer, requireAdmin: m.admin, directoryForToken: m.directory }))
 vi.mock('#/services/adminService', () => ({ adminService: { publishNewsletter: m.publish, getNewsletterPublishReadiness: m.readiness } }))
@@ -9,6 +9,7 @@ vi.mock('#/services/newsletterDeliveryService', () => ({ newsletterDeliveryServi
 vi.mock('#/services/cmsArticleService', () => ({ cmsArticleService: { update: m.edit } }))
 vi.mock('#/lib/query', () => ({ runSerializedQuery: m.runQuery, from: vi.fn() }))
 vi.mock('#/services/emailPlatform/backendEmailPlatformService', () => ({ backendEmailPlatformService: { handleKitWebhook: m.webhook } }))
+vi.mock('#/services/analyticsAggregator', () => ({ analyticsAggregator: { getNewsletterMetrics: m.metrics } }))
 import { handleApiRequest } from '#/routes'
 import { HttpError } from '#/auth'
 import { getSupabaseClient } from '#/lib/supabase'
@@ -94,4 +95,14 @@ describe('CMS HTTP boundary and publish handoff', () => {
     expect((await call('/api/webhooks/kit', { event: 'delivered' })).status).toBe(401)
     expect(m.webhook).toHaveBeenCalledWith(expect.objectContaining({ rawBody: '{"event":"delivered"}' }))
   })
+})
+
+it('serves admin analytics while keeping delivery tables blocked from the generic gateway', async () => {
+ m.metrics.mockResolvedValue({ sentRecipients: 2, deliveredRecipients: 2, openRate: 50 })
+ expect((await call('/api/admin/rpc', { service: 'analytics', method: 'getNewsletterMetrics', args: ['n1'] })).body).toMatchObject({ sentRecipients: 2, openRate: 50 })
+ expect(m.metrics).toHaveBeenCalledWith('n1')
+ for (const table of ['newsletter_delivery_batches','newsletter_delivery_batch_recipients']) expect((await call('/api/data/query', { table })).status).toBe(403)
+ m.viewer.mockResolvedValue({ ...actor, roles: ['parent'] })
+ expect((await call('/api/admin/rpc', { service: 'analytics', method: 'getNewsletterMetrics', args: ['n1'] })).status).toBe(403)
+ expect(m.metrics).toHaveBeenCalledTimes(1)
 })
