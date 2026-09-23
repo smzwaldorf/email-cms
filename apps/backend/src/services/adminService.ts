@@ -1,3 +1,4 @@
+import { inTransaction, query } from '#/lib/db'
 import {currentDirectory,classAliases} from '#/services/identityDirectory'
 /**
  * Admin Service
@@ -1627,63 +1628,71 @@ class AdminService {
    */
   async publishNewsletter(id: string): Promise<AdminNewsletter> {
     try {
-      const supabase = getSupabaseClient()
+      return await inTransaction(async () => {
+        const supabase = getSupabaseClient()
 
-      // Check that newsletter has at least one article via junction table
-      const { data: articles, error: articleError } = await supabase
-        .from('newsletter_articles')
-        .select('article_id')
-        .eq('newsletter_id', id)
-        .limit(1)
+        // Check that newsletter has at least one article via junction table
+        const { data: articles, error: articleError } = await supabase
+          .from('newsletter_articles')
+          .select('article_id')
+          .eq('newsletter_id', id)
+          .limit(1)
 
-      if (articleError) {
-        throw new AdminServiceError(
-          `Failed to check articles: ${articleError.message}`,
-          'CHECK_ARTICLES_ERROR',
-          articleError
-        )
-      }
+        if (articleError) {
+          throw new AdminServiceError(
+            `Failed to check articles: ${articleError.message}`,
+            'CHECK_ARTICLES_ERROR',
+            articleError
+          )
+        }
 
-      if (!articles || articles.length === 0) {
-        throw new AdminServiceError(
-          'Cannot publish newsletter without articles',
-          'NO_ARTICLES_ERROR'
-        )
-      }
+        if (!articles || articles.length === 0) {
+          throw new AdminServiceError(
+            'Cannot publish newsletter without articles',
+            'NO_ARTICLES_ERROR'
+          )
+        }
 
-      // Update status to published
-      const { data, error } = await supabase
-        .from('newsletters')
-        .update({
-          status: 'published',
-          published_at: new Date().toISOString(),
-        })
-        .eq('id', id)
-        .select()
-        .single()
+        // Publish only active articles included in this newsletter. Preserve prior publication times.
+        await query(`UPDATE articles SET status = 'published',
+          published_at = COALESCE(published_at, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP
+          WHERE deleted_at IS NULL AND COALESCE(is_template, false) = false
+            AND id IN (SELECT article_id FROM newsletter_articles WHERE newsletter_id = $1)`, [id])
 
-      if (error) {
-        throw new AdminServiceError(
-          `Failed to publish newsletter: ${error.message}`,
-          'PUBLISH_NEWSLETTER_ERROR',
-          error
-        )
-      }
+        // Update status to published
+        const { data, error } = await supabase
+          .from('newsletters')
+          .update({
+            status: 'published',
+            published_at: new Date().toISOString(),
+          })
+          .eq('id', id)
+          .select()
+          .single()
 
-      return {
-        id: data.id,
-        weekNumber: data.week_number,
-        title: data.title,
-        description: data.description,
-        releaseDate: data.release_date,
-        status: data.status,
-        isTemplate: data.is_template ?? false,
-        articleCount: 0,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at,
-        publishedAt: data.published_at,
-        isPublished: data.status === 'published',
-      }
+        if (error) {
+          throw new AdminServiceError(
+            `Failed to publish newsletter: ${error.message}`,
+            'PUBLISH_NEWSLETTER_ERROR',
+            error
+          )
+        }
+
+        return {
+          id: data.id,
+          weekNumber: data.week_number,
+          title: data.title,
+          description: data.description,
+          releaseDate: data.release_date,
+          status: data.status,
+          isTemplate: data.is_template ?? false,
+          articleCount: 0,
+          createdAt: data.created_at,
+          updatedAt: data.updated_at,
+          publishedAt: data.published_at,
+          isPublished: data.status === 'published',
+        }
+      })
     } catch (err) {
       if (err instanceof AdminServiceError) throw err
       throw new AdminServiceError(
@@ -1698,41 +1707,21 @@ class AdminService {
     id: string,
     audienceSelection?: NewsletterPublishAudienceSelection,
   ): Promise<AdminNewsletter> {
-    const updatedNewsletter = await this.publishNewsletter(id)
-
-    const selection: DeliveryAudienceSelection = (audienceSelection ?? { mode: 'all' }) as DeliveryAudienceSelection
     try {
-      await newsletterDeliveryService.createPublishBatch({
-        newsletterId: id,
-        audience: selection,
+      return await inTransaction(async () => {
+        const updatedNewsletter = await this.publishNewsletter(id)
+        await newsletterDeliveryService.createPublishBatch({
+          newsletterId: id,
+          audience: (audienceSelection ?? { mode: 'all' }) as DeliveryAudienceSelection,
+        })
+        return updatedNewsletter
       })
     } catch (err) {
-      // Keep publish-and-send as one operator action: if delivery bootstrap fails, revert publish.
-      const supabase = getSupabaseClient()
-      const { error: rollbackError } = await supabase
-        .from('newsletters')
-        .update({
-          status: 'draft',
-          published_at: null,
-        })
-        .eq('id', id)
-
-      if (rollbackError) {
-        throw new AdminServiceError(
-          `Delivery batch creation failed and rollback failed: ${rollbackError.message}`,
-          'PUBLISH_DELIVERY_ERROR',
-          err,
-        )
-      }
-
       throw new AdminServiceError(
-        `Delivery batch creation failed. Publish was rolled back to draft: ${err instanceof Error ? err.message : String(err)}`,
-        'PUBLISH_DELIVERY_ERROR',
-        err,
+        `Delivery batch creation failed. Publication transaction was rolled back: ${err instanceof Error ? err.message : String(err)}`,
+        'PUBLISH_DELIVERY_ERROR', err,
       )
     }
-
-    return updatedNewsletter
   }
 
   async previewNewsletterPublishAudience(

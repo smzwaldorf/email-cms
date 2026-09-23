@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { query, inTransaction } from '#/lib/db'
 import { adminService } from '@/services/adminService'
 import { withIdentityDirectory } from '#/services/identityDirectory'
 
@@ -20,6 +21,7 @@ const withAuthDirectory = <T>(run: () => T): T => withIdentityDirectory({
 
 vi.mock('#/lib/db', () => ({
   query: vi.fn(async () => ({ rows: [] })),
+  inTransaction: vi.fn(async (fn: () => Promise<unknown>) => fn()),
 }))
 
 const {
@@ -294,10 +296,19 @@ describe('AdminService', () => {
 
       await adminService.publishNewsletter('a1111111-1111-1111-1111-111111111111')
 
+      expect(inTransaction).toHaveBeenCalled()
+      expect(query).toHaveBeenCalledWith(expect.stringContaining("UPDATE articles SET status = 'published'"), ['a1111111-1111-1111-1111-111111111111'])
       expect(mockSupabase.from).toHaveBeenCalledWith('newsletters')
       expect(mockBuilder.update).toHaveBeenCalledWith(expect.objectContaining({
         status: 'published',
       }))
+    })
+
+    it('does not publish the newsletter when article publication fails', async () => {
+      mockBuilder.then.mockImplementationOnce(resolve => resolve({ data: [{ article_id: 'a1' }], error: null }))
+      vi.mocked(query).mockRejectedValueOnce(new Error('article update failed'))
+      await expect(adminService.publishNewsletter('n1')).rejects.toThrow('article update failed')
+      expect(mockBuilder.update).not.toHaveBeenCalled()
     })
 
     it('publishNewsletterWithDelivery creates publish-triggered delivery batch', async () => {
@@ -353,12 +364,9 @@ describe('AdminService', () => {
 
       await expect(
         adminService.publishNewsletterWithDelivery('newsletter-1', { mode: 'all' }),
-      ).rejects.toThrow('Publish was rolled back to draft')
+      ).rejects.toThrow('Publication transaction was rolled back')
 
-      expect(mockBuilder.update).toHaveBeenCalledWith(expect.objectContaining({
-        status: 'draft',
-        published_at: null,
-      }))
+      expect(inTransaction).toHaveBeenCalled()
     })
   })
 

@@ -26,7 +26,7 @@ jobs:
           npm run test -w @email-cms/backend --
           tests/unit/server-session.test.ts tests/unit/cloudflare-context.test.ts tests/unit/cloudflare-config.test.ts tests/unit/identity-transport.test.ts
           tests/unit/cloudflare-delivery.test.ts tests/unit/services/emailDeliveryPolicy.test.ts tests/unit/services/directoryDeliveryCutover.test.ts tests/unit/services/authCatalogues.test.ts tests/unit/services/retiredIdentityRpc.test.ts tests/unit/services/articleMediaRows.test.ts
-          tests/unit/services/adminService.spec.ts tests/unit/services/canvaEmailImport.test.ts
+          tests/unit/services/adminService.spec.ts tests/unit/publish-transaction.test.ts tests/unit/services/canvaEmailImport.test.ts
           tests/unit/services/fileEmailTemplateLoader.test.ts tests/unit/lib/upsert-conflict.test.ts
           tests/unit/lib/relation-select.test.ts tests/unit/auth/smz-auth.test.ts
           tests/integration/parent-readonly.test.ts tests/integration/cms-boundary.test.ts

@@ -68,3 +68,8 @@ export async function withTransaction<T>(fn: (client: PoolClient) => Promise<T>)
     }
   })
 }
+
+/** Join the caller's business transaction, or start one for a standalone operation. */
+export async function inTransaction<T>(fn: () => Promise<T>): Promise<T> {
+  return transactionClient.getStore() ? fn() : withTransaction(() => fn())
+}
