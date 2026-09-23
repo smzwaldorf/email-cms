@@ -106,3 +106,9 @@ it('serves admin analytics while keeping delivery tables blocked from the generi
  expect((await call('/api/admin/rpc', { service: 'analytics', method: 'getNewsletterMetrics', args: ['n1'] })).status).toBe(403)
  expect(m.metrics).toHaveBeenCalledTimes(1)
 })
+
+it('accepts only supported newsletter tracker selections', async () => {
+ expect((await call('/api/admin/rpc', { service: 'analytics', method: 'getNewsletterMetrics', args: ['n1', null, 'cms'] })).status).toBe(200)
+ expect(m.metrics).toHaveBeenCalledWith('n1', null, 'cms')
+ expect((await call('/api/admin/rpc', { service: 'analytics', method: 'getNewsletterMetrics', args: ['n1', null, 'invalid'] })).status).toBe(400)
+})

@@ -246,7 +246,7 @@ export const analyticsAggregator = {
    * Calculates metrics for a specific newsletter.
    * Computes Open Rate and Click Rate.
    */
-  async getNewsletterMetrics(newsletterId: string, className?: string): Promise<AnalyticsMetrics> {
+  async getNewsletterMetrics(newsletterId: string, className?: string, tracker: 'resend' | 'cms' = 'resend'): Promise<AnalyticsMetrics> {
     const supabase = getSupabaseClient();
     const QUERY_TIMEOUT_MS = 30000; // Increased to 30s for cold DB recovery
     
@@ -262,7 +262,7 @@ export const analyticsAggregator = {
         .select('user_id, metadata')
         .eq('newsletter_id', newsletterId)
         .eq('event_type', 'email_open')
-        .eq('metadata->>source', 'resend');
+        .eq('metadata->>source', tracker === 'resend' ? 'resend' : 'email_open');
 
       if (className) {
            const classUsers = await this.getUsersInClass(className);
@@ -283,15 +283,15 @@ export const analyticsAggregator = {
         console.error('[Analytics] Error fetching open events:', openResult.error);
         throw openResult.error;
       }
-      const openUsers = new Set(openResult.data?.filter(e => e.metadata?.qualification !== 'automated_or_proxy').map(e => e.user_id));
+      const openUsers = new Set(openResult.data?.filter(e => tracker === 'cms' || e.metadata?.qualification !== 'automated_or_proxy').map(e => e.user_id));
 
       // 2. Get Unique Clicks
       let clickEventsQuery = supabase
         .from('analytics_events')
         .select('user_id, metadata')
         .eq('newsletter_id', newsletterId)
-        .eq('event_type', 'email_click')
-        .eq('metadata->>source', 'resend');
+        .eq('event_type', tracker === 'resend' ? 'email_click' : 'link_click')
+        .eq('metadata->>source', tracker === 'resend' ? 'resend' : 'email_click');
         
       if (className) {
            const classUsers = await this.getUsersInClass(className);
@@ -310,7 +310,7 @@ export const analyticsAggregator = {
         throw clickResult.error;
       }
       
-      const clickUsers = new Set(clickResult.data?.filter(e => e.metadata?.qualification !== 'automated_or_proxy').map(e => e.user_id));
+      const clickUsers = new Set(clickResult.data?.filter(e => tracker === 'cms' || e.metadata?.qualification !== 'automated_or_proxy').map(e => e.user_id));
 
       // 3. Get Total Views (Page Views)
       let viewEventsQuery = supabase
@@ -398,15 +398,17 @@ export const analyticsAggregator = {
         deliveredUsers = new Set([...deliveredUsers].filter(id => classUsers.has(id)));
       }
       const totalDelivered = deliveredUsers.size;
-      const uniqueOpenCount = [...openUsers].filter(id => deliveredUsers.has(id)).length;
-      const uniqueClickCount = [...clickUsers].filter(id => deliveredUsers.has(id)).length;
+      const denominatorUsers = tracker === 'resend' ? deliveredUsers : sentUsers;
+      const denominator = denominatorUsers.size;
+      const uniqueOpenCount = [...openUsers].filter(id => denominatorUsers.has(id)).length;
+      const uniqueClickCount = [...clickUsers].filter(id => denominatorUsers.has(id)).length;
 
       return {
-        openRate: totalDelivered > 0 ? (uniqueOpenCount / totalDelivered) * 100 : 0,
-        emailMetricsAvailable: totalDelivered > 0,
+        openRate: denominator > 0 ? (uniqueOpenCount / denominator) * 100 : 0,
+        emailMetricsAvailable: denominator > 0,
         sentRecipients: totalSent,
         deliveredRecipients: totalDelivered,
-        clickRate: totalDelivered > 0 ? (uniqueClickCount / totalDelivered) * 100 : 0,
+        clickRate: denominator > 0 ? (uniqueClickCount / denominator) * 100 : 0,
         avgTimeSpent,
         totalViews
       };

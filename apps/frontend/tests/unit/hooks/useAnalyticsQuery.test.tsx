@@ -40,7 +40,19 @@ describe('useNewsletterMetrics', () => {
         vi.clearAllMocks();
     });
 
-    it('should fetch metrics on mount', async () => {
+    it('keeps Resend and CMS results in separate cache entries', async () => {
+        vi.mocked(analyticsAggregator.getNewsletterMetrics).mockImplementation(async (_id, _class, tracker) => ({ ...mockMetrics, openRate: tracker === 'cms' ? 80 : 20 }));
+        const { result, rerender } = renderHook(({ tracker }: { tracker: 'resend' | 'cms' }) => useNewsletterMetrics(mockNewsletterId, undefined, tracker), {
+            initialProps: { tracker: 'resend' }, wrapper: createWrapper()
+        });
+        await waitFor(() => expect(result.current.metrics?.openRate).toBe(20));
+        rerender({ tracker: 'cms' });
+        await waitFor(() => expect(result.current.metrics?.openRate).toBe(80));
+        rerender({ tracker: 'resend' });
+        await waitFor(() => expect(result.current.metrics?.openRate).toBe(20));
+    });
+
+    it('should fetch metrics on mount' , async () => {
         vi.mocked(analyticsAggregator.getNewsletterMetrics).mockResolvedValueOnce(mockMetrics);
 
         const { result } = renderHook(() => useNewsletterMetrics(mockNewsletterId), {
@@ -54,7 +66,7 @@ describe('useNewsletterMetrics', () => {
             expect(result.current.loading).toBe(false);
         });
 
-        expect(analyticsAggregator.getNewsletterMetrics).toHaveBeenCalledWith(mockNewsletterId, undefined);
+        expect(analyticsAggregator.getNewsletterMetrics).toHaveBeenCalledWith(mockNewsletterId, undefined, 'resend');
         expect(result.current.metrics).toEqual(mockMetrics);
     });
 

@@ -8,7 +8,11 @@ describe('authorized analytics client', () => {
   const metrics = { sentRecipients: 2, deliveredRecipients: 2, openRate: 50, clickRate: 0 }
   rpc.mockResolvedValue(metrics)
   expect(await analyticsAggregator.getNewsletterMetrics('n1', 'Grade 1')).toEqual(metrics)
-  expect(rpc).toHaveBeenCalledWith('analytics', 'getNewsletterMetrics', ['n1', 'Grade 1'])
+  expect(rpc).toHaveBeenCalledWith('analytics', 'getNewsletterMetrics', ['n1', 'Grade 1', 'resend'])
+ })
+ it('forwards the CMS tracker selection', async () => {
+  await analyticsAggregator.getNewsletterMetrics('n1', undefined, 'cms')
+  expect(rpc).toHaveBeenCalledWith('analytics', 'getNewsletterMetrics', ['n1', undefined, 'cms'])
  })
  it('uses backend directory aggregation for class data', async () => {
   rpc.mockResolvedValue(['Grade 1'])

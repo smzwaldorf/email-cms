@@ -7,10 +7,10 @@ import type { NewsletterTrendPoint, ArticleAnalyticsMetadata } from '@/types/ana
  * Hook to fetch analytics metrics for a newsletter.
  * Uses TanStack Query for caching and state management.
  */
-export function useNewsletterMetrics(newsletterId: string, className?: string) {
+export function useNewsletterMetrics(newsletterId: string, className?: string, tracker: 'resend' | 'cms' = 'resend') {
   const { data, isLoading, error, refetch, isRefetching } = useQuery({
-    queryKey: ['newsletterMetrics', newsletterId, className],
-    queryFn: () => analyticsAggregator.getNewsletterMetrics(newsletterId, className),
+    queryKey: ['newsletterMetrics', newsletterId, className, tracker],
+    queryFn: () => analyticsAggregator.getNewsletterMetrics(newsletterId, className, tracker),
     enabled: !!newsletterId,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });

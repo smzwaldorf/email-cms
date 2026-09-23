@@ -15,6 +15,7 @@ import type { AnalyticsNewsletterWeekOption } from '@/types/analytics';
 export const AnalyticsDashboardPage: React.FC = () => {
     const { weekNumber } = useParams<{ weekNumber: string }>();
     const navigate = useNavigate();
+    const [tracker, setTracker] = React.useState<'resend' | 'cms'>('resend');
     
     // Global Context State
     const { 
@@ -60,7 +61,7 @@ export const AnalyticsDashboardPage: React.FC = () => {
         return newsletter?.id || selectedWeek; // Fallback to selectedWeek if id not found
     }, [selectedWeek, weeks]);
     
-    const { metrics, loading: metricsLoading, refreshing: metricsRefreshing, refetch: refetchMetrics } = useNewsletterMetrics(selectedNewsletterId, selectedClass);
+    const { metrics, loading: metricsLoading, refreshing: metricsRefreshing, refetch: refetchMetrics } = useNewsletterMetrics(selectedNewsletterId, selectedClass, tracker);
     const { stats: articleData, loading: articlesLoading, refreshing: articlesRefreshing, refetch: refetchArticles } = useArticleStats(selectedNewsletterId);
     const { trend: trendData, loading: trendsLoading, refreshing: trendsRefreshing, refetch: refetchTrends } = useTrendStats(selectedClass);
     const { data: classEngagement, loading: classLoading, refreshing: classesRefreshing, refetch: refetchClasses } = useClassEngagement(selectedNewsletterId);
@@ -218,8 +219,23 @@ export const AnalyticsDashboardPage: React.FC = () => {
                     </div>
                 </div>
 
+                {/* Newsletter email engagement source */}
+                <div className="flex flex-wrap items-center gap-3">
+                    <label htmlFor="email-tracker" className="text-sm font-medium">Email tracker</label>
+                    <select id="email-tracker" value={tracker}
+                        onChange={event => setTracker(event.target.value as 'resend' | 'cms')}
+                        className="px-3 py-2 border border-brand-neutral-200 rounded-lg text-sm">
+                        <option value="resend">Resend</option>
+                        <option value="cms">CMS tracker</option>
+                    </select>
+                    <p className="text-sm text-brand-neutral-500">
+                        {tracker === 'resend'
+                            ? 'Email opens and clicks reported by Resend, divided by delivered recipients.'
+                            : 'CMS email pixel loads and tracked email-link clicks, divided by sent recipients. Includes proxy and automated requests; image loads do not confirm a human read.'}
+                    </p>
+                </div>
                 {/* KPI Grid */}
-                {metrics?.emailMetricsAvailable === false && <p className="text-sm text-brand-neutral-500">Email rates are unavailable: no Resend delivery confirmations for this selection, or delivery data could not be loaded.</p>}
+                {metrics?.emailMetricsAvailable === false && <p className="text-sm text-brand-neutral-500">Email rates are unavailable: {tracker === 'resend' ? 'no Resend delivery confirmations' : 'no successfully sent recipients'} for this selection, or delivery data could not be loaded.</p>}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <KPICard 
                         title="Open Rate" 
@@ -228,7 +244,7 @@ export const AnalyticsDashboardPage: React.FC = () => {
                         suffix="%"
                         loading={metricsLoading}
                         trend={0} 
-                        tooltip="Unique recipients with Resend opens / unique recipients with Resend delivery confirmations. Image blocking and preloading affect accuracy."
+                        tooltip={tracker === 'resend' ? 'Unique recipients with Resend opens / delivered recipients. Image blocking and preloading affect accuracy.' : 'Unique sent recipients whose CMS email pixel loaded / sent recipients. Includes image proxies and automated requests.'}
                         icon={<div className="p-2 bg-purple-50 rounded-lg text-purple-600"><EyeIcon /></div>}
                     />
                     <KPICard 
@@ -238,7 +254,7 @@ export const AnalyticsDashboardPage: React.FC = () => {
                         suffix="%"
                         loading={metricsLoading}
                         trend={0} 
-                        tooltip="Unique recipients with Resend clicks / unique recipients with Resend delivery confirmations. Includes links anywhere in the email; automated clicks may be counted."
+                        tooltip={tracker === 'resend' ? 'Unique recipients with Resend clicks / delivered recipients. Includes links anywhere in the email; automated clicks may be counted.' : 'Unique sent recipients with CMS tracked email-link clicks / sent recipients. Only links routed through the CMS tracker count; automated requests are included.'}
                         icon={<div className="p-2 bg-emerald-50 rounded-lg text-emerald-600"><ClickIcon /></div>}
                     />
                     <KPICard 

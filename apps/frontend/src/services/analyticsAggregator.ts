@@ -28,8 +28,8 @@ export const analyticsAggregator = {
   generateDailySnapshot(date?: string): Promise<void> {
     return adminRpc('analytics', 'generateDailySnapshot', [date])
   },
-  getNewsletterMetrics(newsletterId: string, className?: string): Promise<AnalyticsMetrics> {
-    return adminRpc('analytics', 'getNewsletterMetrics', [newsletterId, className])
+  getNewsletterMetrics(newsletterId: string, className?: string, tracker: 'resend' | 'cms' = 'resend'): Promise<AnalyticsMetrics> {
+    return adminRpc('analytics', 'getNewsletterMetrics', [newsletterId, className, tracker])
   },
   getArticleStats(newsletterId: string): Promise<ArticleStats[]> {
     return adminRpc('analytics', 'getArticleStats', [newsletterId])

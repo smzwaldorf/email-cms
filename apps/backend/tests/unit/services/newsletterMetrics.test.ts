@@ -35,3 +35,30 @@ describe('newsletter rates use Resend delivery confirmations', () => {
     expect(await analyticsAggregator.getNewsletterMetrics('n1')).toMatchObject({ openRate: 0, clickRate: 0 })
   })
 })
+
+describe('CMS newsletter engagement', () => {
+  it('counts proxy pixel loads and email-link clicks once per sent recipient without mixing sources', async () => {
+    holder.store!.rows('newsletter_delivery_batches').push({ id: 'b1', newsletter_id: 'n1' })
+    holder.store!.rows('newsletter_delivery_batch_recipients').push(
+      { batch_id: 'b1', parent_id: 'p1', send_status: 'sent' },
+      { batch_id: 'b1', parent_id: 'p2', send_status: 'sent' },
+      { batch_id: 'b1', parent_id: 'p1', send_status: 'sent' },
+      { batch_id: 'b1', parent_id: 'p3', send_status: 'failed' })
+    holder.store!.rows('analytics_events').push(
+      { newsletter_id: 'n1', user_id: 'p1', event_type: 'email_open', metadata: { source: 'email_open', qualification: 'automated_or_proxy' } },
+      { newsletter_id: 'n1', user_id: 'p1', event_type: 'email_open', metadata: { source: 'email_open' } },
+      { newsletter_id: 'n1', user_id: 'p2', event_type: 'email_open', metadata: { source: 'resend' } },
+      { newsletter_id: 'n1', user_id: 'p3', event_type: 'email_open', metadata: { source: 'email_open' } },
+      { newsletter_id: 'other', user_id: 'p2', event_type: 'email_open', metadata: { source: 'email_open' } },
+      { newsletter_id: 'n1', user_id: 'p1', event_type: 'link_click', metadata: { source: 'email_click' } },
+      { newsletter_id: 'n1', user_id: 'p1', event_type: 'link_click', metadata: { source: 'email_click' } },
+      { newsletter_id: 'n1', user_id: 'p2', event_type: 'link_click', metadata: { source: 'reader' } },
+      { newsletter_id: 'n1', user_id: 'p2', event_type: 'email_click', metadata: { source: 'resend' } })
+    expect(await analyticsAggregator.getNewsletterMetrics('n1', undefined, 'cms')).toMatchObject({ openRate: 50, clickRate: 50, sentRecipients: 2, deliveredRecipients: 0, emailMetricsAvailable: true })
+    expect(await analyticsAggregator.getNewsletterMetrics('n1')).toMatchObject({ emailMetricsAvailable: false })
+  })
+  it('requires sent recipients even when a CMS pixel event exists', async () => {
+    holder.store!.rows('analytics_events').push({ newsletter_id: 'n1', user_id: 'p1', event_type: 'email_open', metadata: { source: 'email_open' } })
+    expect(await analyticsAggregator.getNewsletterMetrics('n1', undefined, 'cms')).toMatchObject({ openRate: 0, clickRate: 0, emailMetricsAvailable: false })
+  })
+})

@@ -31,7 +31,7 @@ vi.mock('react-window', () => ({
 
 // Mock implementation variables
 const mockRefetch = vi.fn()
-const mockUseNewsletterMetrics = vi.fn(() => ({ metrics: null, refetch: mockRefetch, loading: false, refreshing: false }))
+const mockUseNewsletterMetrics = vi.fn((..._args: unknown[]) => ({ metrics: null, refetch: mockRefetch, loading: false, refreshing: false }))
 const mockUseArticleStats = vi.fn(() => ({ stats: [], refetch: vi.fn(), loading: false, refreshing: false }))
 const mockUseTrendStats = vi.fn(() => ({ trend: [], refetch: vi.fn(), loading: false, refreshing: false }))
 const mockUseClassEngagement = vi.fn(() => ({ data: [], refetch: vi.fn(), loading: false, refreshing: false }))
@@ -39,7 +39,7 @@ const mockUseTopicHotness = vi.fn(() => ({ hotness: [], refetch: vi.fn(), loadin
 
 // Mock Hooks
 vi.mock('@/hooks/useAnalyticsQuery', () => ({
-  useNewsletterMetrics: () => mockUseNewsletterMetrics(),
+  useNewsletterMetrics: (...args: unknown[]) => mockUseNewsletterMetrics(...args),
   useArticleStats: () => mockUseArticleStats(),
   useTrendStats: () => mockUseTrendStats(),
   useClassEngagement: () => mockUseClassEngagement(),
@@ -65,6 +65,14 @@ describe('Analytics Dashboard Refresh', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+  })
+
+  it('switches the newsletter email metrics source', () => {
+    render(<AnalyticsProvider><BrowserRouter><AnalyticsDashboardPage /></BrowserRouter></AnalyticsProvider>)
+    expect(screen.getByLabelText('Email tracker')).toHaveValue('resend')
+    fireEvent.change(screen.getByLabelText('Email tracker'), { target: { value: 'cms' } })
+    expect(mockUseNewsletterMetrics.mock.calls.at(-1)?.[2]).toBe('cms')
+    expect(screen.getByText(/CMS email pixel loads and tracked email-link clicks/)).toBeInTheDocument()
   })
 
   it('should perform soft refresh when clicking the refresh button', () => {
