@@ -25,7 +25,7 @@
     "SMZ_AUTH_ISSUER": "https://smz-auth.black-tree-204e.workers.dev/api/auth",
     "APP_URL": "https://smz-cms.pages.dev",
     "BACKEND_CORS_ORIGIN": "https://smz-cms.pages.dev",
-    "DELIVERY_ENABLED": "false"
+    "DELIVERY_ENABLED": "true"
   },
   "triggers": {
     "crons": [

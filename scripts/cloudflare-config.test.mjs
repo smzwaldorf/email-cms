@@ -23,12 +23,12 @@ test('both CMS Worker configurations bind directly to the production SMZ Auth Wo
 })
 
 const environment = {CLOUDFLARE_ACCOUNT_ID:'a'.repeat(32),CLOUDFLARE_HYPERDRIVE_ID:'b'.repeat(32),CMS_ORIGIN:'https://cms.school.test',CMS_API_ORIGIN:'https://api.school.test',SMZ_AUTH_ISSUER:'https://auth.school.test/api/auth'}
-test('demo deployment requires two distinct addresses and always disables delivery',()=>{
+test('demo deployment requires two distinct addresses and enables delivery by default',()=>{
  assert.throws(()=>configuration(environment),/exactly two/)
  assert.throws(()=>configuration({...environment,NEWSLETTER_TEST_RECIPIENTS:'a@school.test,a@school.test'}),/Duplicate/)
  assert.throws(()=>configuration({...environment,NEWSLETTER_TEST_RECIPIENTS:'invalid,b@school.test'}),/Invalid/)
- const config=configuration({...environment,NEWSLETTER_TEST_RECIPIENTS:'A@school.test,b@school.test',DELIVERY_ENABLED:'true'})
- assert.equal(config.vars.DELIVERY_ENABLED,'false')
+ const config=configuration({...environment,NEWSLETTER_TEST_RECIPIENTS:'A@school.test,b@school.test'})
+ assert.equal(config.vars.DELIVERY_ENABLED,'true')
  assert.equal(config.vars.NEWSLETTER_DEMO_MODE,'true')
  assert.equal(config.vars.NEWSLETTER_TEST_RECIPIENTS,'a@school.test,b@school.test')
 })

@@ -12,6 +12,9 @@ describe('Worker production configuration', () => {
     expect(config.HYPERDRIVE).toBeUndefined()
     expect(config.DATABASE_URL).toBeUndefined()
   })
+  it('enables delivery when no switch is configured', () => {
+    expect(validateEnvironment({ ...valid, DELIVERY_ENABLED: undefined }).DELIVERY_ENABLED).toBe('true')
+  })
   it.each([
     { APP_URL: 'http://localhost:5174' }, { APP_URL: 'https://cms.example.com' },
     { BACKEND_CORS_ORIGIN: 'https://different.school.test' }, { SMZ_AUTH_ISSUER: 'https://auth.school.test/wrong' },

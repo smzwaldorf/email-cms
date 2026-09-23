@@ -30,7 +30,7 @@ export default {
         if (incoming.url === '/health' && incoming.method === 'GET') {
           await pool.query('SELECT 1')
           outgoing.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' })
-          outgoing.end(JSON.stringify({ status: 'ok', database: 'connected', deliveryEnabled: env.DELIVERY_ENABLED === 'true' }))
+          outgoing.end(JSON.stringify({ status: 'ok', database: 'connected', deliveryEnabled: config.DELIVERY_ENABLED === 'true' }))
           return
         }
         await createCmsApplication({ supabase: getSupabaseClient(), corsOrigin: env.BACKEND_CORS_ORIGIN }).handle(incoming, outgoing)
@@ -56,14 +56,14 @@ export default {
         await query("DELETE FROM cms_browser_sessions WHERE id_hash IN (SELECT id_hash FROM cms_browser_sessions WHERE remembered_until < now() LIMIT 100)")
       }) } finally { await cleanupPool.end() }
     }
-    if (env.DELIVERY_ENABLED !== 'true') return
+    if (config.DELIVERY_ENABLED !== 'true') return
     if (!env.RESEND_API_KEY || !env.RESEND_FROM_EMAIL || !env.JWT_SECRET) throw new Error('Delivery secrets are required before activation')
     const pool = poolFor(env)
     try {
       await withRuntimeEnvironment(config, () => withDatabasePool(pool, () => new NewsletterDeliveryWorker({
         port: 8787, corsOrigin: env.BACKEND_CORS_ORIGIN, workerId: `cloudflare-${crypto.randomUUID()}`,
         workerPollIntervalMs: 60_000, workerBatchSize: 1,
-      }, getSupabaseClient()).runOnce()))
+      }, getSupabaseClient()).runOnce()), env.SMZ_AUTH)
     } finally { await pool.end() }
   },
 }
