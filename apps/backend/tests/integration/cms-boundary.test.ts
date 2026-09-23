@@ -1,7 +1,7 @@
 import { Readable } from 'node:stream'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-const m = vi.hoisted(() => ({ metrics: vi.fn(), viewer: vi.fn(), admin: vi.fn(), directory: vi.fn(), preview: vi.fn(), runQuery: vi.fn(), publish: vi.fn(), createBatch: vi.fn(), edit: vi.fn(), webhook: vi.fn(), readiness: vi.fn(), lock: vi.fn() }))
+const m = vi.hoisted(() => ({ recordEvent: vi.fn(), readArticles: vi.fn(), metrics: vi.fn(), viewer: vi.fn(), admin: vi.fn(), directory: vi.fn(), preview: vi.fn(), runQuery: vi.fn(), publish: vi.fn(), createBatch: vi.fn(), edit: vi.fn(), webhook: vi.fn(), readiness: vi.fn(), lock: vi.fn() }))
 vi.mock('#/lib/db', () => ({ withTransaction: (fn: (client: { query: typeof m.lock }) => unknown) => fn({ query: m.lock }) }))
 vi.mock('#/auth', async () => ({ ...await vi.importActual<typeof import('#/auth')>('#/auth'), requireViewer: m.viewer, requireAdmin: m.admin, directoryForToken: m.directory }))
 vi.mock('#/services/adminService', () => ({ adminService: { publishNewsletter: m.publish, getNewsletterPublishReadiness: m.readiness } }))
@@ -10,6 +10,7 @@ vi.mock('#/services/cmsArticleService', () => ({ cmsArticleService: { update: m.
 vi.mock('#/lib/query', () => ({ runSerializedQuery: m.runQuery, from: vi.fn() }))
 vi.mock('#/services/emailPlatform/backendEmailPlatformService', () => ({ backendEmailPlatformService: { handleKitWebhook: m.webhook } }))
 vi.mock('#/services/analyticsAggregator', () => ({ analyticsAggregator: { getNewsletterMetrics: m.metrics } }))
+vi.mock('#/services/readerTrackingService', () => ({ recordReaderEvent: m.recordEvent, getReaderReadArticles: m.readArticles }))
 import { handleApiRequest } from '#/routes'
 import { HttpError } from '#/auth'
 import { getSupabaseClient } from '#/lib/supabase'
@@ -111,4 +112,24 @@ it('accepts only supported newsletter tracker selections', async () => {
  expect((await call('/api/admin/rpc', { service: 'analytics', method: 'getNewsletterMetrics', args: ['n1', null, 'cms'] })).status).toBe(200)
  expect(m.metrics).toHaveBeenCalledWith('n1', null, 'cms')
  expect((await call('/api/admin/rpc', { service: 'analytics', method: 'getNewsletterMetrics', args: ['n1', null, 'invalid'] })).status).toBe(400)
+})
+
+it.each(['parent', 'admin'])('allows %s reader event ingestion without admin privileges', async role => {
+ const viewer = { ...actor, role, roles: [role] }
+ m.viewer.mockResolvedValue(viewer)
+ m.admin.mockRejectedValue(new HttpError(403, 'Not an admin'))
+ const body = { event_type: 'page_view' }
+ expect((await call('/api/reader/events', body)).status).toBe(200)
+ expect(m.recordEvent).toHaveBeenCalledWith(body, viewer)
+ expect(m.admin).not.toHaveBeenCalled()
+})
+it('rejects unauthenticated reader tracking before recording', async () => {
+ m.viewer.mockRejectedValue(new HttpError(401, 'Sign in required'))
+ expect((await call('/api/reader/events', {})).status).toBe(401)
+ expect(m.recordEvent).not.toHaveBeenCalled()
+})
+it('scopes read history to the authenticated reader', async () => {
+ m.readArticles.mockResolvedValue(['a1'])
+ expect((await call('/api/reader/read-articles?newsletterId=n1&userId=forged', {}, 'GET')).body).toEqual(['a1'])
+ expect(m.readArticles).toHaveBeenCalledWith('n1', actor)
 })

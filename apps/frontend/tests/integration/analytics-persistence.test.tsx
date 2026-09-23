@@ -87,7 +87,7 @@ describe('Analytics Persistence', () => {
         // Since we are checking if the component *remembers* the state on mount.
         await waitFor(() => {
              // The most recent call should be with the persisted newsletter ID (UUID)
-             expect(useAnalyticsQuery.useNewsletterMetrics).toHaveBeenLastCalledWith(mockNewsletterId2, expect.anything());
+             expect(useAnalyticsQuery.useNewsletterMetrics).toHaveBeenLastCalledWith(mockNewsletterId2, expect.anything(), 'resend');
         });
     });
 

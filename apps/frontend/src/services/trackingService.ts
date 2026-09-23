@@ -1,4 +1,4 @@
-import { getSupabaseClient } from '@/lib/supabase';
+import { backendRequest } from '@/services/backendApi';
 import { AnalyticsEvent } from '@/types/analytics';
 import type { TrackingMetadata } from '@/types/tracking';
 
@@ -9,29 +9,15 @@ export const trackingService = {
   
   /**
    * Logs an analytics event to the database.
-   * Silently fails in production to avoid disrupting user experience, but logs to console in dev.
+   * Warns on failures without disrupting reading. Tracking is always enabled.
    * Note: newsletter_id is expected to be a UUID.
    */
   async logEvent(event: Omit<AnalyticsEvent, 'id' | 'created_at'>): Promise<void> {
-    if (!import.meta.env.VITE_TRACKING_ENABLED) {
-      if (import.meta.env.DEV) {
-        console.log('[Analytics] Event skipped (disabled):', event);
-      }
-      return;
-    }
-
     try {
-      const { error } = await getSupabaseClient()
-        .from('analytics_events')
-        .insert(event);
-
-      if (error) {
-        throw error;
-      }
-
-      if (import.meta.env.DEV) {
-        console.log('[Analytics] Event logged:', event);
-      }
+      const { user_id: _userId, ...payload } = event;
+      await backendRequest('/api/reader/events', {
+        method: 'POST', body: JSON.stringify(payload), keepalive: true,
+      });
     } catch (error) {
       console.warn('[Analytics] Failed to log event:', error);
     }
@@ -39,49 +25,14 @@ export const trackingService = {
 
   /**
    * Fetches the list of article IDs that the user has read (viewed) in a specific week.
-   * @param userId The user ID to check.
+   * @param _userId Compatibility argument; the server uses the signed-in user.
    * @param newsletterId The newsletter week number or UUID.
    * @returns Array of article IDs.
    */
-  async getReadArticles(userId: string, newsletterId?: string): Promise<string[]> {
+  async getReadArticles(_userId: string, newsletterId?: string): Promise<string[]> {
     try {
-      let query = getSupabaseClient()
-        .from('analytics_events')
-        .select('article_id')
-        .eq('user_id', userId)
-        .eq('event_type', 'page_view')
-        .not('article_id', 'is', null);
-
-      if (newsletterId) {
-        // Check if it's a UUID (newsletter id) or week_number
-        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(newsletterId);
-        
-        if (isUUID) {
-          // Use newsletter_id directly
-          query = query.eq('newsletter_id', newsletterId);
-        } else {
-          // Resolve week_number to newsletter UUID
-          const { data: newsletter } = await getSupabaseClient()
-            .from('newsletters')
-            .select('id')
-            .eq('week_number', newsletterId)
-            .single();
-          
-          if (newsletter?.id) {
-            query = query.eq('newsletter_id', newsletter.id);
-          }
-        }
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        throw error;
-      }
-
-      // Use Set to return unique IDs
-      const uniqueIds = new Set(data?.map(row => row.article_id as string) || []);
-      return Array.from(uniqueIds);
+      const query = newsletterId ? `?newsletterId=${encodeURIComponent(newsletterId)}` : '';
+      return await backendRequest<string[]>(`/api/reader/read-articles${query}`);
     } catch (error) {
       console.warn('[Analytics] Failed to fetch read articles:', error);
       return [];

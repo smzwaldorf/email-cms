@@ -1,3 +1,4 @@
+vi.mock('@/services/trackingService', () => ({ trackingService: { getReadArticles: vi.fn().mockResolvedValue([]) } }))
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, waitFor, screen } from '@testing-library/react'
 import { WeeklyReaderPage } from '@/pages/WeeklyReaderPage'

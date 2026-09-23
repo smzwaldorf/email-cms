@@ -1,3 +1,4 @@
+import { recordReaderEvent, getReaderReadArticles } from '#/services/readerTrackingService'
 import { analyticsAggregator } from '#/services/analyticsAggregator'
 import { handleResendWebhook } from '#/services/resendWebhookService'
 import { withIdentityDirectory } from '#/services/identityDirectory'
@@ -361,6 +362,19 @@ async function handleScopedApiRequest(
         throw new HttpError(403, 'Use an authorized CMS action for this table')
       }
       sendJson(response, 200, await runSerializedQuery(body as unknown as SerializedQuery), context.corsOrigin)
+      return
+    }
+
+    if (method === 'POST' && url.pathname === '/api/reader/events') {
+      const viewer = await requireViewer(request)
+      await recordReaderEvent(await readJson(request), viewer)
+      sendJson(response, 200, { accepted: true }, context.corsOrigin)
+      return
+    }
+
+    if (method === 'GET' && url.pathname === '/api/reader/read-articles') {
+      const viewer = await requireViewer(request)
+      sendJson(response, 200, await getReaderReadArticles(url.searchParams.get('newsletterId') ?? undefined, viewer), context.corsOrigin)
       return
     }
 

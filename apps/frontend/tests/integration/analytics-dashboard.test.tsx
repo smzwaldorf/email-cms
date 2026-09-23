@@ -184,7 +184,7 @@ describe('AnalyticsDashboardPage Integration', () => {
 
         // Verify hook was called with the newsletter ID (UUID format)
         await waitFor(() => {
-             expect(useAnalyticsQuery.useNewsletterMetrics).toHaveBeenCalledWith(mockNewsletterId2, expect.anything());
+             expect(useAnalyticsQuery.useNewsletterMetrics).toHaveBeenCalledWith(mockNewsletterId2, expect.anything(), 'resend');
         });
     });
 
@@ -243,7 +243,8 @@ describe('AnalyticsDashboardPage Integration', () => {
         await waitFor(() => {
             expect(useAnalyticsQuery.useNewsletterMetrics).toHaveBeenCalledWith(
                 mockNewsletterId1,
-                expect.anything()
+                expect.anything(),
+                'resend'
             )
         })
     })
