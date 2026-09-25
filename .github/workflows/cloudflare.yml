@@ -44,9 +44,11 @@ jobs:
   deploy:
     needs: validate
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Historical secret store; these resources are staging.
     environment: production
     runs-on: ubuntu-latest
     env:
+      DEPLOYMENT_ENVIRONMENT: staging
       CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_HYPERDRIVE_ID: ${{ vars.CLOUDFLARE_HYPERDRIVE_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -64,6 +66,9 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: npm run build -w @email-cms/shared
       - run: npm run cloudflare:templates
+      - name: Rename existing staging resources in place
+        if: vars.STAGING_RESOURCE_MIGRATION == 'true'
+        run: node scripts/rename-staging-resources.mjs
       - run: npm run cloudflare:configure
       - name: Validate Pages configuration
         run: npx wrangler pages functions build-env .wrangler/deploy --outfile .wrangler/deploy/pages-build-env.json

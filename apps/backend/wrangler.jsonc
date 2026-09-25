@@ -1,5 +1,5 @@
 {
-  "name": "smz-cms-api",
+  "name": "staging-smz-news-api",
   "main": "src/cloudflare/worker.ts",
   "compatibility_date": "2026-09-12",
   "compatibility_flags": [
@@ -36,7 +36,7 @@
   "services": [
     {
       "binding": "SMZ_AUTH",
-      "service": "smz-auth"
+      "service": "staging-smz-auth"
     }
   ]
 }

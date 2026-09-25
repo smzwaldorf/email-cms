@@ -1,5 +1,12 @@
 # Cloudflare deployment
 
+> Staging naming migration (2026-09-25): deployment resource names now use `staging-smz-*` (`news` replaces `cms` in Cloudflare resource names). `DEPLOYMENT_ENVIRONMENT=production` selects `production-smz-*` names for a future separately provisioned production deployment. The GitHub environment still named `production` is the existing staging secret store; changing that store is a separate migration.
+>
+> Canonical staging URLs: `https://staging-auth.smzwaldorf.com`, `https://staging-news.smzwaldorf.com`, `https://staging-news-api.smzwaldorf.com`, `https://staging-app-a.smzwaldorf.com`, and `https://staging-app-b.smzwaldorf.com`. App A Pages is `staging-smz-app-a`. Existing databases, credentials, and OAuth client IDs are retained. Fresh browser sign-in is required after the issuer change.
+>
+> `STAGING_RESOURCE_MIGRATION=true` enables the guarded, resumable in-place rename step. Disable it after the first successful deployment. No resource is copied or deleted by that step. Prior URLs and names elsewhere in this document are historical.
+
+
 ## Current configuration — September 14, 2026
 
 Production runs on Cloudflare Pages (`smz-cms.pages.dev`) and Worker `smz-cms-api`, with SMZ Identity on Worker `smz-auth`. Pages forwards `/api/*` through its `CMS_API` service binding; the CMS Worker uses its `SMZ_AUTH` binding for Identity requests. The existing shared PlanetScale cluster holds separate logical databases: CMS uses `smz-cms` through uncached Hyperdrive `686ed1534b77435eb5537fabba62e61c`. Do not substitute Auth's database or binding.
