@@ -1,342 +1,55 @@
-# CLAUDE.md
+# Email CMS contributor guide
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This is a React/TypeScript monorepo with a PostgreSQL-backed CMS API. SMZ Auth owns login eligibility, roles and school-directory relationships. The CMS backend owns content permissions, newsletter composition, recipient snapshots, delivery and analytics.
 
-## Project Overview
+## Workspaces and boundaries
 
-**Email CMS Newsletter Viewer** - A React 18 + TypeScript monorepo for reading and managing email newsletters organized by week, plus a Node backend that owns admin/business logic, email delivery, and tracking endpoints.
+- `apps/frontend` (`@email-cms/frontend`): Vite app and browser tests.
+- `apps/backend` (`@email-cms/backend`): Node HTTP API, Cloudflare Worker entry, business services and delivery worker.
+- `packages/shared` (`@email-cms/shared`): types and permission contracts.
 
-- **Tech Stack**: React 18, TypeScript 5, Vite 5, Tailwind CSS 3, Vitest, React Router v6, PostgreSQL, Handlebars (email templates)
-- **Workspaces**: `apps/frontend` (React app), `apps/backend` (Node HTTP service + delivery worker), `packages/shared` (shared types)
+Frontend pages call the backend HTTP API through `apps/frontend/src/services/backendApi.ts`. Admin service clients are thin proxies to `/api/admin/rpc`; business rules belong in backend services. Do not import backend modules into the frontend. The backend uses `#/*` and `#shared/*` subpath imports from its `package.json`.
 
-## Monorepo Layout
+Authentication is delegated to SMZ Auth. A user UUID is not an access token. Protected requests require current Identity admission and CMS action authorization. Production uses the confidential `email-cms-server` client and backend sessions; local `config/local.env.example` starts in public-client compatibility mode until the session prerequisites are configured.
 
-```
-apps/frontend/     @email-cms/frontend  - Vite React app (src/, tests/)
-apps/backend/      @email-cms/backend   - Node HTTP service (src/routes.ts, src/index.ts),
-                                          delivery worker (src/worker/), email templates (templates/email/)
-packages/shared/   @email-cms/shared    - Shared TypeScript types
-```
+## Local development
 
-Architecture rule (enforced by ESLint `no-restricted-imports`): frontend code must call the backend HTTP API (`apps/frontend/src/services/backendApi.ts`) instead of importing backend modules. Frontend `adminService`/`emailTemplateService` are thin proxies over the backend admin RPC endpoint (`/api/admin/rpc`); the real business logic lives in `apps/backend/src/services/`.
+From the repository root:
 
-## Development Commands
-
-### Essential Commands (run from repo root)
 ```bash
-npm run dev            # Frontend dev server (http://localhost:5174 with HMR)
-npm run backend:dev    # Backend HTTP service (tsx, reads .env / .env.local)
-npm run worker:dev     # Newsletter delivery worker
-npm test               # Frontend then backend test suites (single run)
-npm run build          # Build shared -> backend -> frontend
-npm run preview        # Preview production frontend build
-npm run lint           # ESLint across all workspaces
-npm run format         # Prettier format files
-npm run coverage       # Frontend test coverage report
+npm install
+npm run build -w @email-cms/shared
+# New setup only: preserve an existing .env.local.
+cp -n config/local.env.example .env.local
+npm run backend:dev
+# In another terminal:
+npm run dev
 ```
 
-### Useful Test Commands
+Vite uses `http://localhost:5173` with `strictPort`; the backend defaults to `http://localhost:8787`, and local Auth uses `http://localhost:3000`. The example CMS database connection is on port `55440`. Set a real local `DATABASE_URL` privately in `.env.local`. Check the existing database before running `npm run db:up`; Compose also defaults to port `55440` and must not collide with an existing server. `npm run db:schema` resets the Compose database. `npm run seed` is an alias for the insert-only demo seed; it does not reset a database.
+
+Local delivery is disabled by the example configuration. Start `npm run worker:dev` only when the intended audience and provider settings are ready. Local or demo sending requires `DELIVERY_ENABLED=true`, a `NEWSLETTER_TEST_RECIPIENTS` allowlist, and backend-only Resend and tracking secrets. Cloudflare's generated production configuration enables scheduled delivery by default; check its effective configuration before publishing.
+
+## Commands
+
 ```bash
-npm run test -w @email-cms/frontend                      # Frontend suite only
-npm run test -w @email-cms/backend                       # Backend suite only
-npx vitest --run tests/components/NavigationBar.test.tsx # Single file (run inside apps/frontend)
-npx vitest --run -t "should render"                      # Tests matching pattern
+npm run lint
+npm test
+npm run test -w @email-cms/backend
+npm run test -w @email-cms/frontend
+npm run build
+npm run cloudflare:check
+npm run seed:demo -- --check
 ```
 
-### Linting Requirements
-- Keep `@typescript-eslint/no-explicit-any` enabled repo-wide. Do not "fix" lint by disabling the rule globally or by adding broad file-level overrides.
-- When lint fails on typing, prefer real domain/database types from the workspace `src/types/` (or `packages/shared/src/types/`), or use `unknown` plus small type guards/helpers instead of `any`.
-- Do not weaken the frontend/backend import boundary override in `.eslintrc.cjs`.
-- The repo currently uses legacy ESLint config via `.eslintrc.cjs`, so do not upgrade ESLint to v9+ without also migrating to flat config (`eslint.config.js`). Upgrading `@typescript-eslint/*` is fine, but keep ESLint on a compatible v8 release unless you are doing the config migration in the same change.
-- After lint/tooling upgrades, re-run `npm run lint` and watch for newly surfaced rules (for example unused catch variables) rather than suppressing them.
-- For Postgres query typing, prefer existing row types in `src/types/database.ts` and small local query result interfaces over `as any`.
+`npm test` runs frontend then backend Vitest suites. Backend business logic belongs in `apps/backend/tests`; frontend tests should cover the proxy contract and UI behavior. The repository uses ESLint 8 with `.eslintrc.cjs`. Keep `@typescript-eslint/no-explicit-any` and the frontend/backend import boundary enabled; use domain types or `unknown` with guards to resolve typing errors.
 
-### Reset Local Development Environment
-When you need to fully reset local Postgres and recreate development seed data:
+## Current runtime paths
 
-1. Start custom Postgres and apply the vanilla schema plus seed snapshot:
-```bash
-npm run db:up
-npm run seed
-```
+- Frontend routes are in `apps/frontend/src/App.tsx`; they include `/week/:weekNumber`, `/newsletter/:newsletterId`, `/admin`, `/admin/articles`, `/admin/newsletters/id/:id`, `/admin/email-templates`, and `/admin/analytics`.
+- HTTP routes are in `apps/backend/src/routes.ts`. The API includes server-session endpoints, reader and admin operations, tracking pixel/click, and the Resend webhook. Kit inbound webhook compatibility remains, while newsletter sending uses Resend.
+- `apps/backend/src/services/emailPlatform/backendEmailPlatformService.ts` sends one personalized Resend message per recipient and stores each provider message ID.
+- `apps/backend/src/cloudflare/worker.ts` handles Cloudflare requests and the scheduled delivery trigger. The Node delivery executor lives under `apps/backend/src/worker/`.
+- Build-time email templates are in `apps/backend/templates/email/`; `scripts/cloudflare-templates.mjs` bundles and precompiles them for the backend.
 
-2. Store the connection string in `.env.local` (see `.env.example`):
-```bash
-DATABASE_URL=postgresql://email_cms:email_cms@127.0.0.1:55432/email_cms
-VITE_BACKEND_URL=http://localhost:8787
-```
-
-Authentication is delegated to SMZ Auth. UUID bearer tokens are invalid. Read [the current contract](specs/docs/SMZ_AUTH_CMS_CONTRACT.md) before auth, role, data-gateway, publish or delivery edits.
-
-### Path Aliases
-Each workspace aliases `@` to its own `src/` directory:
-```typescript
-// In apps/frontend: resolves to apps/frontend/src/components/NavigationBar
-import { NavigationBar } from '@/components/NavigationBar'
-```
-The backend additionally uses subpath imports `#/*` (its own `src/`) and `#shared/*` (`packages/shared/src/`), defined in `apps/backend/package.json`.
-
-## Architecture
-
-### Frontend Layers (apps/frontend)
-```
-Pages (WeeklyReaderPage)
-    ↓ (state management, interaction logic)
-Components (ArticleListView, ArticleContent, NavigationBar, SideButton)
-    ↓ (rendering, props-based logic)
-Services & Context (backendApi, thin service proxies, NavigationContext)
-    ↓ (reader queries via backend HTTP API; admin operations via /api/admin/rpc)
-Backend (apps/backend routes.ts -> services)
-    ↓ (business logic, RBAC, PostgreSQL access, live central-role authorization, Kit sync, tracking)
-```
-
-### Key Directories (apps/frontend)
-- **src/components/** - Reusable UI components (test files: `tests/components/`)
-- **src/pages/** - Page-level components and layout (test files: `tests/integration/`)
-- **src/services/** - Reader-side logic and thin backend API clients (backendApi.ts, adminService.ts proxy)
-- **src/context/** - Global state: NavigationContext.tsx (React Context API)
-- **src/types/** - TypeScript type definitions (centralized in index.ts)
-- **src/utils/** - Helper functions: urlUtils.ts, formatters.ts
-- **src/hooks/** - Custom React hooks for data fetching
-- **src/styles/** - Global styles with Tailwind CSS
-
-### Key Directories (apps/backend)
-- **src/routes.ts / src/index.ts** - HTTP endpoints (admin RPC, tracking pixel/click, kit webhook, batch import)
-- **src/services/** - Business logic (adminService, emailTemplateService, newsletterDeliveryService, emailPlatform/)
-- **src/worker/** - Newsletter delivery worker
-- **templates/email/** - File-based Handlebars email templates
-
-### State Management
-Uses **React Context API** (lightweight, no Redux needed):
-```typescript
-// NavigationContext provides:
-- currentWeekNumber: string
-- currentArticleId: string
-- currentArticleOrder: number
-- totalArticlesInWeek: number
-- articleList: Article[]
-- isLoading: boolean
-```
-
-## Testing
-
-- When running `npm test`, and needs timeout, always use `timeout 20`
-
-### Test Structure
-- **Frontend** (`apps/frontend/tests/`, jsdom): `unit/`, `components/`, `integration/`, `performance/`
-- **Backend** (`apps/backend/tests/`, node): `unit/services/`, `integration/`
-- Put business-logic tests next to the logic: admin/email-template/delivery service behavior belongs in `apps/backend/tests/`; frontend tests for those services should only pin the proxy/API contract (see `apps/frontend/tests/services/adminService.proxy.test.ts`).
-- `apps/frontend/tests/setup.ts` loads env vars from the repo-root `.env.local` (needed for `VITE_JWT_SECRET` in tracking tests).
-
-### Test Framework & Libraries
-- **Framework**: Vitest (Jest-compatible, uses jsdom)
-- **Component testing**: @testing-library/react (render, screen, fireEvent)
-- **User interactions**: @testing-library/user-event (userEvent.setup())
-- **Mocking**: vi.fn(), vi.mock() (Vitest built-in)
-
-### Testing Best Practices
-1. **Mocking Hooks**: When testing components using React Router hooks (useNavigate, useParams), mock the hook at module level:
-   ```typescript
-   vi.mock('react-router-dom', async () => {
-     const actual = await vi.importActual('react-router-dom')
-     return { ...actual, useNavigate: () => mockNavigate }
-   })
-   ```
-2. **Component Setup**: Tests render components in isolation with mock props
-3. **Event Testing**: Use fireEvent for keyboard events, userEvent for user interactions
-4. **Cleanup**: Use beforeEach/afterEach hooks to clear mocks
-
-## Key Components
-
-### NavigationBar (T052 - Keyboard Navigation)
-- **File**: `src/components/NavigationBar.tsx`
-- **Test**: `tests/components/NavigationBar.test.tsx`
-- **Features**:
-  - Previous/Next buttons with disabled states
-  - Position indicator ("第 X 篇，共 Y 篇")
-  - Keyboard shortcuts:
-    - Previous: Left Arrow, 'p', 'k'
-    - Next: Right Arrow, 'n', 'j'
-    - Edit: 'e' → navigates to `/editor/{weekNumber}`
-  - Uses `useNavigate()` from react-router-dom
-- **25 tests**: button states, keyboard navigation, event prevention
-
-### ArticleContent
-- **File**: `src/components/ArticleContent.tsx`
-- **Uses**: Markdown rendering via markdownService.ts
-- **Memoization**: Uses React.memo and useMemo for performance optimization
-
-### ArticleListView & ArticleCard
-- **Files**: `src/components/ArticleListView.tsx`, `src/components/ArticleCard.tsx`
-- **Features**: Article list with selection, card rendering with metadata
-
-### WeeklyReaderPage
-- **File**: `src/pages/WeeklyReaderPage.tsx`
-- **Role**: Main page component coordinating all UI elements and state
-
-## Common Patterns
-
-### Working with NavigationState
-```typescript
-import { NavigationState } from '@/types'
-
-// NavigationState includes:
-interface NavigationState {
-  currentWeekNumber: string      // '2025-W43'
-  currentArticleId: string       // article ID
-  currentArticleOrder: number    // 1-based index
-  totalArticlesInWeek: number
-  articleList: Article[]
-  isLoading: boolean
-}
-```
-
-### Handling Routes
-Routes are defined in `src/App.tsx`:
-- `/` - Home page
-- `/week/:weekNumber` - Weekly reader
-- `/article/:articleId` - Article view (redirects to reader)
-- `/newsletter/:weekNumber` - Newsletter reader (alternative route)
-- `/editor/:weekNumber` - Article editor (edits all articles for that week)
-- `/error` - Error page
-
-### Mock Data
-- **Location**: `src/services/mockApi.ts`
-- **Functions**: fetchWeeklyNewsletter(), fetchArticle(), updateArticle(), deleteArticle()
-- **To change sample data**: Edit mockArticles and mockNewsletters objects in mockApi.ts
-
-## Current Development Focus (Phase 7: Polish & Cross-Cutting Concerns)
-
-### Recently Completed Tasks (Phase 7)
-- ✅ **T036-T040** - Phase 6 components (ArticleEditor, ArticleClassRestrictionEditor, ClassArticleFilter)
-- ✅ **T041** - API.md documentation (1060 lines, comprehensive endpoint docs)
-- ✅ **T042** - E2E test suite (18 tests covering complete workflows)
-- ✅ **T043** - Data integrity tests (36 tests validating constraints)
-- ✅ **T044** - README.md Phase 6-7 documentation
-
-### Recently Completed Documentation Organization
-- ✅ **Moved SETUP.md** to `specs/002-database-structure/SETUP.md`
-- ✅ **Moved TESTING.md** to `specs/002-database-structure/TESTING.md`
-- ✅ **Updated cross-references** in README.md and all documentation files
-- ✅ **All documentation consolidated** in feature specification folder
-
-### Phase 8+ Planned Tasks
-- Database write operations (create/update week, class, family)
-- Admin interfaces for content management
-- Advanced filtering and search functionality
-- Performance optimization at scale
-
-## Important Notes
-
-### Type Safety
-- Project is **100% TypeScript** with strict type checking
-- All component props have defined interfaces
-- NavigationState and Article types are in `src/types/index.ts`
-- Use `as const` for string unions where appropriate
-
-### Performance Considerations
-- ArticleContent uses React.memo and useMemo for content rendering
-- SideButton is memoized for quick navigation
-- Navigation changes should complete within 1 second (US3 requirement)
-- Article switching: target <100ms individual switch, <300ms back-and-forth
-
-### Code Organization Rules
-- Components: One component per file in `src/components/`
-- Props interfaces: Defined in component file or in `src/types/` if shared
-- Tests: Mirror component structure in `tests/` directory
-- Mock data: Centralized in `src/services/mockApi.ts`
-
-### Git Workflow
-- Current branch: `feature/email-integration`
-- Main branch: `001-newsletter-viewer`
-- Commit format: `type(scope): description` (e.g., `feat: Add API endpoints` or `docs: Reorganize documentation`)
-- Test verification: Run `npm test` (frontend + backend suites) before committing
-- All commits include attribution line: `Co-Authored-By: Claude <noreply@anthropic.com>`
-
-## Debugging
-
-### Common Issues & Solutions
-
-**Tests failing with useNavigate error**:
-- Ensure useNavigate is mocked before component render
-- Use `vi.mock('react-router-dom')` at module level, not inside tests
-- Call `vi.clearAllMocks()` in beforeEach
-
-**Type errors in tests**:
-- Mock props must match the actual component's interface
-- Remember to include all required props when rendering components
-- Use `vi.fn()` for callback functions
-
-**HMR not working in dev**:
-- Check that dev server is running on port 5173
-- Clear browser cache or do hard refresh (Cmd+Shift+R)
-- Restart dev server if issues persist
-
-## Rich Text Editor (Phase 004)
-
-### Overview
-The project now includes a TipTap-based rich text editor with multimedia support (images, YouTube videos, audio). This coexists with the existing @uiw/react-md-editor for backward compatibility.
-
-### Key Components & Services
-
-**Editor Components**:
-- `src/components/tiptap-templates/simple/SimpleEditor.tsx` - Main WYSIWYG editor
-- `src/components/RichTextEditor.tsx` - Wrapper for TipTap editor
-- `src/components/ImageUploader.tsx` - Drag-drop image upload
-- `src/components/AudioUploader.tsx` - Audio file upload
-- `src/components/MediaLibrary.tsx` - Media file browser
-
-**Media Adapters** (TipTap custom nodes):
-- `src/adapters/TipTapImageNode.tsx` - Image node with editing
-- `src/adapters/TipTapYoutubeNode.tsx` - YouTube iframe embed
-- `src/adapters/TipTapAudioNode.tsx` - Audio player node
-
-**Services**:
-- `src/services/contentConverter.ts` - Markdown ↔ HTML ↔ TipTap conversion
-- `src/services/htmlSanitizer.ts` - XSS protection via DOMPurify
-- `src/services/imageOptimizer.ts` - Image compression & WebP conversion
-- `src/services/mediaService.ts` - Media validation & metadata
-- `src/services/articleMediaManager.ts` - Media reference tracking
-- `src/services/storageService.ts` - Storage provider abstraction
-
-**Hooks**:
-- `src/hooks/useMediaUpload.ts` - Media upload with progress tracking
-- `src/hooks/useAutoSave.ts` - Debounced content autosave
-
-### Storage Providers
-The system supports pluggable storage backends:
-- **SupabaseStorageAdapter**: Default, uses Supabase Storage bucket
-- **MockStorageAdapter**: For testing in-memory uploads
-
-Switch providers via `storageService.ts` factory function based on environment variables.
-
-### Testing Rich Text Features
-- **Component tests**: `tests/components/ImageUploader.test.tsx`, `AudioUploader.test.tsx`
-- **Integration tests**: `tests/integration/image-upload-flow.test.tsx`, `audio-upload-flow.test.tsx`
-- **Conversion tests**: `tests/unit/services/contentConverter.test.ts`
-- **Security tests**: `tests/unit/services/htmlSanitizer.test.ts` (XSS prevention)
-
-### Type Definitions
-Media types are in `src/types/media.ts`:
-```typescript
-interface MediaFile {
-  id: string
-  articleId: string
-  mediaId: string
-  type: MediaFileType  // 'image' | 'audio' | 'video'
-  url: string
-  fileName: string
-  fileSize: number
-  mimeType: string
-  // ... other fields
-}
-```
-
-## Tailwind CSS Theming
-
-The project uses a custom Waldorf color palette defined in `tailwind.config.ts`:
-```
-waldorf-sage, waldorf-peach, waldorf-cream, waldorf-clay, waldorf-brown
-```
-
-Use these colors consistently across components for visual cohesion.
+For a controlled two-family rehearsal, use [the demo guide](docs/DEMO-NEWSLETTER.md). For delivery confirmation metrics, use [the Resend webhook guide](docs/RESEND-WEBHOOKS.md). Production deployment is performed by [the Cloudflare workflow](.github/workflows/cloudflare.yml) on pushes to `main`; verify the live Auth, database, browser and inbox journey separately from build and test results.

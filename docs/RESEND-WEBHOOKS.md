@@ -9,14 +9,18 @@ rejected. Bodies are limited to 256 KiB.
 ## Activate
 
 1. Apply the additive migration `db/migrations/20260922_resend_webhooks.sql` to
-   the database used by the target backend. Do not run the destructive schema
-   reset script. `db/schema.sql` includes the table for fresh installations.
+   the database used by the target backend. The current Cloudflare deployment
+   workflow includes it in `scripts/cloudflare-migrate.mjs`; for Node hosting,
+   apply it through the reviewed migration process. Do not run the destructive
+   schema reset script. `db/schema.sql` includes the table for fresh installations.
 2. Deploy the updated backend and frontend.
 3. Create a Resend webhook targeting the public HTTPS backend URL plus
    `/api/webhooks/resend`. Subscribe to the three events listed above.
 4. Store that endpoint's signing secret as `RESEND_WEBHOOK_SECRET` on the backend
    (a Worker secret in Cloudflare; an environment variable for Node). It is not
-   the Resend sending API key. Restart the Node backend if applicable.
+   the Resend sending API key. The Cloudflare CI secret bulk step does not create
+   this secret; configure it separately and verify it remains present after a
+   deployment. Without it, the route returns 503. Restart the Node backend if applicable.
 5. Send an explicitly authorized test newsletter through that same environment.
    Open it with images enabled, then click a link. Verify the webhook attempts
    return 200 and the corresponding newsletter metrics update. A local backend
