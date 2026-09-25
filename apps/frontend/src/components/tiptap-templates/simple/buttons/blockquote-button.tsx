@@ -21,7 +21,7 @@ export function BlockquoteButton({ editor }: BlockquoteButtonProps) {
         }
       }}
       className={`toolbar-button ${editor.isActive('blockquote') ? 'active' : ''}`}
-      title="Blockquote"
+      title="引用區塊"
       type="button"
     >
       <Quote size={18} />

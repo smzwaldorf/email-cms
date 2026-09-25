@@ -147,7 +147,7 @@ describe('admin file email template preview and sync', () => {
     expect(await screen.findByText('File Weekly')).toBeInTheDocument()
     expect(screen.getByText('Hello guardian@example.com')).toBeInTheDocument()
     expect(screen.getByText('Body')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Sync to database revision' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: '同步為資料庫版本' })).toBeEnabled()
   })
 
   it('blocks sync when a file source references a missing block file', async () => {
@@ -170,7 +170,7 @@ describe('admin file email template preview and sync', () => {
     expect(
       await screen.findByText('Missing block template file: blocks/missing-footer.hbs'),
     ).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Sync to database revision' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '同步為資料庫版本' })).toBeDisabled()
     expect(mockEmailTemplateService.syncFileTemplate).not.toHaveBeenCalled()
   })
 
@@ -179,7 +179,7 @@ describe('admin file email template preview and sync', () => {
     mockPreviewFileEmailTemplateSource.mockResolvedValue(preview)
 
     renderPreviewRoute()
-    fireEvent.click(await screen.findByRole('button', { name: 'Sync to database revision' }))
+    fireEvent.click(await screen.findByRole('button', { name: '同步為資料庫版本' }))
 
     await waitFor(() => {
       expect(mockEmailTemplateService.syncFileTemplate).toHaveBeenCalledWith({ preview })

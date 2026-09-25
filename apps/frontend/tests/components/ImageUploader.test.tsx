@@ -27,13 +27,13 @@ describe('ImageUploader Component (T055)', () => {
   describe('Basic Rendering', () => {
     it('should render upload area with drag-drop zone', () => {
       setup()
-      expect(screen.getByText(/拖放圖片到這裡或點擊選擇|Drag images here or click to select/i)).toBeInTheDocument()
+      expect(screen.getByText(/拖放圖片到這裡，或點擊選擇/)).toBeInTheDocument()
     })
 
     it('should display file requirements (type, size)', () => {
       setup()
-      expect(screen.getByText(/支援粘貼圖片|Paste images supported/i)).toBeInTheDocument()
-      expect(screen.getByText(/最大檔案大小|Max file size/i)).toBeInTheDocument()
+      expect(screen.getByText(/支援貼上圖片/)).toBeInTheDocument()
+      expect(screen.getByText(/檔案大小上限/)).toBeInTheDocument()
     })
 
     it('should have disabled state', () => {
@@ -44,7 +44,7 @@ describe('ImageUploader Component (T055)', () => {
           maxFiles={5}
         />
       )
-      const uploadArea = screen.getByText(/拖放圖片到這裡或點擊選擇|Drag images here or click to select/i).closest('div')?.parentElement
+      const uploadArea = screen.getByText(/拖放圖片到這裡，或點擊選擇/).closest('div')?.parentElement
       expect(uploadArea).toHaveClass('opacity-50')
     })
   })
@@ -117,7 +117,7 @@ describe('ImageUploader Component (T055)', () => {
   describe('Drag and Drop', () => {
     it('should handle dragover event', () => {
       setup()
-      const uploadArea = screen.getByText(/拖放圖片到這裡或點擊選擇|Drag images here or click to select/i).closest('div')?.parentElement as HTMLElement
+      const uploadArea = screen.getByText(/拖放圖片到這裡，或點擊選擇/).closest('div')?.parentElement as HTMLElement
 
       fireEvent.dragEnter(uploadArea, {
         dataTransfer: { items: [] },
@@ -128,7 +128,7 @@ describe('ImageUploader Component (T055)', () => {
 
     it('should handle dragleave event', () => {
       setup()
-      const uploadArea = screen.getByText(/拖放圖片到這裡或點擊選擇|Drag images here or click to select/i).closest('div')?.parentElement as HTMLElement
+      const uploadArea = screen.getByText(/拖放圖片到這裡，或點擊選擇/).closest('div')?.parentElement as HTMLElement
 
       fireEvent.dragEnter(uploadArea)
       fireEvent.dragLeave(uploadArea)
@@ -138,7 +138,7 @@ describe('ImageUploader Component (T055)', () => {
 
     it('should handle drop event with files', async () => {
       setup()
-      const uploadArea = screen.getByText(/拖放圖片到這裡或點擊選擇|Drag images here or click to select/i).closest('div')?.parentElement as HTMLElement
+      const uploadArea = screen.getByText(/拖放圖片到這裡，或點擊選擇/).closest('div')?.parentElement as HTMLElement
 
       const files = [new File(['test'], 'test.jpg', { type: 'image/jpeg' })]
       const dataTransfer = {
@@ -155,7 +155,7 @@ describe('ImageUploader Component (T055)', () => {
 
     it('should prevent default drag behavior', () => {
       setup()
-      const uploadArea = screen.getByText(/拖放圖片到這裡或點擊選擇|Drag images here or click to select/i).closest('div')?.parentElement as HTMLElement
+      const uploadArea = screen.getByText(/拖放圖片到這裡，或點擊選擇/).closest('div')?.parentElement as HTMLElement
 
       // Test that component has drag handlers by checking for hover styles
       fireEvent.dragEnter(uploadArea)
@@ -170,7 +170,7 @@ describe('ImageUploader Component (T055)', () => {
     it('should render with paste instructions', () => {
       setup()
       // Component shows paste support in UI
-      expect(screen.getByText(/支援粘貼圖片|Paste images supported/i)).toBeInTheDocument()
+      expect(screen.getByText(/支援貼上圖片/)).toBeInTheDocument()
     })
   })
 
@@ -225,12 +225,12 @@ describe('ImageUploader Component (T055)', () => {
   describe('Visual Feedback', () => {
     it('should display drag-and-drop instructions', () => {
       setup()
-      expect(screen.getByText(/拖放圖片到這裡或點擊選擇|Drag images here or click to select/i)).toBeInTheDocument()
+      expect(screen.getByText(/拖放圖片到這裡，或點擊選擇/)).toBeInTheDocument()
     })
 
     it('should show file size limit in UI', () => {
       setup()
-      expect(screen.getByText(/最大檔案大小|Max file size/i)).toBeInTheDocument()
+      expect(screen.getByText(/檔案大小上限/)).toBeInTheDocument()
     })
   })
 
@@ -260,7 +260,7 @@ describe('ImageUploader Component (T055)', () => {
         />
       )
 
-      const uploadArea = screen.getByText(/拖放圖片到這裡或點擊選擇|Drag images here or click to select/i).closest('div')?.parentElement
+      const uploadArea = screen.getByText(/拖放圖片到這裡，或點擊選擇/).closest('div')?.parentElement
       expect(uploadArea).toHaveClass('cursor-not-allowed')
     })
   })
@@ -276,13 +276,13 @@ describe('ImageUploader Component (T055)', () => {
         />
       )
 
-      const container = screen.getByText(/拖放圖片到這裡或點擊選擇|Drag images here or click to select/i).closest('div')?.parentElement
+      const container = screen.getByText(/拖放圖片到這裡，或點擊選擇/).closest('div')?.parentElement
       expect(container).toHaveClass('custom-upload-class')
     })
 
     it('should apply Tailwind CSS classes', () => {
       setup()
-      const uploadArea = screen.getByText(/拖放圖片到這裡或點擊選擇|Drag images here or click to select/i).closest('div')?.parentElement
+      const uploadArea = screen.getByText(/拖放圖片到這裡，或點擊選擇/).closest('div')?.parentElement
 
       expect(uploadArea).toHaveClass('border-2')
       expect(uploadArea).toHaveClass('border-dashed')
@@ -291,7 +291,7 @@ describe('ImageUploader Component (T055)', () => {
 
     it('should show different styles on drag enter', () => {
       setup()
-      const uploadArea = screen.getByText(/拖放圖片到這裡或點擊選擇|Drag images here or click to select/i).closest('div')?.parentElement
+      const uploadArea = screen.getByText(/拖放圖片到這裡，或點擊選擇/).closest('div')?.parentElement
 
       fireEvent.dragEnter(uploadArea as HTMLElement)
       expect(uploadArea).toHaveClass('border-blue-500')

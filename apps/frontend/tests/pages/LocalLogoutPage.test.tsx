@@ -18,7 +18,7 @@ afterEach(() => {
 describe('front-channel local logout', () => {
   it('acknowledges cleanup only to configured Auth origin and never follows caller redirects', async () => {
     render(<LocalLogoutPage />)
-    await waitFor(() => expect(screen.getByText('Signed out of Email CMS.')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('已登出 Email CMS。')).toBeInTheDocument())
     expect(mocks.postMessage).toHaveBeenCalledWith({ type: 'smz:logout-complete', state: '10000000-0000-4000-8000-000000000001' }, 'http://localhost:3000')
     expect(window.location.pathname).toBe('/logout/local')
   })
@@ -31,14 +31,14 @@ describe('front-channel local logout', () => {
   it('rejects an untrusted parent origin without clearing sessions', async () => {
     vi.spyOn(document, 'referrer', 'get').mockReturnValue('https://evil.example/')
     render(<LocalLogoutPage />)
-    await waitFor(() => expect(screen.getByText('Invalid logout request.')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('登出要求無效。')).toBeInTheDocument())
     expect(mocks.clear).not.toHaveBeenCalled()
     expect(mocks.postMessage).not.toHaveBeenCalled()
   })
   it('rejects a malformed coordinator state', async () => {
     window.history.replaceState(null, '', '/logout/local?logout_state=bad')
     render(<LocalLogoutPage />)
-    await waitFor(() => expect(screen.getByText('Invalid logout request.')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('登出要求無效。')).toBeInTheDocument())
     expect(mocks.clear).not.toHaveBeenCalled()
   })
 

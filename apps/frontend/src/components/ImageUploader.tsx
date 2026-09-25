@@ -62,7 +62,7 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
         // Check file size
         if (file.size > maxFileSize) {
           errors.push(
-            `${file.name}: 檔案大小超過限制 (${(maxFileSize / 1024 / 1024).toFixed(1)}MB) / File size exceeds limit`
+            `${file.name}: 檔案大小超過限制 (${(maxFileSize / 1024 / 1024).toFixed(1)}MB)`
           )
           return
         }
@@ -245,14 +245,14 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
             />
           </svg>
           <p className="text-sm font-medium text-gray-700 mb-1">
-            拖放圖片到這裡或點擊選擇 / Drag images here or click to select
+            拖放圖片到這裡，或點擊選擇
           </p>
           <p className="text-xs text-gray-500">
-            支援粘貼圖片 / Paste images supported
+            支援貼上圖片
           </p>
           {maxFileSize && (
             <p className="text-xs text-gray-500 mt-1">
-              最大檔案大小: {(maxFileSize / 1024 / 1024).toFixed(1)}MB / Max file size: {(maxFileSize / 1024 / 1024).toFixed(1)}MB
+              檔案大小上限：{(maxFileSize / 1024 / 1024).toFixed(1)} MB
             </p>
           )}
         </div>

@@ -29,19 +29,19 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
       type: 'csv',
       label: 'CSV',
       icon: <Table className="w-4 h-4" />,
-      description: 'Spreadsheet compatible'
+      description: '與試算表相容'
     },
     {
       type: 'json',
       label: 'JSON',
       icon: <FileJson className="w-4 h-4" />,
-      description: 'Structured data format'
+      description: '結構化資料格式'
     },
     {
       type: 'xlsx',
       label: 'Excel',
       icon: <Sheet className="w-4 h-4" />,
-      description: 'Multiple sheets'
+      description: '多個工作表'
     }
   ];
 
@@ -51,7 +51,7 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
       await onExport(format);
       setIsOpen(false);
     } catch (error) {
-      console.error('Export failed:', error);
+      console.error('匯出失敗：', error);
     } finally {
       setActiveFormat(null);
     }
@@ -63,10 +63,10 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
         onClick={() => setIsOpen(!isOpen)}
         disabled={disabled || isLoading}
         className="flex items-center gap-2 px-4 py-2 bg-white border border-brand-neutral-200 rounded-lg text-sm font-medium text-brand-neutral-700 hover:bg-brand-neutral-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        title="Export analytics data"
+        title="匯出分析資料"
       >
         <Download className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-        <span>Export</span>
+        <span>匯出</span>
         <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
@@ -74,7 +74,7 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
         <div className="absolute right-0 mt-2 w-64 bg-white border border-brand-neutral-200 rounded-lg shadow-lg z-50">
           <div className="p-3 border-b border-brand-neutral-100">
             <p className="text-xs font-semibold text-brand-neutral-600 uppercase tracking-wide">
-              Export Format
+              匯出格式
             </p>
           </div>
 
@@ -95,7 +95,7 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
                       {activeFormat === format.type && isLoading ? (
                         <span className="inline-flex items-center gap-2">
                           <span className="inline-block w-4 h-4 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
-                          Exporting...
+                          正在匯出...
                         </span>
                       ) : (
                         format.label
@@ -110,7 +110,7 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
 
           <div className="p-3 bg-brand-neutral-50 border-t border-brand-neutral-100">
             <p className="text-xs text-brand-neutral-500">
-              File will include current dashboard view
+              檔案將包含目前儀表板檢視的資料
             </p>
           </div>
         </div>

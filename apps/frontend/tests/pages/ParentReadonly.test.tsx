@@ -18,8 +18,8 @@ describe('parent UI boundary', () => {
   })
   it('offers no administrator navigation in the parent menu', () => {
     render(<UserMenu />)
-    fireEvent.click(screen.getByRole('button', { name: 'User menu' }))
+    fireEvent.click(screen.getByRole('button', { name: '使用者選單' }))
     expect(screen.getByText('parent')).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Admin Dashboard' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: '管理儀表板' })).not.toBeInTheDocument()
   })
 })

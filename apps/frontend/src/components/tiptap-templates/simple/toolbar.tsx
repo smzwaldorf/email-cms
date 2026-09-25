@@ -62,7 +62,7 @@ export function EditorToolbar({ editor, articleId }: EditorToolbarProps) {
             editor.chain().focus().undo().run()
           }}
           disabled={!editor.can().undo()}
-          title="Undo"
+          title="復原"
           className="toolbar-button"
           type="button"
         >
@@ -75,7 +75,7 @@ export function EditorToolbar({ editor, articleId }: EditorToolbarProps) {
             editor.chain().focus().redo().run()
           }}
           disabled={!editor.can().redo()}
-          title="Redo"
+          title="重做"
           className="toolbar-button"
           type="button"
         >
@@ -100,25 +100,25 @@ export function EditorToolbar({ editor, articleId }: EditorToolbarProps) {
           editor={editor}
           mark="bold"
           icon={<Bold size={18} />}
-          title="Bold"
+          title="粗體"
         />
         <MarkButton
           editor={editor}
           mark="italic"
           icon={<Italic size={18} />}
-          title="Italic"
+          title="斜體"
         />
         <MarkButton
           editor={editor}
           mark="strike"
           icon={<Strikethrough size={18} />}
-          title="Strikethrough"
+          title="刪除線"
         />
         <MarkButton
           editor={editor}
           mark="code"
           icon={<Code size={18} />}
-          title="Inline Code"
+          title="行內程式碼"
         />
         <UnderlineButton editor={editor} />
         <HighlightButton editor={editor} />

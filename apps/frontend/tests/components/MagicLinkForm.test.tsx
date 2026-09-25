@@ -173,7 +173,7 @@ describe('MagicLinkForm - Redirect URL Handling', () => {
         await user.click(submitButton)
       })
 
-      expect(screen.getByText(/Please enter your email address/i)).toBeInTheDocument()
+      expect(screen.getByText(/請輸入電子郵件地址/)).toBeInTheDocument()
       expect(mockSendMagicLink).not.toHaveBeenCalled()
     })
 
@@ -192,7 +192,7 @@ describe('MagicLinkForm - Redirect URL Handling', () => {
         form.dispatchEvent(new Event('submit', { bubbles: true }))
       })
 
-      expect(screen.getByText(/Please enter a valid email address/i)).toBeInTheDocument()
+      expect(screen.getByText(/請輸入有效的電子郵件地址/)).toBeInTheDocument()
       expect(mockSendMagicLink).not.toHaveBeenCalled()
     })
   })
@@ -210,7 +210,7 @@ describe('MagicLinkForm - Redirect URL Handling', () => {
       await user.click(submitButton)
 
       await waitFor(() => {
-        expect(screen.getByText(/Failed to send magic link/i)).toBeInTheDocument()
+        expect(screen.getByText(/無法寄送登入連結/)).toBeInTheDocument()
       })
     })
 
@@ -226,7 +226,7 @@ describe('MagicLinkForm - Redirect URL Handling', () => {
       await user.click(submitButton)
 
       await waitFor(() => {
-        expect(screen.getByText(/Failed to send magic link/i)).toBeInTheDocument()
+        expect(screen.getByText(/無法寄送登入連結/)).toBeInTheDocument()
       })
     })
   })

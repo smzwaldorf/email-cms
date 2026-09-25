@@ -57,7 +57,7 @@ export const ArticleClassRestrictionEditor: React.FC<
         )
         setAvailableClasses(sortedClasses)
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to load classes'
+        const message = err instanceof Error ? err.message : '無法載入班級'
         setError(message)
         onError?.(message)
       } finally {
@@ -102,8 +102,8 @@ export const ArticleClassRestrictionEditor: React.FC<
       if (visibilityType === 'class_restricted') {
         // Validate that at least one class is selected
         if (selectedClasses.length === 0) {
-          setError('Select at least one class for class-restricted articles')
-          onError?.('Select at least one class for class-restricted articles')
+          setError('班級限定文章至少需選擇一個班級')
+          onError?.('班級限定文章至少需選擇一個班級')
           setSaving(false)
           return
         }
@@ -117,7 +117,7 @@ export const ArticleClassRestrictionEditor: React.FC<
         onSave?.(updated)
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to save restrictions'
+      const message = err instanceof Error ? err.message : '無法儲存限制設定'
       setError(message)
       onError?.(message)
     } finally {
@@ -138,7 +138,7 @@ export const ArticleClassRestrictionEditor: React.FC<
       setSuccess(true)
       onClear?.(updated)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to clear restrictions'
+      const message = err instanceof Error ? err.message : '無法清除限制設定'
       setError(message)
       onError?.(message)
     } finally {
@@ -151,10 +151,10 @@ export const ArticleClassRestrictionEditor: React.FC<
       {/* Header */}
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-waldorf-brown mb-2">
-          Article Visibility Settings
+          文章可見範圍設定
         </h2>
         <p className="text-gray-600">
-          Control which classes can see this article (班級大小事)
+          設定哪些班級可以看見這篇文章（班級大小事）
         </p>
       </div>
 
@@ -168,20 +168,20 @@ export const ArticleClassRestrictionEditor: React.FC<
       {/* Success Message */}
       {success && (
         <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded text-green-700">
-          Restrictions saved successfully
+          可見範圍已儲存
         </div>
       )}
 
       {/* Current Article Info */}
       <div className="mb-6 p-4 bg-gray-50 rounded">
         <p className="font-semibold text-gray-800 mb-1">{article.title}</p>
-        <p className="text-sm text-gray-600">Article ID: {article.id}</p>
+        <p className="text-sm text-gray-600">文章 ID： {article.id}</p>
       </div>
 
       {/* Visibility Type Toggle */}
       <fieldset className="mb-6">
         <legend className="text-lg font-semibold text-gray-800 mb-3">
-          Visibility Type
+          可見範圍類型
         </legend>
         <div className="space-y-2">
           <label className="flex items-center cursor-pointer">
@@ -194,9 +194,9 @@ export const ArticleClassRestrictionEditor: React.FC<
               className="w-4 h-4"
             />
             <span className="ml-3">
-              <span className="font-medium text-gray-800">Public</span>
+              <span className="font-medium text-gray-800">公開</span>
               <p className="text-sm text-gray-600">
-                Visible to all parents and visitors
+                所有家長與訪客皆可查看
               </p>
             </span>
           </label>
@@ -211,9 +211,9 @@ export const ArticleClassRestrictionEditor: React.FC<
               className="w-4 h-4"
             />
             <span className="ml-3">
-              <span className="font-medium text-gray-800">Class Restricted</span>
+              <span className="font-medium text-gray-800">班級限定</span>
               <p className="text-sm text-gray-600">
-                Only visible to selected classes
+                僅選取的班級可查看
               </p>
             </span>
           </label>
@@ -224,10 +224,10 @@ export const ArticleClassRestrictionEditor: React.FC<
       {visibilityType === 'class_restricted' && (
         <fieldset className="mb-6">
           <legend className="text-lg font-semibold text-gray-800 mb-3">
-            Restrict to Classes
+            限定班級
           </legend>
 
-          {loading && <div className="text-gray-500">Loading classes...</div>}
+          {loading && <div className="text-gray-500">正在載入班級...</div>}
 
           {!loading && availableClasses.length > 0 && (
             <div className="space-y-2">
@@ -243,7 +243,7 @@ export const ArticleClassRestrictionEditor: React.FC<
                   disabled={saving}
                   className="w-4 h-4"
                 />
-                <span className="ml-2 font-medium text-gray-800">Select All Classes</span>
+                <span className="ml-2 font-medium text-gray-800">全選班級</span>
               </label>
 
               {/* Class Options */}
@@ -263,7 +263,7 @@ export const ArticleClassRestrictionEditor: React.FC<
                     <span className="ml-3 flex-1">
                       <span className="font-medium text-gray-800">{cls.class_name}</span>
                       <span className="ml-2 text-sm text-gray-500">
-                        (Grade {cls.class_grade_year})
+                        （年級 {cls.class_grade_year})
                       </span>
                     </span>
                     {/* Grade year indicator */}
@@ -272,7 +272,7 @@ export const ArticleClassRestrictionEditor: React.FC<
                         className="ml-2 px-2 py-1 text-xs font-semibold rounded"
                         style={{ backgroundColor: '#d4a574', color: 'white' }}
                       >
-                        High School
+                        高中
                       </span>
                     )}
                   </label>
@@ -283,14 +283,14 @@ export const ArticleClassRestrictionEditor: React.FC<
 
           {!loading && availableClasses.length === 0 && (
             <div className="p-4 bg-gray-50 rounded text-gray-600">
-              No classes available
+              沒有可選班級
             </div>
           )}
 
           {/* Validation Message */}
           {visibilityType === 'class_restricted' && selectedClasses.length === 0 && (
             <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-700">
-              Select at least one class to save as class-restricted
+              請至少選擇一個班級，才能儲存為班級限定文章
             </div>
           )}
         </fieldset>
@@ -299,7 +299,7 @@ export const ArticleClassRestrictionEditor: React.FC<
       {/* Selected Classes Summary */}
       {visibilityType === 'class_restricted' && selectedClasses.length > 0 && (
         <div className="mb-6 p-4 bg-waldorf-sage/10 rounded">
-          <p className="font-semibold text-gray-800 mb-2">Classes Selected:</p>
+          <p className="font-semibold text-gray-800 mb-2">已選班級：</p>
           <div className="flex flex-wrap gap-2">
             {selectedClasses
               .map((id) => availableClasses.find((c) => c.id === id))
@@ -324,7 +324,7 @@ export const ArticleClassRestrictionEditor: React.FC<
             disabled={saving || selectedClasses.length === 0}
             className="px-4 py-2 bg-waldorf-sage text-white rounded font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {saving ? 'Saving...' : 'Save Restrictions'}
+            {saving ? '儲存中...' : '儲存限制設定'}
           </button>
         )}
 
@@ -334,25 +334,25 @@ export const ArticleClassRestrictionEditor: React.FC<
             disabled={saving}
             className="px-4 py-2 bg-waldorf-sage text-white rounded font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {saving ? 'Clearing...' : 'Clear Restrictions (Make Public)'}
+            {saving ? '清除中...' : '清除限制（設為公開）'}
           </button>
         )}
 
         {visibilityType === 'public' && article.visibility_type !== 'class_restricted' && (
           <span className="px-4 py-2 text-gray-600">
-            Article is already public
+            這篇文章已設為公開
           </span>
         )}
       </div>
 
       {/* Info Box */}
       <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
-        <p className="font-semibold mb-2">About Class Restrictions</p>
+        <p className="font-semibold mb-2">關於班級限定</p>
         <ul className="list-disc list-inside space-y-1 text-xs">
-          <li>Public articles are visible to all parents</li>
-          <li>Class-restricted articles are only visible to parents with children in selected classes</li>
-          <li>Parents can see articles from multiple children's classes</li>
-          <li>An article can be restricted to multiple classes at once</li>
+          <li>公開文章可供所有家長查看</li>
+          <li>班級限定文章僅供孩子在所選班級的家長查看</li>
+          <li>家長可以查看不同孩子所屬班級的文章</li>
+          <li>一篇文章可以同時限定多個班級</li>
         </ul>
       </div>
     </div>

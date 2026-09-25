@@ -13,7 +13,7 @@ export const ClassAnalyticsPage: React.FC = () => {
     // Fetch last 12 weeks of history
     const { history, loading: historyLoading } = useClassHistory(decodedClassName);
 
-    if (!decodedClassName) return <div>Invalid Class Name</div>;
+    if (!decodedClassName) return <div>班級名稱無效</div>;
 
     // Calculate average stats from history
     const avgStats = React.useMemo(() => {
@@ -45,7 +45,7 @@ export const ClassAnalyticsPage: React.FC = () => {
                             {decodedClassName}
                         </h1>
                         <p className="text-brand-neutral-500 text-sm mt-1">
-                            Historical engagement performance
+                            歷史互動成效
                         </p>
                     </div>
                 </div>
@@ -54,16 +54,16 @@ export const ClassAnalyticsPage: React.FC = () => {
                 {avgStats && (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="bg-white p-6 rounded-xl border border-brand-neutral-100 shadow-sm">
-                            <div className="text-sm text-brand-neutral-500 mb-1">Avg. Open Rate (12 Weeks)</div>
+                            <div className="text-sm text-brand-neutral-500 mb-1">平均開信率（12 週）</div>
                             <div className="text-2xl font-bold text-brand-neutral-900">{avgStats.openRate === null ? '—' : `${avgStats.openRate.toFixed(1)}%`}</div>
                         </div>
                         <div className="bg-white p-6 rounded-xl border border-brand-neutral-100 shadow-sm">
-                            <div className="text-sm text-brand-neutral-500 mb-1">Avg. Click Rate (12 Weeks)</div>
+                            <div className="text-sm text-brand-neutral-500 mb-1">平均點擊率（12 週）</div>
                             <div className="text-2xl font-bold text-brand-neutral-900">{avgStats.clickRate === null ? '—' : `${avgStats.clickRate.toFixed(1)}%`}</div>
                         </div>
                         <div className="bg-white p-6 rounded-xl border border-brand-neutral-100 shadow-sm">
-                            <div className="text-sm text-brand-neutral-500 mb-1">Data Points</div>
-                            <div className="text-2xl font-bold text-brand-neutral-900">{history.length} Weeks</div>
+                            <div className="text-sm text-brand-neutral-500 mb-1">資料筆數</div>
+                            <div className="text-2xl font-bold text-brand-neutral-900">{history.length} 週</div>
                         </div>
                     </div>
                 )}
@@ -71,9 +71,9 @@ export const ClassAnalyticsPage: React.FC = () => {
                 {/* Charts */}
                 <div className="bg-white rounded-xl shadow-sm border border-brand-neutral-100 p-6">
                     {historyLoading ? (
-                        <div className="h-[300px] flex items-center justify-center text-brand-neutral-400">Loading History...</div>
+                        <div className="h-[300px] flex items-center justify-center text-brand-neutral-400">正在載入歷史資料...</div>
                     ) : (
-                        <TrendChart data={history} title="Engagement History" />
+                        <TrendChart data={history} title="互動歷史" />
                     )}
                 </div>
                 

@@ -108,7 +108,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
         audioRef.current.pause()
       } else {
         audioRef.current.play().catch((err) => {
-          console.error('播放失敗 / Playback failed:', err)
+          console.error('播放失敗：', err)
         })
       }
     }
@@ -188,7 +188,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
                   : 'bg-blue-500 text-white hover:bg-blue-600'
             }
           `}
-          title={isPlaying ? '暫停 / Pause' : '播放 / Play'}
+          title={isPlaying ? '暫停' : '播放'}
           data-testid="audio-play-button"
         >
           {isPlaying ? (
@@ -211,7 +211,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
             type="button"
             onClick={handleToggleMute}
             className="p-1.5 rounded hover:bg-gray-200 transition-colors"
-            title={isMuted ? '取消靜音 / Unmute' : '靜音 / Mute'}
+            title={isMuted ? '取消靜音' : '靜音'}
             data-testid="audio-mute-button"
           >
             {isMuted ? (
@@ -238,7 +238,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
       {isLoading && (
         <div className="mt-2 flex items-center gap-2 text-xs text-gray-500">
           <div className="w-3 h-3 border-2 border-gray-400 border-t-blue-500 rounded-full animate-spin" />
-          <span>載入中 / Loading</span>
+          <span>載入中</span>
         </div>
       )}
     </div>

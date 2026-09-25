@@ -28,7 +28,7 @@ function getDisplayLabel(week: { week_number?: string | null; title?: string | n
   if (week.week_number) {
     return formatWeekNumber(week.week_number)
   }
-  return week.title || 'Special Edition'
+  return week.title || '特刊'
 }
 
 export const WeekSelector: React.FC<WeekSelectorProps> = ({ disabled = false }) => {
@@ -177,4 +177,3 @@ export const WeekSelector: React.FC<WeekSelectorProps> = ({ disabled = false }) 
     </div>
   )
 }
-

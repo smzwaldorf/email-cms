@@ -6,9 +6,9 @@ export function AdminMediaPage() {
     <AdminLayout activeTab="media">
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-semibold text-waldorf-clay-800">Media Management</h2>
+          <h2 className="text-2xl font-semibold text-waldorf-clay-800">媒體管理</h2>
           <p className="mt-1 text-sm text-waldorf-clay-500">
-            Review media usage and safely delete unused assets.
+            檢查媒體使用情況，並安全刪除未使用的檔案。
           </p>
         </div>
         <MediaDashboard />

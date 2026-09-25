@@ -16,7 +16,7 @@ export function UnderlineButton({ editor }: UnderlineButtonProps) {
       onClick={() => editor.chain().focus().toggleUnderline().run()}
       disabled={!editor.can().toggleUnderline()}
       className={`toolbar-button ${editor.isActive('underline') ? 'active' : ''}`}
-      title="Underline"
+      title="底線"
       type="button"
     >
       <Underline size={18} />

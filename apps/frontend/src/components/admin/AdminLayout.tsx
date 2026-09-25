@@ -10,7 +10,6 @@ export type AdminLayoutTab =
   | 'email-templates'
   | 'email-preview'
   | 'users'
-  | 'audit'
   | 'classes'
   | 'teachers'
   | 'families'
@@ -79,8 +78,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   children,
   activeTab,
   headerAction,
-  title = 'Admin Dashboard',
-  description = 'Manage newsletters and system settings',
+  title = '管理後台',
+  description = '管理電子報與系統設定',
   backLink,
   contentVariant = 'card',
 }) => {
@@ -108,7 +107,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   }
 
   const handleTabClick = (tab: string) => {
-    if (['newsletters', 'users', 'audit'].includes(tab)) {
+    if (['newsletters', 'users'].includes(tab)) {
       navigate(`/admin?tab=${tab}`)
     }
   }
@@ -137,7 +136,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                   <svg className="w-4 h-4 mr-2 transform group-hover:-translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                   </svg>
-                  <span className="font-medium">Back to Weekly Articles</span>
+                  <span className="font-medium">返回每週文章</span>
                 </a>
               )
             })() : (
@@ -145,39 +144,36 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                 </svg>
-                <span className="font-medium">No Published Articles</span>
+                <span className="font-medium">沒有已發布的文章</span>
               </div>
             )}
             <div className="flex items-center space-x-2">
               <span className="w-2 h-2 rounded-full bg-waldorf-sage-400 animate-pulse" />
-              <span className="text-xs font-semibold text-waldorf-clay-400 tracking-widest uppercase">Admin Portal</span>
+              <span className="text-xs font-semibold text-waldorf-clay-400 tracking-widest uppercase">管理後台</span>
             </div>
           </div>
 
-          <nav className="flex flex-wrap items-stretch gap-x-6 px-6" aria-label="Admin Navigation">
+          <nav className="flex flex-wrap items-stretch gap-x-6 px-6" aria-label="管理導覽">
             <TabButton isActive={isNewsletterTab} onClick={() => handleTabClick('newsletters')}>
-              Newsletters
+              電子報
             </TabButton>
             <TabLink to="/admin/articles" isActive={activeTab === 'articles'}>
-              Articles
+              文章
             </TabLink>
             <TabLink to="/admin/media" isActive={activeTab === 'media'}>
-              Media
+              媒體
             </TabLink>
             <TabGroupDivider />
             <TabLink to="/admin/email-templates" isActive={activeTab === 'email-templates'}>
-              Email Templates
+              電子郵件範本
             </TabLink>
             <TabLink to="/admin/newsletters/preview" isActive={activeTab === 'email-preview'}>
-              Email Preview
+              電子郵件預覽
             </TabLink>
             <TabGroupDivider />
             <TabLink to="/admin/analytics" isActive={activeTab === 'analytics'}>
-              Analytics
+              分析
             </TabLink>
-            <TabButton isActive={activeTab === 'audit'} onClick={() => handleTabClick('audit')}>
-              Audit Logs
-            </TabButton>
           </nav>
         </header>
 

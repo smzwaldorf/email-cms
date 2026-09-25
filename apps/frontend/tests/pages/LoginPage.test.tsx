@@ -18,7 +18,7 @@ describe('LoginPage', () => {
   it('offers the central identity login', () => {
     render(<MemoryRouter initialEntries={['/login']}><LoginPage /></MemoryRouter>)
     expect(screen.getByRole('button', { name: 'SMZ Identity home' })).toBeInTheDocument()
-    expect(screen.getByText(/Only approved, active parents and teachers/)).toBeInTheDocument()
+    expect(screen.getByText(/只有已核准、啟用且具備 Email CMS 存取權的學校帳號/)).toBeInTheDocument()
   })
 
   it('passes through a safe requested destination', () => {

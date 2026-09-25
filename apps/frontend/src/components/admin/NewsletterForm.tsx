@@ -243,7 +243,7 @@ export function NewsletterForm({
         {mode !== 'create-template' && (
           <div className="animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
           <label htmlFor="weekNumber" className="block text-sm font-semibold text-waldorf-clay-700 mb-2">
-            週次 (Week Number)
+            週次
           </label>
           <div className="flex gap-3">
             <input
@@ -268,7 +268,7 @@ export function NewsletterForm({
 
         <div className="animate-fade-in-up" style={{ animationDelay: '0.15s' }}>
           <label htmlFor="title" className="block text-sm font-semibold text-waldorf-clay-700 mb-2">
-            標題 (Title)
+            標題
           </label>
           <input
             type="text"
@@ -282,7 +282,7 @@ export function NewsletterForm({
 
         <div className="animate-fade-in-up" style={{ animationDelay: '0.18s' }}>
           <label htmlFor="description" className="block text-sm font-semibold text-waldorf-clay-700 mb-2">
-            摘要 (Description)
+            摘要
           </label>
           <textarea
             id="description"
@@ -297,7 +297,7 @@ export function NewsletterForm({
         {mode !== 'create-template' && !isTemplateEditMode && (
           <div className="animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
             <label htmlFor="releaseDate" className="block text-sm font-semibold text-waldorf-clay-700 mb-2">
-              預計發布日期 (Release Date) <span className="text-waldorf-rose-500">*</span>
+              預計發布日期 <span className="text-waldorf-rose-500">*</span>
             </label>
             <input
               type="date"

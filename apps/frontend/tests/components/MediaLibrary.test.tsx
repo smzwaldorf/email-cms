@@ -140,7 +140,7 @@ describe('MediaLibrary Component (T057)', () => {
       await user.type(searchInput, 'nonexistent-file')
 
       await waitFor(() => {
-        expect(screen.getByText(/No media files found|無媒體檔案/i)).toBeInTheDocument()
+        expect(screen.getByText(/找不到媒體檔案/)).toBeInTheDocument()
       })
     })
   })
@@ -286,7 +286,7 @@ describe('MediaLibrary Component (T057)', () => {
         />
       )
 
-      expect(screen.getByText(/No media files found|無媒體檔案/i)).toBeInTheDocument()
+      expect(screen.getByText(/找不到媒體檔案/)).toBeInTheDocument()
     })
 
     it('should show count as zero', () => {

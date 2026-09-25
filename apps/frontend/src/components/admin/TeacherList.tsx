@@ -49,7 +49,7 @@ export function TeacherList({
         <thead className="bg-gradient-to-r from-waldorf-cream-100 to-waldorf-cream-50">
           <tr>
             <th className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">姓名</th>
-            <th className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">Email</th>
+            <th className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">電子郵件</th>
             <th className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">狀態</th>
             <th className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">操作</th>
           </tr>

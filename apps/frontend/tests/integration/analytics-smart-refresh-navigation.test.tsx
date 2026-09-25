@@ -24,7 +24,7 @@ const ArticlePage = () => {
     return (
         <div>
             <h1>Article Page</h1>
-            <button onClick={() => navigate('/admin/analytics')}>Back to Dashboard</button>
+            <button onClick={() => navigate('/admin/analytics')}>返回儀表板</button>
         </div>
     );
 };
@@ -79,7 +79,7 @@ describe('Analytics Dashboard with Navigation', () => {
       </AnalyticsProvider>
     )
 
-    expect(screen.getByText('Analytics Dashboard')).toBeInTheDocument();
+    expect(screen.getByText('分析儀表板')).toBeInTheDocument();
   });
 
   it('navigates from article page to dashboard and refresh works', async () => {
@@ -98,14 +98,14 @@ describe('Analytics Dashboard with Navigation', () => {
     expect(screen.getByText('Article Page')).toBeInTheDocument();
 
     // 2. Navigate Back to Dashboard
-    const backBtn = screen.getByText('Back to Dashboard');
+    const backBtn = screen.getByText('返回儀表板');
     fireEvent.click(backBtn);
 
     // 3. Verify Dashboard is shown
-    expect(screen.getByText('Analytics Dashboard')).toBeInTheDocument();
+    expect(screen.getByText('分析儀表板')).toBeInTheDocument();
 
     // 4. Click Refresh Button
-    const refreshBtn = screen.getByTitle('Reload Data')
+    const refreshBtn = screen.getByTitle('重新載入資料')
     fireEvent.click(refreshBtn)
 
     // 5. Expect refetch to be called
@@ -124,7 +124,7 @@ describe('Analytics Dashboard with Navigation', () => {
     )
 
     // Enable live update
-    const liveBtn = screen.getByTitle('Enable live updates (every 5s)')
+    const liveBtn = screen.getByTitle('啟用即時更新（每 5 秒）')
     fireEvent.click(liveBtn)
 
     // Clear previous calls

@@ -223,7 +223,7 @@ function SecureImageComponent({
           <button
             onClick={handleDelete}
             className="absolute top-2 right-2 flex items-center justify-center w-6 h-6 bg-red-500 text-white rounded-full shadow-md hover:bg-red-600 active:bg-red-700 transition-colors cursor-pointer"
-            title="Delete image"
+            title="刪除圖片"
           >
             ✕
           </button>
@@ -244,7 +244,7 @@ function SecureImageComponent({
                 setIsCaptionFocused(false)
               }}
               onFocus={() => setIsCaptionFocused(true)}
-              placeholder={isCaptionFocused ? '' : 'Add caption...'}
+              placeholder={isCaptionFocused ? '' : '新增圖片說明...'}
               className="text-sm text-gray-600 italic px-0 py-1 focus:outline-none max-w-xs text-center bg-transparent"
             />
           ) : caption ? (
@@ -261,7 +261,7 @@ function SecureImageComponent({
               onClick={() => setIsEditingCaption(true)}
               className="text-sm text-gray-400 italic px-0 py-1 cursor-text hover:text-gray-500"
             >
-              Add a caption
+              新增圖片說明
             </button>
           ) : null}
         </div>

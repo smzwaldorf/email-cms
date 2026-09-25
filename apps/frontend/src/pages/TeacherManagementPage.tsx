@@ -49,7 +49,7 @@ export function TeacherManagementPage() {
       const data = await adminService.fetchTeachers({ includeInactive: showInactive })
       setTeachers(data)
     } catch (err) {
-      const message = err instanceof AdminServiceError ? err.message : 'Failed to load teachers'
+      const message = err instanceof AdminServiceError ? err.message : '無法載入教師'
       setError(message)
     } finally {
       setIsLoading(false)
@@ -87,7 +87,7 @@ export function TeacherManagementPage() {
       setNotification({
         message:
           extractTeacherValidationMessage(err) ||
-          (err instanceof AdminServiceError ? err.message : 'Failed to create teacher'),
+          (err instanceof AdminServiceError ? err.message : '無法建立教師'),
         type: 'error',
       })
     } finally {
@@ -107,7 +107,7 @@ export function TeacherManagementPage() {
       setNotification({
         message:
           extractTeacherValidationMessage(err) ||
-          (err instanceof AdminServiceError ? err.message : 'Failed to update teacher'),
+          (err instanceof AdminServiceError ? err.message : '無法更新教師'),
         type: 'error',
       })
     } finally {

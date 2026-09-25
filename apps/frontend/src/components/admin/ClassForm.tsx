@@ -342,7 +342,7 @@ export function ClassForm({
 
       onSave?.(classData)
     } catch (err: unknown) {
-      const error = new Error(err instanceof Error ? err.message : 'Failed to save class')
+      const error = new Error(err instanceof Error ? err.message : '無法儲存班級')
       setSaveError(error.message)
       onError?.(error)
     } finally {

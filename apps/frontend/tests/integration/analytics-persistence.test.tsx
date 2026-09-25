@@ -53,7 +53,7 @@ describe('Analytics Persistence', () => {
                             {showDashboard ? (
                                 <AnalyticsDashboardPage />
                             ) : (
-                                <button onClick={() => setShowDashboard(true)}>Back to Dashboard</button>
+                                <button onClick={() => setShowDashboard(true)}>返回儀表板</button>
                             )}
                              {showDashboard && (
                                 <button onClick={() => setShowDashboard(false)}>Go Away</button>
@@ -77,11 +77,11 @@ describe('Analytics Persistence', () => {
         fireEvent.click(screen.getByText('Go Away'));
         
         await waitFor(() => {
-            expect(screen.queryByText('Analytics Dashboard')).not.toBeInTheDocument();
+            expect(screen.queryByText('分析儀表板')).not.toBeInTheDocument();
         });
 
         // 3. Click "Back to Dashboard" to remount
-        fireEvent.click(screen.getByText('Back to Dashboard'));
+        fireEvent.click(screen.getByText('返回儀表板'));
 
         // 4. Verify the newsletter ID is still selected (hook called with it)
         // Since we are checking if the component *remembers* the state on mount.
@@ -104,7 +104,7 @@ describe('Analytics Persistence', () => {
                             {showDashboard ? (
                                 <AnalyticsDashboardPage />
                             ) : (
-                                <button onClick={() => setShowDashboard(true)}>Back to Dashboard</button>
+                                <button onClick={() => setShowDashboard(true)}>返回儀表板</button>
                             )}
                              {showDashboard && (
                                 <button onClick={() => setShowDashboard(false)}>Go Away</button>
@@ -118,25 +118,25 @@ describe('Analytics Persistence', () => {
         render(<TestApp />);
 
         // 1. Enable live update
-        const liveBtn = screen.getByTitle('Enable live updates (every 5s)');
+        const liveBtn = screen.getByTitle('啟用即時更新（每 5 秒）');
         fireEvent.click(liveBtn);
         
         // Verify it's now enabled
-        expect(screen.getByTitle('Disable live updates')).toBeInTheDocument();
+        expect(screen.getByTitle('停用即時更新')).toBeInTheDocument();
 
         // 2. Click "Go Away" to unmount Dashboard (but keep Provider)
         fireEvent.click(screen.getByText('Go Away'));
         
         await waitFor(() => {
-            expect(screen.queryByText('Analytics Dashboard')).not.toBeInTheDocument();
+            expect(screen.queryByText('分析儀表板')).not.toBeInTheDocument();
         });
 
         // 3. Click "Back to Dashboard" to remount
-        fireEvent.click(screen.getByText('Back to Dashboard'));
+        fireEvent.click(screen.getByText('返回儀表板'));
 
         // 4. Verify liveUpdate is still enabled (button should show "Disable")
         await waitFor(() => {
-            expect(screen.getByTitle('Disable live updates')).toBeInTheDocument();
+            expect(screen.getByTitle('停用即時更新')).toBeInTheDocument();
         });
     });
 });

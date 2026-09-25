@@ -78,7 +78,7 @@ export function ClassManagementPage() {
       const data = await adminService.fetchClasses({ includeInactive: true })
       setClasses(data)
     } catch (err: unknown) {
-      const message = err instanceof AdminServiceError ? err.message : 'Failed to load classes'
+      const message = err instanceof AdminServiceError ? err.message : '無法載入班級'
       setError(message)
     } finally {
       setIsLoading(false)
@@ -94,7 +94,7 @@ export function ClassManagementPage() {
       setStudents(studentList)
       console.log(`Loaded ${studentList.length} students:`, studentList)
     } catch (err) {
-      console.error('Failed to load students:', err)
+      console.error('無法載入學生：', err)
       setError(`無法加載學生列表: ${err instanceof Error ? err.message : String(err)}`)
     }
   }
@@ -108,7 +108,7 @@ export function ClassManagementPage() {
       setTeachers(teacherList)
       console.log(`Loaded ${teacherList.length} teachers:`, teacherList)
     } catch (err) {
-      console.error('Failed to load teachers:', err)
+      console.error('無法載入教師：', err)
       setError(`無法加載教師列表: ${err instanceof Error ? err.message : String(err)}`)
     }
   }
@@ -138,7 +138,7 @@ export function ClassManagementPage() {
         setNotification({ message: Object.values(fieldErrors)[0], type: 'error' })
         return
       }
-      const message = err instanceof AdminServiceError ? err.message : 'Failed to create class'
+      const message = err instanceof AdminServiceError ? err.message : '無法建立班級'
       setNotification({ message, type: 'error' })
     } finally {
       setIsSaving(false)
@@ -167,7 +167,7 @@ export function ClassManagementPage() {
         setNotification({ message: Object.values(fieldErrors)[0], type: 'error' })
         return
       }
-      const message = err instanceof AdminServiceError ? err.message : 'Failed to update class'
+      const message = err instanceof AdminServiceError ? err.message : '無法更新班級'
       setNotification({ message, type: 'error' })
     } finally {
       setIsSaving(false)
@@ -185,7 +185,7 @@ export function ClassManagementPage() {
       setDeleteConfirm({ isOpen: false })
       await loadClasses()
     } catch (err: unknown) {
-      const message = err instanceof AdminServiceError ? err.message : 'Failed to deactivate class'
+      const message = err instanceof AdminServiceError ? err.message : '無法停用班級'
       setNotification({ message, type: 'error' })
       setDeleteConfirm({ isOpen: false })
     } finally {
@@ -201,7 +201,7 @@ export function ClassManagementPage() {
       setDeleteConfirm({ isOpen: false })
       await loadClasses()
     } catch (err: unknown) {
-      const message = err instanceof AdminServiceError ? err.message : 'Failed to activate class'
+      const message = err instanceof AdminServiceError ? err.message : '無法啟用班級'
       setNotification({ message, type: 'error' })
       setDeleteConfirm({ isOpen: false })
     } finally {

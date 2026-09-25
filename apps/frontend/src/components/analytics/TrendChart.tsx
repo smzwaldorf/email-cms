@@ -62,26 +62,26 @@ const CustomDot = (props: TrendDotProps) => {
     );
 };
 
-export const TrendChart: React.FC<TrendChartProps> = ({ data, title = 'Engagement Trends', height = 300, tracker = 'resend' }) => {
+export const TrendChart: React.FC<TrendChartProps> = ({ data, title = '互動趨勢', height = 300, tracker = 'resend' }) => {
   const hasCounts = data.some(point => point.uniqueOpenCount != null || point.uniqueClickCount != null);
   if (!hasCounts) {
     return (
       <div role="status" className="flex flex-col items-center justify-center text-center text-brand-neutral-500 p-6" style={{ minHeight: height }}>
-        <p className="font-medium">No engagement trend data yet</p>
+        <p className="font-medium">尚無互動趨勢資料</p>
         <p className="text-sm mt-2">{data.length === 0
-          ? 'No newsletters are available for this selection.'
+          ? '此篩選條件沒有可用的電子報。'
           : tracker === 'resend'
-            ? 'Resend counts need delivery confirmations. Try CMS tracker to see available CMS email activity.'
-            : 'CMS counts need successfully sent recipients. No counts are available for this selection.'}</p>
+            ? 'Resend 指標需要送達確認。可切換至 CMS 追蹤查看現有電子郵件互動資料。'
+            : 'CMS 指標需要成功寄送的收件人資料。此篩選條件沒有可用數據。'}</p>
       </div>
     );
   }
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm border border-brand-neutral-100">
       <h3 className="text-lg font-semibold text-brand-neutral-800 mb-6">{title}</h3>
-      <p className="text-sm text-brand-neutral-500 mb-3">Unique recipients per newsletter. Repeat opens and clicks count once.</p>
+      <p className="text-sm text-brand-neutral-500 mb-3">每期電子報按收件人去重，重複開啟與點擊各只計一次。</p>
       {data.some(point => point.uniqueOpenCount == null || point.uniqueClickCount == null) && (
-        <p className="text-sm text-brand-neutral-500 mb-3">Gaps indicate unavailable recipient counts for the selected tracker.</p>
+        <p className="text-sm text-brand-neutral-500 mb-3">空缺表示所選追蹤來源的收件人數不可用。</p>
       )}
       <div style={{ width: '100%', height, minWidth: 0 }}>
         <ResponsiveContainer width="100%" height="100%">

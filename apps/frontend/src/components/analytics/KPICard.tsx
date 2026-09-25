@@ -21,7 +21,7 @@ export const KPICard: React.FC<KPICardProps> = ({
   suffix = '',
   loading = false,
   trend, 
-  trendLabel = 'vs last week',
+  trendLabel = '較上週',
   tooltip,
   icon 
 }) => {

@@ -29,7 +29,7 @@ export function TaskListButton({ editor }: TaskListButtonProps) {
     <button
       onClick={handleClick}
       className={`toolbar-button ${editor.isActive('taskList') ? 'active' : ''}`}
-      title="Task List"
+      title="待辦清單"
       type="button"
     >
       <CheckSquare size={18} />

@@ -104,7 +104,7 @@ export function NewsletterEmailPreviewPage() {
         }
         if (fam.length > 0) setSelectedFamilyId(fam[0].id)
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load preview inputs')
+        setError(err instanceof Error ? err.message : '無法載入預覽選項')
       } finally {
         setIsLoading(false)
       }
@@ -170,10 +170,10 @@ export function NewsletterEmailPreviewPage() {
         renderedBody: result.renderedBody,
         warnings: result.warnings,
         guardianEmail: result.guardianEmail,
-        templateLabel: selectedTemplate?.name ?? (activeTemplate ? `${activeTemplate.name} (active)` : 'Active template'),
+        templateLabel: selectedTemplate?.name ?? (activeTemplate ? `${activeTemplate.name} (active)` : '使用中的範本'),
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to render preview')
+      setError(err instanceof Error ? err.message : '無法產生預覽')
       setPreview(null)
     } finally {
       setIsPreviewing(false)
@@ -198,7 +198,7 @@ export function NewsletterEmailPreviewPage() {
       setSuccess(`Published delivery batch ${batch.id} (state: ${batch.state}).`)
       setPreview(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to publish newsletter')
+      setError(err instanceof Error ? err.message : '無法發布電子報')
     } finally {
       setIsPublishing(false)
     }
@@ -217,15 +217,15 @@ export function NewsletterEmailPreviewPage() {
   const hasBlockingFindings = findings.some((finding) => finding.severity === 'error')
 
   const publishDisabledReason = hasBlockingFindings
-    ? 'Resolve preparation errors before publishing.'
+    ? '請先修正準備階段的錯誤，再發布。'
     : hasIncompleteClassMapping
-      ? 'Resolve Auth class mappings before publishing.'
+      ? '請先修正 Auth 班級對應，再發布。'
       : !canPublishSelectedNewsletter
-        ? 'Only draft newsletters can be published.'
+        ? '只有草稿電子報可以發布。'
         : !preview
-          ? 'Render a preview first.'
+          ? '請先產生預覽。'
           : preview.eligibleCount === null || preview.eligibleCount === 0
-            ? 'No eligible recipients for this audience.'
+            ? '此寄送對象沒有符合資格的收件人。'
             : undefined
 
   const isBusy = isPreviewing || isPublishing
@@ -235,8 +235,8 @@ export function NewsletterEmailPreviewPage() {
       <AdminLayout
         activeTab="email-preview"
         contentVariant="plain"
-        title="Email Preview"
-        description="Render exactly what one recipient family will receive, then publish to the reviewed audience."
+        title="電子郵件預覽"
+        description="預覽單一收件家庭實際收到的內容，再發布給已確認的收件對象。"
         backLink={selectedNewsletter ? { to: getAdminNewsletterPath(selectedNewsletter), label: '返回電子報編排' } : undefined}
       >
         <div className="space-y-6">
@@ -249,22 +249,22 @@ export function NewsletterEmailPreviewPage() {
             {/* Setup */}
             <aside className="space-y-6 lg:sticky lg:top-6">
               <section className="rounded-2xl border border-waldorf-cream-200 bg-white/90 backdrop-blur-sm p-5 shadow-sm">
-                <h2 className="font-display text-xl font-semibold text-waldorf-clay-800">Preview setup</h2>
-                <p className="mt-1 text-xs text-waldorf-clay-500">Choose what to render, then who should receive the publication.</p>
+                <h2 className="font-display text-xl font-semibold text-waldorf-clay-800">預覽設定</h2>
+                <p className="mt-1 text-xs text-waldorf-clay-500">先選擇預覽內容，再設定發布對象。</p>
 
                 {isLoading ? (
-                  <p className="mt-4 text-sm text-waldorf-clay-500">Loading...</p>
+                  <p className="mt-4 text-sm text-waldorf-clay-500">載入中...</p>
                 ) : (
                   <div className="mt-5 space-y-4">
                     <label className={labelClass}>
-                      <span className="font-medium">Newsletter</span>
+                      <span className="font-medium">電子報</span>
                       <select
                         value={selectedNewsletterId}
                         disabled={isBusy}
                         onChange={(event) => handleSelectNewsletter(event.target.value)}
                         className={fieldClass}
                       >
-                        <option value="">Select newsletter</option>
+                        <option value="">選擇電子報</option>
                         {newsletters.map((newsletter) => (
                           <option key={newsletter.id} value={newsletter.id}>
                             {newsletter.title || newsletter.weekNumber || newsletter.id} ({newsletter.status})
@@ -277,41 +277,41 @@ export function NewsletterEmailPreviewPage() {
                             {selectedNewsletter.status}
                           </span>
                           {selectedNewsletter.weekNumber && <span>{selectedNewsletter.weekNumber}</span>}
-                          <span>{selectedNewsletter.articleCount} articles</span>
+                          <span>{selectedNewsletter.articleCount} 篇文章</span>
                         </span>
                       )}
                     </label>
 
                     <label className={labelClass}>
-                      <span className="font-medium">Family</span>
+                      <span className="font-medium">家庭</span>
                       <select
                         value={selectedFamilyId}
                         disabled={isBusy}
                         onChange={(event) => setSelectedFamilyId(event.target.value)}
                         className={fieldClass}
                       >
-                        <option value="">Select family</option>
+                        <option value="">選擇家庭</option>
                         {families.map((family) => (
                           <option key={family.id} value={family.id}>
                             {family.name}
                           </option>
                         ))}
                       </select>
-                      <span className="text-[11px] text-waldorf-clay-400">The rendered email uses this family's class articles and guardian.</span>
+                      <span className="text-[11px] text-waldorf-clay-400">預覽會使用此家庭所屬班級的文章與監護人資料。</span>
                     </label>
 
                     <label className={labelClass}>
-                      <span className="font-medium">Email template (optional)</span>
+                      <span className="font-medium">電子郵件範本（選填）</span>
                       <select
                         value={selectedTemplateId}
                         disabled={isBusy}
                         onChange={(event) => setSelectedTemplateId(event.target.value)}
                         className={fieldClass}
                       >
-                        <option value="">{activeTemplate ? `Use active template (${activeTemplate.name})` : 'Use active template'}</option>
+                        <option value="">{activeTemplate ? `Use active template (${activeTemplate.name})` : '使用中的範本'}</option>
                         {templates.map((template) => (
                           <option key={template.id} value={template.id}>
-                            {template.name}{template.state === 'active' ? ' · in use' : ''}
+                            {template.name}{template.state === 'active' ? ' · 使用中' : ''}
                           </option>
                         ))}
                       </select>
@@ -319,21 +319,21 @@ export function NewsletterEmailPreviewPage() {
 
                     <div className="border-t border-waldorf-cream-200 pt-4">
                       <label className={labelClass}>
-                        <span className="font-medium">Delivery audience</span>
+                        <span className="font-medium">寄送對象</span>
                         <select
                           disabled={isBusy}
                           value={audienceMode}
                           onChange={(event) => setAudienceMode(event.target.value as typeof audienceMode)}
                           className={fieldClass}
                         >
-                          <option value="family">Selected family only</option>
-                          <option value="classes">Selected classes</option>
-                          <option value="all">All eligible families</option>
+                          <option value="family">僅選取的家庭</option>
+                          <option value="classes">選取的班級</option>
+                          <option value="all">所有符合資格的家庭</option>
                         </select>
                       </label>
                       {audienceMode === 'classes' && (
                         <div className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-lg border border-waldorf-cream-200 bg-waldorf-cream-50/60 p-2">
-                          {classes.length === 0 && <p className="text-xs text-waldorf-clay-500">No classes available.</p>}
+                          {classes.length === 0 && <p className="text-xs text-waldorf-clay-500">沒有可選班級。</p>}
                           {classes.map((item) => (
                             <label key={item.id} className="flex items-center gap-2 rounded px-1 py-0.5 text-xs text-waldorf-clay-700 hover:bg-white">
                               <input
@@ -354,12 +354,12 @@ export function NewsletterEmailPreviewPage() {
                             preview.eligibleCount ? 'bg-waldorf-sage-50 text-waldorf-sage-700' : 'bg-waldorf-rose-50 text-waldorf-rose-700'
                           }`}
                         >
-                          Eligible parents from SMZ Auth: {preview.eligibleCount ?? 0}{preview.eligibleCount === 0 ? ' — delivery blocked; check audience eligibility.' : ''}
+                          SMZ Auth 中符合資格的家長： {preview.eligibleCount ?? 0}{preview.eligibleCount === 0 ? ' — 已阻擋寄送；請檢查對象資格。' : ''}
                         </p>
                       )}
                       {hasIncompleteClassMapping && (
                         <p role="alert" className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                          Preview incomplete — one or more Auth class codes have no unique CMS class mapping. Class-targeted articles may be omitted; publication is disabled until the mapping is corrected.
+                          預覽不完整：至少一個 Auth 班級代碼無法唯一對應 CMS 班級，部分班級文章可能遺漏。修正對應前無法發布。
                         </p>
                       )}
                     </div>
@@ -371,7 +371,7 @@ export function NewsletterEmailPreviewPage() {
                         disabled={!canPreview || isPreviewing}
                         className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-waldorf-sage-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-waldorf-sage-700 disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        {isPreviewing ? 'Rendering...' : 'Render preview'}
+                        {isPreviewing ? '產生中...' : '產生預覽'}
                       </button>
                       <button
                         type="button"
@@ -380,7 +380,7 @@ export function NewsletterEmailPreviewPage() {
                         title={publishDisabledReason}
                         className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-waldorf-peach-500 to-waldorf-peach-600 px-4 py-2.5 text-sm font-medium text-white shadow-lg shadow-waldorf-peach-200/50 transition-all hover:from-waldorf-peach-600 hover:to-waldorf-peach-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
                       >
-                        {isPublishing ? 'Publishing...' : 'Confirm and publish'}
+                        {isPublishing ? '發布中...' : '確認並發布'}
                       </button>
                       {publishDisabledReason && !isBusy && (
                         <p className="text-center text-[11px] text-waldorf-clay-400">{publishDisabledReason}</p>
@@ -393,7 +393,7 @@ export function NewsletterEmailPreviewPage() {
               {findings.length > 0 && (
                 <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
                   <h3 className="text-sm font-semibold text-amber-900">
-                    Preparation findings ({findings.length})
+                    準備結果（{findings.length})
                   </h3>
                   <ul className="mt-2 space-y-1.5 text-xs text-amber-900">
                     {findings.map((finding, index) => (
@@ -415,10 +415,10 @@ export function NewsletterEmailPreviewPage() {
             <section className="rounded-2xl border border-waldorf-cream-200 bg-white/90 backdrop-blur-sm shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-waldorf-cream-200 px-5 py-4">
                 <div>
-                  <h2 className="font-display text-xl font-semibold text-waldorf-clay-800">Rendered email</h2>
-                  <p className="mt-0.5 text-xs text-waldorf-clay-500">Exactly what the selected family's guardian would receive.</p>
+                  <h2 className="font-display text-xl font-semibold text-waldorf-clay-800">產生的電子郵件</h2>
+                  <p className="mt-0.5 text-xs text-waldorf-clay-500">顯示所選家庭監護人實際會收到的內容。</p>
                 </div>
-                <div className="inline-flex overflow-hidden rounded-lg border border-waldorf-cream-300 text-xs" role="group" aria-label="Preview width">
+                <div className="inline-flex overflow-hidden rounded-lg border border-waldorf-cream-300 text-xs" role="group" aria-label="預覽寬度">
                   {(['desktop', 'mobile'] as PreviewDevice[]).map((option) => (
                     <button
                       key={option}
@@ -439,30 +439,30 @@ export function NewsletterEmailPreviewPage() {
                 <div className="p-5">
                   <dl className="grid grid-cols-1 gap-3 text-xs text-waldorf-clay-600 sm:grid-cols-3">
                     <div className="rounded-lg bg-waldorf-cream-50 px-3 py-2">
-                      <dt className="font-medium text-waldorf-clay-500">Recipient</dt>
+                      <dt className="font-medium text-waldorf-clay-500">收件人</dt>
                       <dd className="mt-0.5 truncate text-waldorf-clay-800" title={preview.guardianEmail ?? undefined}>
-                        {preview.guardianEmail ?? 'Family preview — recipient emails checked separately'}
+                        {preview.guardianEmail ?? '家庭預覽 — 收件人電子郵件另行檢查'}
                       </dd>
                     </div>
                     <div className="rounded-lg bg-waldorf-cream-50 px-3 py-2">
-                      <dt className="font-medium text-waldorf-clay-500">Template</dt>
+                      <dt className="font-medium text-waldorf-clay-500">範本</dt>
                       <dd className="mt-0.5 truncate text-waldorf-clay-800">{preview.templateLabel}</dd>
                     </div>
                     <div className="rounded-lg bg-waldorf-cream-50 px-3 py-2">
-                      <dt className="font-medium text-waldorf-clay-500">Recipient family</dt>
+                      <dt className="font-medium text-waldorf-clay-500">收件家庭</dt>
                       <dd className="mt-0.5 truncate text-waldorf-clay-800">{selectedFamily?.name ?? selectedFamilyId}</dd>
                     </div>
                   </dl>
 
                   <div className="mt-4 rounded-xl border border-waldorf-cream-200 bg-white">
                     <div className="flex items-baseline gap-3 border-b border-waldorf-cream-200 px-4 py-3">
-                      <span className="text-[11px] font-semibold uppercase tracking-wider text-waldorf-clay-400">Subject</span>
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-waldorf-clay-400">主旨</span>
                       <span className="text-sm font-medium text-waldorf-clay-800">{preview.renderedSubject || '(empty)'}</span>
                     </div>
                     <div className="flex justify-center bg-waldorf-cream-100/70 p-4">
                       <iframe
-                        title="Newsletter email preview"
-                        srcDoc={preview.renderedBody || '<p>(empty body)</p>'}
+                        title="電子報郵件預覽"
+                        srcDoc={preview.renderedBody || '<p>（內文空白）</p>'}
                         className={`h-[720px] rounded-lg border border-waldorf-cream-200 bg-white shadow-sm transition-all ${
                           device === 'mobile' ? 'w-[390px] max-w-full' : 'w-full'
                         }`}
@@ -478,10 +478,10 @@ export function NewsletterEmailPreviewPage() {
                     </svg>
                   </div>
                   <p className="font-medium text-waldorf-clay-600">
-                    {isPreviewing ? 'Rendering preview…' : 'No preview rendered yet'}
+                    {isPreviewing ? '正在產生預覽…' : '尚未產生預覽'}
                   </p>
                   <p className="mt-1 max-w-sm text-sm text-waldorf-clay-400">
-                    Pick a newsletter and a family on the left, then click <span className="font-medium text-waldorf-clay-500">Render preview</span> to see the personalized email here.
+                    請先在左側選擇電子報與家庭，再按 <span className="font-medium text-waldorf-clay-500">產生預覽</span> 即可在此查看個人化電子郵件。
                   </p>
                 </div>
               )}

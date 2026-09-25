@@ -22,7 +22,7 @@ const TOKEN_EXAMPLES = {
   'guardian.email': 'guardian@example.com',
   'family.id': 'family-001',
   'newsletter.id': 'newsletter-demo',
-  'newsletter.title': 'Weekly Newsletter',
+  'newsletter.title': '每週電子報',
   'newsletter.revisionId': 'newsletter-rev-1',
   'newsletter.url': 'https://example.com/week/2025-W38',
   'classes.count': '2',
@@ -42,7 +42,7 @@ function buildDemoEmailPreviewContext(): EmailTemplateRenderContext {
     },
     newsletter: {
       id: truncate('newsletter-demo-long-id'),
-      title: truncate('Weekly Newsletter Demo'),
+      title: truncate('每週電子報範例'),
       revisionId: truncate('newsletter-revision-long-id'),
       url: 'https://example.com/week/2025-W38',
     },
@@ -55,13 +55,13 @@ function buildDemoEmailPreviewContext(): EmailTemplateRenderContext {
 function EmailPreviewFrame({ html, decode }: { html: string; decode: (value: string) => string }) {
   const raw = decode(html)
   if (!raw.trim()) {
-    return <p className="py-8 text-center text-sm text-waldorf-clay-500">(empty)</p>
+    return <p className="py-8 text-center text-sm text-waldorf-clay-500">（空白）</p>
   }
   const isFullDoc = /^\s*<!doctype/i.test(raw) || /<html[\s>]/i.test(raw.trim())
   if (isFullDoc) {
     return (
       <iframe
-        title="Email preview"
+        title="電子郵件預覽"
         sandbox="allow-same-origin"
         srcDoc={raw}
         className="h-[min(640px,70vh)] w-full rounded-lg border border-waldorf-cream-200 bg-white shadow-sm"
@@ -230,7 +230,7 @@ export function AdminEmailTemplateEditorPage() {
         setEditingRevision(current.revision)
         setEditingTemplate(current.template)
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load template')
+        setError(err instanceof Error ? err.message : '無法載入範本')
       } finally {
         setIsLoading(false)
       }
@@ -248,7 +248,7 @@ export function AdminEmailTemplateEditorPage() {
 
   const handleCreate = async () => {
     if (hasValidationIssues) {
-      setError('Resolve template validation errors before saving.')
+      setError('請先修正範本驗證錯誤，再儲存。')
       return
     }
 
@@ -256,16 +256,16 @@ export function AdminEmailTemplateEditorPage() {
     setError(null)
     try {
       const created = await emailTemplateService.createTemplate({
-        name: name || 'Untitled template',
+        name: name || '未命名範本',
         subjectTemplate,
         bodyTemplate: effectiveBodyTemplate,
         blocks: editorBlocks ?? undefined,
         importedBodyHtml: rawImportedHtml,
       })
-      setSuccess('Template created.')
+      setSuccess('範本已建立。')
       navigate(`/admin/email-templates/${created.template.id}`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create template')
+      setError(err instanceof Error ? err.message : '無法建立範本')
     } finally {
       setIsSaving(false)
     }
@@ -274,7 +274,7 @@ export function AdminEmailTemplateEditorPage() {
   const handleSave = async () => {
     if (!templateId) return
     if (hasValidationIssues) {
-      setError('Resolve template validation errors before saving.')
+      setError('請先修正範本驗證錯誤，再儲存。')
       return
     }
 
@@ -293,7 +293,7 @@ export function AdminEmailTemplateEditorPage() {
       setEditorBlocks(updated.revision.blocks.length > 0 ? updated.revision.blocks : null)
       setSuccess(`Saved revision v${updated.revision.revisionNumber}.`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save template')
+      setError(err instanceof Error ? err.message : '無法儲存範本')
     } finally {
       setIsSaving(false)
     }
@@ -305,10 +305,10 @@ export function AdminEmailTemplateEditorPage() {
     setError(null)
     try {
       const duplicated = await emailTemplateService.duplicateTemplate(templateId)
-      setSuccess('Template duplicated.')
+      setSuccess('範本已複製。')
       navigate(`/admin/email-templates/${duplicated.template.id}`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to duplicate template')
+      setError(err instanceof Error ? err.message : '無法複製範本')
     } finally {
       setIsSaving(false)
     }
@@ -316,7 +316,7 @@ export function AdminEmailTemplateEditorPage() {
 
   const handleDelete = async () => {
     if (!templateId) return
-    const confirmed = window.confirm('Delete this template? This cannot be undone.')
+    const confirmed = window.confirm('確定要刪除此範本嗎？此操作無法復原。')
     if (!confirmed) return
 
     setIsSaving(true)
@@ -325,7 +325,7 @@ export function AdminEmailTemplateEditorPage() {
       await emailTemplateService.deleteTemplate(templateId)
       navigate('/admin/email-templates')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete template')
+      setError(err instanceof Error ? err.message : '無法刪除範本')
     } finally {
       setIsSaving(false)
     }
@@ -334,7 +334,7 @@ export function AdminEmailTemplateEditorPage() {
   const handleSetActive = async () => {
     if (!templateId) return
     if (!editingTemplate?.currentRevisionId) {
-      setError('Save the template at least once before marking it as active.')
+      setError('請先儲存範本，再設為使用中。')
       return
     }
     setIsActivating(true)
@@ -342,9 +342,9 @@ export function AdminEmailTemplateEditorPage() {
     try {
       const updated = await emailTemplateService.setActiveTemplate(templateId)
       setEditingTemplate(updated)
-      setSuccess('This template is now used for newsletter publishing.')
+      setSuccess('此範本現已用於發布電子報。')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to mark template as active')
+      setError(err instanceof Error ? err.message : '無法將範本設為使用中')
     } finally {
       setIsActivating(false)
     }
@@ -363,7 +363,7 @@ export function AdminEmailTemplateEditorPage() {
     setBodyEditorMode('html')
     setShowImportPanel(false)
     if (nextImportResult.hasBlockingIssues) {
-      setError('Imported HTML has compatibility issues. Resolve them before saving.')
+      setError('匯入的 HTML 有相容性問題。請先修正再儲存。')
       setSuccess(null)
       setEditorBlocks(createStarterEmailBlocks({ mainBodyHtml: nextImportResult.normalizedHtml }))
       setImportDetectionMessage(null)
@@ -379,12 +379,12 @@ export function AdminEmailTemplateEditorPage() {
     } else {
       setEditorBlocks(createStarterEmailBlocks({ mainBodyHtml: nextImportResult.normalizedHtml }))
       setImportDetectionMessage(
-        'Could not detect three or more sections; main content was placed in the middle custom-html block with header and footer.',
+        '無法辨識至少三個區段；主要內容已放入頁首與頁尾之間的自訂 HTML 區塊。',
       )
     }
 
     setError(null)
-    setSuccess('HTML imported. Compatible markup will be preserved for save and preview.')
+    setSuccess('HTML 已匯入。相容的標記會保留供儲存與預覽使用。')
   }
 
   const handleImportFile = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -397,7 +397,7 @@ export function AdminEmailTemplateEditorPage() {
       setSuccess(null)
       setError(null)
     } catch {
-      setError('Failed to read HTML file.')
+      setError('無法讀取 HTML 檔案。')
     } finally {
       event.target.value = ''
     }
@@ -427,7 +427,7 @@ export function AdminEmailTemplateEditorPage() {
 
   const stateBadge = editingTemplate
     ? editingTemplate.state === 'active'
-      ? { label: 'In use', className: 'bg-waldorf-sage-600 text-white' }
+      ? { label: '使用中', className: 'bg-waldorf-sage-600 text-white' }
       : editingTemplate.state === 'draft'
         ? { label: 'Draft', className: 'bg-waldorf-cream-200 text-waldorf-clay-600' }
         : { label: 'Inactive', className: 'bg-waldorf-cream-100 text-waldorf-clay-500' }
@@ -445,13 +445,13 @@ export function AdminEmailTemplateEditorPage() {
       <AdminLayout
         activeTab="email-templates"
         contentVariant="plain"
-        title={isNew ? 'New Email Template' : 'Edit Email Template'}
+        title={isNew ? '新增電子郵件範本' : '編輯電子郵件範本'}
         description={
           isNew
-            ? 'Compose the subject and body blocks, check the live preview, then create the template.'
-            : 'Every save creates a new revision. Newsletters use the revision that was current when they were published.'
+            ? '編寫主旨與內文區塊，檢查即時預覽後再建立範本。'
+            : '每次儲存都會建立新版本。電子報使用發布時的範本版本。'
         }
-        backLink={{ to: '/admin/email-templates', label: 'Back to templates' }}
+        backLink={{ to: '/admin/email-templates', label: '返回範本列表' }}
       >
         <div className="space-y-6">
           {/* Action bar */}
@@ -459,7 +459,7 @@ export function AdminEmailTemplateEditorPage() {
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="truncate font-display text-xl font-semibold text-waldorf-clay-800">
-                  {name.trim() || 'Untitled template'}
+                  {name.trim() || '未命名範本'}
                 </h2>
                 {stateBadge && (
                   <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${stateBadge.className}`}>
@@ -469,11 +469,11 @@ export function AdminEmailTemplateEditorPage() {
               </div>
               <p className="mt-0.5 text-xs text-waldorf-clay-500">
                 {isNew
-                  ? 'Not saved yet'
+                  ? '尚未儲存'
                   : editingRevision
-                    ? `Revision v${editingRevision.revisionNumber} · saved ${new Date(editingRevision.createdAt).toLocaleString()}`
-                    : 'Loading revision…'}
-                {hasValidationIssues && <span className="ml-2 font-medium text-amber-700">· resolve validation issues to save</span>}
+                    ? `版本 v${editingRevision.revisionNumber} · 儲存於 ${new Date(editingRevision.createdAt).toLocaleString('zh-TW')}`
+                    : '正在載入版本…'}
+                {hasValidationIssues && <span className="ml-2 font-medium text-amber-700">· 請先解決驗證問題才能儲存</span>}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -484,25 +484,25 @@ export function AdminEmailTemplateEditorPage() {
                   disabled={isActivating || !editingTemplate.currentRevisionId}
                   title={
                     !editingTemplate.currentRevisionId
-                      ? 'Save the template at least once before marking it as active'
-                      : 'Use this template for newsletter publishing'
+                      ? '請先儲存範本，再設為使用中'
+                      : '使用此範本發布電子報'
                   }
                   className="rounded-lg border border-waldorf-sage-300 bg-white px-3 py-2 text-sm font-medium text-waldorf-sage-700 transition-colors hover:bg-waldorf-sage-50 disabled:opacity-50"
                 >
-                  {isActivating ? 'Activating…' : 'Use this template'}
+                  {isActivating ? 'Activating…' : '使用此範本'}
                 </button>
               )}
               {!isNew && (
                 <>
                   <button onClick={handleDuplicate} disabled={isSaving} className={secondaryButtonClass}>
-                    Duplicate
+                    複製
                   </button>
                   <button
                     onClick={handleDelete}
                     disabled={isSaving}
                     className="rounded-lg border border-waldorf-rose-200 bg-white px-3 py-2 text-sm font-medium text-waldorf-rose-700 transition-colors hover:bg-waldorf-rose-50 disabled:opacity-50"
                   >
-                    Delete
+                    刪除
                   </button>
                 </>
               )}
@@ -520,7 +520,7 @@ export function AdminEmailTemplateEditorPage() {
                   disabled={isSaving || hasValidationIssues}
                   className="rounded-lg bg-gradient-to-r from-waldorf-peach-500 to-waldorf-peach-600 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-waldorf-peach-200/50 transition-all hover:from-waldorf-peach-600 hover:to-waldorf-peach-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
                 >
-                  {isSaving ? 'Saving…' : 'Save'}
+                  {isSaving ? '儲存中…' : '儲存'}
                 </button>
               )}
             </div>
@@ -530,32 +530,32 @@ export function AdminEmailTemplateEditorPage() {
           {success && <div className="rounded-xl border border-waldorf-sage-200 bg-waldorf-sage-50 px-4 py-3 text-sm font-medium text-waldorf-sage-700">{success}</div>}
 
           {isLoading ? (
-            <div className={`${cardClass} p-8 text-sm text-waldorf-clay-500`}>Loading...</div>
+            <div className={`${cardClass} p-8 text-sm text-waldorf-clay-500`}>載入中...</div>
           ) : (
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(380px,42%)] xl:items-start">
               {/* Editor column */}
               <div className="space-y-6">
                 <section className={`${cardClass} p-5`}>
-                  <h3 className={cardTitleClass}>Template details</h3>
+                  <h3 className={cardTitleClass}>範本詳細資料</h3>
                   <div className="mt-4 space-y-4">
                     <label className="block">
-                      <span className="mb-1.5 block text-xs font-medium text-waldorf-clay-600">Template name</span>
+                      <span className="mb-1.5 block text-xs font-medium text-waldorf-clay-600">範本名稱</span>
                       <input
                         value={name}
                         onChange={(event) => setName(event.target.value)}
-                        placeholder="Template name"
+                        placeholder="範本名稱"
                         className={inputClass}
                       />
                     </label>
                     <label className="block">
                       <span className="mb-1.5 flex items-center justify-between text-xs font-medium text-waldorf-clay-600">
-                        <span>Subject template</span>
-                        <span className="font-normal text-waldorf-clay-400">Supports tokens like {'{{newsletter.title}}'}</span>
+                        <span>主旨範本</span>
+                        <span className="font-normal text-waldorf-clay-400">支援這類變數： {'{{newsletter.title}}'}</span>
                       </span>
                       <textarea
                         value={subjectTemplate}
                         onChange={(event) => setSubjectTemplate(event.target.value)}
-                        placeholder="Subject template"
+                        placeholder="主旨範本"
                         rows={2}
                         className={inputClass}
                       />
@@ -566,11 +566,11 @@ export function AdminEmailTemplateEditorPage() {
                 <section className={`${cardClass} p-5`}>
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <h3 className={cardTitleClass}>{showBlockList ? 'Template blocks' : 'Body template'}</h3>
+                      <h3 className={cardTitleClass}>{showBlockList ? '範本區塊' : '內文範本'}</h3>
                       <p className="mt-0.5 text-xs text-waldorf-clay-500">
                         {showBlockList
-                          ? 'Blocks render top to bottom. Hide a block to leave it out without deleting it.'
-                          : 'Single-body template. Edit visually or paste HTML.'}
+                          ? '區塊依序由上至下呈現。隱藏區塊可略過內容而不刪除。'
+                          : '單一內文範本。可使用視覺化編輯器或貼上 HTML。'}
                       </p>
                     </div>
                     {!showBlockList && (
@@ -611,7 +611,7 @@ export function AdminEmailTemplateEditorPage() {
                     ) : null}
                     {!showBlockList && isLegacySingleBlock && (
                       <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800">
-                        <span>This template stores its body as a single legacy block. Convert to use the typed block editor.</span>
+                        <span>此範本以單一舊版區塊儲存內文。請轉換後使用區塊編輯器。</span>
                         <button
                           type="button"
                           onClick={() => {
@@ -626,13 +626,13 @@ export function AdminEmailTemplateEditorPage() {
                           }}
                           className="rounded border border-sky-300 bg-white px-2 py-1 text-xs text-sky-800"
                         >
-                          Convert to blocks
+                          轉換為區塊
                         </button>
                       </div>
                     )}
                     {!showBlockList && rawImportedHtml !== null && (
                       <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-                        Imported HTML preservation mode is on. Save/Preview will use the original imported HTML exactly as-is.
+                        已啟用匯入 HTML 保留模式。儲存與預覽會原樣使用匯入的 HTML。
                         <button
                           type="button"
                           onClick={() => {
@@ -641,7 +641,7 @@ export function AdminEmailTemplateEditorPage() {
                           }}
                           className="ml-2 underline"
                         >
-                          Switch to TipTap output
+                          改用視覺化編輯器輸出
                         </button>
                       </div>
                     )}
@@ -676,7 +676,7 @@ export function AdminEmailTemplateEditorPage() {
 
                   {validation.issues.length > 0 && (
                     <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                      <p className="mb-1 font-semibold">Validation</p>
+                      <p className="mb-1 font-semibold">驗證結果</p>
                       {validation.issues.map((issue, index) => (
                         <p key={`${issue.field}-${index}`}>- {issue.message}</p>
                       ))}
@@ -691,7 +691,7 @@ export function AdminEmailTemplateEditorPage() {
 
                   {importIssues.length > 0 && (
                     <div className="mt-4 rounded-lg border border-waldorf-rose-200 bg-waldorf-rose-50 px-4 py-3 text-sm text-waldorf-rose-700">
-                      <p className="font-semibold">Imported HTML compatibility issues</p>
+                      <p className="font-semibold">匯入 HTML 的相容性問題</p>
                       {importIssues.map((issue, index) => (
                         <p key={`${issue.code}-${index}`}>- {issue.message}</p>
                       ))}
@@ -700,7 +700,7 @@ export function AdminEmailTemplateEditorPage() {
 
                   {/* Import tools stay at the bottom of the editor column so the paste area is the last text field. */}
                   <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-waldorf-cream-200 pt-4">
-                    <span className="mr-1 text-xs font-medium text-waldorf-clay-500">Bring in existing HTML (e.g. Canva export):</span>
+                    <span className="mr-1 text-xs font-medium text-waldorf-clay-500">匯入現有 HTML（例如 Canva 匯出檔）：</span>
                     <button
                       type="button"
                       onClick={() => {
@@ -710,10 +710,10 @@ export function AdminEmailTemplateEditorPage() {
                       disabled={isSaving}
                       className={secondaryButtonClass}
                     >
-                      Import HTML
+                      匯入 HTML
                     </button>
                     <label className={`cursor-pointer ${secondaryButtonClass}`}>
-                      Upload .html
+                      上傳 .html 檔
                       <input
                         type="file"
                         accept=".html,text/html"
@@ -725,8 +725,8 @@ export function AdminEmailTemplateEditorPage() {
 
                   {showImportPanel && (
                     <div className="mt-4 rounded-lg border border-waldorf-cream-200 bg-waldorf-cream-50 p-4">
-                      <h4 className="mb-1 text-sm font-semibold text-waldorf-clay-700">Import HTML</h4>
-                      <p className="mb-2 text-xs text-waldorf-clay-500">Paste full HTML markup, then apply to replace editor body content.</p>
+                      <h4 className="mb-1 text-sm font-semibold text-waldorf-clay-700">匯入 HTML</h4>
+                      <p className="mb-2 text-xs text-waldorf-clay-500">貼上完整 HTML 標記，再套用以取代編輯器內文。</p>
                       <textarea
                         value={importHtml}
                         onChange={(event) => setImportHtml(event.target.value)}
@@ -739,14 +739,14 @@ export function AdminEmailTemplateEditorPage() {
                           onClick={handleApplyImportedHtml}
                           className="rounded-lg bg-waldorf-sage-600 px-3 py-2 text-sm font-medium text-white hover:bg-waldorf-sage-700"
                         >
-                          Apply Imported HTML
+                          套用匯入的 HTML
                         </button>
                         <button
                           type="button"
                           onClick={() => setShowImportPanel(false)}
                           className={secondaryButtonClass}
                         >
-                          Cancel
+                          取消
                         </button>
                       </div>
                     </div>
@@ -759,14 +759,14 @@ export function AdminEmailTemplateEditorPage() {
                 <section className={`${cardClass} overflow-hidden`}>
                   <div className="flex flex-wrap items-center justify-between gap-3 border-b border-waldorf-cream-200 px-5 py-4">
                     <div>
-                      <h3 className={cardTitleClass}>Live preview</h3>
+                      <h3 className={cardTitleClass}>即時預覽</h3>
                       <p className="mt-0.5 text-xs text-waldorf-clay-500">
-                        Sample data · updates as you edit.{' '}
+                        使用範例資料，編輯時同步更新。{' '}
                         {showBlockList && previewScope === 'block'
-                          ? 'Body shows the selected block only.'
+                          ? '僅顯示選取的區塊。'
                           : showBlockList
-                            ? 'Visible blocks in order, wrapped like a sent message.'
-                            : 'Subject and body with demo tokens.'}
+                            ? '依順序顯示可見區塊，並以寄出郵件的版面呈現。'
+                            : '使用範例變數呈現主旨與內文。'}
                       </p>
                     </div>
                     {showBlockList && editorBlocks && editorBlocks.length > 0 && (
@@ -778,7 +778,7 @@ export function AdminEmailTemplateEditorPage() {
                             aria-pressed={previewScope === 'combined'}
                             className={`px-3 py-1.5 font-medium ${previewScope === 'combined' ? 'bg-waldorf-clay-700 text-white' : 'bg-white text-waldorf-clay-600 hover:bg-waldorf-cream-50'}`}
                           >
-                            Combined
+                            合併預覽
                           </button>
                           <button
                             type="button"
@@ -786,14 +786,14 @@ export function AdminEmailTemplateEditorPage() {
                             aria-pressed={previewScope === 'block'}
                             className={`border-l border-waldorf-cream-300 px-3 py-1.5 font-medium ${previewScope === 'block' ? 'bg-waldorf-clay-700 text-white' : 'bg-white text-waldorf-clay-600 hover:bg-waldorf-cream-50'}`}
                           >
-                            Single block
+                            單一區塊
                           </button>
                         </div>
                         {previewScope === 'block' && (
                           <select
                             value={Math.min(previewBlockIndex, editorBlocks.length - 1)}
                             onChange={(event) => setPreviewBlockIndex(Number(event.target.value))}
-                            aria-label="Block to preview"
+                            aria-label="選擇預覽區塊"
                             className="rounded-lg border border-waldorf-cream-300 bg-white px-2 py-1.5 text-xs text-waldorf-clay-700"
                           >
                             {editorBlocks.map((block, index) => (
@@ -808,13 +808,13 @@ export function AdminEmailTemplateEditorPage() {
                   </div>
 
                   <div className="flex items-baseline gap-3 border-b border-waldorf-cream-200 bg-waldorf-cream-50/60 px-5 py-3">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-waldorf-clay-400">Subject</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-waldorf-clay-400">主旨</span>
                     <span className="text-sm font-medium text-waldorf-clay-800">{livePreview.subject || '(empty)'}</span>
                   </div>
 
                   <div className="bg-waldorf-cream-100/60 p-4">
                     {livePreviewResolvingGallery ? (
-                      <p className="py-8 text-center text-xs text-waldorf-clay-500">Loading image previews (gallery URLs)…</p>
+                      <p className="py-8 text-center text-xs text-waldorf-clay-500">正在載入圖片預覽（圖庫網址）…</p>
                     ) : (
                       <EmailPreviewFrame html={livePreviewFrameHtml} decode={decodePreviewHtml} />
                     )}
@@ -831,9 +831,9 @@ export function AdminEmailTemplateEditorPage() {
 
                 <section className={`${cardClass} p-5`}>
                   <div className="flex items-baseline justify-between gap-3">
-                    <h3 className={cardTitleClass}>Tokens</h3>
+                    <h3 className={cardTitleClass}>變數</h3>
                     <span className="text-[11px] text-waldorf-clay-400">
-                      {bodyEditor ? 'Click to insert at the cursor' : 'Click to copy'}
+                      {bodyEditor ? '點擊後插入游標位置' : '點擊後複製'}
                     </span>
                   </div>
                   <ul className="mt-3 grid gap-1.5 sm:grid-cols-2">
@@ -849,7 +849,7 @@ export function AdminEmailTemplateEditorPage() {
                           className="group flex w-full flex-col items-start rounded-lg border border-waldorf-cream-200 bg-white px-2.5 py-1.5 text-left transition-colors hover:border-waldorf-sage-300 hover:bg-waldorf-sage-50"
                         >
                           <span className="font-mono text-xs text-waldorf-clay-800">
-                            {copiedToken === token ? 'Copied!' : `{{${token}}}`}
+                            {copiedToken === token ? '已複製！' : `{{${token}}}`}
                           </span>
                           <span className="truncate text-[11px] text-waldorf-clay-400 group-hover:text-waldorf-clay-500">{`e.g. ${TOKEN_EXAMPLES[token]}`}</span>
                         </button>

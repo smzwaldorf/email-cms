@@ -123,9 +123,9 @@ export function AdminArticleListPage() {
         )
       )
     } catch (err) {
-      const message = err instanceof AdminServiceError ? err.message : err instanceof Error ? err.message : 'Failed to load data'
+      const message = err instanceof AdminServiceError ? err.message : err instanceof Error ? err.message : '無法載入資料'
       setError(message)
-      console.error('Error loading newsletter data:', err)
+      console.error('載入電子報資料時發生錯誤：', err)
     } finally {
       setIsLoading(false)
     }

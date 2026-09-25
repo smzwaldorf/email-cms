@@ -99,7 +99,7 @@ export function NotificationToast({
         <button
           onClick={handleClose}
           className="flex-shrink-0 text-lg font-bold opacity-50 hover:opacity-100 transition-opacity"
-          aria-label="Close notification"
+          aria-label="關閉通知"
           data-testid="close-btn"
         >
           ×

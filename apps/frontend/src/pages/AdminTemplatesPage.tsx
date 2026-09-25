@@ -75,13 +75,13 @@ export function AdminTemplatesPage() {
             <svg className="w-5 h-5 transform group-hover:rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            <span>Create Template</span>
+            <span>建立範本</span>
           </button>
         }
       >
         {error && (
           <div className="mb-6 p-4 bg-waldorf-rose-50 border border-waldorf-rose-200 rounded-xl">
-            <p className="text-waldorf-rose-800 font-semibold">Error</p>
+            <p className="text-waldorf-rose-800 font-semibold">錯誤</p>
             <p className="text-waldorf-rose-600 text-sm mt-1">{error}</p>
           </div>
         )}

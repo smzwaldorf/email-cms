@@ -36,19 +36,19 @@ export function ListDropdown({ editor }: ListDropdownProps) {
 
   const listTypes = [
     {
-      label: 'Bullet List',
+      label: '項目符號清單',
       icon: <List size={16} />,
       action: () => editor.chain().focus().toggleBulletList().run(),
       isActive: () => editor.isActive('bulletList'),
     },
     {
-      label: 'Numbered List',
+      label: '編號清單',
       icon: <ListOrdered size={16} />,
       action: () => editor.chain().focus().toggleOrderedList().run(),
       isActive: () => editor.isActive('orderedList'),
     },
     {
-      label: 'Task List',
+      label: '待辦清單',
       icon: <CheckSquare size={16} />,
       action: () => editor.chain().focus().toggleTaskList().run(),
       isActive: () => editor.isActive('taskList'),
@@ -72,7 +72,7 @@ export function ListDropdown({ editor }: ListDropdownProps) {
             ? 'active'
             : ''
         }`}
-        title="Lists"
+        title="清單"
         type="button"
       >
         {getCurrentListIcon()}

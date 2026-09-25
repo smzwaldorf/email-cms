@@ -82,7 +82,7 @@ export function LinkButton({ editor }: LinkButtonProps) {
         className={`toolbar-button ${
           editor.isActive('link') ? 'active' : ''
         }`}
-        title="Add Link"
+        title="新增連結"
         type="button"
       >
         <Link2 size={18} />
@@ -105,7 +105,7 @@ export function LinkButton({ editor }: LinkButtonProps) {
               className="px-3 py-1 bg-waldorf-sage-600 text-white rounded text-sm hover:bg-waldorf-sage-700"
               type="button"
             >
-              Set
+              設定
             </button>
             {editor.isActive('link') && (
               <button
@@ -115,7 +115,7 @@ export function LinkButton({ editor }: LinkButtonProps) {
                 }}
                 className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
                 type="button"
-                title="Remove Link"
+                title="移除連結"
               >
                 <X size={16} />
               </button>

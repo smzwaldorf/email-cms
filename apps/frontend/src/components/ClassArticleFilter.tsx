@@ -70,7 +70,7 @@ export const ClassArticleFilter: React.FC<ClassArticleFilterProps> = ({
           }
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load classes')
+        setError(err instanceof Error ? err.message : '無法載入班級')
       } finally {
         setLoading(false)
       }
@@ -116,7 +116,7 @@ export const ClassArticleFilter: React.FC<ClassArticleFilterProps> = ({
         setArticles(deduplicatedArticles)
         onArticlesLoaded?.(deduplicatedArticles)
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load articles')
+        setError(err instanceof Error ? err.message : '無法載入文章')
       } finally {
         setLoading(false)
       }
@@ -146,7 +146,7 @@ export const ClassArticleFilter: React.FC<ClassArticleFilterProps> = ({
       {/* Filter Header */}
       <div className="mb-4">
         <h3 className="text-lg font-semibold text-waldorf-brown mb-2">
-          Filter by Class
+          依班級篩選
         </h3>
       </div>
 
@@ -159,7 +159,7 @@ export const ClassArticleFilter: React.FC<ClassArticleFilterProps> = ({
 
       {/* Loading State */}
       {loading && classes.length === 0 && (
-        <div className="text-center py-4 text-gray-500">Loading classes...</div>
+        <div className="text-center py-4 text-gray-500">正在載入班級...</div>
       )}
 
       {/* Class Selection */}
@@ -173,7 +173,7 @@ export const ClassArticleFilter: React.FC<ClassArticleFilterProps> = ({
               onChange={handleSelectAll}
               className="w-4 h-4 rounded border-gray-300"
             />
-            <span className="ml-2 font-medium text-gray-700">Select All</span>
+            <span className="ml-2 font-medium text-gray-700">全選</span>
           </label>
 
           {/* Class Options (sorted by grade year DESC) */}
@@ -192,7 +192,7 @@ export const ClassArticleFilter: React.FC<ClassArticleFilterProps> = ({
                 <span className="ml-2 flex-1">
                   <span className="font-medium text-gray-800">{cls.class_name}</span>
                   <span className="ml-2 text-sm text-gray-500">
-                    Grade {cls.class_grade_year}
+                    年級 {cls.class_grade_year}
                   </span>
                 </span>
                 {/* Visual indicator for higher grades */}
@@ -208,7 +208,7 @@ export const ClassArticleFilter: React.FC<ClassArticleFilterProps> = ({
       {/* No Classes Message */}
       {classes.length === 0 && !loading && (
         <div className="p-4 bg-gray-50 rounded text-gray-600">
-          No classes available for this family.
+          此家庭沒有可選班級。
         </div>
       )}
 
@@ -216,7 +216,7 @@ export const ClassArticleFilter: React.FC<ClassArticleFilterProps> = ({
       <div className="mt-4 p-3 bg-waldorf-sage/10 rounded">
         <p className="text-sm text-gray-700">
           {articles.length === 0
-            ? 'No articles found for selected classes'
+            ? '所選班級沒有文章'
             : `${articles.length} article${articles.length === 1 ? '' : 's'} available`}
         </p>
       </div>
@@ -224,7 +224,7 @@ export const ClassArticleFilter: React.FC<ClassArticleFilterProps> = ({
       {/* Selected Classes Summary */}
       {selectedClasses.length > 0 && (
         <div className="mt-4 pt-4 border-t">
-          <p className="text-sm font-medium text-gray-700 mb-2">Selected Classes:</p>
+          <p className="text-sm font-medium text-gray-700 mb-2">已選班級：</p>
           <div className="flex flex-wrap gap-2">
             {selectedClasses
               .map((id) => classes.find((c) => c.id === id))

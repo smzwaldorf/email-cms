@@ -39,7 +39,7 @@ export function EmailTemplateBlockConfigPanel({ block, onChange }: EmailTemplate
   if (fields.length === 0) {
     return (
       <p className="text-xs text-waldorf-clay-500">
-        This block has no configurable fields.
+        此區塊沒有可設定的欄位。
       </p>
     )
   }

@@ -18,7 +18,7 @@ export const ClassComparisonChart: React.FC<ClassComparisonChartProps> = ({ data
     if (!data || data.length === 0) {
         return (
             <div className="h-[300px] flex items-center justify-center text-brand-neutral-400 bg-white rounded-xl border border-brand-neutral-100">
-                No class data available for comparison
+                沒有可比較的班級資料
             </div>
         );
     }
@@ -26,7 +26,7 @@ export const ClassComparisonChart: React.FC<ClassComparisonChartProps> = ({ data
     return (
         <div className="bg-white p-6 rounded-xl shadow-sm border border-brand-neutral-100">
             <h3 className="text-lg font-semibold text-brand-neutral-800 mb-6">
-                Top Classes by {metric === 'openRate' ? 'Open Rate' : metric === 'clickRate' ? 'Click Rate' : 'Time Spent'}
+                班級排行依據： {metric === 'openRate' ? '開信率' : metric === 'clickRate' ? '點擊率' : '停留時間'}
             </h3>
             <div className="h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
@@ -52,7 +52,7 @@ export const ClassComparisonChart: React.FC<ClassComparisonChartProps> = ({ data
                             fill={metric === 'openRate' ? '#8B5CF6' : '#10B981'} 
                             radius={[0, 4, 4, 0]} 
                             barSize={20}
-                            name={metric === 'openRate' ? 'Open Rate %' : metric === 'clickRate' ? 'Click Rate %' : 'Seconds'}
+                            name={metric === 'openRate' ? '開信率 %' : metric === 'clickRate' ? '點擊率 %' : 'Seconds'}
                         />
                     </BarChart>
                 </ResponsiveContainer>

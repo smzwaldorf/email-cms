@@ -39,20 +39,20 @@ export const MagicLinkForm: React.FC<MagicLinkFormProps> = ({ onSuccess, isLoadi
     setError('')
 
     if (!email) {
-      setError('Please enter your email address')
+      setError('請輸入電子郵件地址')
       return
     }
 
     if (!email.includes('@')) {
-      setError('Please enter a valid email address')
+      setError('請輸入有效的電子郵件地址')
       return
     }
 
     try {
       setIsSubmitting(true)
-      console.log('📧 Sending magic link to:', email)
+      console.log('📧 正在寄送登入連結至：', email)
       if (finalRedirectTo) {
-        console.log('📍 Will redirect to:', finalRedirectTo)
+        console.log('📍 登入後將前往：', finalRedirectTo)
       }
 
       const success = await sendMagicLink(email, finalRedirectTo)
@@ -65,11 +65,11 @@ export const MagicLinkForm: React.FC<MagicLinkFormProps> = ({ onSuccess, isLoadi
           onSuccess()
         }, 5000)
       } else {
-        setError('Failed to send magic link. Please try again.')
+        setError('無法寄送登入連結，請再試一次。')
       }
     } catch (err) {
-      console.error('❌ Error sending magic link:', err)
-      setError('Failed to send magic link. Please try again.')
+      console.error('❌ 寄送登入連結時發生錯誤：', err)
+      setError('無法寄送登入連結，請再試一次。')
     } finally {
       setIsSubmitting(false)
     }

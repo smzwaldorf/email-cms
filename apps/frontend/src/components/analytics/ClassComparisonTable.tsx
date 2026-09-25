@@ -69,7 +69,7 @@ export const ClassComparisonTable: React.FC<ClassComparisonTableProps> = ({ data
         return (
             <div className="bg-white rounded-xl shadow-sm border border-brand-neutral-100 p-8 flex flex-col items-center justify-center text-brand-neutral-400 min-h-[300px]">
                 <Users className="w-12 h-12 mb-3 opacity-20" />
-                <p>No class engagement data available.</p>
+                <p>沒有班級互動資料。</p>
             </div>
         );
     }
@@ -77,9 +77,9 @@ export const ClassComparisonTable: React.FC<ClassComparisonTableProps> = ({ data
     return (
         <div className="bg-white rounded-xl shadow-sm border border-brand-neutral-100 overflow-hidden">
             <div className="px-6 py-4 border-b border-brand-neutral-100 flex justify-between items-center">
-                <h3 className="text-lg font-semibold text-brand-neutral-800">Engagement by Class</h3>
+                <h3 className="text-lg font-semibold text-brand-neutral-800">各班互動情況</h3>
                 <div className="text-xs text-brand-neutral-500">
-                    {data.length} Classes
+                    {data.length} 班級
                 </div>
             </div>
             
@@ -87,11 +87,11 @@ export const ClassComparisonTable: React.FC<ClassComparisonTableProps> = ({ data
                 <table className="min-w-full divide-y divide-brand-neutral-200">
                     <thead className="bg-brand-neutral-50">
                         <tr>
-                            {renderHeader('Class', 'className')}
-                            {renderHeader('Open Rate', 'openRate', <Percent className="w-4 h-4" />)}
-                            {renderHeader('Active Parents', 'activeUsers', <Users className="w-4 h-4" />)}
-                            {renderHeader('Clicks', 'clickCount', <MousePointer className="w-4 h-4" />)}
-                            {renderHeader('Avg Time', 'avgDailyTime', <Clock className="w-4 h-4" />)}
+                            {renderHeader('班級', 'className')}
+                            {renderHeader('開信率', 'openRate', <Percent className="w-4 h-4" />)}
+                            {renderHeader('活躍家長', 'activeUsers', <Users className="w-4 h-4" />)}
+                            {renderHeader('點擊次數', 'clickCount', <MousePointer className="w-4 h-4" />)}
+                            {renderHeader('平均時間', 'avgDailyTime', <Clock className="w-4 h-4" />)}
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-brand-neutral-100">

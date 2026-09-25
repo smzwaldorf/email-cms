@@ -23,7 +23,7 @@ export function YouTubeButton({ editor }: YouTubeButtonProps) {
 
   const handleInsertVideo = async () => {
     if (!youtubeUrl.trim()) {
-      setError('請輸入 YouTube URL / Please enter a YouTube URL')
+      setError('請輸入 YouTube 網址')
       return
     }
 
@@ -33,7 +33,7 @@ export function YouTubeButton({ editor }: YouTubeButtonProps) {
     try {
       // Validate URL
       if (!isValidYouTubeUrl(youtubeUrl)) {
-        setError('無效的 YouTube URL / Invalid YouTube URL')
+        setError('YouTube 網址無效')
         setIsProcessing(false)
         return
       }
@@ -41,7 +41,7 @@ export function YouTubeButton({ editor }: YouTubeButtonProps) {
       // Extract video ID
       const videoId = extractYouTubeVideoId(youtubeUrl)
       if (!videoId) {
-        setError('無法提取視頻 ID / Unable to extract video ID')
+        setError('無法擷取影片 ID')
         setIsProcessing(false)
         return
       }
@@ -49,7 +49,7 @@ export function YouTubeButton({ editor }: YouTubeButtonProps) {
       // Parse start time
       const parsedStartTime = startTime ? parseInt(startTime, 10) : null
       if (startTime && (parsedStartTime === null || isNaN(parsedStartTime) || parsedStartTime < 0)) {
-        setError('開始時間必須是正整數 / Start time must be a positive integer')
+        setError('開始時間必須是正整數')
         setIsProcessing(false)
         return
       }
@@ -81,7 +81,7 @@ export function YouTubeButton({ editor }: YouTubeButtonProps) {
       setStartTime('')
       setShowModal(false)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '未知錯誤 / Unknown error occurred')
+      setError(err instanceof Error ? err.message : '發生未知錯誤')
     } finally {
       setIsProcessing(false)
     }
@@ -99,7 +99,7 @@ export function YouTubeButton({ editor }: YouTubeButtonProps) {
       <button
         onClick={() => setShowModal(true)}
         className="toolbar-button"
-        title="Insert YouTube Video (插入 YouTube 影片)"
+        title="插入 YouTube 影片"
         type="button"
       >
         <Video size={18} />
@@ -111,7 +111,7 @@ export function YouTubeButton({ editor }: YouTubeButtonProps) {
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold">插入 YouTube 影片 / Insert YouTube Video</h3>
+                <h3 className="text-lg font-bold">插入 YouTube 影片</h3>
                 <button
                   onClick={() => {
                     setShowModal(false)
@@ -132,7 +132,7 @@ export function YouTubeButton({ editor }: YouTubeButtonProps) {
                 {/* YouTube URL Input */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    YouTube URL / 連結
+                    YouTube 網址
                   </label>
                   <input
                     type="text"
@@ -146,14 +146,14 @@ export function YouTubeButton({ editor }: YouTubeButtonProps) {
                   <p className="mt-1 text-xs text-gray-500">
                     支持的格式: youtube.com/watch?v=..., youtu.be/..., 或直接貼上視頻 ID
                     <br />
-                    Supported: youtube.com/watch?v=..., youtu.be/..., or video ID
+                    支援：youtube.com/watch?v=...、youtu.be/...，或影片 ID
                   </p>
                 </div>
 
                 {/* Start Time Input */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    開始時間 / Start Time (秒 / seconds) - 選填
+                    開始時間（秒，選填）
                   </label>
                   <input
                     type="number"
@@ -168,7 +168,7 @@ export function YouTubeButton({ editor }: YouTubeButtonProps) {
                   <p className="mt-1 text-xs text-gray-500">
                     (選擇性) 設定影片開始播放的秒數
                     <br />
-                    (Optional) Specify when the video should start playing
+                    可指定影片開始播放的時間
                   </p>
                 </div>
               </div>
@@ -186,7 +186,7 @@ export function YouTubeButton({ editor }: YouTubeButtonProps) {
                   className="px-4 py-2 rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-50 text-sm font-medium"
                   type="button"
                 >
-                  取消 / Cancel
+                  取消
                 </button>
                 <button
                   onClick={handleInsertVideo}
@@ -194,7 +194,7 @@ export function YouTubeButton({ editor }: YouTubeButtonProps) {
                   className="px-4 py-2 rounded bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50 text-sm font-medium"
                   type="button"
                 >
-                  {isProcessing ? '處理中... / Processing...' : '插入 / Insert'}
+                  {isProcessing ? '處理中...' : '插入'}
                 </button>
               </div>
             </div>

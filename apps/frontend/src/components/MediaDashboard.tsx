@@ -35,7 +35,7 @@ export function MediaDashboard() {
       setTopUsed(summary.topUsed)
       setUnusedCandidates(unused)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load media dashboard')
+      setError(err instanceof Error ? err.message : '無法載入媒體儀表板')
     } finally {
       setLoading(false)
     }
@@ -58,7 +58,7 @@ export function MediaDashboard() {
 
       const supabase = (await import('@/lib/supabase')).getSupabaseClient()
       const userId = (await supabase.auth.getUser()).data.user?.id
-      if (!userId) throw new Error('User not authenticated')
+      if (!userId) throw new Error('使用者尚未登入')
 
       const preflight = await mediaGovernanceService.getDeletePreflight(mediaId)
       if (!preflight.canDelete) {
@@ -69,14 +69,14 @@ export function MediaDashboard() {
       await mediaGovernanceService.safeDeleteUnusedMedia(mediaId, userId, 'dashboard_unused_cleanup')
       await loadDashboard()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete unused media')
+      setError(err instanceof Error ? err.message : '無法刪除未使用的媒體')
     } finally {
       setDeletingMediaId(null)
     }
   }
 
   if (loading) {
-    return <div className="p-4 text-sm text-gray-600">Loading media dashboard...</div>
+    return <div className="p-4 text-sm text-gray-600">正在載入媒體儀表板...</div>
   }
 
   return (
@@ -85,11 +85,11 @@ export function MediaDashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="border rounded-lg p-4 bg-white">
-          <div className="text-xs text-gray-500">Storage Utilization</div>
+          <div className="text-xs text-gray-500">儲存空間使用量</div>
           <div className="text-xl font-semibold">{formatBytes(storageBytes)}</div>
         </div>
         <div className="border rounded-lg p-4 bg-white md:col-span-2">
-          <div className="text-xs text-gray-500 mb-2">Media Type Distribution</div>
+          <div className="text-xs text-gray-500 mb-2">媒體類型分布</div>
           <div className="flex flex-wrap gap-2 text-sm">
             {distributionRows.map(([type, count]) => (
               <span key={type} className="px-2 py-1 bg-gray-100 rounded">
@@ -101,20 +101,20 @@ export function MediaDashboard() {
       </div>
 
       <div className="border rounded-lg p-4 bg-white">
-        <h3 className="text-sm font-semibold mb-2">Top Used Media</h3>
+        <h3 className="text-sm font-semibold mb-2">最常使用的媒體</h3>
         <ul className="space-y-1 text-sm">
           {topUsed.map((item) => (
             <li key={item.id} className="flex items-center justify-between">
               <span className="truncate">{item.fileName}</span>
-              <span className="text-xs text-gray-500">{item.usageCount || 0} refs</span>
+              <span className="text-xs text-gray-500">{item.usageCount || 0} 處引用</span>
             </li>
           ))}
-          {topUsed.length === 0 ? <li className="text-gray-500">No usage data yet.</li> : null}
+          {topUsed.length === 0 ? <li className="text-gray-500">尚無使用資料。</li> : null}
         </ul>
       </div>
 
       <div className="border rounded-lg p-4 bg-white">
-        <h3 className="text-sm font-semibold mb-2">Unused Media Candidates</h3>
+        <h3 className="text-sm font-semibold mb-2">未使用的媒體候選項目</h3>
         <ul className="space-y-2">
           {unusedCandidates.map((item) => (
             <li key={item.id} className="flex items-center justify-between text-sm">
@@ -125,18 +125,18 @@ export function MediaDashboard() {
                 disabled={deletingMediaId === item.id}
                 className="px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100"
               >
-                {deletingMediaId === item.id ? 'Deleting...' : 'Delete'}
+                {deletingMediaId === item.id ? '刪除中...' : '刪除'}
               </button>
             </li>
           ))}
           {unusedCandidates.length === 0 ? (
-            <li className="text-sm text-gray-500">No unused media candidates.</li>
+            <li className="text-sm text-gray-500">沒有可刪除的未使用媒體。</li>
           ) : null}
         </ul>
       </div>
 
       <div className="border rounded-lg p-4 bg-white">
-        <h3 className="text-sm font-semibold mb-2">All Media Assets</h3>
+        <h3 className="text-sm font-semibold mb-2">所有媒體檔案</h3>
         <ul className="space-y-3">
           {libraryMedia.map((item) => (
             <li key={item.id} className="border rounded-md p-3">
@@ -144,7 +144,7 @@ export function MediaDashboard() {
                 <div className="min-w-0">
                   <div className="font-medium truncate">{item.fileName}</div>
                   <div className="text-xs text-gray-500">
-                    {item.mediaType} · {formatBytes(item.fileSize)} · {item.usageCount || 0} refs
+                    {item.mediaType} · {formatBytes(item.fileSize)} · {item.usageCount || 0} 處引用
                   </div>
                 </div>
                 <button
@@ -153,19 +153,19 @@ export function MediaDashboard() {
                   disabled={deletingMediaId === item.id}
                   className="shrink-0 px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50"
                 >
-                  {deletingMediaId === item.id ? 'Checking...' : 'Delete'}
+                  {deletingMediaId === item.id ? '檢查中...' : '刪除'}
                 </button>
               </div>
 
               {deletePreflight?.mediaId === item.id && !deletePreflight.canDelete ? (
                 <div className="mt-3 rounded-md bg-amber-50 p-3 text-sm text-amber-900">
                   <div className="font-medium">
-                    Delete blocked: {deletePreflight.activeUsageCount} active references remain.
+                    無法刪除： {deletePreflight.activeUsageCount} 仍有使用中的引用。
                   </div>
                   <ul className="mt-2 space-y-1 text-xs">
                     {deletePreflight.impacts.map((impact) => (
                       <li key={impact.usageId}>
-                        {impact.targetType} `{impact.targetId}` via `{impact.contextKey}`
+                        {impact.targetType} `{impact.targetId}` 透過 `{impact.contextKey}`
                       </li>
                     ))}
                   </ul>
@@ -174,7 +174,7 @@ export function MediaDashboard() {
             </li>
           ))}
           {libraryMedia.length === 0 ? (
-            <li className="text-sm text-gray-500">No media assets found.</li>
+            <li className="text-sm text-gray-500">找不到媒體檔案。</li>
           ) : null}
         </ul>
       </div>

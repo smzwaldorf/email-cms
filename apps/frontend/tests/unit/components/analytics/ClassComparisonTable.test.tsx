@@ -43,13 +43,13 @@ describe('ClassComparisonTable', () => {
         expect(rows[1]).toHaveTextContent('Class A');
         
         // Click Open Rate header -> Ascending (Class B first)
-        fireEvent.click(screen.getByText('Open Rate'));
+        fireEvent.click(screen.getByRole('columnheader', { name: '開信率' }));
         const sortedRows = screen.getAllByRole('row');
         expect(sortedRows[1]).toHaveTextContent('Class B');
     });
 
     it('renders empty state correctly', () => {
         render(<ClassComparisonTable data={[]} />);
-        expect(screen.getByText('No class engagement data available.')).toBeInTheDocument();
+        expect(screen.getByText('沒有班級互動資料。')).toBeInTheDocument();
     });
 });

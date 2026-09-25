@@ -60,7 +60,7 @@ export function HighlightButton({ editor }: HighlightButtonProps) {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`toolbar-button ${currentHighlight ? 'active' : ''}`}
-        title="Highlight Color"
+        title="標示顏色"
         type="button"
       >
         <Highlighter size={18} />
@@ -96,10 +96,10 @@ export function HighlightButton({ editor }: HighlightButtonProps) {
                 setIsOpen(false)
               }}
               className="col-span-3 text-left px-2 py-1 text-sm hover:bg-waldorf-sage-50 rounded"
-              title="Clear Highlight"
+              title="清除標示"
               type="button"
             >
-              Clear
+              清除
             </button>
           </div>
         </div>

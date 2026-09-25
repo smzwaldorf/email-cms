@@ -107,7 +107,7 @@ export function ColorButton({ editor }: ColorButtonProps) {
                   ? 'border-waldorf-sage-600 ring-2 ring-waldorf-sage-400 text-waldorf-sage-600'
                   : 'border-waldorf-cream-300 hover:border-red-600 text-red-600'
               }`}
-              title="Default Color"
+              title="預設顏色"
               type="button"
             >
               <X size={16} />

@@ -45,7 +45,7 @@ const RouteLoader = () => (
   <div className="flex items-center justify-center h-screen bg-gray-50">
     <div className="text-center">
       <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
-      <p className="text-gray-600">読み込み中...</p>
+      <p className="text-gray-600">載入中...</p>
     </div>
   </div>
 )

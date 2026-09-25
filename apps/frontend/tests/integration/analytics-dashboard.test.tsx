@@ -159,7 +159,7 @@ describe('AnalyticsDashboardPage Integration', () => {
         renderDashboard();
         
         // Header
-        expect(screen.getByText('Analytics Dashboard')).toBeInTheDocument();
+        expect(screen.getByText('分析儀表板')).toBeInTheDocument();
         
         // Wait for KPI Cards to render data (after skeleton)
         await waitFor(() => {
@@ -193,19 +193,19 @@ describe('AnalyticsDashboardPage Integration', () => {
         
         // Trend Chart Title
         await waitFor(() => {
-            expect(screen.getByText('Engagement Trend')).toBeInTheDocument();
+            expect(screen.getByText('互動趨勢')).toBeInTheDocument();
         });
 
         // Class Table
-        expect(screen.getByText('Engagement by Class')).toBeInTheDocument();
+        expect(screen.getByText('各班互動情況')).toBeInTheDocument();
         
         // Article Table
-        expect(screen.getByText('Article Performance')).toBeInTheDocument();
+        expect(screen.getByText('文章成效')).toBeInTheDocument();
     });
     
     it('switches both metrics and trends to the selected tracker', async () => {
         renderDashboard();
-        fireEvent.change(screen.getByLabelText('Email tracker'), { target: { value: 'cms' } });
+        fireEvent.change(screen.getByLabelText('電子郵件追蹤來源'), { target: { value: 'cms' } });
         await waitFor(() => {
             expect(useAnalyticsQuery.useTrendStats).toHaveBeenLastCalledWith(expect.anything(), 'cms');
             expect(useAnalyticsQuery.useNewsletterMetrics).toHaveBeenLastCalledWith(expect.anything(), expect.anything(), 'cms');
@@ -220,7 +220,7 @@ describe('AnalyticsDashboardPage Integration', () => {
              expect(screen.getByText('45.5%')).toBeInTheDocument();
         });
 
-        const refreshBtn = screen.getByTitle('Reload Data');
+        const refreshBtn = screen.getByTitle('重新載入資料');
         fireEvent.click(refreshBtn);
         
         // Verify refetch was called

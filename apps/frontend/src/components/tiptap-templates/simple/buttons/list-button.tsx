@@ -31,7 +31,7 @@ export function ListButton({ editor }: ListButtonProps) {
       className={`toolbar-button ${
         editor.isActive('bulletList') ? 'active' : ''
       }`}
-      title="Bullet List"
+      title="項目符號清單"
       type="button"
     >
       <List size={18} />

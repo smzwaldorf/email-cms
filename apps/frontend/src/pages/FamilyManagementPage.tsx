@@ -79,7 +79,7 @@ export function FamilyManagementPage() {
       const data = await adminService.fetchFamilies({ includeInactive: showInactiveFamilies })
       setFamilies(data)
     } catch (err: unknown) {
-      const message = err instanceof AdminServiceError ? err.message : 'Failed to load families'
+      const message = err instanceof AdminServiceError ? err.message : '無法載入家庭'
       setError(message)
     } finally {
       setIsLoading(false)
@@ -106,7 +106,7 @@ export function FamilyManagementPage() {
         setNotification({ message: Object.values(fieldErrors)[0], type: 'error' })
         return
       }
-      const message = err instanceof AdminServiceError ? err.message : 'Failed to create family'
+      const message = err instanceof AdminServiceError ? err.message : '無法建立家庭'
       setNotification({ message, type: 'error' })
     } finally {
       setIsSaving(false)
@@ -133,7 +133,7 @@ export function FamilyManagementPage() {
         setNotification({ message: Object.values(fieldErrors)[0], type: 'error' })
         return
       }
-      const message = err instanceof AdminServiceError ? err.message : 'Failed to update family'
+      const message = err instanceof AdminServiceError ? err.message : '無法更新家庭'
       setNotification({ message, type: 'error' })
     } finally {
       setIsSaving(false)
@@ -151,7 +151,7 @@ export function FamilyManagementPage() {
       setDeleteConfirm({ isOpen: false })
       await loadFamilies()
     } catch (err: unknown) {
-      const message = err instanceof AdminServiceError ? err.message : 'Failed to delete family'
+      const message = err instanceof AdminServiceError ? err.message : '無法刪除家庭'
       setNotification({ message, type: 'error' })
       setDeleteConfirm({ isOpen: false })
     } finally {
@@ -166,7 +166,7 @@ export function FamilyManagementPage() {
       setNotification({ message: '家族已成功啟用', type: 'success' })
       await loadFamilies()
     } catch (err: unknown) {
-      const message = err instanceof AdminServiceError ? err.message : 'Failed to activate family'
+      const message = err instanceof AdminServiceError ? err.message : '無法啟用家庭'
       setNotification({ message, type: 'error' })
     } finally {
       setIsSaving(false)
@@ -208,7 +208,7 @@ export function FamilyManagementPage() {
       setAvailableParents(parents)
       setAvailableStudents(students)
     } catch (err: unknown) {
-      const message = err instanceof AdminServiceError ? err.message : 'Failed to load family relationships'
+      const message = err instanceof AdminServiceError ? err.message : '無法載入家庭關係'
       setNotification({ message, type: 'error' })
     } finally {
       setIsLoadingRelationships(false)
@@ -226,7 +226,7 @@ export function FamilyManagementPage() {
       await loadFamilyRelationships(selectedFamily)
       setNotification({ message: '家長已成功新增', type: 'success' })
     } catch (err: unknown) {
-      const message = err instanceof AdminServiceError ? err.message : 'Failed to add parent'
+      const message = err instanceof AdminServiceError ? err.message : '無法新增家長'
       setNotification({ message, type: 'error' })
     } finally {
       setIsSaving(false)
@@ -244,7 +244,7 @@ export function FamilyManagementPage() {
       await loadFamilyRelationships(selectedFamily)
       setNotification({ message: '家長已成功移除', type: 'success' })
     } catch (err: unknown) {
-      const message = err instanceof AdminServiceError ? err.message : 'Failed to remove parent'
+      const message = err instanceof AdminServiceError ? err.message : '無法移除家長'
       setNotification({ message, type: 'error' })
     } finally {
       setIsSaving(false)
@@ -262,7 +262,7 @@ export function FamilyManagementPage() {
       await loadFamilyRelationships(selectedFamily)
       setNotification({ message: '家長關係已成功更新', type: 'success' })
     } catch (err: unknown) {
-      const message = err instanceof AdminServiceError ? err.message : 'Failed to update parent relationship'
+      const message = err instanceof AdminServiceError ? err.message : '無法更新家長關係'
       setNotification({ message, type: 'error' })
     } finally {
       setIsSaving(false)
@@ -282,7 +282,7 @@ export function FamilyManagementPage() {
     } catch (err: unknown) {
       const message = err instanceof AdminServiceError
         ? err.message
-        : 'Failed to add student'
+        : '無法新增學生'
       setNotification({ message, type: 'error' })
     } finally {
       setIsSaving(false)
@@ -302,7 +302,7 @@ export function FamilyManagementPage() {
     } catch (err: unknown) {
       const message = err instanceof AdminServiceError
         ? err.message
-        : 'Failed to remove student'
+        : '無法移除學生'
       setNotification({ message, type: 'error' })
     } finally {
       setIsSaving(false)

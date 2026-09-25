@@ -154,16 +154,16 @@ describe('ImageEditor Component (T056)', () => {
   describe('Alignment Controls', () => {
     it('should display alignment buttons', () => {
       setup()
-      expect(screen.getByRole('button', { name: /left/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /center/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /right/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /左/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /中/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /右/ })).toBeInTheDocument()
     })
 
     it('should update alignment on button click', async () => {
       const user = userEvent.setup()
       setup()
 
-      const leftButton = screen.getByRole('button', { name: /left/i })
+      const leftButton = screen.getByRole('button', { name: /左/ })
       await user.click(leftButton)
 
       await waitFor(() => {
@@ -175,7 +175,7 @@ describe('ImageEditor Component (T056)', () => {
 
     it('should show active alignment button', () => {
       setup()
-      const centerButton = screen.getByRole('button', { name: /center/i })
+      const centerButton = screen.getByRole('button', { name: /中/ })
       expect(centerButton).toHaveClass('bg-blue-500')
     })
   })

@@ -254,9 +254,9 @@ describe('AudioUploader Component (T079)', () => {
       expect(screen.getByText(/拖放音訊檔案/)).toBeInTheDocument()
     })
 
-    it('should display English UI text', () => {
+    it('should display the Chinese upload instruction', () => {
       setup()
-      expect(screen.getByText(/Drag audio files/)).toBeInTheDocument()
+      expect(screen.getByText(/拖放音訊檔案到這裡/)).toBeInTheDocument()
     })
   })
 
@@ -285,7 +285,7 @@ describe('AudioUploader Component (T079)', () => {
   describe('Max File Size Display', () => {
     it('should display max file size information', () => {
       setup({ maxFileSize: 52428800 })
-      const maxSizeText = screen.getByText(/最大檔案大小|Max file size/i)
+      const maxSizeText = screen.getByText(/檔案大小上限/)
       expect(maxSizeText).toBeInTheDocument()
       expect(maxSizeText.textContent).toContain('50')
     })

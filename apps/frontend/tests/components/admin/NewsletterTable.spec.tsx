@@ -48,7 +48,7 @@ describe('NewsletterTable', () => {
     expect(screen.getByText('2023-W01')).toBeInTheDocument()
     expect(screen.getByText('2023-W02')).toBeInTheDocument()
     expect(screen.getByText('2023-W03')).toBeInTheDocument()
-    expect(screen.getByText('Is Published')).toBeInTheDocument()
+    expect(screen.getByTestId('status-badge-1')).toBeInTheDocument()
   })
 
   it('filters newsletters by status using dropdown', async () => {

@@ -87,7 +87,7 @@ export function ArticleEditorPage() {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : '無法載入文章'
       setError(message)
-      console.error('Failed to load article data:', err)
+      console.error('無法載入文章資料：', err)
     } finally {
       setIsLoading(false)
     }
@@ -136,7 +136,7 @@ export function ArticleEditorPage() {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : '保存失敗'
       setError(message)
-      console.error('Failed to save article:', err)
+      console.error('無法儲存文章：', err)
       throw err
     }
   }
@@ -157,7 +157,7 @@ export function ArticleEditorPage() {
    */
   const handleError = (error: Error) => {
     setError(error.message)
-    console.error('Article form error:', error)
+    console.error('文章表單錯誤：', error)
   }
 
   if (isLoading) {

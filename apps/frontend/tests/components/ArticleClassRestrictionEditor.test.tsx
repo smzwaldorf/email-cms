@@ -86,7 +86,7 @@ describe('ArticleClassRestrictionEditor Component', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText('Article Visibility Settings')
+          screen.getByText('文章可見範圍設定')
         ).toBeInTheDocument()
       })
       expect(screen.getByText('Test Article')).toBeInTheDocument()
@@ -102,10 +102,10 @@ describe('ArticleClassRestrictionEditor Component', () => {
         />
       )
 
-      expect(screen.getByText('Visibility Type')).toBeInTheDocument()
-      expect(screen.getByText(/Visible to all parents/)).toBeInTheDocument()
+      expect(screen.getByText('可見範圍類型')).toBeInTheDocument()
+      expect(screen.getByText(/所有家長與訪客皆可查看/)).toBeInTheDocument()
       expect(
-        screen.getByText(/Only visible to selected classes/)
+        screen.getByText(/僅選取的班級可查看/)
       ).toBeInTheDocument()
     })
   })
@@ -139,7 +139,7 @@ describe('ArticleClassRestrictionEditor Component', () => {
 
       await waitFor(() => {
         expect(
-          screen.queryByText('Restrict to Classes')
+          screen.queryByText('限定班級')
         ).not.toBeInTheDocument()
       })
     })
@@ -156,7 +156,7 @@ describe('ArticleClassRestrictionEditor Component', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText('Article is already public')
+          screen.getByText('這篇文章已設為公開')
         ).toBeInTheDocument()
       })
     })
@@ -195,7 +195,7 @@ describe('ArticleClassRestrictionEditor Component', () => {
       })
 
       await waitFor(() => {
-        expect(screen.getByText('Restrict to Classes')).toBeInTheDocument()
+        expect(screen.getByText('限定班級')).toBeInTheDocument()
       })
     })
 
@@ -210,7 +210,7 @@ describe('ArticleClassRestrictionEditor Component', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByText('Restrict to Classes')).toBeInTheDocument()
+        expect(screen.getByText('限定班級')).toBeInTheDocument()
       })
     })
 
@@ -248,7 +248,7 @@ describe('ArticleClassRestrictionEditor Component', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText('Select at least one class to save as class-restricted')
+          screen.getByText('請至少選擇一個班級，才能儲存為班級限定文章')
         ).toBeInTheDocument()
       })
     })
@@ -286,7 +286,7 @@ describe('ArticleClassRestrictionEditor Component', () => {
 
       await waitFor(() => {
         const selectAllCheckbox = screen.getByText(
-          'Select All Classes'
+          '全選班級'
         ).closest('label')?.querySelector('input[type="checkbox"]')
 
         fireEvent.click(selectAllCheckbox!)
@@ -310,7 +310,7 @@ describe('ArticleClassRestrictionEditor Component', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByText('Classes Selected:')).toBeInTheDocument()
+        expect(screen.getByText('已選班級：')).toBeInTheDocument()
       })
     })
   })
@@ -328,7 +328,7 @@ describe('ArticleClassRestrictionEditor Component', () => {
       )
 
       await waitFor(() => {
-        const saveButton = screen.queryByText('Save Restrictions')
+        const saveButton = screen.queryByText('儲存限制設定')
         expect(saveButton).toBeInTheDocument()
       })
     })
@@ -346,7 +346,7 @@ describe('ArticleClassRestrictionEditor Component', () => {
 
       // First verify the component renders with class-restricted article
       await waitFor(() => {
-        expect(screen.getByText('Article Visibility Settings')).toBeInTheDocument()
+        expect(screen.getByText('文章可見範圍設定')).toBeInTheDocument()
       })
 
       // Then toggle to public to see the clear button option
@@ -355,7 +355,7 @@ describe('ArticleClassRestrictionEditor Component', () => {
 
       // Now the clear restrictions button should appear
       await waitFor(() => {
-        expect(screen.queryByText(/Clear Restrictions/)).toBeInTheDocument()
+        expect(screen.queryByText(/清除限制/)).toBeInTheDocument()
       })
     })
 
@@ -372,7 +372,7 @@ describe('ArticleClassRestrictionEditor Component', () => {
 
       // Component should be rendered successfully
       await waitFor(() => {
-        expect(screen.getByText('Article Visibility Settings')).toBeInTheDocument()
+        expect(screen.getByText('文章可見範圍設定')).toBeInTheDocument()
       })
     })
   })
@@ -390,7 +390,7 @@ describe('ArticleClassRestrictionEditor Component', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByText('Article Visibility Settings')).toBeInTheDocument()
+        expect(screen.getByText('文章可見範圍設定')).toBeInTheDocument()
       })
     })
 
@@ -407,7 +407,7 @@ describe('ArticleClassRestrictionEditor Component', () => {
 
       // Verify component renders properly
       await waitFor(() => {
-        expect(screen.getByText('Public')).toBeInTheDocument()
+        expect(screen.getByText('公開')).toBeInTheDocument()
       })
     })
   })

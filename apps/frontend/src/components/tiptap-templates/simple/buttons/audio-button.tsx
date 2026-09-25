@@ -78,7 +78,7 @@ export function AudioButton({ editor, articleId }: AudioButtonProps) {
       <button
         onClick={() => setShowUploader(true)}
         className="toolbar-button"
-        title="Insert Audio (插入音訊)"
+        title="插入音訊"
         type="button"
       >
         <Music size={18} />
@@ -90,7 +90,7 @@ export function AudioButton({ editor, articleId }: AudioButtonProps) {
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-8 max-w-2xl w-full mx-4">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold">上傳音訊 / Upload Audio</h3>
+                <h3 className="text-lg font-bold">上傳音訊</h3>
                 <button
                   onClick={() => setShowUploader(false)}
                   className="text-gray-500 hover:text-gray-700"
@@ -115,7 +115,7 @@ export function AudioButton({ editor, articleId }: AudioButtonProps) {
                     />
                   </div>
                   <p className="text-sm text-gray-600 text-center">
-                    上傳進度: {uploadState.progress}% / Upload progress: {uploadState.progress}%
+                    上傳進度：{uploadState.progress}%
                   </p>
                 </div>
               ) : (
@@ -134,7 +134,7 @@ export function AudioButton({ editor, articleId }: AudioButtonProps) {
                   disabled={uploadState.isUploading}
                   className="px-4 py-2 rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-50"
                 >
-                  取消 / Cancel
+                  取消
                 </button>
               </div>
             </div>

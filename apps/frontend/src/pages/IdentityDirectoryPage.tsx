@@ -23,7 +23,7 @@ export function IdentityDirectoryPage({ kind = 'users' }: { kind?: Kind }) {
     request?.then(value => {
       if (active) setEntries(value)
     }).catch((reason: unknown) => {
-      if (active) setError(reason instanceof Error ? reason.message : 'Unable to load directory')
+      if (active) setError(reason instanceof Error ? reason.message : '無法載入通訊錄')
     })
     return () => { active = false }
   }, [kind])
@@ -31,10 +31,10 @@ export function IdentityDirectoryPage({ kind = 'users' }: { kind?: Kind }) {
   return <AdminLayout activeTab={kind === 'relationships' ? 'families' : kind}>
     <section className="space-y-4 p-6">
       <h1 className="text-2xl font-semibold capitalize">{kind}</h1>
-      <p>Manage accounts, families, classes, and relationships in SMZ Auth.</p>
-      <a href={managementUrl} className="underline">Manage in SMZ Auth</a>
-      {hasSummary && (error ? <p role="alert">{error}</p> : !entries ? <p role="status">Loading directory…</p> : <>
-        <p>{entries.length} records from SMZ Auth</p>
+      <p>請在 SMZ Auth 管理帳號、家庭、班級與關係。</p>
+      <a href={managementUrl} className="underline">前往 SMZ Auth 管理</a>
+      {hasSummary && (error ? <p role="alert">{error}</p> : !entries ? <p role="status">正在載入通訊錄…</p> : <>
+        <p>{entries.length} 筆來自 SMZ Auth 的資料</p>
         <ul>{entries.map(entry => <li key={entry.id} className="py-3">
           <strong>{entry.displayName}</strong>{entry.code && <span> · {entry.code}</span>}
         </li>)}</ul>

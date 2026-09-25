@@ -72,7 +72,7 @@ describe('ClassArticleFilter Component', () => {
 
       render(<ClassArticleFilter weekNumber="2025-W47" />)
 
-      expect(screen.getByText('Filter by Class')).toBeInTheDocument()
+      expect(screen.getByText('依班級篩選')).toBeInTheDocument()
     })
 
     it('should display no classes message when empty', async () => {
@@ -83,7 +83,7 @@ describe('ClassArticleFilter Component', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText(/No classes available/)
+          screen.getByText(/此家庭沒有可選班級/)
         ).toBeInTheDocument()
       })
     })
@@ -273,7 +273,7 @@ describe('ClassArticleFilter Component', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText('No articles found for selected classes')
+          screen.getByText('所選班級沒有文章')
         ).toBeInTheDocument()
       })
     })
@@ -328,7 +328,7 @@ describe('ClassArticleFilter Component', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByText('Selected Classes:')).toBeInTheDocument()
+        expect(screen.getByText('已選班級：')).toBeInTheDocument()
         const classElements = screen.getAllByText(/Grade [12]A/)
         expect(classElements.length).toBeGreaterThanOrEqual(2)
       })

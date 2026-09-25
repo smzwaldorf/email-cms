@@ -19,7 +19,7 @@ export const GoogleButton: React.FC<GoogleButtonProps> = ({ disabled = false, re
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true)
-      console.log('Initiating SMZ Identity sign-in...')
+      console.log('正在啟動 SMZ Identity 登入...')
       await signInWithGoogle(redirectTo)
       // OAuth redirects, so onSuccess won't be called immediately
       // After callback, user will be authenticated
@@ -35,7 +35,7 @@ export const GoogleButton: React.FC<GoogleButtonProps> = ({ disabled = false, re
       onClick={handleGoogleSignIn}
       disabled={disabled || isLoading}
       className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white border border-waldorf-cream-300 rounded-lg font-medium text-waldorf-clay-700 hover:bg-waldorf-cream-50 active:bg-waldorf-cream-100 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-waldorf-peach-300"
-      aria-label={isLoading ? 'SMZ Identity sign-in in progress' : '使用 SMZ Identity 登入'}
+      aria-label={isLoading ? '正在透過 SMZ Identity 登入' : '使用 SMZ Identity 登入'}
     >
       <svg
         className="w-5 h-5"

@@ -157,7 +157,7 @@ export function ArticleForm({
       clearDraft()
     } catch (err: unknown) {
       const error = new Error(
-        err instanceof Error ? err.message : 'Failed to save article'
+        err instanceof Error ? err.message : '無法儲存文章'
       )
       setSaveError(error.message)
       onError?.(error)

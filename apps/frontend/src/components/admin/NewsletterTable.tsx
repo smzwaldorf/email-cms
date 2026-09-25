@@ -292,7 +292,7 @@ export function NewsletterTable({
                 </span>
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">
-                Is Published
+                已發布
               </th>
               <th
                 className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider cursor-pointer hover:bg-waldorf-cream-100/50 transition-colors duration-200"
@@ -339,7 +339,7 @@ export function NewsletterTable({
                   <Link
                     to={getAdminNewsletterPath(newsletter)}
                     className="inline-flex items-center gap-1.5 text-waldorf-clay-600 hover:text-waldorf-peach-600 transition-colors duration-200 group"
-                    title="View Articles"
+                    title="查看文章"
                   >
                     <span className="font-medium">{newsletter.articleCount}</span>
                     <svg className="w-4 h-4 opacity-0 group-hover:opacity-100 transform translate-x-0 group-hover:translate-x-1 transition-all duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -349,13 +349,13 @@ export function NewsletterTable({
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-center">
                   {newsletter.isPublished ? (
-                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-waldorf-sage-100" title="Published">
+                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-waldorf-sage-100" title="已發布">
                       <svg className="w-4 h-4 text-waldorf-sage-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
                     </span>
                   ) : (
-                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-waldorf-cream-100" title="Not Published">
+                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-waldorf-cream-100" title="未發布">
                       <span className="w-2 h-2 rounded-full bg-waldorf-cream-300"></span>
                     </span>
                   )}
@@ -383,7 +383,7 @@ export function NewsletterTable({
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-waldorf-clay-400 hover:text-waldorf-peach-500 transition-colors duration-200"
-                          title="View Public Newsletter"
+                          title="查看公開電子報"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />

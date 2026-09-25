@@ -196,7 +196,7 @@ class EmailTemplateService {
         ...walker.missingTokens.map((token) => ({
           field: 'body' as const,
           token,
-          message: `Missing value for token: ${token}`,
+          message: `變數缺少資料： ${token}`,
         })),
       ],
     }
@@ -229,7 +229,7 @@ class EmailTemplateService {
         ...walker.missingTokens.map((token) => ({
           field: 'body' as const,
           token,
-          message: `Missing value for token: ${token}`,
+          message: `變數缺少資料： ${token}`,
         })),
       ],
     }

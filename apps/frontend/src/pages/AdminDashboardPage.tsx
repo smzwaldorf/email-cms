@@ -2,13 +2,12 @@ import { IdentityDirectoryPage } from './IdentityDirectoryPage'
 import { smzAuthIssuer } from '@/services/smzAuth'
 /**
  * Admin Dashboard Page
- * Main page for admin users to manage newsletters, users, and view audit logs
+ * Main page for admin users to manage newsletters and view legacy user records
  *
  * Features:
- * - Tabbed interface for Newsletters, Users, and Audit Logs
+ * - Newsletter management and a legacy user records view
  * - Newsletter management (CRUD)
  * - User management (Add, Edit, Delete, Force Logout)
- * - Audit log viewing
  */
 
 import { useEffect, useState } from 'react'
@@ -18,7 +17,6 @@ import type {
   NewsletterFilterOptions,
   AccessControlRole,
   BulkPermissionPreviewEntry,
-  AccessControlLogEntry,
 } from '@/types/admin'
 import { adminService, AdminServiceError } from '@/services/adminService'
 import NewsletterTable from '@/components/admin/NewsletterTable'
@@ -26,8 +24,6 @@ import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { getAdminNewsletterPath } from '@/utils/adminNewsletterRoutes'
 import { useAuth } from '@/context/AuthContext'
-import { AuditLogViewer as UserAuditLog } from '@/components/UserAuditLog'
-import { AuditLog } from '@/components/admin/AuditLog'
 import { adminSessionService } from '@/services/adminSessionService'
 import { AdminLayout } from '@/components/admin/AdminLayout'
 import { BatchImportForm } from '@/components/admin/BatchImportForm'
@@ -78,8 +74,8 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserAdde
       onUserAdded()
       onClose()
     } catch (err: unknown) {
-      console.error('Error creating user:', err)
-      setError(err instanceof Error ? err.message : 'Failed to create user')
+      console.error('建立使用者時發生錯誤：', err)
+      setError(err instanceof Error ? err.message : '無法建立使用者')
     } finally {
       setIsSubmitting(false)
     }
@@ -90,7 +86,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserAdde
   return (
     <div className="fixed inset-0 bg-waldorf-clay-900/40 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
       <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl shadow-waldorf-clay-200/50 border border-waldorf-cream-200 animate-scale-in">
-        <h2 className="font-display text-2xl font-semibold text-waldorf-clay-800 mb-6">Add New User</h2>
+        <h2 className="font-display text-2xl font-semibold text-waldorf-clay-800 mb-6">新增使用者</h2>
 
         {error && (
           <div className="bg-waldorf-rose-50 border border-waldorf-rose-200 text-waldorf-rose-700 px-4 py-3 rounded-xl mb-6">
@@ -100,7 +96,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserAdde
 
         <form onSubmit={handleSubmit}>
           <div className="mb-5">
-            <label className="block text-sm font-medium text-waldorf-clay-600 mb-2">Email</label>
+            <label className="block text-sm font-medium text-waldorf-clay-600 mb-2">電子郵件</label>
             <input
               type="email"
               value={email}
@@ -108,11 +104,11 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserAdde
               required
               className="w-full px-4 py-3 border border-waldorf-cream-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-waldorf-peach-300 focus:border-waldorf-peach-400 transition-all duration-200 bg-waldorf-cream-50/50"
             />
-            <p className="text-xs text-waldorf-clay-400 mt-2">User will receive a magic link to set up their account</p>
+            <p className="text-xs text-waldorf-clay-400 mt-2">使用者將收到設定帳號的登入連結</p>
           </div>
 
           <div className="mb-8">
-            <label className="block text-sm font-medium text-waldorf-clay-600 mb-2">Role</label>
+            <label className="block text-sm font-medium text-waldorf-clay-600 mb-2">角色</label>
             <select
               value={role}
               onChange={(e) => setRole(e.target.value as AccessControlRole)}
@@ -131,14 +127,14 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onUserAdde
               disabled={isSubmitting}
               className="px-5 py-2.5 text-waldorf-clay-600 bg-waldorf-cream-100 rounded-xl hover:bg-waldorf-cream-200 disabled:opacity-50 transition-all duration-200 font-medium"
             >
-              Cancel
+              取消
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
               className="px-5 py-2.5 text-white bg-gradient-to-r from-waldorf-peach-500 to-waldorf-peach-600 rounded-xl hover:from-waldorf-peach-600 hover:to-waldorf-peach-700 disabled:opacity-50 transition-all duration-200 font-medium shadow-lg shadow-waldorf-peach-200/50"
             >
-              {isSubmitting ? 'Creating...' : 'Create User'}
+              {isSubmitting ? '建立中...' : '建立使用者'}
             </button>
           </div>
         </form>
@@ -174,8 +170,8 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, userData
       onUserUpdated()
       onClose()
     } catch (err: unknown) {
-      console.error('Error updating user:', err)
-      setError(err instanceof Error ? err.message : 'Failed to update user')
+      console.error('更新使用者時發生錯誤：', err)
+      setError(err instanceof Error ? err.message : '無法更新使用者')
     } finally {
       setIsSubmitting(false)
     }
@@ -186,7 +182,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, userData
   return (
     <div className="fixed inset-0 bg-waldorf-clay-900/40 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
       <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl shadow-waldorf-clay-200/50 border border-waldorf-cream-200 animate-scale-in">
-        <h2 className="font-display text-2xl font-semibold text-waldorf-clay-800 mb-6">Edit User</h2>
+        <h2 className="font-display text-2xl font-semibold text-waldorf-clay-800 mb-6">編輯使用者</h2>
 
         {error && (
           <div className="bg-waldorf-rose-50 border border-waldorf-rose-200 text-waldorf-rose-700 px-4 py-3 rounded-xl mb-6">
@@ -196,7 +192,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, userData
 
         <form onSubmit={handleSubmit}>
           <div className="mb-5">
-            <label className="block text-sm font-medium text-waldorf-clay-600 mb-2">Email</label>
+            <label className="block text-sm font-medium text-waldorf-clay-600 mb-2">電子郵件</label>
             <input
               type="email"
               value={userData.email}
@@ -206,7 +202,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, userData
           </div>
 
           <div className="mb-8">
-            <label className="block text-sm font-medium text-waldorf-clay-600 mb-2">Display Name</label>
+            <label className="block text-sm font-medium text-waldorf-clay-600 mb-2">顯示名稱</label>
             <input
               type="text"
               value={displayName}
@@ -222,14 +218,14 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, userData
               disabled={isSubmitting}
               className="px-5 py-2.5 text-waldorf-clay-600 bg-waldorf-cream-100 rounded-xl hover:bg-waldorf-cream-200 disabled:opacity-50 transition-all duration-200 font-medium"
             >
-              Cancel
+              取消
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
               className="px-5 py-2.5 text-white bg-gradient-to-r from-waldorf-peach-500 to-waldorf-peach-600 rounded-xl hover:from-waldorf-peach-600 hover:to-waldorf-peach-700 disabled:opacity-50 transition-all duration-200 font-medium shadow-lg shadow-waldorf-peach-200/50"
             >
-              {isSubmitting ? 'Updating...' : 'Update'}
+              {isSubmitting ? '更新中...' : '更新'}
             </button>
           </div>
         </form>
@@ -266,7 +262,7 @@ function NewsletterAdminDashboard() {
   const tabParam = searchParams.get('tab')
   // User management remains out of the primary navigation; keep the legacy
   // tab addressable for backwards-compatible links.
-  const activeTab = (tabParam === 'users' || tabParam === 'audit') ? tabParam : 'newsletters'
+  const activeTab = tabParam === 'users' ? 'users' : 'newsletters'
 
   // Newsletter state
   const [newsletters, setNewsletters] = useState<AdminNewsletter[]>([])
@@ -291,11 +287,6 @@ function NewsletterAdminDashboard() {
   const [bulkPreview, setBulkPreview] = useState<BulkPermissionPreviewEntry[]>([])
   const [isBulkPreviewLoading, setIsBulkPreviewLoading] = useState(false)
   const [isBulkApplying, setIsBulkApplying] = useState(false)
-
-  // Audit log sub-tab state
-  const [auditLogSubTab, setAuditLogSubTab] = useState<'auth' | 'operations' | 'access-control'>('auth')
-  const [accessControlLogs, setAccessControlLogs] = useState<AccessControlLogEntry[]>([])
-  const [isAccessControlLogLoading, setIsAccessControlLogLoading] = useState(false)
 
   // Shared state
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
@@ -327,7 +318,7 @@ function NewsletterAdminDashboard() {
         const suspicious = await adminSessionService.detectSuspiciousActivity()
         setSuspiciousUsers(suspicious)
       } catch (err) {
-        console.error('Error detecting suspicious activity:', err)
+        console.error('偵測可疑活動時發生錯誤：', err)
       }
     }
 
@@ -342,12 +333,6 @@ function NewsletterAdminDashboard() {
       return () => clearTimeout(timer)
     }
   }, [successMessage])
-
-  useEffect(() => {
-    if (activeTab === 'audit' && auditLogSubTab === 'access-control') {
-      loadAccessControlLogs()
-    }
-  }, [activeTab, auditLogSubTab])
 
   // --- Newsletter Functions ---
 
@@ -366,7 +351,7 @@ function NewsletterAdminDashboard() {
     } catch (err) {
       const message = err instanceof AdminServiceError ? err.message : err instanceof Error ? err.message : '無法載入電子報'
       setNewsletterError(message)
-      console.error('Failed to load newsletters:', err)
+      console.error('無法載入電子報：', err)
     } finally {
       setIsNewsletterLoading(false)
     }
@@ -421,7 +406,7 @@ function NewsletterAdminDashboard() {
   }
 
   const handleFilterChange = (filters: NewsletterFilterOptions) => {
-    console.log('Filter change:', filters)
+    console.log('篩選條件已變更：', filters)
   }
 
   const displayedNewsletters = showTemplateList ? templateNewsletters : newsletters
@@ -513,30 +498,30 @@ function NewsletterAdminDashboard() {
       )
       setUserClassScopes(Object.fromEntries(classScopes))
     } catch (err: unknown) {
-      console.error('Error fetching users:', err)
-      setUserError(err instanceof Error ? err.message : 'Failed to fetch users')
+      console.error('取得使用者時發生錯誤：', err)
+      setUserError(err instanceof Error ? err.message : '無法取得使用者')
     } finally {
       setIsUserLoading(false)
     }
   }
 
   const handleForceLogout = async (userId: string) => {
-    if (!confirm('Force logout this user from all devices?')) return
+    if (!confirm('要強制此使用者從所有裝置登出嗎？')) return
 
     try {
       setDeletingId(userId)
       const success = await adminSessionService.forceLogoutUser(userId, user?.id || '')
 
       if (success) {
-        setSuccessMessage('User successfully logged out from all devices')
+        setSuccessMessage('已將使用者從所有裝置登出')
         await fetchUsers()
       } else {
-        setUserError('Failed to force logout user')
+        setUserError('無法強制使用者登出')
       }
     } catch (err: unknown) {
-      console.error('Error force logging out user:', err)
+      console.error('強制使用者登出時發生錯誤：', err)
       setUserError(
-        `Failed to force logout: ${err instanceof Error ? err.message : 'unknown error'}`,
+        `強制登出失敗：${err instanceof Error ? err.message : '未知錯誤'}`,
       )
     } finally {
       setDeletingId(null)
@@ -565,9 +550,9 @@ function NewsletterAdminDashboard() {
       const preview = await adminService.previewBulkPermissionUpdate(selectedUserIds, [bulkRoleTarget])
       setBulkPreview(preview)
     } catch (err: unknown) {
-      console.error('Error previewing bulk role update:', err)
+      console.error('預覽批次角色變更時發生錯誤：', err)
       setUserError(
-        `Failed to preview bulk update: ${err instanceof Error ? err.message : 'unknown error'}`,
+        `預覽批次更新失敗：${err instanceof Error ? err.message : '未知錯誤'}`,
       )
     } finally {
       setIsBulkPreviewLoading(false)
@@ -576,7 +561,7 @@ function NewsletterAdminDashboard() {
 
   const handleApplyBulkRoleUpdate = async () => {
     if (selectedUserIds.length === 0) return
-    if (!window.confirm(`Apply role "${bulkRoleTarget}" to ${selectedUserIds.length} selected users?`)) return
+    if (!window.confirm(`要將角色「${bulkRoleTarget}」套用至選取的 ${selectedUserIds.length} 位使用者嗎？`)) return
 
     try {
       setIsBulkApplying(true)
@@ -586,15 +571,15 @@ function NewsletterAdminDashboard() {
       })
       const failed = results.filter((result) => !result.success)
       if (failed.length > 0) {
-        setUserError(`Bulk update finished with ${failed.length} failure(s).`)
+        setUserError(`批次更新完成，${failed.length} 位使用者更新失敗。`)
       } else {
-        setSuccessMessage(`Bulk role update applied to ${results.length} user(s).`)
+        setSuccessMessage(`已更新 ${results.length} 位使用者的角色。`)
       }
       await fetchUsers()
     } catch (err: unknown) {
-      console.error('Error applying bulk role update:', err)
+      console.error('套用批次角色變更時發生錯誤：', err)
       setUserError(
-        `Failed to apply bulk update: ${err instanceof Error ? err.message : 'unknown error'}`,
+        `套用批次更新失敗：${err instanceof Error ? err.message : '未知錯誤'}`,
       )
     } finally {
       setIsBulkApplying(false)
@@ -606,7 +591,7 @@ function NewsletterAdminDashboard() {
 
     const currentClassIds = userClassScopes[userData.id] || []
     const input = window.prompt(
-      'Enter comma-separated class IDs for this teacher (leave empty to clear):',
+      '請輸入此教師的班級 ID，並以逗號分隔（留空可清除）：',
       currentClassIds.join(', ')
     )
     if (input === null) return
@@ -624,26 +609,14 @@ function NewsletterAdminDashboard() {
         auditAction: 'class_scope_update',
       })
       setUserClassScopes((current) => ({ ...current, [userData.id]: classIds }))
-      setSuccessMessage('Class restrictions updated')
+      setSuccessMessage('班級限制已更新')
     } catch (err: unknown) {
-      console.error('Error updating class restrictions:', err)
+      console.error('更新班級限制時發生錯誤：', err)
       setUserError(
-        `Failed to update class restrictions: ${err instanceof Error ? err.message : 'unknown error'}`,
+        `更新班級限制失敗：${err instanceof Error ? err.message : '未知錯誤'}`,
       )
     } finally {
       setUpdatingId(null)
-    }
-  }
-
-  const loadAccessControlLogs = async () => {
-    try {
-      setIsAccessControlLogLoading(true)
-      const logs = await adminService.fetchAccessControlLogs({ limit: 50 })
-      setAccessControlLogs(logs)
-    } catch (err) {
-      console.error('Error loading access-control logs:', err)
-    } finally {
-      setIsAccessControlLogLoading(false)
     }
   }
 
@@ -661,11 +634,11 @@ function NewsletterAdminDashboard() {
       if (newRole !== 'teacher') {
         setUserClassScopes((current) => ({ ...current, [userId]: [] }))
       }
-      setSuccessMessage('User role updated')
+      setSuccessMessage('使用者角色已更新')
     } catch (err: unknown) {
-      console.error('Error updating role:', err)
+      console.error('更新角色時發生錯誤：', err)
       setUserError(
-        `Failed to update role: ${err instanceof Error ? err.message : 'unknown error'}`,
+        `更新角色失敗：${err instanceof Error ? err.message : '未知錯誤'}`,
       )
     } finally {
       setUpdatingId(null)
@@ -673,18 +646,18 @@ function NewsletterAdminDashboard() {
   }
 
   const handleDeleteUser = async (userId: string) => {
-    if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) return
+    if (!confirm('確定要刪除此使用者嗎？此操作無法復原。')) return
 
     try {
       setDeletingId(userId)
       await adminService.deleteUser(userId)
 
       setUsers(users.filter(u => u.id !== userId))
-      setSuccessMessage('User deleted')
+      setSuccessMessage('使用者已刪除')
     } catch (err: unknown) {
-      console.error('Error deleting user:', err)
+      console.error('刪除使用者時發生錯誤：', err)
       setUserError(
-        `Failed to delete user: ${err instanceof Error ? err.message : 'unknown error'}`,
+        `刪除使用者失敗：${err instanceof Error ? err.message : '未知錯誤'}`,
       )
     } finally {
       setDeletingId(null)
@@ -702,12 +675,10 @@ function NewsletterAdminDashboard() {
     <ErrorBoundary>
       <AdminLayout
         activeTab={activeTab}
-        title={activeTab === 'audit' ? 'Audit Logs' : activeTab === 'users' ? 'User Management' : 'Newsletters'}
+        title={activeTab === 'users' ? '使用者管理' : '電子報'}
         description={
-          activeTab === 'audit'
-            ? 'Authentication, operation and access-control traces.'
-            : activeTab === 'users'
-              ? 'Read-only history; roles and eligibility are managed in SMZ Auth.'
+          activeTab === 'users'
+              ? '此處僅供查閱歷史紀錄；角色與使用資格由 SMZ Auth 管理。'
               : '建立草稿 → 編排文章 → 預覽郵件 → 發布寄送。點選任一期進入編排頁。'
         }
         headerAction={
@@ -720,7 +691,7 @@ function NewsletterAdminDashboard() {
               <svg className="w-5 h-5 transform group-hover:rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              <span>Create Newsletter</span>
+              <span>建立電子報</span>
             </button>
           ) : activeTab === 'users' ? (
             <button
@@ -731,7 +702,7 @@ function NewsletterAdminDashboard() {
               <svg className="w-5 h-5 transform group-hover:rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              <span>Add User</span>
+              <span>新增使用者</span>
             </button>
           ) : null
         }
@@ -760,12 +731,12 @@ function NewsletterAdminDashboard() {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-semibold text-waldorf-rose-800">
-                    Suspicious activity detected: {suspiciousUsers.length} user(s) with multiple failed login attempts
+                    偵測到可疑活動： {suspiciousUsers.length} 位使用者多次登入失敗
                   </p>
                   <ul className="mt-2 list-disc list-inside text-sm text-waldorf-rose-700">
                     {suspiciousUsers.map((su) => (
                       <li key={su.userId}>
-                        User {su.userId.substring(0, 8)}... has {su.failureCount} failed attempts
+                        使用者 {su.userId.substring(0, 8)}……已有 {su.failureCount} 次失敗紀錄
                       </li>
                     ))}
                   </ul>
@@ -818,17 +789,17 @@ function NewsletterAdminDashboard() {
                 <fieldset disabled className="opacity-60">
                 <div className="flex justify-between items-center mb-8">
                   <div>
-                    <h2 className="font-display text-2xl font-semibold text-waldorf-clay-800">User Management</h2>
-                    <p className="text-waldorf-clay-500 mt-1">{users.length} users found</p>
+                    <h2 className="font-display text-2xl font-semibold text-waldorf-clay-800">使用者管理</h2>
+                    <p className="text-waldorf-clay-500 mt-1">{users.length} 位使用者</p>
                   </div>
                   <div className="flex gap-3">
                     {userManagementMode === 'table' && (
                       <button
                         onClick={() => setUserManagementMode('batch-import')}
                         className="px-4 py-2 border border-waldorf-peach-300 text-waldorf-peach-600 rounded-lg font-medium hover:bg-waldorf-peach-50 hover:border-waldorf-peach-400 transition-colors duration-200"
-                        title="Import multiple users from CSV file"
+                        title="從 CSV 檔案匯入多位使用者"
                       >
-                        📥 Batch Import
+                        📥 批次匯入
                       </button>
                     )}
                     {userManagementMode === 'batch-import' && (
@@ -836,7 +807,7 @@ function NewsletterAdminDashboard() {
                         onClick={() => setUserManagementMode('table')}
                         className="px-4 py-2 bg-gradient-to-r from-waldorf-peach-500 to-waldorf-peach-600 text-white rounded-lg font-medium hover:from-waldorf-peach-600 hover:to-waldorf-peach-700 transition-colors duration-200"
                       >
-                        ← Back to User List
+                        ← 返回使用者列表
                       </button>
                     )}
                   </div>
@@ -844,7 +815,7 @@ function NewsletterAdminDashboard() {
 
                 {userError && (
                   <div className="mb-6 p-4 bg-waldorf-rose-50 border border-waldorf-rose-200 rounded-xl">
-                    <p className="text-waldorf-rose-800 font-semibold">Error</p>
+                    <p className="text-waldorf-rose-800 font-semibold">錯誤</p>
                     <p className="text-waldorf-rose-600 text-sm mt-1">{userError}</p>
                   </div>
                 )}
@@ -859,7 +830,7 @@ function NewsletterAdminDashboard() {
                       <div className="mb-4 p-4 rounded-xl border border-waldorf-cream-200 bg-waldorf-cream-50">
                         <div className="flex flex-wrap items-center gap-3">
                           <span className="text-sm font-medium text-waldorf-clay-700">
-                            {selectedUserIds.length} selected
+                            {selectedUserIds.length} 已選取
                           </span>
                           <select
                             value={bulkRoleTarget}
@@ -875,19 +846,19 @@ function NewsletterAdminDashboard() {
                             disabled={selectedUserIds.length === 0 || isBulkPreviewLoading}
                             className="px-3 py-2 text-sm border border-waldorf-peach-300 text-waldorf-peach-700 rounded-lg disabled:opacity-50"
                           >
-                            {isBulkPreviewLoading ? 'Previewing...' : 'Preview Bulk Update'}
+                            {isBulkPreviewLoading ? '預覽中...' : '預覽批次更新'}
                           </button>
                           <button
                             onClick={handleApplyBulkRoleUpdate}
                             disabled={selectedUserIds.length === 0 || isBulkApplying}
                             className="px-3 py-2 text-sm bg-waldorf-peach-600 text-white rounded-lg disabled:opacity-50"
                           >
-                            {isBulkApplying ? 'Applying...' : 'Apply Bulk Update'}
+                            {isBulkApplying ? '套用中...' : '套用批次更新'}
                           </button>
                         </div>
                         {bulkPreview.length > 0 && (
                           <p className="mt-2 text-xs text-waldorf-clay-500">
-                            Preview ready for {bulkPreview.length} user(s): role will change to "{bulkRoleTarget}".
+                            預覽已準備完成，共 {bulkPreview.length} 位使用者，角色將改為「{bulkRoleTarget}".
                           </p>
                         )}
                       </div>
@@ -901,15 +872,15 @@ function NewsletterAdminDashboard() {
                                 type="checkbox"
                                 checked={users.length > 0 && selectedUserIds.length === users.length}
                                 onChange={toggleSelectAllUsers}
-                                aria-label="Select all users"
+                                aria-label="全選使用者"
                               />
                             </th>
-                            <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">User</th>
-                            <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">Role</th>
-                            <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">Status</th>
-                            <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">Change Role</th>
-                            <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">Class Scope</th>
-                            <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">Actions</th>
+                            <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">使用者</th>
+                            <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">角色</th>
+                            <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">狀態</th>
+                            <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">變更角色</th>
+                            <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">班級範圍</th>
+                            <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-waldorf-clay-600 uppercase tracking-wider">操作</th>
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-waldorf-cream-100">
@@ -935,7 +906,7 @@ function NewsletterAdminDashboard() {
                                     </div>
                                   </div>
                                   <div className="ml-4">
-                                    <div className="text-sm font-semibold text-waldorf-clay-800">{userData.display_name || 'No Name'}</div>
+                                    <div className="text-sm font-semibold text-waldorf-clay-800">{userData.display_name || '未提供姓名'}</div>
                                     <div className="text-sm text-waldorf-clay-400">{userData.email}</div>
                                   </div>
                                 </div>
@@ -951,15 +922,15 @@ function NewsletterAdminDashboard() {
                                 {userData.id === user?.id ? (
                                   <span className="flex items-center text-waldorf-sage-600 font-medium">
                                     <span className="w-2 h-2 rounded-full bg-waldorf-sage-400 mr-2 animate-pulse" />
-                                    Current User
+                                    目前使用者
                                   </span>
                                 ) : userData.hasActiveSessions ? (
                                   <span className="flex items-center text-waldorf-sage-600 font-medium">
                                     <span className="w-2 h-2 rounded-full bg-waldorf-sage-400 mr-2 animate-pulse" />
-                                    Active Session
+                                    有效工作階段
                                   </span>
                                 ) : (
-                                  <span className="text-waldorf-clay-400">No Active Session</span>
+                                  <span className="text-waldorf-clay-400">無有效工作階段</span>
                                 )}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -980,14 +951,14 @@ function NewsletterAdminDashboard() {
                                     <span>
                                       {(userClassScopes[userData.id] || []).length > 0
                                         ? userClassScopes[userData.id].join(', ')
-                                        : 'No class restrictions'}
+                                        : '沒有班級限制'}
                                     </span>
                                     <button
                                       onClick={() => handleEditClassRestrictions(userData)}
                                       disabled={updatingId === userData.id}
                                       className="text-waldorf-peach-600 hover:text-waldorf-peach-700 disabled:opacity-50"
                                     >
-                                      Edit
+                                      編輯
                                     </button>
                                   </div>
                                 ) : (
@@ -999,7 +970,7 @@ function NewsletterAdminDashboard() {
                                   onClick={() => handleEditUser(userData)}
                                   className="text-waldorf-clay-500 hover:text-waldorf-clay-700 transition-colors duration-200"
                                 >
-                                  Edit
+                                  編輯
                                 </button>
                                 {userData.id !== user?.id && (
                                   <>
@@ -1009,7 +980,7 @@ function NewsletterAdminDashboard() {
                                         disabled={deletingId === userData.id}
                                         className="text-waldorf-peach-600 hover:text-waldorf-peach-700 disabled:opacity-50 transition-colors duration-200"
                                       >
-                                        {deletingId === userData.id ? 'Logging out...' : 'Force Logout'}
+                                        {deletingId === userData.id ? '登出中...' : '強制登出'}
                                       </button>
                                     )}
                                     <button
@@ -1017,7 +988,7 @@ function NewsletterAdminDashboard() {
                                       disabled={deletingId === userData.id}
                                       className="text-waldorf-rose-500 hover:text-waldorf-rose-700 disabled:opacity-50 transition-colors duration-200"
                                     >
-                                      {deletingId === userData.id ? 'Deleting...' : 'Delete'}
+                                      {deletingId === userData.id ? '刪除中...' : '刪除'}
                                     </button>
                                     </>
                                 )}
@@ -1031,7 +1002,7 @@ function NewsletterAdminDashboard() {
                   )
                 ) : (
                   <div className="overflow-hidden rounded-xl border border-waldorf-cream-200 shadow-sm bg-white p-6">
-                    <h3 className="text-lg font-semibold text-waldorf-clay-800 mb-6">Import Users from CSV</h3>
+                    <h3 className="text-lg font-semibold text-waldorf-clay-800 mb-6">從 CSV 匯入使用者</h3>
                     <BatchImportForm
                       onImportComplete={() => {
                         fetchUsers()
@@ -1044,114 +1015,7 @@ function NewsletterAdminDashboard() {
               </>
             )}
 
-            {/* Audit Logs Tab */}
-            {activeTab === 'audit' && (
-              <>
-                {/* Audit Logs Sub-tab Navigation */}
-                <div className="mb-6 border-b border-gray-200 bg-white rounded-t-lg">
-                  <nav className="flex space-x-8 px-6" aria-label="Audit Log Tabs">
-                    <button
-                      onClick={() => setAuditLogSubTab('auth')}
-                      className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                        auditLogSubTab === 'auth'
-                          ? 'border-waldorf-peach-500 text-waldorf-peach-600'
-                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                      }`}
-                    >
-                      Authentication Events
-                    </button>
-                    <button
-                      onClick={() => setAuditLogSubTab('operations')}
-                      className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                        auditLogSubTab === 'operations'
-                          ? 'border-waldorf-peach-500 text-waldorf-peach-600'
-                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                      }`}
-                    >
-                      Operation Logs
-                    </button>
-                    <button
-                      onClick={() => setAuditLogSubTab('access-control')}
-                      className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                        auditLogSubTab === 'access-control'
-                          ? 'border-waldorf-peach-500 text-waldorf-peach-600'
-                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                      }`}
-                    >
-                      Access Control Logs
-                    </button>
-                  </nav>
-                </div>
 
-                {/* Authentication Audit Logs */}
-                {auditLogSubTab === 'auth' && (
-                  <div className="bg-white shadow rounded-lg overflow-hidden">
-                    <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                      <h3 className="text-lg font-medium text-gray-900">Authentication Events</h3>
-                      <p className="text-sm text-gray-500 mt-1">Track user login, logout, and OAuth events for security auditing</p>
-                    </div>
-                    <div className="p-6">
-                      <UserAuditLog />
-                    </div>
-                  </div>
-                )}
-
-                {/* Operation Audit Logs */}
-                {auditLogSubTab === 'operations' && (
-                  <div className="bg-white shadow rounded-lg overflow-hidden">
-                    <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                      <h3 className="text-lg font-medium text-gray-900">Operation Audit Logs</h3>
-                      <p className="text-sm text-gray-500 mt-1">Track all administrative operations including create, read, update, and delete actions</p>
-                    </div>
-                    <div className="p-6">
-                      <AuditLog
-                        logs={[]}
-                        isLoading={false}
-                        error={null}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {auditLogSubTab === 'access-control' && (
-                  <div className="bg-white shadow rounded-lg overflow-hidden">
-                    <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                      <h3 className="text-lg font-medium text-gray-900">Access Control Logs</h3>
-                      <p className="text-sm text-gray-500 mt-1">Permission mutations and authorization decision traces</p>
-                    </div>
-                    <div className="p-6">
-                      {isAccessControlLogLoading ? (
-                        <LoadingSpinner />
-                      ) : accessControlLogs.length === 0 ? (
-                        <p className="text-sm text-gray-500">No access-control logs found.</p>
-                      ) : (
-                        <div className="space-y-3">
-                          {accessControlLogs.map((entry) => (
-                            <div key={entry.id} className="rounded-lg border border-gray-200 p-3">
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm font-semibold text-gray-800">
-                                  {entry.type === 'mutation' ? 'Permission Mutation' : 'Authorization Decision'} - {entry.action}
-                                </span>
-                                <span className="text-xs text-gray-500">{new Date(entry.createdAt).toLocaleString()}</span>
-                              </div>
-                              <p className="text-xs text-gray-600 mt-1">
-                                actor: {entry.actorId || 'system'} | target: {entry.targetUserId || 'n/a'}
-                              </p>
-                              {entry.reason && (
-                                <p className="text-xs text-gray-600 mt-1">{entry.reason}</p>
-                              )}
-                              {entry.winningRole && (
-                                <p className="text-xs text-gray-600 mt-1">winning role: {entry.winningRole}</p>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
           </div>
       </AdminLayout>
 

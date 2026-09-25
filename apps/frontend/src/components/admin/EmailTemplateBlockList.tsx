@@ -78,7 +78,7 @@ export function EmailTemplateBlockList({ blocks, onChange, scopeKey = 'template'
               </span>
               {!block.visible && (
                 <span className="rounded-full bg-waldorf-cream-200 px-2 py-0.5 text-[10px] uppercase tracking-wide text-waldorf-clay-600">
-                  Hidden
+                  隱藏
                 </span>
               )}
               <span className="ml-auto inline-flex items-center gap-1">
@@ -86,7 +86,7 @@ export function EmailTemplateBlockList({ blocks, onChange, scopeKey = 'template'
                   type="button"
                   onClick={() => moveBlock(index, -1)}
                   disabled={index === 0}
-                  aria-label="Move block up"
+                  aria-label="上移區塊"
                   className="rounded border border-waldorf-cream-300 px-2 py-1 text-xs text-waldorf-clay-700 disabled:opacity-40"
                 >
                   ↑
@@ -95,7 +95,7 @@ export function EmailTemplateBlockList({ blocks, onChange, scopeKey = 'template'
                   type="button"
                   onClick={() => moveBlock(index, 1)}
                   disabled={index === orderedBlocks.length - 1}
-                  aria-label="Move block down"
+                  aria-label="下移區塊"
                   className="rounded border border-waldorf-cream-300 px-2 py-1 text-xs text-waldorf-clay-700 disabled:opacity-40"
                 >
                   ↓
@@ -103,7 +103,7 @@ export function EmailTemplateBlockList({ blocks, onChange, scopeKey = 'template'
                 <button
                   type="button"
                   onClick={() => toggleVisibility(index)}
-                  aria-label={block.visible ? 'Hide block' : 'Show block'}
+                  aria-label={block.visible ? '隱藏區塊' : '顯示區塊'}
                   className="rounded border border-waldorf-cream-300 px-2 py-1 text-xs text-waldorf-clay-700"
                 >
                   {block.visible ? 'Hide' : 'Show'}
@@ -118,10 +118,10 @@ export function EmailTemplateBlockList({ blocks, onChange, scopeKey = 'template'
                 <button
                   type="button"
                   onClick={() => removeBlock(index)}
-                  aria-label="Remove block"
+                  aria-label="移除區塊"
                   className="rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700"
                 >
-                  Remove
+                  移除
                 </button>
               </span>
             </div>
@@ -139,7 +139,7 @@ export function EmailTemplateBlockList({ blocks, onChange, scopeKey = 'template'
       })}
 
       <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-waldorf-cream-300 bg-white px-3 py-2">
-        <span className="text-xs text-waldorf-clay-500">Add block:</span>
+        <span className="text-xs text-waldorf-clay-500">新增區塊：</span>
         <select
           value={appendType}
           onChange={(event) => setAppendType(event.target.value as EmailBlockType)}
@@ -156,7 +156,7 @@ export function EmailTemplateBlockList({ blocks, onChange, scopeKey = 'template'
           onClick={appendBlock}
           className="rounded-lg bg-waldorf-sage-600 px-3 py-1 text-xs text-white"
         >
-          Append
+          加入
         </button>
       </div>
     </div>

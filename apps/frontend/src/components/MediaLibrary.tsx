@@ -259,7 +259,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
               handleDropUpload(event.dataTransfer.files)
             }}
           >
-            拖放檔案到此處上傳 / Drop files here to upload
+            將檔案拖放至此處上傳
             <input
               type="file"
               multiple
@@ -275,7 +275,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
         {/* 搜尋框 / Search input */}
         <input
           type="text"
-          placeholder="搜尋媒體檔案 / Search media files"
+          placeholder="搜尋媒體檔案"
           value={searchQuery}
           onChange={(e) => {
             setSearchQuery(e.target.value)
@@ -296,7 +296,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                 viewMode === 'grid' ? 'bg-waldorf-sage-600 text-white' : 'bg-gray-100 text-gray-700'
               }`}
             >
-              Grid
+              格狀檢視
             </button>
             <button
               type="button"
@@ -306,17 +306,17 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                 viewMode === 'list' ? 'bg-waldorf-sage-600 text-white' : 'bg-gray-100 text-gray-700'
               }`}
             >
-              List
+              列表檢視
             </button>
           </div>
 
           {/* 媒體類型篩選 / Media type filter */}
           <div className="flex gap-2">
             {[
-              { value: 'all', label: '全部 / All' },
-              { value: 'image', label: '圖片 / Images' },
-              { value: 'audio', label: '音訊 / Audio' },
-              { value: 'video', label: '影片 / Video' },
+              { value: 'all', label: '全部' },
+              { value: 'image', label: '圖片' },
+              { value: 'audio', label: '音訊' },
+              { value: 'video', label: '影片' },
             ].map(({ value, label }) => (
               <button
                 key={value}
@@ -343,18 +343,18 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
             disabled={disabled}
             className="px-3 py-1 text-sm rounded border border-gray-300 disabled:opacity-50"
           >
-            <option value="date-desc">最新 / Latest</option>
-            <option value="date-asc">最舊 / Oldest</option>
-            <option value="name-asc">名稱 (A-Z) / Name (A-Z)</option>
-            <option value="name-desc">名稱 (Z-A) / Name (Z-A)</option>
-            <option value="size-asc">大小 (小-大) / Size (Small-Large)</option>
-            <option value="size-desc">大小 (大-小) / Size (Large-Small)</option>
+            <option value="date-desc">最新</option>
+            <option value="date-asc">最舊</option>
+            <option value="name-asc">名稱（A–Z）</option>
+            <option value="name-desc">名稱（Z–A）</option>
+            <option value="size-asc">大小（小到大）</option>
+            <option value="size-desc">大小（大到小）</option>
           </select>
         </div>
 
         {/* 結果計數 / Result count */}
         <p className="text-sm text-gray-600">
-          找到 {filteredAndSortedFiles.length} 個媒體檔案 / Found {filteredAndSortedFiles.length} media files
+          找到 {filteredAndSortedFiles.length} 找到 {filteredAndSortedFiles.length} 個媒體檔案
           {selectedFiles.size > 0 && ` (已選擇 ${selectedFiles.size} 個 / Selected ${selectedFiles.size})`}
         </p>
       </div>
@@ -367,7 +367,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
       ) : (
         <div className="text-center py-8">
           <p className="text-gray-500">
-            無媒體檔案 / No media files found
+            找不到媒體檔案
           </p>
         </div>
       )}
@@ -375,19 +375,19 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
       {/* 詳細資訊面板 / Details panel */}
       {focusedFile ? (
         <div className="border rounded-lg border-gray-200 p-4 bg-gray-50">
-          <h4 className="font-semibold text-sm mb-2">媒體詳情 / Media Details</h4>
+          <h4 className="font-semibold text-sm mb-2">媒體詳細資料</h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-700">
-            <div>檔名 / Name: {focusedFile.fileName}</div>
-            <div>大小 / Size: {formatFileSize(focusedFile.fileSize)}</div>
-            <div>上傳時間 / Uploaded: {formatDate(focusedFile.uploadedAt)}</div>
-            <div>類型 / Type: {focusedFile.mediaType}</div>
+            <div>檔名： {focusedFile.fileName}</div>
+            <div>大小： {formatFileSize(focusedFile.fileSize)}</div>
+            <div>上傳時間： {formatDate(focusedFile.uploadedAt)}</div>
+            <div>類型： {focusedFile.mediaType}</div>
             <div>
-              尺寸 / Dimensions: {focusedFile.width && focusedFile.height ? `${focusedFile.width}×${focusedFile.height}` : 'N/A'}
+              尺寸： {focusedFile.width && focusedFile.height ? `${focusedFile.width}×${focusedFile.height}` : 'N/A'}
             </div>
-            <div>時長 / Duration: {focusedFile.duration ? `${Math.round(focusedFile.duration)}s` : 'N/A'}</div>
-            <div>引用數 / Active usage: {focusedFile.usageCount ?? 0}</div>
+            <div>時長： {focusedFile.duration ? `${Math.round(focusedFile.duration)}s` : 'N/A'}</div>
+            <div>使用中的引用： {focusedFile.usageCount ?? 0}</div>
             <div>
-              最佳化 / Optimization:{' '}
+              最佳化：{' '}
               {focusedFile.variants?.length
                 ? focusedFile.variants.map((variant) => variant.status).join(', ')
                 : 'N/A'}
@@ -404,7 +404,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
             disabled={currentPage === 1 || disabled}
             className="px-4 py-2 text-sm border border-gray-300 rounded disabled:opacity-50"
           >
-            上一頁 / Previous
+            上一頁
           </button>
 
           <div className="flex gap-1">
@@ -429,7 +429,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
             disabled={currentPage === totalPages || disabled}
             className="px-4 py-2 text-sm border border-gray-300 rounded disabled:opacity-50"
           >
-            下一頁 / Next
+            下一頁
           </button>
         </div>
       )}

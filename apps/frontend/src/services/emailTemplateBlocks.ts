@@ -86,7 +86,7 @@ const ABOUT_DEFAULT_HTML = `
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f1f5f9;margin:24px 0;border-radius:6px;">
   <tr>
     <td style="padding:20px;font-family:${FONT_STACK};color:#1f2937;">
-      <h3 style="margin:0 0 10px;font-size:16px;color:#0f172a;">About us · 認識 善美真</h3>
+      <h3 style="margin:0 0 10px;font-size:16px;color:#0f172a;">認識善美真</h3>
       <p style="margin:0;font-size:13px;line-height:1.6;color:#475569;">{{schoolMission}}</p>
     </td>
   </tr>
@@ -108,7 +108,7 @@ const CUSTOM_HTML_DEFAULT_HTML = `
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
   <tr>
     <td style="padding:16px;font-family:${FONT_STACK};color:#1f2937;font-size:14px;line-height:1.6;">
-      Replace this block with your own HTML.
+      請在此輸入自訂 HTML 內容。
     </td>
   </tr>
 </table>
@@ -126,12 +126,12 @@ const CLASS_INNER_SCOPE = ['class.id', 'class.code', 'class.name']
 const REGISTRY: Record<EmailBlockType, EmailBlockTypeDefinition> = {
   header: {
     type: 'header',
-    label: 'Header',
-    description: 'Brand header with school name and tagline.',
+    label: '頁首',
+    description: '顯示學校名稱與標語的頁首。',
     isRepeater: false,
     repeaterDataSource: null,
     defaultConfig: {
-      brandName: 'SMZ School News',
+      brandName: '善美真學校週報',
       tagline: '善美真學校週報',
     },
     innerScopeTokens: [],
@@ -139,42 +139,42 @@ const REGISTRY: Record<EmailBlockType, EmailBlockTypeDefinition> = {
   },
   'shared-article-feature': {
     type: 'shared-article-feature',
-    label: 'Shared article feature',
-    description: 'Repeats once per shared article (capped by maxItems).',
+    label: '全校文章精選',
+    description: '每篇全校文章顯示一次，篇數由 maxItems 限制。',
     isRepeater: true,
     repeaterDataSource: 'shared-articles',
     defaultConfig: {
-      eyebrow: 'Regarding school',
+      eyebrow: '校園消息',
       maxItems: 3,
       excerptLength: 240,
-      ctaLabel: 'Read more',
+      ctaLabel: '閱讀更多',
     },
     innerScopeTokens: ARTICLE_INNER_SCOPE,
     defaultBodyHtml: SHARED_ARTICLE_FEATURE_DEFAULT_HTML,
   },
   'class-article-feature': {
     type: 'class-article-feature',
-    label: 'Class article feature',
-    description: 'Repeats once per (class × article) for the recipient.',
+    label: '班級文章精選',
+    description: '依收件者的班級及文章逐一顯示。',
     isRepeater: true,
     repeaterDataSource: 'class-articles',
     defaultConfig: {
-      eyebrow: 'Class news & events',
+      eyebrow: '班級消息與活動',
       maxItemsPerClass: 2,
       excerptLength: 200,
-      ctaLabel: 'Read more',
+      ctaLabel: '閱讀更多',
     },
     innerScopeTokens: [...ARTICLE_INNER_SCOPE, ...CLASS_INNER_SCOPE],
     defaultBodyHtml: CLASS_ARTICLE_FEATURE_DEFAULT_HTML,
   },
   'weekly-summary-list': {
     type: 'weekly-summary-list',
-    label: 'Weekly summary list',
-    description: 'Repeats once per weekly item filtered by sourceTag.',
+    label: '每週摘要清單',
+    description: '依 sourceTag 篩選並逐項顯示每週內容。',
     isRepeater: true,
     repeaterDataSource: 'weekly-items',
     defaultConfig: {
-      sectionTitle: 'The weekly news / 本週重要事情佈達',
+      sectionTitle: '本週重要消息',
       sourceTag: 'weekly',
       excerptLength: 120,
     },
@@ -183,8 +183,8 @@ const REGISTRY: Record<EmailBlockType, EmailBlockTypeDefinition> = {
   },
   'section-divider': {
     type: 'section-divider',
-    label: 'Section divider',
-    description: 'Visual separator between sections.',
+    label: '區段分隔線',
+    description: '用於分隔不同內容區段。',
     isRepeater: false,
     repeaterDataSource: null,
     defaultConfig: {},
@@ -193,8 +193,8 @@ const REGISTRY: Record<EmailBlockType, EmailBlockTypeDefinition> = {
   },
   about: {
     type: 'about',
-    label: 'About us',
-    description: 'School mission paragraph.',
+    label: '認識我們',
+    description: '學校理念介紹。',
     isRepeater: false,
     repeaterDataSource: null,
     defaultConfig: {
@@ -206,14 +206,14 @@ const REGISTRY: Record<EmailBlockType, EmailBlockTypeDefinition> = {
   },
   footer: {
     type: 'footer',
-    label: 'Footer',
-    description: 'Contact information block.',
+    label: '頁尾',
+    description: '顯示聯絡資訊。',
     isRepeater: false,
     repeaterDataSource: null,
     defaultConfig: {
       tel: '+886-0-000-0000',
       fax: '+886-0-000-0000',
-      address: '善美真小學 · School address',
+      address: '善美真小學 · 請填入學校地址',
       socials: [],
     },
     innerScopeTokens: [],
@@ -221,8 +221,8 @@ const REGISTRY: Record<EmailBlockType, EmailBlockTypeDefinition> = {
   },
   'custom-html': {
     type: 'custom-html',
-    label: 'Custom HTML',
-    description: 'Free-form HTML block. Use sparingly.',
+    label: '自訂 HTML',
+    description: '可自由編輯的 HTML 區塊，請謹慎使用。',
     isRepeater: false,
     repeaterDataSource: null,
     defaultConfig: {},

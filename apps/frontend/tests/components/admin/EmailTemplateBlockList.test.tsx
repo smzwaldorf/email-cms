@@ -45,7 +45,7 @@ describe('EmailTemplateBlockList', () => {
 
     render(<ControlledBlockList initial={initial} />)
 
-    const moveDown = screen.getAllByRole('button', { name: 'Move block down' })[0]
+    const moveDown = screen.getAllByRole('button', { name: '下移區塊' })[0]
     await act(async () => {
       await user.click(moveDown)
     })
@@ -64,7 +64,7 @@ describe('EmailTemplateBlockList', () => {
     render(<ControlledBlockList initial={initial} />)
 
     await act(async () => {
-      await user.click(screen.getByRole('button', { name: 'Hide block' }))
+      await user.click(screen.getByRole('button', { name: '隱藏區塊' }))
     })
     await waitFor(() => {
       expect(screen.getByTestId('block-visible').textContent).toBe('false')
@@ -103,7 +103,7 @@ describe('EmailTemplateBlockList', () => {
       render(<ControlledBlockList initial={initial} />)
 
       expect(screen.queryByTestId('mock-simple-editor')).toBeNull()
-      const htmlEditor = screen.getByRole('textbox', { name: 'Block body HTML' })
+      const htmlEditor = screen.getByRole('textbox', { name: '區塊內文 HTML' })
       expect(htmlEditor).toHaveValue(layoutBody)
 
       await act(async () => {
@@ -130,20 +130,20 @@ describe('EmailTemplateBlockList', () => {
       await act(async () => {
         await user.click(screen.getByRole('button', { name: 'TipTap' }))
       })
-      expect(screen.getByRole('alert')).toHaveTextContent(/flatten the block/i)
+      expect(screen.getByRole('alert')).toHaveTextContent(/攤平成段落/)
       expect(screen.queryByTestId('mock-simple-editor')).toBeNull()
 
       await act(async () => {
-        await user.click(screen.getByRole('button', { name: 'Keep editing HTML' }))
+        await user.click(screen.getByRole('button', { name: '繼續編輯 HTML' }))
       })
       expect(screen.queryByRole('alert')).toBeNull()
-      expect(screen.getByRole('textbox', { name: 'Block body HTML' })).toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: '區塊內文 HTML' })).toBeInTheDocument()
 
       await act(async () => {
         await user.click(screen.getByRole('button', { name: 'TipTap' }))
       })
       await act(async () => {
-        await user.click(screen.getByRole('button', { name: 'Switch to visual editor anyway' }))
+        await user.click(screen.getByRole('button', { name: '仍要切換至視覺化編輯器' }))
       })
       expect(screen.getByTestId('mock-simple-editor')).toBeInTheDocument()
       // Nothing is rewritten until the admin actually edits in the visual editor.
@@ -158,7 +158,7 @@ describe('EmailTemplateBlockList', () => {
       render(<ControlledBlockList initial={initial} />)
 
       expect(screen.getByTestId('mock-simple-editor')).toBeInTheDocument()
-      expect(screen.queryByRole('textbox', { name: 'Block body HTML' })).toBeNull()
+      expect(screen.queryByRole('textbox', { name: '區塊內文 HTML' })).toBeNull()
     })
   })
 })

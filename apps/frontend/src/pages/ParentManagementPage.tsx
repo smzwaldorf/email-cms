@@ -26,7 +26,7 @@ export function ParentManagementPage() {
       const data = await adminService.fetchParents()
       setParents(data)
     } catch (err) {
-      setError(err instanceof AdminServiceError ? err.message : 'Failed to load parents/guardians')
+      setError(err instanceof AdminServiceError ? err.message : '無法載入家長／監護人')
     } finally {
       setIsLoading(false)
     }
@@ -46,7 +46,7 @@ export function ParentManagementPage() {
       await loadParents()
     } catch (err) {
       setNotification({
-        message: err instanceof AdminServiceError ? err.message : 'Failed to create parent/guardian',
+        message: err instanceof AdminServiceError ? err.message : '無法建立家長／監護人',
         type: 'error',
       })
     } finally {
@@ -64,7 +64,7 @@ export function ParentManagementPage() {
       await loadParents()
     } catch (err) {
       setNotification({
-        message: err instanceof AdminServiceError ? err.message : 'Failed to delete parent/guardian',
+        message: err instanceof AdminServiceError ? err.message : '無法刪除家長／監護人',
         type: 'error',
       })
       setDeleteConfirm({ isOpen: false })
@@ -85,7 +85,7 @@ export function ParentManagementPage() {
       await loadParents()
     } catch (err) {
       setNotification({
-        message: err instanceof AdminServiceError ? err.message : 'Failed to update parent/guardian',
+        message: err instanceof AdminServiceError ? err.message : '無法更新家長／監護人',
         type: 'error',
       })
     } finally {
@@ -189,7 +189,7 @@ export function ParentManagementPage() {
             <table className="w-full bg-white">
               <thead className="bg-waldorf-cream-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-waldorf-clay-600 uppercase">Email</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-waldorf-clay-600 uppercase">電子郵件</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-waldorf-clay-600 uppercase">名稱</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-waldorf-clay-600 uppercase">狀態</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-waldorf-clay-600 uppercase">操作</th>

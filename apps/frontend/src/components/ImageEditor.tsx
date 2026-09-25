@@ -218,7 +218,7 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({
       <div className="space-y-3 p-4 bg-gray-50 rounded-lg">
         <div className="flex items-center gap-2">
           <label className="text-sm font-medium text-gray-700 w-16">
-            寬度 / Width:
+            寬度：
           </label>
           <input
             type="number"
@@ -234,7 +234,7 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({
 
         <div className="flex items-center gap-2">
           <label className="text-sm font-medium text-gray-700 w-16">
-            高度 / Height:
+            高度：
           </label>
           <input
             type="number"
@@ -254,7 +254,7 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({
                 ? 'bg-blue-100 text-blue-700'
                 : 'bg-gray-200 text-gray-700'
             } disabled:opacity-50`}
-            title="保持寬高比 / Maintain aspect ratio"
+            title="保持寬高比"
           >
             🔗
           </button>
@@ -262,7 +262,7 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({
 
         {imageInfo && (
           <p className="text-xs text-gray-500">
-            原始尺寸: {imageInfo.width} × {imageInfo.height} px / Original: {imageInfo.width} × {imageInfo.height} px
+            原始尺寸: {imageInfo.width} × {imageInfo.height} px／原始： {imageInfo.width} × {imageInfo.height} px
           </p>
         )}
       </div>
@@ -270,7 +270,7 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({
       {/* 對齐方式 / Alignment */}
       <div className="space-y-2">
         <label className="text-sm font-medium text-gray-700">
-          對齐方式 / Alignment:
+          對齊方式：
         </label>
         <div className="flex gap-2">
           {(['left', 'center', 'right'] as const).map((alignOption) => (
@@ -284,9 +284,9 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({
                   : 'bg-gray-200 text-gray-700'
               } disabled:opacity-50`}
             >
-              {alignOption === 'left' && '左 / Left'}
-              {alignOption === 'center' && '中 / Center'}
-              {alignOption === 'right' && '右 / Right'}
+              {alignOption === 'left' && '左'}
+              {alignOption === 'center' && '中'}
+              {alignOption === 'right' && '右'}
             </button>
           ))}
         </div>
@@ -295,13 +295,13 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({
       {/* 替代文字 / Alt text */}
       <div className="space-y-2">
         <label className="text-sm font-medium text-gray-700">
-          替代文字 / Alt Text: <span className="text-gray-500">(無障礙性 / Accessibility)</span>
+          替代文字： <span className="text-gray-500">（無障礙用途）</span>
         </label>
         <textarea
           value={alt}
           onChange={(e) => handleAltChange(e.target.value)}
           disabled={disabled}
-          placeholder="描述圖片內容 / Describe image content"
+          placeholder="描述圖片內容"
           className="w-full px-3 py-2 border border-gray-300 rounded text-sm disabled:opacity-50 resize-none"
           rows={2}
         />
@@ -310,14 +310,14 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({
       {/* 標題 / Title */}
       <div className="space-y-2">
         <label className="text-sm font-medium text-gray-700">
-          標題 / Title:
+          標題：
         </label>
         <input
           type="text"
           value={title}
           onChange={(e) => handleTitleChange(e.target.value)}
           disabled={disabled}
-          placeholder="圖片標題 / Image title"
+          placeholder="圖片標題"
           className="w-full px-3 py-2 border border-gray-300 rounded text-sm disabled:opacity-50"
         />
       </div>
@@ -325,13 +325,13 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({
       {/* 說明文字 / Caption */}
       <div className="space-y-2">
         <label className="text-sm font-medium text-gray-700">
-          說明文字 / Caption:
+          說明文字：
         </label>
         <textarea
           value={caption}
           onChange={(e) => handleCaptionChange(e.target.value)}
           disabled={disabled}
-          placeholder="圖片下方的說明文字 / Text below image"
+          placeholder="圖片下方的說明文字"
           className="w-full px-3 py-2 border border-gray-300 rounded text-sm disabled:opacity-50 resize-none"
           rows={2}
         />

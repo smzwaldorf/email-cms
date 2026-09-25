@@ -65,7 +65,7 @@ function VideoEmbedComponent({
   width = '100%',
   startTime,
   autoplay = false,
-  title = 'YouTube video',
+  title = 'YouTube 影片',
   className = '',
   'data-testid': testId = 'video-embed',
 }: VideoEmbedProps) {

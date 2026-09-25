@@ -11,7 +11,7 @@ export const ArticleReaderTable: React.FC<ArticleReaderTableProps> = ({ data }) 
         return (
             <div className="bg-white rounded-xl shadow-sm border border-brand-neutral-100 p-8 flex flex-col items-center justify-center text-brand-neutral-400 min-h-[300px]">
                 <User className="w-12 h-12 mb-3 opacity-20" />
-                <p>No reader data available for this article.</p>
+                <p>此文章沒有讀者資料。</p>
             </div>
         );
     }
@@ -25,9 +25,9 @@ export const ArticleReaderTable: React.FC<ArticleReaderTableProps> = ({ data }) 
     return (
         <div className="bg-white rounded-xl shadow-sm border border-brand-neutral-100 overflow-hidden">
             <div className="px-6 py-4 border-b border-brand-neutral-100 flex justify-between items-center">
-                <h3 className="text-lg font-semibold text-brand-neutral-800">Article Readers</h3>
+                <h3 className="text-lg font-semibold text-brand-neutral-800">文章讀者</h3>
                 <div className="text-xs text-brand-neutral-500">
-                    {data.length} Unique Viewers
+                    {data.length} 不重複瀏覽人數
                 </div>
             </div>
             
@@ -35,11 +35,11 @@ export const ArticleReaderTable: React.FC<ArticleReaderTableProps> = ({ data }) 
                 <table className="min-w-full divide-y divide-brand-neutral-200">
                     <thead className="bg-brand-neutral-50">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-brand-neutral-500 uppercase tracking-wider">Name</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-brand-neutral-500 uppercase tracking-wider">Role</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-brand-neutral-500 uppercase tracking-wider">Class / Students</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-brand-neutral-500 uppercase tracking-wider">Last Viewed</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-brand-neutral-500 uppercase tracking-wider">Views</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-brand-neutral-500 uppercase tracking-wider">姓名</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-brand-neutral-500 uppercase tracking-wider">角色</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-brand-neutral-500 uppercase tracking-wider">班級／學生</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-brand-neutral-500 uppercase tracking-wider">上次瀏覽時間</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-brand-neutral-500 uppercase tracking-wider">瀏覽次數</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-brand-neutral-100">
@@ -78,7 +78,7 @@ export const ArticleReaderTable: React.FC<ArticleReaderTableProps> = ({ data }) 
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-brand-neutral-500">
                                     <div className="flex items-center gap-1.5">
                                         <Clock className="w-3 h-3" />
-                                        {new Date(reader.lastViewed).toLocaleString()}
+                                        {new Date(reader.lastViewed).toLocaleString('zh-TW')}
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-brand-neutral-500">

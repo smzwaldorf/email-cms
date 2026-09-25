@@ -158,7 +158,7 @@ export function InsertButton({ editor, articleId }: InsertButtonProps) {
           setShowUploader(true)
         }}
         className="toolbar-button"
-        title="Insert Image (上傳圖片)"
+        title="插入圖片"
         type="button"
       >
         <ImageIcon size={18} />
@@ -170,7 +170,7 @@ export function InsertButton({ editor, articleId }: InsertButtonProps) {
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-8 max-w-2xl w-full mx-4">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold">上傳圖片 / Upload Images</h3>
+                <h3 className="text-lg font-bold">上傳圖片</h3>
                 <button
                   onClick={() => setShowUploader(false)}
                   className="text-gray-500 hover:text-gray-700"
@@ -193,7 +193,7 @@ export function InsertButton({ editor, articleId }: InsertButtonProps) {
                     activeTab === 'upload' ? 'bg-waldorf-sage-600 text-white' : 'bg-gray-100 text-gray-700'
                   }`}
                 >
-                  上傳新圖片 / Upload New
+                  上傳新圖片
                 </button>
                 <button
                   type="button"
@@ -202,7 +202,7 @@ export function InsertButton({ editor, articleId }: InsertButtonProps) {
                     activeTab === 'existing' ? 'bg-waldorf-sage-600 text-white' : 'bg-gray-100 text-gray-700'
                   }`}
                 >
-                  插入現有媒體 / Insert Existing
+                  插入現有媒體
                 </button>
               </div>
 
@@ -216,7 +216,7 @@ export function InsertButton({ editor, articleId }: InsertButtonProps) {
                       />
                     </div>
                     <p className="text-sm text-gray-600 text-center">
-                      上傳進度: {uploadState.progress}% / Upload progress: {uploadState.progress}%
+                      上傳進度：{uploadState.progress}%
                     </p>
                   </div>
                 ) : (
@@ -228,11 +228,11 @@ export function InsertButton({ editor, articleId }: InsertButtonProps) {
                   />
                 )
               ) : isLoadingLibrary ? (
-                <p className="text-sm text-gray-600">載入媒體庫中... / Loading media library...</p>
+                <p className="text-sm text-gray-600">正在載入媒體庫...</p>
               ) : (
                 <div className="max-h-[480px] overflow-auto">
                   <p className="text-xs text-gray-500 mb-3">
-                    選擇後將直接插入，並同步更新引用計數。 / Selecting inserts immediately and updates usage tracking.
+                    選取後會立即插入，並同步更新使用次數。
                   </p>
                   <MediaLibrary
                     mediaFiles={mediaFiles}
@@ -249,7 +249,7 @@ export function InsertButton({ editor, articleId }: InsertButtonProps) {
                   disabled={uploadState.isUploading}
                   className="px-4 py-2 rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-50"
                 >
-                  取消 / Cancel
+                  取消
                 </button>
               </div>
             </div>

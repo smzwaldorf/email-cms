@@ -55,7 +55,7 @@ export const ArticleCard = memo(function ArticleCard({
 
         setPermissions({ canView, canEdit, canDelete, isLoading: false })
       } catch (err) {
-        console.error('Failed to check permissions:', err)
+        console.error('檢查權限時發生錯誤：', err)
         setPermissions(prev => ({ ...prev, isLoading: false }))
       }
     }

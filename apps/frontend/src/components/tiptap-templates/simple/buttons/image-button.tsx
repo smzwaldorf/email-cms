@@ -40,7 +40,7 @@ export function ImageButton({ editor }: ImageButtonProps) {
       <button
         onClick={() => fileInputRef.current?.click()}
         className="toolbar-button"
-        title="Insert Image"
+        title="插入圖片"
         type="button"
       >
         <ImageIcon size={18} />

@@ -88,19 +88,19 @@ describe('AdminEmailTemplateEditorPage', () => {
       </MemoryRouter>,
     )
 
-    fireEvent.change(screen.getByPlaceholderText('Template name'), { target: { value: 'Imported template' } })
-    fireEvent.change(screen.getByPlaceholderText('Subject template'), { target: { value: 'Hello {{guardian.email}}' } })
+    fireEvent.change(screen.getByPlaceholderText('範本名稱'), { target: { value: 'Imported template' } })
+    fireEvent.change(screen.getByPlaceholderText('主旨範本'), { target: { value: 'Hello {{guardian.email}}' } })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Import HTML' }))
+    fireEvent.click(screen.getByRole('button', { name: '匯入 HTML' }))
     const importTextarea = screen.getAllByRole('textbox').at(-1) as HTMLTextAreaElement
     fireEvent.change(importTextarea, {
       target: {
         value: '<html><head><style>.hero{color:red;}</style></head><body><table><tr><td>Imported</td></tr></table></body></html>',
       },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Apply Imported HTML' }))
+    fireEvent.click(screen.getByRole('button', { name: '套用匯入的 HTML' }))
 
-    expect(await screen.findByText('Imported HTML compatibility issues')).toBeInTheDocument()
+    expect(await screen.findByText('匯入 HTML 的相容性問題')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Create' })).toBeDisabled()
   })
 

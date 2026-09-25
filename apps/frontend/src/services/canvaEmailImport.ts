@@ -56,12 +56,12 @@ function stripBlockedTags(root: ParentNode, issues: Map<string, CanvaEmailImport
       uniqueIssueKey({
         code: 'unsupported_tag',
         tagName,
-        message: `Unsupported <${tagName}> tag is not allowed in imported email HTML.`,
+        message: `匯入的電子郵件 HTML 不支援 <${tagName}> 標籤。`,
       }),
       {
         code: 'unsupported_tag',
         tagName,
-        message: `Unsupported <${tagName}> tag is not allowed in imported email HTML.`,
+        message: `匯入的電子郵件 HTML 不支援 <${tagName}> 標籤。`,
       },
     )
 
@@ -77,12 +77,12 @@ function stripStylesheets(documentRoot: Document, container: HTMLElement, issues
       uniqueIssueKey({
         code: 'unsupported_stylesheet',
         tagName: 'style',
-        message: 'Embedded <style> blocks are not supported for imported email templates. Use inline styles only.',
+        message: '匯入的電子郵件範本不支援內嵌 <style> 區塊，請使用行內樣式。',
       }),
       {
         code: 'unsupported_stylesheet',
         tagName: 'style',
-        message: 'Embedded <style> blocks are not supported for imported email templates. Use inline styles only.',
+        message: '匯入的電子郵件範本不支援內嵌 <style> 區塊，請使用行內樣式。',
       },
     )
   }
@@ -92,12 +92,12 @@ function stripStylesheets(documentRoot: Document, container: HTMLElement, issues
       uniqueIssueKey({
         code: 'unsupported_stylesheet',
         tagName: 'link',
-        message: 'External stylesheets are not supported for imported email templates.',
+        message: '匯入的電子郵件範本不支援外部樣式表。',
       }),
       {
         code: 'unsupported_stylesheet',
         tagName: 'link',
-        message: 'External stylesheets are not supported for imported email templates.',
+        message: '匯入的電子郵件範本不支援外部樣式表。',
       },
     )
   }
@@ -130,13 +130,13 @@ function scrubUnsafeAssetProtocols(container: HTMLElement, issues: Map<string, C
           code: 'unsafe_asset_protocol',
           attribute,
           value,
-          message: `Imported email HTML requires HTTPS asset links. Invalid ${attribute}: ${value}`,
+          message: `匯入的電子郵件 HTML 資源連結必須使用 HTTPS。無效的 ${attribute}：${value}`,
         }),
         {
           code: 'unsafe_asset_protocol',
           attribute,
           value,
-          message: `Imported email HTML requires HTTPS asset links. Invalid ${attribute}: ${value}`,
+          message: `匯入的電子郵件 HTML 資源連結必須使用 HTTPS。無效的 ${attribute}：${value}`,
         },
       )
       element.removeAttribute(attribute)
@@ -173,11 +173,11 @@ export function normalizeCanvaEmailHtml(rawHtml: string): CanvaEmailImportResult
     issues.set(
       uniqueIssueKey({
         code: 'empty_body',
-        message: 'Imported email HTML did not contain a usable body fragment after normalization.',
+        message: '整理後的電子郵件 HTML 沒有可用的內文。',
       }),
       {
         code: 'empty_body',
-        message: 'Imported email HTML did not contain a usable body fragment after normalization.',
+        message: '整理後的電子郵件 HTML 沒有可用的內文。',
       },
     )
   }

@@ -45,15 +45,15 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requir
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Connection Timeout</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">連線逾時</h3>
             <p className="text-gray-600 mb-6">
-              Loading is taking longer than expected. Your session may have timed out.
+              載入時間超出預期，您的工作階段可能已逾時。
             </p>
             <button 
               onClick={() => window.location.reload()}
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm font-medium"
             >
-              Refresh Page
+              重新整理頁面
             </button>
           </div>
         </div>
@@ -64,7 +64,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requir
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-4 border-waldorf-peach border-t-transparent mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-gray-600">載入中...</p>
         </div>
       </div>
     )

@@ -96,7 +96,7 @@ export function ArticleEditForm({
       })
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err))
-      setSaveError(`Failed to load article: ${error.message}`)
+      setSaveError(`載入文章失敗：${error.message}`)
       if (onError) onError(error)
     } finally {
       setIsLoading(false)
@@ -111,7 +111,7 @@ export function ArticleEditForm({
       const history = await ArticleUpdateService.getArticleHistory(articleId, 10)
       setAuditHistory(history)
     } catch (err) {
-      console.error('Failed to load history:', err)
+      console.error('無法載入版本紀錄：', err)
     }
   }
 
@@ -156,7 +156,7 @@ export function ArticleEditForm({
       }
       return false
     } catch (err) {
-      console.error('Error checking conflict:', err)
+      console.error('檢查編輯衝突時發生錯誤：', err)
       return false
     }
   }
@@ -169,12 +169,12 @@ export function ArticleEditForm({
 
     // Validate required fields
     if (!formData.title.trim()) {
-      setSaveError('Title is required')
+      setSaveError('請輸入標題')
       return
     }
 
     if (!formData.content.trim()) {
-      setSaveError('Content is required')
+      setSaveError('請輸入內容')
       return
     }
 
@@ -191,7 +191,7 @@ export function ArticleEditForm({
       }
 
       if (!user?.id) {
-        setSaveError('You must be signed in to save')
+        setSaveError('請先登入才能儲存')
         return
       }
 
@@ -238,7 +238,7 @@ export function ArticleEditForm({
       setShowHistory(false)
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err))
-      setSaveError(`Failed to revert: ${error.message}`)
+      setSaveError(`還原文章失敗：${error.message}`)
     } finally {
       setIsSaving(false)
     }
@@ -254,7 +254,7 @@ export function ArticleEditForm({
       setConflict({ detected: false, localVersion: null, remoteVersion: null })
 
       if (!user?.id) {
-        setSaveError('You must be signed in to save')
+        setSaveError('請先登入才能儲存')
         return
       }
 
@@ -288,7 +288,7 @@ export function ArticleEditForm({
       <article className="h-full flex items-center justify-center bg-waldorf-cream-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-waldorf-sage-600 mx-auto mb-4"></div>
-          <p className="text-waldorf-clay-600">Loading article...</p>
+          <p className="text-waldorf-clay-600">正在載入文章...</p>
         </div>
       </article>
     )
@@ -298,13 +298,13 @@ export function ArticleEditForm({
     return (
       <article className="h-full flex items-center justify-center bg-waldorf-cream-50">
         <div className="text-center">
-          <p className="text-waldorf-clay-600 mb-4">Article not found</p>
+          <p className="text-waldorf-clay-600 mb-4">找不到文章</p>
           {onCancel && (
             <button
               onClick={onCancel}
               className="px-4 py-2 bg-waldorf-sage-600 text-white rounded-md hover:bg-waldorf-sage-700"
             >
-              Back
+              返回
             </button>
           )}
         </div>
@@ -316,13 +316,13 @@ export function ArticleEditForm({
     <article className="h-full flex flex-col overflow-hidden">
       {/* Header */}
       <div className="px-6 py-4 border-b border-waldorf-cream-200 bg-waldorf-sage-50">
-        <h1 className="text-2xl font-bold text-waldorf-clay-800 mb-2">Edit Article</h1>
+        <h1 className="text-2xl font-bold text-waldorf-clay-800 mb-2">編輯文章</h1>
         <div className="flex items-center gap-4 text-sm text-waldorf-clay-600">
-          <span>ID: {article.id}</span>
+          <span>ID： {article.id}</span>
           <span>|</span>
-          <span>Week: —</span>
+          <span>週次：—</span>
           <span>|</span>
-          <span>Last updated: {new Date(article.updated_at).toLocaleString()}</span>
+          <span>上次更新： {new Date(article.updated_at).toLocaleString('zh-TW')}</span>
           <button
             type="button"
             onClick={() => {
@@ -331,7 +331,7 @@ export function ArticleEditForm({
             }}
             className="ml-auto px-3 py-1 text-waldorf-sage-600 hover:bg-waldorf-sage-100 rounded transition-colors"
           >
-            {showHistory ? 'Hide History' : 'View History'}
+            {showHistory ? '隱藏版本紀錄' : '查看版本紀錄'}
           </button>
         </div>
       </div>
@@ -341,11 +341,11 @@ export function ArticleEditForm({
         <div className="px-6 py-4 bg-waldorf-rose-50 border-b border-waldorf-rose-200">
           <div className="max-w-4xl mx-auto">
             <h3 className="font-semibold text-waldorf-rose-800 mb-2">
-              ⚠️ Concurrent Edit Detected
+              ⚠️ 偵測到同時編輯
             </h3>
             <p className="text-sm text-waldorf-rose-700 mb-3">
-              This article was modified since you loaded it. Last change at:{' '}
-              {conflict.remoteVersion && new Date(conflict.remoteVersion.updated_at).toLocaleString()}
+              這篇文章在您載入後已被修改。上次變更時間：{' '}
+              {conflict.remoteVersion && new Date(conflict.remoteVersion.updated_at).toLocaleString('zh-TW')}
             </p>
             <div className="flex gap-3">
               <button
@@ -354,7 +354,7 @@ export function ArticleEditForm({
                 disabled={isSaving}
                 className="px-4 py-2 bg-waldorf-rose-600 text-white rounded-md hover:bg-waldorf-rose-700 disabled:opacity-50 transition-colors"
               >
-                {isSaving ? 'Saving...' : 'Overwrite (Last-Write-Wins)'}
+                {isSaving ? '儲存中...' : '覆寫（以最後儲存為準）'}
               </button>
               <button
                 type="button"
@@ -362,7 +362,7 @@ export function ArticleEditForm({
                 disabled={isSaving}
                 className="px-4 py-2 bg-waldorf-cream-200 text-waldorf-clay-700 rounded-md hover:bg-waldorf-cream-300 disabled:opacity-50 transition-colors"
               >
-                Reload Latest Version
+                載入最新版本
               </button>
             </div>
           </div>
@@ -372,9 +372,9 @@ export function ArticleEditForm({
       {/* Edit History Sidebar */}
       {showHistory && (
         <div className="px-6 py-4 bg-waldorf-cream-50 border-b border-waldorf-cream-200 max-h-48 overflow-y-auto">
-          <h3 className="font-semibold text-waldorf-clay-800 mb-3">Edit History</h3>
+          <h3 className="font-semibold text-waldorf-clay-800 mb-3">編輯紀錄</h3>
           {auditHistory.length === 0 ? (
-            <p className="text-sm text-waldorf-clay-500">No history available</p>
+            <p className="text-sm text-waldorf-clay-500">沒有版本紀錄</p>
           ) : (
             <div className="space-y-2">
               {auditHistory.map((entry) => (
@@ -382,7 +382,7 @@ export function ArticleEditForm({
                   <div className="flex items-center justify-between gap-2 mb-1">
                     <span className="font-medium text-waldorf-clay-700">{entry.action}</span>
                     <span className="text-waldorf-clay-500">
-                      {new Date(entry.changed_at).toLocaleString()}
+                      {new Date(entry.changed_at).toLocaleString('zh-TW')}
                     </span>
                   </div>
                   {entry.action !== 'delete' && (
@@ -392,7 +392,7 @@ export function ArticleEditForm({
                       disabled={isSaving}
                       className="text-xs text-waldorf-sage-600 hover:text-waldorf-sage-700 disabled:opacity-50"
                     >
-                      Revert to this version
+                      還原為此版本
                     </button>
                   )}
                 </div>
@@ -421,7 +421,7 @@ export function ArticleEditForm({
               htmlFor="title"
               className="block text-sm font-medium text-waldorf-clay-700 mb-1"
             >
-              Title <span className="text-waldorf-rose-500">*</span>
+              標題 <span className="text-waldorf-rose-500">*</span>
             </label>
             <input
               type="text"
@@ -432,7 +432,7 @@ export function ArticleEditForm({
               required
               disabled={isSaving}
               className="w-full px-3 py-2 border border-waldorf-cream-300 rounded-md focus:outline-none focus:ring-2 focus:ring-waldorf-sage-500 focus:border-transparent disabled:opacity-50"
-              placeholder="Enter article title"
+              placeholder="輸入文章標題"
             />
           </div>
 
@@ -442,7 +442,7 @@ export function ArticleEditForm({
               htmlFor="author"
               className="block text-sm font-medium text-waldorf-clay-700 mb-1"
             >
-              Author
+              作者
             </label>
             <input
               type="text"
@@ -452,7 +452,7 @@ export function ArticleEditForm({
               onChange={handleChange}
               disabled={isSaving}
               className="w-full px-3 py-2 border border-waldorf-cream-300 rounded-md focus:outline-none focus:ring-2 focus:ring-waldorf-sage-500 focus:border-transparent disabled:opacity-50"
-              placeholder="Enter author name"
+              placeholder="輸入作者姓名"
             />
           </div>
 
@@ -462,7 +462,7 @@ export function ArticleEditForm({
               htmlFor="visibilityType"
               className="block text-sm font-medium text-waldorf-clay-700 mb-1"
             >
-              Visibility
+              可見範圍
             </label>
             <select
               id="visibilityType"
@@ -472,15 +472,15 @@ export function ArticleEditForm({
               disabled={isSaving}
               className="w-full px-3 py-2 border border-waldorf-cream-300 rounded-md focus:outline-none focus:ring-2 focus:ring-waldorf-sage-500 focus:border-transparent disabled:opacity-50"
             >
-              <option value="public">Public</option>
-              <option value="class_restricted">Class Restricted (班級大小事)</option>
+              <option value="public">公開</option>
+              <option value="class_restricted">班級限定（班級大小事）</option>
             </select>
           </div>
 
           {/* Content */}
           <div>
             <label className="block text-sm font-medium text-waldorf-clay-700 mb-2">
-              Content <span className="text-waldorf-rose-500">*</span>
+              內容 <span className="text-waldorf-rose-500">*</span>
             </label>
             <div
               className="border border-waldorf-cream-300 rounded-md overflow-hidden"
@@ -495,13 +495,13 @@ export function ArticleEditForm({
                 enableScroll={true}
                 visibleDragbar={true}
                 textareaProps={{
-                  placeholder: 'Enter article content in Markdown format...',
+                  placeholder: '以 Markdown 格式輸入文章內容...',
                   disabled: isSaving,
                 }}
               />
             </div>
             <p className="text-xs text-waldorf-clay-500 mt-1">
-              Edit content using Markdown format. Content will be saved automatically.
+              使用 Markdown 格式編輯內容。內容會自動儲存。
             </p>
           </div>
 
@@ -512,7 +512,7 @@ export function ArticleEditForm({
               disabled={isSaving}
               className="px-6 py-2 bg-waldorf-sage-600 text-white rounded-md hover:bg-waldorf-sage-700 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {isSaving ? 'Saving...' : 'Save Changes'}
+              {isSaving ? '儲存中...' : '儲存變更'}
             </button>
             {onCancel && (
               <button
@@ -521,7 +521,7 @@ export function ArticleEditForm({
                 disabled={isSaving}
                 className="px-6 py-2 bg-white text-waldorf-clay-700 border border-waldorf-cream-300 rounded-md hover:bg-waldorf-cream-50 focus:outline-none focus:ring-2 focus:ring-waldorf-sage-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                Cancel
+                取消
               </button>
             )}
           </div>

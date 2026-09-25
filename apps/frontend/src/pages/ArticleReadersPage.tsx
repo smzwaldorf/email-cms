@@ -24,9 +24,9 @@ export const ArticleReadersPage: React.FC = () => {
                 // Fetch Article Title
                 try {
                     const article = await ArticleService.getArticleById(articleId);
-                    setArticleTitle(article?.title || 'Unknown Article');
+                    setArticleTitle(article?.title || '未知文章');
                 } catch {
-                    setArticleTitle('Unknown Article');
+                    setArticleTitle('未知文章');
                 }
 
                 // Fetch Readers
@@ -64,13 +64,13 @@ export const ArticleReadersPage: React.FC = () => {
                         onClick={() => navigate(-1)} 
                         className="flex items-center text-sm text-brand-neutral-500 hover:text-brand-neutral-700 mb-4 transition-colors"
                     >
-                        <ArrowLeft className="w-4 h-4 mr-1" /> Back to Dashboard
+                        <ArrowLeft className="w-4 h-4 mr-1" /> 返回儀表板
                     </button>
                     <h1 className="text-2xl font-bold text-brand-neutral-800">
-                        Readers for: <span className="text-brand-primary">{articleTitle}</span>
+                        文章讀者： <span className="text-brand-primary">{articleTitle}</span>
                     </h1>
                     <p className="mt-1 text-brand-neutral-500">
-                        {loading ? 'Loading...' : `Total ${readers.length} unique readers found.`}
+                        {loading ? '載入中...' : `共找到 ${readers.length} 位不重複讀者。`}
                     </p>
                 </div>
 
@@ -80,7 +80,7 @@ export const ArticleReadersPage: React.FC = () => {
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-neutral-400" />
                         <input 
                             type="text" 
-                            placeholder="Search by email or student name..."
+                            placeholder="搜尋電子郵件或學生姓名..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="w-full pl-10 pr-4 py-2 border border-brand-neutral-200 rounded-lg focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all"
@@ -94,7 +94,7 @@ export const ArticleReadersPage: React.FC = () => {
                             onChange={(e) => setSelectedClass(e.target.value)}
                             className="px-4 py-2 border border-brand-neutral-200 rounded-lg focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all min-w-[200px]"
                         >
-                            <option value="All Classes">All Classes</option>
+                            <option value="All Classes">所有班級</option>
                             {allClasses.map(cls => (
                                 <option key={cls} value={cls}>{cls}</option>
                             ))}
@@ -108,25 +108,25 @@ export const ArticleReadersPage: React.FC = () => {
                         <table className="w-full text-left text-sm">
                             <thead className="bg-brand-neutral-50 text-brand-neutral-500">
                                 <tr>
-                                    <th className="px-6 py-4 font-medium">Reader (Parent/Teacher)</th>
-                                    <th className="px-6 py-4 font-medium">Role</th>
-                                    <th className="px-6 py-4 font-medium">Related Student(s)</th>
-                                    <th className="px-6 py-4 font-medium">Class(es)</th>
-                                    <th className="px-6 py-4 font-medium text-right">View Count</th>
-                                    <th className="px-6 py-4 font-medium text-right">Last Viewed</th>
+                                    <th className="px-6 py-4 font-medium">讀者（家長／教師）</th>
+                                    <th className="px-6 py-4 font-medium">角色</th>
+                                    <th className="px-6 py-4 font-medium">相關學生</th>
+                                    <th className="px-6 py-4 font-medium">班級</th>
+                                    <th className="px-6 py-4 font-medium text-right">瀏覽次數</th>
+                                    <th className="px-6 py-4 font-medium text-right">上次瀏覽時間</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-brand-neutral-100">
                                 {loading ? (
                                     <tr>
                                         <td colSpan={6} className="px-6 py-8 text-center text-brand-neutral-400">
-                                            Loading readers data...
+                                            正在載入讀者資料...
                                         </td>
                                     </tr>
                                 ) : filteredReaders.length === 0 ? (
                                     <tr>
                                         <td colSpan={6} className="px-6 py-8 text-center text-brand-neutral-400">
-                                            No readers found matching your filters.
+                                            找不到符合篩選條件的讀者。
                                         </td>
                                     </tr>
                                 ) : (

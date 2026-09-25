@@ -12,9 +12,9 @@ interface TextAlignButtonProps {
 }
 
 const ALIGNMENTS = [
-  { value: 'left', icon: <AlignLeft size={18} />, title: 'Align Left' },
-  { value: 'center', icon: <AlignCenter size={18} />, title: 'Align Center' },
-  { value: 'right', icon: <AlignRight size={18} />, title: 'Align Right' },
+  { value: 'left', icon: <AlignLeft size={18} />, title: '靠左對齊' },
+  { value: 'center', icon: <AlignCenter size={18} />, title: '置中對齊' },
+  { value: 'right', icon: <AlignRight size={18} />, title: '靠右對齊' },
   { value: 'justify', icon: <AlignJustify size={18} />, title: 'Justify' },
 ]
 

@@ -12,7 +12,7 @@ import type { EmailTemplate, EmailTemplateLifecycleState } from '@/types/emailTe
 import type { FileEmailTemplateSourceMetadata } from '@/types/fileEmailTemplate'
 
 const STATE_BADGE: Record<EmailTemplateLifecycleState, { label: string; className: string }> = {
-  active: { label: 'In use', className: 'bg-waldorf-sage-600 text-white' },
+  active: { label: '使用中', className: 'bg-waldorf-sage-600 text-white' },
   draft: { label: 'Draft', className: 'bg-waldorf-cream-200 text-waldorf-clay-600' },
   inactive: { label: 'Inactive', className: 'bg-waldorf-cream-100 text-waldorf-clay-500' },
 }
@@ -28,7 +28,7 @@ function StateBadge({ state }: { state: EmailTemplateLifecycleState }) {
 
 function formatUpdated(value: string): string {
   const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString()
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString('zh-TW')
 }
 
 export function AdminEmailTemplatesPage() {
@@ -48,7 +48,7 @@ export function AdminEmailTemplatesPage() {
       setTemplates(data)
       setFileSources(await listFileEmailTemplateSources())
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load templates')
+      setError(err instanceof Error ? err.message : '無法載入範本')
     } finally {
       setIsLoading(false)
     }
@@ -73,7 +73,7 @@ export function AdminEmailTemplatesPage() {
       await emailTemplateService.syncFileTemplate({ preview })
       await loadTemplates()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to sync file template')
+      setError(err instanceof Error ? err.message : '無法同步檔案範本')
     } finally {
       setSyncingSourceId(null)
     }
@@ -86,7 +86,7 @@ export function AdminEmailTemplatesPage() {
   const handleSetActive = async (template: EmailTemplate) => {
     if (template.state === 'active') return
     if (!template.currentRevisionId) {
-      setError('Save the template at least once before marking it as active.')
+      setError('請先儲存範本，再設為使用中。')
       return
     }
     try {
@@ -96,7 +96,7 @@ export function AdminEmailTemplatesPage() {
       // Reload so the badge moves and the previously-active row is demoted.
       await loadTemplates()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update active template')
+      setError(err instanceof Error ? err.message : '無法更新使用中的範本')
     } finally {
       setActivatingId(null)
     }
@@ -123,10 +123,10 @@ export function AdminEmailTemplatesPage() {
         disabled={!canActivate || isActivating}
         title={
           isActive
-            ? 'Already in use for newsletter publishing'
+            ? '已用於發布電子報'
             : !template.currentRevisionId
-              ? 'Save the template at least once before marking it as active'
-              : 'Use this template for newsletter publishing'
+              ? '請先儲存範本，再設為使用中'
+              : '使用此範本發布電子報'
         }
         className={`rounded-lg font-medium transition-colors ${padding} ${
           isActive
@@ -136,7 +136,7 @@ export function AdminEmailTemplatesPage() {
               : 'cursor-not-allowed border border-waldorf-cream-300 bg-waldorf-cream-50 text-waldorf-clay-400'
         }`}
       >
-        {isActive ? 'In use' : isActivating ? 'Activating…' : 'Use this template'}
+        {isActive ? '使用中' : isActivating ? 'Activating…' : '使用此範本'}
       </button>
     )
   }
@@ -146,8 +146,8 @@ export function AdminEmailTemplatesPage() {
       <AdminLayout
         activeTab="email-templates"
         contentVariant="plain"
-        title="Email Templates"
-        description="Newsletters are sent with the template marked In use. Edit database templates here, or sync read-only file templates bundled with the app."
+        title="電子郵件範本"
+        description="電子報會使用標記為「使用中」的範本寄送。您可以在此編輯資料庫範本，或同步隨應用程式提供的唯讀檔案範本。"
         headerAction={
           <button
             type="button"
@@ -157,7 +157,7 @@ export function AdminEmailTemplatesPage() {
             <svg className="h-5 w-5 transform transition-transform duration-300 group-hover:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            New Template
+            新增範本
           </button>
         }
       >
@@ -169,10 +169,10 @@ export function AdminEmailTemplatesPage() {
           {/* Active template */}
           <section aria-labelledby="active-template-heading">
             <h2 id="active-template-heading" className="mb-3 text-xs font-semibold uppercase tracking-widest text-waldorf-clay-400">
-              Currently used for publishing
+              目前用於發布
             </h2>
             {isLoading ? (
-              <div className="rounded-2xl border border-waldorf-cream-200 bg-white/80 p-6 text-sm text-waldorf-clay-500">Loading...</div>
+              <div className="rounded-2xl border border-waldorf-cream-200 bg-white/80 p-6 text-sm text-waldorf-clay-500">載入中...</div>
             ) : activeTemplate ? (
               <div className="relative overflow-hidden rounded-2xl border border-waldorf-sage-300 bg-gradient-to-br from-waldorf-sage-50 via-white to-waldorf-cream-50 p-6 shadow-sm">
                 <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-waldorf-sage-100/60 blur-2xl" />
@@ -189,7 +189,7 @@ export function AdminEmailTemplatesPage() {
                           <h3 className="font-display text-2xl font-semibold text-waldorf-clay-800">{activeTemplate.name}</h3>
                           <StateBadge state={activeTemplate.state} />
                         </div>
-                        <p className="mt-0.5 text-xs text-waldorf-clay-500">Updated {formatUpdated(activeTemplate.updatedAt)}</p>
+                        <p className="mt-0.5 text-xs text-waldorf-clay-500">更新時間 {formatUpdated(activeTemplate.updatedAt)}</p>
                       </div>
                     </div>
                     {activeTemplate.description && (
@@ -201,14 +201,14 @@ export function AdminEmailTemplatesPage() {
                       to="/admin/newsletters/preview"
                       className="rounded-lg border border-waldorf-clay-200 bg-white px-4 py-2 text-sm font-medium text-waldorf-clay-700 shadow-sm transition-colors hover:bg-waldorf-cream-50"
                     >
-                      Preview with a newsletter
+                      使用電子報預覽
                     </Link>
                     <button
                       type="button"
                       onClick={() => navigate(`/admin/email-templates/${activeTemplate.id}`)}
                       className="rounded-lg bg-waldorf-sage-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-waldorf-sage-700"
                     >
-                      Edit template
+                      編輯範本
                     </button>
                   </div>
                 </div>
@@ -220,8 +220,8 @@ export function AdminEmailTemplatesPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
                   <div>
-                    <p className="font-semibold">No template is in use yet.</p>
-                    <p className="mt-0.5">Newsletters cannot be published until a saved template is marked as in use.</p>
+                    <p className="font-semibold">目前尚未啟用範本。</p>
+                    <p className="mt-0.5">請先將已儲存的範本設為使用中，才能發布電子報。</p>
                   </div>
                 </div>
                 {templates.length === 0 && (
@@ -230,7 +230,7 @@ export function AdminEmailTemplatesPage() {
                     onClick={() => navigate('/admin/email-templates/new')}
                     className="rounded-lg bg-waldorf-sage-600 px-4 py-2 text-sm font-medium text-white hover:bg-waldorf-sage-700"
                   >
-                    Create your first template
+                    建立第一個範本
                   </button>
                 )}
               </div>
@@ -241,15 +241,15 @@ export function AdminEmailTemplatesPage() {
           <section aria-labelledby="all-templates-heading">
             <div className="mb-3 flex items-baseline justify-between">
               <h2 id="all-templates-heading" className="text-xs font-semibold uppercase tracking-widest text-waldorf-clay-400">
-                {activeTemplate ? 'Other templates' : 'All templates'}
+                {activeTemplate ? '其他範本' : '所有範本'}
               </h2>
-              {!isLoading && <span className="text-xs text-waldorf-clay-400">{otherTemplates.length} template{otherTemplates.length === 1 ? '' : 's'}</span>}
+              {!isLoading && <span className="text-xs text-waldorf-clay-400">{otherTemplates.length} 範本{otherTemplates.length === 1 ? '' : 's'}</span>}
             </div>
             {isLoading ? null : otherTemplates.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-waldorf-cream-300 bg-white/60 p-8 text-center text-sm text-waldorf-clay-500">
                 {templates.length === 0
-                  ? 'No templates yet. Create your first template.'
-                  : 'No other templates. Duplicate the active template from its editor to start a variation.'}
+                  ? '尚無範本。請建立第一個範本。'
+                  : '沒有其他範本。可在編輯器中複製目前使用的範本，建立新版本。'}
               </div>
             ) : (
               <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -273,8 +273,8 @@ export function AdminEmailTemplatesPage() {
                         <p className="mt-2 line-clamp-2 text-sm text-waldorf-clay-600">{template.description}</p>
                       )}
                       <p className="mt-3 text-xs text-waldorf-clay-400">
-                        Updated {formatUpdated(template.updatedAt)}
-                        {!template.currentRevisionId && ' · not saved yet'}
+                        更新時間 {formatUpdated(template.updatedAt)}
+                        {!template.currentRevisionId && ' · 尚未儲存'}
                       </p>
                     </button>
                     <div className="mt-4 flex items-center justify-between gap-2 border-t border-waldorf-cream-200 pt-3">
@@ -283,7 +283,7 @@ export function AdminEmailTemplatesPage() {
                         onClick={() => navigate(`/admin/email-templates/${template.id}`)}
                         className="rounded-lg px-3 py-1.5 text-xs font-medium text-waldorf-clay-700 hover:bg-waldorf-cream-100"
                       >
-                        Edit
+                        編輯
                       </button>
                       {renderActivateButton(template)}
                     </div>
@@ -296,15 +296,14 @@ export function AdminEmailTemplatesPage() {
           {/* File sources */}
           <section aria-labelledby="file-sources-heading" className="rounded-2xl border border-waldorf-cream-200 bg-white/80 p-6 shadow-sm">
             <div className="mb-4">
-              <h2 id="file-sources-heading" className="font-display text-xl font-semibold text-waldorf-clay-800">File Template Sources</h2>
+              <h2 id="file-sources-heading" className="font-display text-xl font-semibold text-waldorf-clay-800">檔案範本來源</h2>
               <p className="mt-1 text-sm text-waldorf-clay-500">
-                Read-only templates bundled from <code className="rounded bg-waldorf-cream-100 px-1.5 py-0.5 text-xs">templates/email</code>. Edit files externally, then preview
-                and sync a database revision snapshot.
+                隨程式打包的唯讀範本來源： <code className="rounded bg-waldorf-cream-100 px-1.5 py-0.5 text-xs">templates/email</code>。請在程式碼中編輯檔案，再預覽並同步資料庫版本快照。
               </p>
             </div>
 
             {fileSources.length === 0 ? (
-              <p className="text-sm text-waldorf-clay-600">No file template sources found.</p>
+              <p className="text-sm text-waldorf-clay-600">找不到檔案範本來源。</p>
             ) : (
               <ul className="grid gap-3 md:grid-cols-2">
                 {fileSources.map((source) => (
@@ -316,11 +315,11 @@ export function AdminEmailTemplatesPage() {
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="font-semibold text-waldorf-clay-800">{source.displayName}</p>
                         <span className="rounded-full bg-waldorf-cream-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-waldorf-clay-600">
-                          Read-only file source
+                          唯讀檔案來源
                         </span>
                         {source.linkedTemplateId && (
                           <span className="rounded-full bg-waldorf-sage-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-waldorf-sage-700">
-                            Synced
+                            已同步
                           </span>
                         )}
                       </div>
@@ -335,7 +334,7 @@ export function AdminEmailTemplatesPage() {
                         onClick={() => navigate(`/admin/email-templates/file/${source.sourceId}`)}
                         className="rounded-lg border border-waldorf-clay-200 bg-white px-3 py-1.5 text-xs font-medium text-waldorf-clay-700 hover:bg-waldorf-cream-50"
                       >
-                        Preview
+                        預覽
                       </button>
                       <button
                         type="button"
@@ -343,7 +342,7 @@ export function AdminEmailTemplatesPage() {
                         disabled={syncingSourceId === source.sourceId}
                         className="rounded-lg border border-waldorf-sage-300 bg-white px-3 py-1.5 text-xs font-medium text-waldorf-sage-700 hover:bg-waldorf-sage-50 disabled:cursor-wait disabled:opacity-60"
                       >
-                        {syncingSourceId === source.sourceId ? 'Syncing...' : 'Sync now'}
+                        {syncingSourceId === source.sourceId ? '同步中...' : '立即同步'}
                       </button>
                     </div>
                   </li>

@@ -16,7 +16,7 @@ export function SubscriptButton({ editor }: SubscriptButtonProps) {
       onClick={() => editor.chain().focus().toggleSubscript().run()}
       disabled={!editor.can().toggleSubscript()}
       className={`toolbar-button ${editor.isActive('subscript') ? 'active' : ''}`}
-      title="Subscript"
+      title="下標"
       type="button"
     >
       <Subscript size={18} />

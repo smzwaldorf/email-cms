@@ -12,7 +12,7 @@ describe('central identity directory', () => {
     render(<IdentityDirectoryPage kind="families" />)
     expect(await screen.findByText('Auth family')).toBeTruthy()
     expect(backendRequest).toHaveBeenCalledWith('/api/admin/directory/families')
-    expect(screen.getByRole('link', { name: 'Manage in SMZ Auth' }).getAttribute('href')).toMatch(/\/admin$/)
+    expect(screen.getByRole('link', { name: '前往 SMZ Auth 管理' }).getAttribute('href')).toMatch(/\/admin$/)
     expect(screen.queryAllByRole('button')).toHaveLength(0)
   })
   it('shows API failures instead of a local fallback', async () => {
@@ -25,6 +25,6 @@ describe('central identity directory', () => {
 
 it('keeps people and relationships in Auth without fetching a browser graph', () => {
   render(<IdentityDirectoryPage kind="relationships" />)
-  expect(screen.getByRole('link', { name: 'Manage in SMZ Auth' })).toBeTruthy()
+  expect(screen.getByRole('link', { name: '前往 SMZ Auth 管理' })).toBeTruthy()
   expect(backendRequest).not.toHaveBeenCalled()
 })

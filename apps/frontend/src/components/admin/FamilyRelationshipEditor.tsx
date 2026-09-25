@@ -95,7 +95,7 @@ export function FamilyRelationshipEditor({
       setParentSearchTerm('')
       setParentDropdownOpen(false)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add parent')
+      setError(err instanceof Error ? err.message : '無法新增家長')
     } finally {
       setIsLoading(false)
     }
@@ -110,7 +110,7 @@ export function FamilyRelationshipEditor({
       setError(null)
       await onRemoveParent?.(parentId)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to remove parent')
+      setError(err instanceof Error ? err.message : '無法移除家長')
     } finally {
       setIsLoading(false)
     }
@@ -127,7 +127,7 @@ export function FamilyRelationshipEditor({
       setEditingParentId(null)
       setEditingRelationship(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update relationship')
+      setError(err instanceof Error ? err.message : '無法更新關係')
     } finally {
       setIsLoading(false)
     }
@@ -144,7 +144,7 @@ export function FamilyRelationshipEditor({
       setStudentSearchTerm('')
       setStudentDropdownOpen(false)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add student')
+      setError(err instanceof Error ? err.message : '無法新增學生')
     } finally {
       setIsLoading(false)
     }
@@ -159,7 +159,7 @@ export function FamilyRelationshipEditor({
       setError(null)
       await onRemoveStudent?.(studentId)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to remove student')
+      setError(err instanceof Error ? err.message : '無法移除學生')
     } finally {
       setIsLoading(false)
     }

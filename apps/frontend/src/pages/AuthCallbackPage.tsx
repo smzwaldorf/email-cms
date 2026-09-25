@@ -33,8 +33,8 @@ export const AuthCallbackPage: React.FC = () => {
         navigate(result.redirectTo || await defaultDestination(result.user), { replace: true })
       } catch (caught) {
         if (!active) return
-        console.error('SMZ Identity callback failed', caught)
-        setError(caught instanceof Error ? caught.message : 'Authentication could not be completed.')
+        console.error('SMZ Identity 回呼失敗', caught)
+        setError(caught instanceof Error ? caught.message : '無法完成身分驗證。')
         setStatus('error')
       }
     })()
@@ -50,7 +50,7 @@ export const AuthCallbackPage: React.FC = () => {
           <>
             <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-gray-200 border-t-blue-600" />
             <h1 className="text-2xl font-bold text-gray-900 mb-2">正在驗證</h1>
-            <p className="text-gray-600">Completing your SMZ Identity sign-in...</p>
+            <p className="text-gray-600">正在完成 SMZ Identity 登入...</p>
           </>
         )}
 
@@ -58,7 +58,7 @@ export const AuthCallbackPage: React.FC = () => {
           <>
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-700">✓</div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">登入成功！</h1>
-            <p className="text-gray-600">Redirecting to the newsletter...</p>
+            <p className="text-gray-600">正在前往電子報...</p>
           </>
         )}
 

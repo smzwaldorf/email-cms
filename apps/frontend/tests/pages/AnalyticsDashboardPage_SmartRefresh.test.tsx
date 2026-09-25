@@ -69,10 +69,10 @@ describe('Analytics Dashboard Refresh', () => {
 
   it('switches the newsletter email metrics source', () => {
     render(<AnalyticsProvider><BrowserRouter><AnalyticsDashboardPage /></BrowserRouter></AnalyticsProvider>)
-    expect(screen.getByLabelText('Email tracker')).toHaveValue('resend')
-    fireEvent.change(screen.getByLabelText('Email tracker'), { target: { value: 'cms' } })
+    expect(screen.getByLabelText('電子郵件追蹤來源')).toHaveValue('resend')
+    fireEvent.change(screen.getByLabelText('電子郵件追蹤來源'), { target: { value: 'cms' } })
     expect(mockUseNewsletterMetrics.mock.calls.at(-1)?.[2]).toBe('cms')
-    expect(screen.getByText(/CMS email pixel loads and tracked email-link clicks/)).toBeInTheDocument()
+    expect(screen.getByText(/CMS 追蹤像素載入及電子郵件連結點擊/)).toBeInTheDocument()
   })
 
   it('should perform soft refresh when clicking the refresh button', () => {
@@ -85,7 +85,7 @@ describe('Analytics Dashboard Refresh', () => {
     )
 
     // Find refresh button
-    const refreshBtn = screen.getByTitle('Reload Data')
+    const refreshBtn = screen.getByTitle('重新載入資料')
 
     // Click the refresh button
     fireEvent.click(refreshBtn)
@@ -111,7 +111,7 @@ describe('Analytics Dashboard Refresh', () => {
       </AnalyticsProvider>
     )
 
-    const refreshBtn = screen.getByTitle('Reload Data')
+    const refreshBtn = screen.getByTitle('重新載入資料')
     
     // Should be disabled when refreshing
     expect(refreshBtn).toBeDisabled()
@@ -127,7 +127,7 @@ describe('Analytics Dashboard Refresh', () => {
     )
 
     // Find the live update button
-    const liveBtn = screen.getByTitle('Enable live updates (every 5s)')
+    const liveBtn = screen.getByTitle('啟用即時更新（每 5 秒）')
     expect(liveBtn).toBeInTheDocument()
   })
 
@@ -141,11 +141,11 @@ describe('Analytics Dashboard Refresh', () => {
     )
 
     // Find and click the live update button
-    const liveBtn = screen.getByTitle('Enable live updates (every 5s)')
+    const liveBtn = screen.getByTitle('啟用即時更新（每 5 秒）')
     fireEvent.click(liveBtn)
 
     // After clicking, the button title should change
-    expect(screen.getByTitle('Disable live updates')).toBeInTheDocument()
+    expect(screen.getByTitle('停用即時更新')).toBeInTheDocument()
   })
 
   it('should auto-refresh data every 5 seconds when live update is enabled', async () => {
@@ -158,7 +158,7 @@ describe('Analytics Dashboard Refresh', () => {
     )
 
     // Enable live update
-    const liveBtn = screen.getByTitle('Enable live updates (every 5s)')
+    const liveBtn = screen.getByTitle('啟用即時更新（每 5 秒）')
     fireEvent.click(liveBtn)
 
     // Clear previous mock calls from initial render

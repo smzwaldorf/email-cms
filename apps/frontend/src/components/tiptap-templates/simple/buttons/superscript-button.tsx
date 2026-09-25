@@ -16,7 +16,7 @@ export function SuperscriptButton({ editor }: SuperscriptButtonProps) {
       onClick={() => editor.chain().focus().toggleSuperscript().run()}
       disabled={!editor.can().toggleSuperscript()}
       className={`toolbar-button ${editor.isActive('superscript') ? 'active' : ''}`}
-      title="Superscript"
+      title="上標"
       type="button"
     >
       <Superscript size={18} />

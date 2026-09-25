@@ -45,7 +45,7 @@ export function EmailTemplateBlockEditor({ block, blockKey, onChange }: EmailTem
         <p className="mb-1 text-xs text-waldorf-clay-500">{definition.description}</p>
         {allowedTokens.length > 0 && (
           <p className="text-xs text-waldorf-clay-500">
-            Inner-scope tokens: {allowedTokens.map((token) => `{{${token}}}`).join(', ')}
+            區塊內可用變數： {allowedTokens.map((token) => `{{${token}}}`).join(', ')}
           </p>
         )}
       </div>
@@ -53,18 +53,18 @@ export function EmailTemplateBlockEditor({ block, blockKey, onChange }: EmailTem
       <div>
         <p className="mb-2 text-xs text-waldorf-clay-500">
           {mode === 'tiptap'
-            ? 'In TipTap mode, use the toolbar image button to upload files or choose images from the media gallery. Images are saved as storage links in this block and swapped to signed URLs when the newsletter is prepared for delivery.'
-            : 'HTML mode keeps the block markup exactly as written, including table layout, inline styles and {{tokens}}. Use the live preview on the right to check the result.'}
+            ? '在 TipTap 模式下，可使用工具列的圖片按鈕上傳或從媒體庫選取圖片。圖片會以儲存連結保存在區塊中，準備寄送電子報時再換成已簽署的網址。'
+            : 'HTML 模式會原樣保留區塊標記，包括表格版面、行內樣式與 {{tokens}}。請使用右側即時預覽檢查結果。'}
         </p>
         <div className="mb-2 flex items-center justify-between">
-          <span className="text-xs font-medium text-waldorf-clay-600">Body HTML</span>
+          <span className="text-xs font-medium text-waldorf-clay-600">內文 HTML</span>
           <div className="inline-flex overflow-hidden rounded-lg border border-waldorf-cream-300 text-xs">
             <button
               type="button"
               onClick={requestVisualMode}
               title={
                 isLayoutHtml
-                  ? 'This block uses table layout / inline styles that the visual editor cannot keep.'
+                  ? '此區塊使用視覺化編輯器無法保留的表格版面或行內樣式。'
                   : undefined
               }
               className={`px-2 py-1 ${mode === 'tiptap' ? 'bg-waldorf-peach-100 text-waldorf-clay-700' : 'bg-white text-waldorf-clay-600'}`}
@@ -89,8 +89,7 @@ export function EmailTemplateBlockEditor({ block, blockKey, onChange }: EmailTem
             className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"
           >
             <p>
-              This block is built with table layout and inline styles. The visual editor cannot represent them, so
-              switching and editing here will flatten the block to plain paragraphs and drop its styling.
+              此區塊使用表格版面與行內樣式。視覺化編輯器無法完整呈現；切換並編輯後會將內容攤平成段落並移除原有樣式。
             </p>
             <div className="mt-2 flex gap-2">
               <button
@@ -98,7 +97,7 @@ export function EmailTemplateBlockEditor({ block, blockKey, onChange }: EmailTem
                 onClick={() => setConfirmVisualSwitch(false)}
                 className="rounded border border-amber-300 bg-white px-2 py-1 font-medium text-amber-800"
               >
-                Keep editing HTML
+                繼續編輯 HTML
               </button>
               <button
                 type="button"
@@ -108,15 +107,14 @@ export function EmailTemplateBlockEditor({ block, blockKey, onChange }: EmailTem
                 }}
                 className="rounded border border-amber-300 px-2 py-1 text-amber-800 underline"
               >
-                Switch to visual editor anyway
+                仍要切換至視覺化編輯器
               </button>
             </div>
           </div>
         )}
         {mode === 'tiptap' && isLayoutHtml && (
           <p className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            Visual editing of a table-based block: the original layout and inline styles will be replaced by the
-            editor output on your first change. Switch back to HTML before editing to keep them.
+            視覺化編輯表格區塊時，第一次修改就會以編輯器輸出取代原有版面與行內樣式。若要保留，請先切回 HTML 模式。
           </p>
         )}
         {mode === 'tiptap' ? (
@@ -126,12 +124,12 @@ export function EmailTemplateBlockEditor({ block, blockKey, onChange }: EmailTem
               content={block.bodyHtml}
               contentType="html"
               onChange={(html) => handleBodyChange(html)}
-              placeholder="Block body HTML..."
+              placeholder="區塊內文 HTML..."
             />
           </div>
         ) : (
           <textarea
-            aria-label="Block body HTML"
+            aria-label="區塊內文 HTML"
             value={block.bodyHtml}
             onChange={(event) => handleBodyChange(event.target.value)}
             rows={14}
@@ -142,7 +140,7 @@ export function EmailTemplateBlockEditor({ block, blockKey, onChange }: EmailTem
       </div>
 
       <div>
-        <p className="mb-2 text-xs font-medium text-waldorf-clay-600">Block configuration</p>
+        <p className="mb-2 text-xs font-medium text-waldorf-clay-600">區塊設定</p>
         <EmailTemplateBlockConfigPanel block={block} onChange={handleConfigChange} />
       </div>
     </div>

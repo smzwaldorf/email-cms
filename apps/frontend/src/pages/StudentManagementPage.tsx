@@ -55,7 +55,7 @@ export function StudentManagementPage() {
       const data = await adminService.fetchStudents({ includeInactive: showInactiveStudents })
       setStudents(data)
     } catch (err) {
-      setError(err instanceof AdminServiceError ? err.message : 'Failed to load students')
+      setError(err instanceof AdminServiceError ? err.message : '無法載入學生')
     } finally {
       setIsLoading(false)
     }
@@ -219,7 +219,7 @@ export function StudentManagementPage() {
       await loadStudents()
     } catch (err) {
       setNotification({
-        message: err instanceof AdminServiceError ? err.message : 'Failed to create student',
+        message: err instanceof AdminServiceError ? err.message : '無法建立學生',
         type: 'error',
       })
     } finally {
@@ -299,7 +299,7 @@ export function StudentManagementPage() {
       await loadStudents()
     } catch (err) {
       setNotification({
-        message: err instanceof AdminServiceError ? err.message : 'Failed to update student',
+        message: err instanceof AdminServiceError ? err.message : '無法更新學生',
         type: 'error',
       })
     } finally {
@@ -317,7 +317,7 @@ export function StudentManagementPage() {
       await loadStudents()
     } catch (err) {
       setNotification({
-        message: err instanceof AdminServiceError ? err.message : 'Failed to delete student',
+        message: err instanceof AdminServiceError ? err.message : '無法刪除學生',
         type: 'error',
       })
       setDeleteConfirm({ isOpen: false })
@@ -334,7 +334,7 @@ export function StudentManagementPage() {
       await loadStudents()
     } catch (err) {
       setNotification({
-        message: err instanceof AdminServiceError ? err.message : 'Failed to activate student',
+        message: err instanceof AdminServiceError ? err.message : '無法啟用學生',
         type: 'error',
       })
     } finally {

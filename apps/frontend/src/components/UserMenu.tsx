@@ -29,7 +29,7 @@ export const UserMenu: React.FC = () => {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center space-x-2 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors"
-        aria-label="User menu"
+        aria-label="使用者選單"
       >
         {/* User Avatar */}
         <div className="w-8 h-8 rounded-full bg-waldorf-peach flex items-center justify-center text-white font-bold text-sm">
@@ -68,7 +68,7 @@ export const UserMenu: React.FC = () => {
                 className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                 onClick={() => setIsOpen(false)}
               >
-                Admin Dashboard
+                管理儀表板
               </a>
             )}
 
@@ -78,7 +78,7 @@ export const UserMenu: React.FC = () => {
               disabled={isLoading}
               className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
             >
-              {isLoading ? 'Signing out...' : 'Sign Out'}
+              {isLoading ? '登出中...' : '登出'}
             </button>
           </div>
         </div>

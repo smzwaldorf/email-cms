@@ -23,5 +23,5 @@ export function LocalLogoutPage() {
     }).catch(() => { /* Auth's bounded cleanup timeout reports unsuccessful local cleanup. */ })
     return () => { active = false }
   }, [])
-  return <p>{invalid ? 'Invalid logout request.' : complete ? 'Signed out of Email CMS.' : 'Signing out of Email CMS…'}</p>
+  return <p>{invalid ? '登出要求無效。' : complete ? '已登出 Email CMS。' : '正在登出 Email CMS…'}</p>
 }

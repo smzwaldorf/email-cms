@@ -24,30 +24,30 @@ interface ArticleAnalyticsTableProps {
 // Helper component for hotness badge
 const HotnessBadge: React.FC<{ score?: number; latency?: number }> = ({ score, latency }) => {
   if (score === undefined) return <span className="text-brand-neutral-400">-</span>;
-  
+
   let emoji = '❄️';
-  let label = 'Cold';
+  let label = '偏低';
   let bgColor = 'bg-blue-100 text-blue-700';
-  
+
   if (score >= 70) {
     emoji = '🔥';
-    label = 'Hot';
+    label = '熱門';
     bgColor = 'bg-red-100 text-red-700';
   } else if (score >= 40) {
     emoji = '☀️';
-    label = 'Warm';
+    label = '關注中';
     bgColor = 'bg-orange-100 text-orange-700';
   }
-  
+
   const latencyStr = latency !== undefined ? formatReadLatency(latency) : '';
-  
+
   return (
     <div className="flex flex-col items-end gap-0.5">
       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${bgColor}`}>
         {emoji} {label}
       </span>
       {latencyStr && (
-        <span className="text-xs text-brand-neutral-400">{latencyStr} avg</span>
+        <span className="text-xs text-brand-neutral-400">{latencyStr} 平均</span>
       )}
     </div>
   );
@@ -60,7 +60,7 @@ export const ArticleAnalyticsTable: React.FC<ArticleAnalyticsTableProps> = ({ da
   const [sortField, setSortField] = useState<SortField>('views');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -71,7 +71,7 @@ export const ArticleAnalyticsTable: React.FC<ArticleAnalyticsTableProps> = ({ da
   };
 
   const filteredData = useMemo(() => {
-    return data.filter(article => 
+    return data.filter(article =>
       article.title.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [data, searchTerm]);
@@ -80,17 +80,17 @@ export const ArticleAnalyticsTable: React.FC<ArticleAnalyticsTableProps> = ({ da
     return [...filteredData].sort((a, b) => {
       const aValue = a[sortField];
       const bValue = b[sortField];
-      
+
       if (aValue === undefined && bValue === undefined) return 0;
       if (aValue === undefined) return 1;
       if (bValue === undefined) return -1;
 
       if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return sortDirection === 'asc' 
-          ? aValue.localeCompare(bValue) 
+        return sortDirection === 'asc'
+          ? aValue.localeCompare(bValue)
           : bValue.localeCompare(aValue);
       }
-      
+
       if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
       if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
       return 0;
@@ -103,7 +103,7 @@ export const ArticleAnalyticsTable: React.FC<ArticleAnalyticsTableProps> = ({ da
   };
 
   const renderHeader = (label: string, field: SortField, widthClass: string, icon?: React.ReactNode, alignRight = true) => (
-      <div 
+      <div
           className={`${widthClass} py-3 px-4 font-medium cursor-pointer group hover:bg-brand-neutral-50 transition-colors flex items-center ${alignRight ? 'justify-end' : 'justify-start'}`}
           onClick={() => handleSort(field)}
       >
@@ -148,28 +148,28 @@ export const ArticleAnalyticsTable: React.FC<ArticleAnalyticsTableProps> = ({ da
   return (
     <div className="bg-white rounded-xl shadow-sm border border-brand-neutral-100 overflow-hidden">
       <div className="p-6 border-b border-brand-neutral-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h3 className="text-lg font-semibold text-brand-neutral-800">Article Performance</h3>
-        
+        <h3 className="text-lg font-semibold text-brand-neutral-800">文章成效</h3>
+
         {/* Search Input */}
         <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-neutral-400" />
-            <input 
-                type="text" 
-                placeholder="Search articles..." 
+            <input
+                type="text"
+                placeholder="搜尋文章..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-9 pr-4 py-2 border border-brand-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20 w-full sm:w-64"
             />
         </div>
       </div>
-      
+
       {/* Header Row */}
       <div className="flex bg-brand-neutral-50 text-xs text-brand-neutral-500 uppercase tracking-wider border-b border-brand-neutral-100">
-         {renderHeader('Article Title', 'title', 'w-[40%]', null, false)}
+         {renderHeader('文章標題', 'title', 'w-[40%]', null, false)}
          {renderHeader('Unique', 'uniqueViews', 'w-[12%]', <Eye className="w-4 h-4" />)}
          {renderHeader('Views', 'views', 'w-[12%]', null)}
          {renderHeader('Clicks', 'clicks', 'w-[12%]', <MousePointerClick className="w-4 h-4" />)}
-         {renderHeader('Avg. Time', 'avgTimeSpent', 'w-[12%]', <Clock className="w-4 h-4" />)}
+         {renderHeader('平均停留時間', 'avgTimeSpent', 'w-[12%]', <Clock className="w-4 h-4" />)}
          {renderHeader('Hotness', 'hotnessScore', 'w-[12%]', <Flame className="w-4 h-4" />)}
       </div>
 
@@ -177,16 +177,16 @@ export const ArticleAnalyticsTable: React.FC<ArticleAnalyticsTableProps> = ({ da
          {sortedData.length > 0 ? (
             <div style={{ height: 500, overflowY: 'auto' }}>
                 {sortedData.map((item, index) => (
-                    <Row 
-                        key={item.id} 
-                        index={index} 
-                        style={{ height: 72, width: '100%' }} 
+                    <Row
+                        key={item.id}
+                        index={index}
+                        style={{ height: 72, width: '100%' }}
                     />
                 ))}
             </div>
          ) : (
             <div className="px-6 py-12 text-center text-brand-neutral-400">
-                {searchTerm ? 'No articles found matching your search.' : 'No articles found for this period.'}
+                {searchTerm ? '找不到符合搜尋條件的文章。' : '此期間沒有文章資料。'}
             </div>
          )}
       </div>

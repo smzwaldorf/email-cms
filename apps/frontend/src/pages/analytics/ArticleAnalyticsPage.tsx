@@ -12,7 +12,7 @@ export const ArticleAnalyticsPage: React.FC = () => {
     const { metadata, loading: metaLoading } = useArticleMetadata(articleId || '');
     const { readers, loading: readersLoading } = useArticleReaders(articleId || '');
 
-    if (!articleId) return <div>Invalid Article ID</div>;
+    if (!articleId) return <div>文章 ID 無效</div>;
 
     return (
         <AdminLayout activeTab="analytics">
@@ -27,19 +27,19 @@ export const ArticleAnalyticsPage: React.FC = () => {
                     </button>
                     <div>
                         <h1 className="text-2xl font-bold text-brand-neutral-800">
-                            {metaLoading ? 'Loading Article...' : metadata?.title}
+                            {metaLoading ? '正在載入文章...' : metadata?.title}
                         </h1>
                         <div className="flex items-center gap-4 text-sm text-brand-neutral-500 mt-1">
                             {metadata?.weekNumber && (
                                 <span className="flex items-center gap-1.5">
                                     <Calendar className="w-4 h-4" />
-                                    Week {metadata.weekNumber}
+                                    週次 {metadata.weekNumber}
                                 </span>
                             )}
                             {metadata?.publishedAt && (
                                 <span className="flex items-center gap-1.5">
                                     <Clock className="w-4 h-4" />
-                                    Published {new Date(metadata.publishedAt).toLocaleDateString()}
+                                    已發布 {new Date(metadata.publishedAt).toLocaleDateString()}
                                 </span>
                             )}
                         </div>
@@ -52,7 +52,7 @@ export const ArticleAnalyticsPage: React.FC = () => {
                     <div>
                         {readersLoading ? (
                             <div className="h-[300px] bg-white rounded-xl flex items-center justify-center border border-brand-neutral-100">
-                                <span className="text-brand-neutral-400">Loading Readers...</span>
+                                <span className="text-brand-neutral-400">正在載入讀者...</span>
                             </div>
                         ) : (
                             <ArticleReaderTable data={readers} />

@@ -114,7 +114,7 @@ export function validateEmailTemplate(
     issues.push({
       code: 'required_field_missing',
       field: 'subject',
-      message: 'Subject is required.',
+      message: '請填寫主旨。',
     })
   }
 
@@ -124,7 +124,7 @@ export function validateEmailTemplate(
     issues.push({
       code: 'required_field_missing',
       field: 'body',
-      message: 'Body is required.',
+      message: '請填寫內文。',
     })
   }
 
@@ -134,7 +134,7 @@ export function validateEmailTemplate(
         code: 'unsupported_token',
         field: 'subject',
         token,
-        message: `Unsupported token in subject: ${token}`,
+        message: `主旨含有不支援的變數： ${token}`,
       })
     }
   }
@@ -146,7 +146,7 @@ export function validateEmailTemplate(
           code: 'unsupported_token',
           field: 'body',
           token,
-          message: `Unsupported token in body: ${token}`,
+          message: `內文含有不支援的變數： ${token}`,
         })
       }
     }
@@ -158,7 +158,7 @@ export function validateEmailTemplate(
           code: 'unsupported_block_type',
           field: fieldName,
           blockIndex: index,
-          message: `Unsupported block type at index ${index}: ${String(block.type)}`,
+          message: `第 ${index + 1} 個區塊的類型不支援：${String(block.type)}`,
         })
         return
       }
@@ -178,7 +178,7 @@ export function validateEmailTemplate(
             blockIndex: index,
             blockType: block.type,
             token,
-            message: `Unsupported token in block ${index} (${block.type}): ${token}`,
+            message: `第 ${index + 1} 個區塊（${block.type}）含有不支援的變數：${token}`,
           })
         }
       }
@@ -213,7 +213,7 @@ export function renderEmailTemplatePreview(
         warnings.push({
           field,
           token,
-          message: `Missing value for token: ${token}`,
+          message: `變數缺少資料： ${token}`,
         })
       }
 

@@ -94,7 +94,7 @@ const renderComponent = (data = mockArticles) => {
 describe('ArticleAnalyticsTable', () => {
     it('renders the table with data', () => {
         renderComponent();
-        expect(screen.getByText('Article Performance')).toBeInTheDocument();
+        expect(screen.getByText('文章成效')).toBeInTheDocument();
         expect(screen.getByText('Alpha Article')).toBeInTheDocument();
         expect(screen.getByText('Beta Article')).toBeInTheDocument();
     });
@@ -109,7 +109,7 @@ describe('ArticleAnalyticsTable', () => {
 
     it('can sort by Title', () => {
         renderComponent();
-        const titleHeader = screen.getByText('Article Title');
+        const titleHeader = screen.getByText('文章標題');
         
         // Click to sort (set to Title Descending first click if different field)
         fireEvent.click(titleHeader);
@@ -125,7 +125,7 @@ describe('ArticleAnalyticsTable', () => {
 
     it('filters data by search term', () => {
         renderComponent();
-        const searchInput = screen.getByPlaceholderText('Search articles...');
+        const searchInput = screen.getByPlaceholderText('搜尋文章...');
         
         fireEvent.change(searchInput, { target: { value: 'Beta' } });
         
@@ -135,6 +135,6 @@ describe('ArticleAnalyticsTable', () => {
 
     it('shows empty state when no data matches', () => {
         renderComponent([]);
-        expect(screen.getByText('No articles found for this period.')).toBeInTheDocument();
+        expect(screen.getByText('此期間沒有文章資料。')).toBeInTheDocument();
     });
 });

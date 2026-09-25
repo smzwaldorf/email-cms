@@ -113,37 +113,37 @@ export const analyticsExportService = {
       const rows: string[] = [];
 
       // Header
-      rows.push('Analytics Dashboard Export');
-      rows.push(`Exported: ${new Date().toISOString()}`);
+      rows.push('數據分析匯出');
+      rows.push(`匯出時間：${new Date().toISOString()}`);
       if (data.weekNumber) {
-        rows.push(`Week: ${data.weekNumber}`);
+        rows.push(`週次：${data.weekNumber}`);
       }
       rows.push('');
 
       // Metrics section
       if (data.metrics) {
-        rows.push('METRICS');
-        rows.push('Metric,Value');
-        rows.push(`Open Rate,${escapeCSVField(data.metrics.openRate.toFixed(2))}%`);
-        rows.push(`Click Rate,${escapeCSVField(data.metrics.clickRate.toFixed(2))}%`);
-        rows.push(`Total Views,${escapeCSVField(data.metrics.totalViews)}`);
-        rows.push(`Avg Time Spent,${escapeCSVField(data.metrics.avgTimeSpent || 0)}s`);
+        rows.push('指標');
+        rows.push('指標,數值');
+        rows.push(`開啟率,${escapeCSVField(data.metrics.openRate.toFixed(2))}%`);
+        rows.push(`點擊率,${escapeCSVField(data.metrics.clickRate.toFixed(2))}%`);
+        rows.push(`總瀏覽次數,${escapeCSVField(data.metrics.totalViews)}`);
+        rows.push(`平均停留時間,${escapeCSVField(data.metrics.avgTimeSpent || 0)}s`);
         if (data.metrics.sentCount !== undefined) {
-          rows.push(`Sent Count,${escapeCSVField(data.metrics.sentCount)}`);
+          rows.push(`寄送數量,${escapeCSVField(data.metrics.sentCount)}`);
         }
         if (data.metrics.openCount !== undefined) {
-          rows.push(`Open Count,${escapeCSVField(data.metrics.openCount)}`);
+          rows.push(`開啟數量,${escapeCSVField(data.metrics.openCount)}`);
         }
         if (data.metrics.clickCount !== undefined) {
-          rows.push(`Click Count,${escapeCSVField(data.metrics.clickCount)}`);
+          rows.push(`點擊數量,${escapeCSVField(data.metrics.clickCount)}`);
         }
         rows.push('');
       }
 
       // Articles section
       if (data.articles && data.articles.length > 0) {
-        rows.push('ARTICLES');
-        rows.push('Title,Clicks,Click Rate,Avg Time Spent (s)');
+        rows.push('文章');
+        rows.push('標題,點擊次數,點擊率,平均停留時間（秒）');
         data.articles.forEach(article => {
           rows.push(
             `${escapeCSVField(article.title)},${escapeCSVField(article.clicks)},${escapeCSVField(article.clickRate.toFixed(2))}%,${escapeCSVField(article.avgTimeSpent || 0)}`
@@ -154,8 +154,8 @@ export const analyticsExportService = {
 
       // Classes section
       if (data.classes && data.classes.length > 0) {
-        rows.push('CLASSES');
-        rows.push('Name,Sent,Opens,Clicks,Open Rate,Click Rate,Avg Stay Time (s)');
+        rows.push('班級');
+        rows.push('名稱,寄送數量,開啟次數,點擊次數,開啟率,點擊率,平均停留時間（秒）');
         data.classes.forEach(cls => {
           rows.push(
             `${escapeCSVField(cls.name)},${escapeCSVField(cls.sent)},${escapeCSVField(cls.opens)},${escapeCSVField(cls.clicks)},${escapeCSVField(cls.openRate.toFixed(2))}%,${escapeCSVField(cls.clickRate.toFixed(2))}%,${escapeCSVField(cls.avgStayTime || 0)}`
@@ -166,8 +166,8 @@ export const analyticsExportService = {
 
       // Trends section
       if (data.trends && data.trends.length > 0) {
-        rows.push('TRENDS (Last 12 Weeks)');
-        rows.push('Week,Open Rate,Click Rate');
+        rows.push('趨勢（最近 12 週）');
+        rows.push('週次,開啟率,點擊率');
         data.trends.forEach(trend => {
           rows.push(`${escapeCSVField(trend.week)},${escapeCSVField(trend.openRate.toFixed(2))}%,${escapeCSVField(trend.clickRate.toFixed(2))}%`);
         });
@@ -178,7 +178,7 @@ export const analyticsExportService = {
       downloadFile(csv, filename, 'text/csv;charset=utf-8;');
     } catch (error) {
       console.error('CSV export failed:', error);
-      throw new Error('Failed to export as CSV');
+      throw new Error('無法匯出 CSV');
     }
   },
 
@@ -198,7 +198,7 @@ export const analyticsExportService = {
       downloadFile(json, filename, 'application/json;charset=utf-8;');
     } catch (error) {
       console.error('JSON export failed:', error);
-      throw new Error('Failed to export as JSON');
+      throw new Error('無法匯出 JSON');
     }
   },
 

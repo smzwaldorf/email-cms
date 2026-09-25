@@ -75,7 +75,7 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
         // Check file size
         if (file.size > maxFileSize) {
           errors.push(
-            `${file.name}: 檔案大小超過限制 (最大 ${(maxFileSize / 1024 / 1024).toFixed(0)}MB) / File size exceeds limit (max ${(maxFileSize / 1024 / 1024).toFixed(0)}MB)`
+            `${file.name}: 檔案大小超過限制 (最大 ${(maxFileSize / 1024 / 1024).toFixed(0)}MB)`
           )
           return
         }
@@ -222,14 +222,14 @@ export const AudioUploader: React.FC<AudioUploaderProps> = ({
             />
           </svg>
           <p className="text-sm font-medium text-gray-700 mb-1">
-            拖放音訊檔案到這裡或點擊選擇 / Drag audio files here or click to select
+            拖放音訊檔案到這裡，或點擊選擇
           </p>
           <p className="text-xs text-gray-500">
-            支援格式: MP3, WAV, OGG / Supported: MP3, WAV, OGG
+            支援格式：MP3、WAV、OGG
           </p>
           {maxFileSize && (
             <p className="text-xs text-gray-500 mt-1">
-              最大檔案大小: {(maxFileSize / 1024 / 1024).toFixed(0)}MB / Max file size: {(maxFileSize / 1024 / 1024).toFixed(0)}MB
+              檔案大小上限：{(maxFileSize / 1024 / 1024).toFixed(0)} MB
             </p>
           )}
         </div>
