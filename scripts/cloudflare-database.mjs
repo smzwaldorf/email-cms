@@ -1,3 +1,4 @@
+import { databaseName } from './cloudflare-database-name.mjs'
 import { randomBytes } from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { once } from 'node:events'
@@ -21,6 +22,7 @@ export function migrationFilesFor(env) {
 // Use production's Hyperdrive credential without a permanent admin endpoint.
 export async function checkHyperdriveDatabase({ initialize = false, migrateSessions = false, migrateAll = false } = {}) {
   const config = configuration(process.env)
+  const expectedDatabase = databaseName(process.env)
   const root = fileURLToPath(new URL('../', import.meta.url))
   await mkdir(`${root}.wrangler/`, { recursive: true })
   const directory = await mkdtemp(`${root}.wrangler/database-check-`)
@@ -47,7 +49,7 @@ export default { async fetch(request, env) {
   const client = new pg.Client({connectionString:env.HYPERDRIVE.connectionString, connectionTimeoutMillis:15000});
   try {
     await client.connect();
-    const verified = await verifyDatabase(client, {initialize:${initialize}, schema});
+    const verified = await verifyDatabase(client, {initialize:${initialize}, schema, expectedDatabase:${JSON.stringify(expectedDatabase)}});
     if (${migrateAll}) await applyMigrations(client, ${JSON.stringify(migrations)}, ${JSON.stringify(migrationOptions)});
     if (sessionSchema) {
       await client.query('BEGIN');
@@ -66,7 +68,7 @@ export default { async fetch(request, env) {
 }};
 `)
   await writeFile(`${directory}/wrangler.json`, JSON.stringify({
-    name: 'smz-cms-db-verification', main: './worker.mjs',
+    name: `${config.name}-db-verification`, main: './worker.mjs',
     account_id: config.account_id, compatibility_date: config.compatibility_date,
     compatibility_flags: ['nodejs_compat'], hyperdrive: config.hyperdrive,
     vars: { CHECK_TOKEN: token },
@@ -93,8 +95,8 @@ export default { async fetch(request, env) {
     // Never retry initialization: a lost response may follow a successful commit.
     const response = await fetch(endpoint, { method: 'POST', headers, signal: AbortSignal.timeout(120000) })
     const result = await response.json()
-    if (!response.ok || result.database !== 'smz-cms' || result.schema !== 'verified') throw new Error(JSON.stringify(result))
-    console.info(initialize ? 'Initialized empty smz-cms through Hyperdrive; no seed data imported' : 'Verified production CMS schema through Hyperdrive')
+    if (!response.ok || result.database !== expectedDatabase || result.schema !== 'verified') throw new Error(JSON.stringify(result))
+    console.info(`${initialize ? 'Initialized empty' : 'Verified'} ${expectedDatabase} through Hyperdrive`)
   } finally {
     if (child.exitCode === null) {
       process.kill(-child.pid, 'SIGTERM')

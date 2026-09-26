@@ -21,6 +21,8 @@ export function configuration(env) {
     if (key !== 'SMZ_AUTH_ISSUER' && url.origin !== env[key]) throw new Error(`${key} must be an origin`)
   }
   if (!env.SMZ_AUTH_ISSUER.endsWith('/api/auth')) throw new Error('Invalid issuer path')
+  const deliveryEnabled = env.DELIVERY_ENABLED || 'true'
+  if (!['true', 'false'].includes(deliveryEnabled)) throw new Error('Invalid DELIVERY_ENABLED')
   const demoMode = env.NEWSLETTER_DEMO_MODE || 'false'
   if (!['true', 'false'].includes(demoMode)) throw new Error('Invalid NEWSLETTER_DEMO_MODE')
   const recipients = (env.NEWSLETTER_TEST_RECIPIENTS ?? '').split(',').map(value => value.trim().toLowerCase()).filter(Boolean)
@@ -36,7 +38,7 @@ export function configuration(env) {
     alias: { '@email-cms/shared': path.join(root, 'packages/shared/src/index.ts') },
     services: [{ binding: 'SMZ_AUTH', service: names.auth }],
     hyperdrive: [{ binding: 'HYPERDRIVE', id: env.CLOUDFLARE_HYPERDRIVE_ID }],
-    vars: { CMS_SESSION_ENABLED: 'true', APP_URL: env.CMS_ORIGIN, BACKEND_CORS_ORIGIN: env.CMS_ORIGIN, SMZ_AUTH_ISSUER: env.SMZ_AUTH_ISSUER, DELIVERY_ENABLED: 'true', NEWSLETTER_DEMO_MODE: demoMode, ...(recipients.length ? { NEWSLETTER_TEST_RECIPIENTS: recipients.join(',') } : {}) },
+    vars: { CMS_SESSION_ENABLED: 'true', APP_URL: env.CMS_ORIGIN, BACKEND_CORS_ORIGIN: env.CMS_ORIGIN, SMZ_AUTH_ISSUER: env.SMZ_AUTH_ISSUER, DELIVERY_ENABLED: deliveryEnabled, NEWSLETTER_DEMO_MODE: demoMode, ...(recipients.length ? { NEWSLETTER_TEST_RECIPIENTS: recipients.join(',') } : {}) },
     triggers: { crons: ['* * * * *'] },
   }
 }
@@ -45,5 +47,5 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   await mkdir(new URL('../.wrangler/deploy/', import.meta.url), { recursive: true })
   await writeFile(new URL('../.wrangler/deploy/cms.json', import.meta.url), JSON.stringify(config, null, 2) + '\n')
   await writeFile(new URL('../.wrangler/deploy/wrangler.json', import.meta.url), JSON.stringify(pagesConfiguration(process.env), null, 2) + '\n')
-  console.info('Generated .wrangler/deploy/cms.json; delivery is enabled')
+  console.info('Generated .wrangler/deploy/cms.json; delivery follows explicit environment configuration')
 }
