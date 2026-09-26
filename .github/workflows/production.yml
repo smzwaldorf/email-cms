@@ -1,0 +1,59 @@
+name: Deploy production News
+on:
+  workflow_dispatch:
+    inputs:
+      initialize_database:
+        description: Initialize the empty production-news database on its first deployment
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: production-news
+  cancel-in-progress: false
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    runs-on: ubuntu-latest
+    env:
+      DEPLOYMENT_ENVIRONMENT: production
+      DELIVERY_ENABLED: 'false'
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_HYPERDRIVE_ID: ${{ vars.PRODUCTION_NEWS_HYPERDRIVE_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CMS_ORIGIN: https://news.smzwaldorf.com
+      CMS_API_ORIGIN: https://news-api.smzwaldorf.com
+      SMZ_AUTH_ISSUER: https://auth.smzwaldorf.com/api/auth
+      CMS_AUTH_REGISTRATION_VERIFIED: ${{ vars.PRODUCTION_AUTH_REGISTRATION_VERIFIED }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm install --no-audit --no-fund
+      - run: node --test scripts/cloudflare-config.test.mjs scripts/cloudflare-production.test.mjs scripts/cloudflare-migrations.test.mjs scripts/cloudflare-secrets-config.test.mjs
+      - run: npm run build
+      - run: npm run cloudflare:templates
+      - run: npm run cloudflare:configure
+      - run: node scripts/cloudflare-check-binding.mjs
+      - name: Configure separate production secrets
+        run: node scripts/cloudflare-session-secrets.mjs
+        env:
+          JWT_SECRET: ${{ secrets.PRODUCTION_JWT_SECRET }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
+          CMS_SESSION_SECRET: ${{ secrets.PRODUCTION_CMS_SESSION_SECRET }}
+          CMS_OIDC_CLIENT_SECRET: ${{ secrets.PRODUCTION_CMS_OIDC_CLIENT_SECRET }}
+      - name: Initialize empty production database
+        if: inputs.initialize_database
+        run: npm run cloudflare:schema
+      - run: node scripts/cloudflare-migrate.mjs
+      - run: node scripts/cloudflare-preflight.mjs
+      - run: npm run cloudflare:pages:build
+      - run: npx wrangler deploy --config .wrangler/deploy/cms.json
+      - name: Ensure production Pages project exists
+        run: node scripts/ensure-production-pages.mjs
+      - run: npx wrangler pages deploy --branch main
+        working-directory: .wrangler/deploy
+      - run: node scripts/cloudflare-smoke.mjs

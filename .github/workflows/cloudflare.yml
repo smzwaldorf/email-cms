@@ -17,7 +17,7 @@ jobs:
         with:
           node-version: 24
       - run: npm install --no-audit --no-fund
-      - run: node --test scripts/cloudflare-config.test.mjs scripts/cloudflare-migrations.test.mjs scripts/cloudflare-secrets-config.test.mjs
+      - run: node --test scripts/cloudflare-config.test.mjs scripts/cloudflare-production.test.mjs scripts/cloudflare-migrations.test.mjs scripts/cloudflare-secrets-config.test.mjs
       - run: npm run test:seed
       - run: npm run build
       - run: npm run cloudflare:check
