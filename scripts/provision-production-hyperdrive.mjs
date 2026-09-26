@@ -20,7 +20,7 @@ const matches = configs.filter(c => c.name === name);
 if (matches.length > 1) throw new Error('Duplicate production connector names');
 let config = matches[0];
 if (config) config = await request(`/${config.id}`);
-else config = await request('', { name, origin: { scheme: 'postgres', host: url.hostname, port: Number(url.port || 5432), database, user: decodeURIComponent(url.username), password: decodeURIComponent(url.password) }, caching: { disabled: true }, origin_connection_limit: 5 });
+else throw new Error('Create the dedicated production connector in the Cloudflare dashboard first');
 if (config.origin?.database !== database || config.origin?.host !== url.hostname || config.origin?.user !== decodeURIComponent(url.username) || config.caching?.disabled !== true || config.origin_connection_limit !== 5) throw new Error('Existing production connector does not match expected isolated configuration');
 if (!/^[a-f0-9]{32}$/.test(config.id)) throw new Error('Invalid Hyperdrive ID');
 appendFileSync(envFile, `CLOUDFLARE_HYPERDRIVE_ID=${config.id}\n`);
