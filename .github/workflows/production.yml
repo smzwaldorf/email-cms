@@ -36,9 +36,18 @@ jobs:
       - run: node --test scripts/cloudflare-config.test.mjs scripts/cloudflare-production.test.mjs scripts/cloudflare-migrations.test.mjs scripts/cloudflare-secrets-config.test.mjs
       - run: npm run build
       - run: npm run cloudflare:templates
-      - name: Ensure dedicated production connector
+      - name: Verify dedicated production connector
         run: node scripts/provision-production-hyperdrive.mjs news
       - run: npm run cloudflare:configure
+      - name: Preserve dashboard-managed custom domains
+        run: |
+          node --input-type=module <<'JS'
+          import {readFileSync,writeFileSync} from "node:fs";
+          const path=".wrangler/deploy/cms.json";
+          const config=JSON.parse(readFileSync(path,"utf8"));
+          delete config.routes; delete config.route; config.workers_dev=false;
+          writeFileSync(path,JSON.stringify(config,null,2));
+          JS
       - run: node scripts/cloudflare-check-binding.mjs
       - name: Configure separate production secrets
         run: node scripts/cloudflare-session-secrets.mjs
