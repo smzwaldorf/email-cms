@@ -9,7 +9,7 @@ async function fingerprints(client, tables) {
   }
   return JSON.stringify(result)
 }
-export async function applyMigrations(client, migrations, { retirementApproved = false, backupReference = '' } = {}) {
+export async function applyMigrations(client, migrations, { retirementApproved = false, backupReference = '', dryRun = false } = {}) {
   await client.query('BEGIN')
   try {
     await client.query("SET LOCAL lock_timeout='5s'")
@@ -40,7 +40,11 @@ export async function applyMigrations(client, migrations, { retirementApproved =
     await client.query('SELECT id_hash FROM public.cms_browser_sessions LIMIT 0')
     await client.query('SELECT auth_family_id FROM public.newsletter_family_preferences LIMIT 0')
     await client.query('SELECT auth_id FROM public.identity_reference_mappings LIMIT 0')
-    await client.query('COMMIT')
-    return {migrations:migrations.map(m=>m.name),historyPreserved:true}
+    if (retiresIdentity) {
+      const remaining = await client.query("SELECT tablename FROM pg_tables WHERE schemaname='public' AND tablename=ANY($1::text[])", [retiredTables])
+      if (remaining.rows.length) throw new Error('Legacy identity tables remain after retirement')
+    }
+    await client.query(dryRun ? 'ROLLBACK' : 'COMMIT')
+    return {migrations:migrations.map(m=>m.name),historyPreserved:true,outcome:dryRun ? 'rolled-back' : 'committed'}
   } catch(error) { await client.query('ROLLBACK'); throw error }
 }

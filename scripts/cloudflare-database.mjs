@@ -33,7 +33,7 @@ export async function checkHyperdriveDatabase({ initialize = false, migrateSessi
   const schema = initialize ? await readFile(new URL('../db/schema.sql', import.meta.url), 'utf8') : ''
   const sessionSchema = migrateSessions ? await readFile(new URL('../db/migrations/20260913_cms_sessions.sql', import.meta.url), 'utf8') : ''
   const migrations = migrateAll ? await Promise.all(migrationFilesFor(process.env).map(async name => ({name, sql:await readFile(new URL('../db/migrations/' + name, import.meta.url),'utf8')}))) : []
-  const migrationOptions = {retirementApproved:process.env.CMS_IDENTITY_RETIREMENT_APPROVED === 'true',backupReference:process.env.CMS_IDENTITY_BACKUP_REFERENCE ?? ''}
+  const migrationOptions = {retirementApproved:process.env.CMS_IDENTITY_RETIREMENT_APPROVED === 'true',backupReference:process.env.CMS_IDENTITY_BACKUP_REFERENCE ?? '',dryRun:process.env.CMS_MIGRATION_DRY_RUN === 'true'}
   await writeFile(`${directory}/worker.mjs`, `
 import pg from 'pg';
 import { verifyDatabase } from '../../scripts/cloudflare-database-operation.mjs';
@@ -48,7 +48,7 @@ export default { async fetch(request, env) {
   try {
     await client.connect();
     const verified = await verifyDatabase(client, {initialize:${initialize}, schema});
-    if (${migrateAll}) await applyMigrations(client, ${JSON.stringify(migrations)}, ${JSON.stringify(migrationOptions)});
+    const migration = ${migrateAll} ? await applyMigrations(client, ${JSON.stringify(migrations)}, ${JSON.stringify(migrationOptions)}) : undefined;
     if (sessionSchema) {
       await client.query('BEGIN');
       await client.query("SET LOCAL lock_timeout='5s'");
@@ -59,7 +59,7 @@ export default { async fetch(request, env) {
       await client.query('SELECT state_hash FROM cms_login_flows LIMIT 0');
       await client.query('COMMIT');
     }
-    return Response.json(verified);
+    return Response.json({...verified, migration});
   } catch (error) {
     return Response.json({error:'CMS database check failed',code:error.code ?? null}, {status:503});
   } finally { await client.end().catch(() => {}); }
@@ -95,6 +95,7 @@ export default { async fetch(request, env) {
     const result = await response.json()
     if (!response.ok || result.database !== 'smz-cms' || result.schema !== 'verified') throw new Error(JSON.stringify(result))
     console.info(initialize ? 'Initialized empty smz-cms through Hyperdrive; no seed data imported' : 'Verified production CMS schema through Hyperdrive')
+    if (result.migration) console.info(JSON.stringify(result.migration))
   } finally {
     if (child.exitCode === null) {
       process.kill(-child.pid, 'SIGTERM')
