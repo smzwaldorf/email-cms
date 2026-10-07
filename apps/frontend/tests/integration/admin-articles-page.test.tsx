@@ -13,6 +13,13 @@ import type {
   Class,
 } from '@/types/admin'
 
+const mockNavigate = vi.fn()
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
+  return { ...actual, useNavigate: () => mockNavigate }
+})
+
 vi.mock('@/services/adminService', () => ({
   adminService: {
     fetchNewsletters: vi.fn(),
@@ -20,6 +27,12 @@ vi.mock('@/services/adminService', () => ({
     fetchAllArticles: vi.fn(),
     fetchArticlesByNewsletterId: vi.fn(),
     fetchArticleNewsletterMemberships: vi.fn(),
+    createArticleForNewsletter: vi.fn(),
+    removeArticleFromNewsletterById: vi.fn(),
+    deleteArticle: vi.fn(),
+    fetchDeletedArticles: vi.fn(),
+    restoreDeletedArticle: vi.fn(),
+    purgeDeletedArticle: vi.fn(),
     fetchArticleCategories: vi.fn(),
     fetchArticleTags: vi.fn(),
     fetchClasses: vi.fn(),
@@ -243,6 +256,19 @@ describe('AdminArticlesPage', () => {
     vi.mocked(adminService.deactivateArticleCategory).mockResolvedValue({} as ArticleCategory)
     vi.mocked(adminService.activateArticleTag).mockResolvedValue({} as ArticleTag)
     vi.mocked(adminService.deactivateArticleTag).mockResolvedValue({} as ArticleTag)
+    vi.mocked(adminService.fetchDeletedArticles).mockResolvedValue([])
+    vi.mocked(adminService.deleteArticle).mockResolvedValue(undefined)
+    vi.mocked(adminService.removeArticleFromNewsletterById).mockResolvedValue(undefined)
+    vi.mocked(adminService.createArticleForNewsletter).mockResolvedValue({
+      id: 'article-new',
+      title: '',
+      content: '',
+      weekNumber: '2025-W48',
+      order: 2,
+      status: 'draft',
+      createdAt: '2025-11-05',
+      updatedAt: '2025-11-05',
+    } as AdminArticle)
   })
 
   it('publishes only the selected article and updates its status', async () => {
@@ -660,5 +686,232 @@ describe('AdminArticlesPage', () => {
       expect(rows[0]).toHaveAttribute('data-testid', 'article-row-article-a')
       expect(rows[1]).toHaveAttribute('data-testid', 'article-row-article-z')
     })
+  })
+
+  describe('with a newsletter selected', () => {
+    const newsletterArticles = [
+      {
+        id: 'article-n1',
+        title: 'Second In Newsletter',
+        content: '<p>Second</p>',
+        weekNumber: '2025-W48',
+        order: 2,
+        status: 'draft',
+        createdAt: '2025-11-01',
+        updatedAt: '2025-11-05',
+      },
+      {
+        id: 'article-n2',
+        title: 'First In Newsletter',
+        content: '<p>First</p>',
+        weekNumber: '2025-W48',
+        order: 1,
+        status: 'published',
+        createdAt: '2025-11-01',
+        updatedAt: '2025-11-01',
+      },
+    ] as AdminArticle[]
+
+    beforeEach(() => {
+      vi.mocked(adminService.fetchArticlesByNewsletterId).mockResolvedValue(newsletterArticles)
+      vi.mocked(adminService.fetchArticleNewsletterMemberships).mockResolvedValue({
+        'article-n1': [{ newsletterId: 'newsletter-1', label: '2025-W48', isTemplate: false }],
+        'article-n2': [{ newsletterId: 'newsletter-1', label: '2025-W48', isTemplate: false }],
+      })
+      vi.mocked(adminService.fetchArticleTaxonomyAssignments).mockResolvedValue({
+        'article-n1': { categoryIds: [], tagIds: [] },
+        'article-n2': { categoryIds: [], tagIds: [] },
+      } as TaxonomyAssignments)
+    })
+
+    const renderWithNewsletter = () =>
+      render(
+        <MemoryRouter initialEntries={['/admin/articles?newsletter=newsletter-1']}>
+          <AdminArticlesPage />
+        </MemoryRouter>
+      )
+
+    it('still applies search and status filters to the selected newsletter articles', async () => {
+      renderWithNewsletter()
+
+      await screen.findByText('Second In Newsletter')
+      expect(screen.getByText('First In Newsletter')).toBeInTheDocument()
+
+      fireEvent.change(screen.getByLabelText('依狀態篩選'), { target: { value: 'published' } })
+
+      await waitFor(() => {
+        expect(screen.getByText('First In Newsletter')).toBeInTheDocument()
+        expect(screen.queryByText('Second In Newsletter')).not.toBeInTheDocument()
+      })
+
+      fireEvent.change(screen.getByLabelText('搜尋文章'), { target: { value: 'no-such-article' } })
+
+      await waitFor(() => {
+        expect(screen.queryByText('First In Newsletter')).not.toBeInTheDocument()
+        expect(screen.getByText('找不到符合條件的文章。')).toBeInTheDocument()
+      })
+
+      fireEvent.click(screen.getAllByRole('button', { name: '清除篩選條件' })[0])
+
+      await waitFor(() => {
+        expect(screen.getByText('Second In Newsletter')).toBeInTheDocument()
+        expect(screen.getByText('First In Newsletter')).toBeInTheDocument()
+      })
+    })
+
+    it('defaults to newsletter order and offers the order sort option', async () => {
+      renderWithNewsletter()
+
+      await screen.findByText('Second In Newsletter')
+
+      expect((screen.getByLabelText('排序文章') as HTMLSelectElement).value).toBe('order_asc')
+      expect(screen.getByRole('option', { name: '電子報順序' })).toBeInTheDocument()
+
+      const rows = screen.getAllByTestId(/article-row-/)
+      expect(rows[0]).toHaveAttribute('data-testid', 'article-row-article-n2')
+      expect(rows[1]).toHaveAttribute('data-testid', 'article-row-article-n1')
+    })
+
+    it('hides the newsletter order sort when viewing all articles', async () => {
+      render(
+        <MemoryRouter>
+          <AdminArticlesPage />
+        </MemoryRouter>
+      )
+
+      await screen.findByText('All Article')
+      expect(screen.queryByRole('option', { name: '電子報順序' })).not.toBeInTheDocument()
+      expect((screen.getByLabelText('排序文章') as HTMLSelectElement).value).toBe('updated_desc')
+    })
+
+    it('links to the newsletter composition page for the selected newsletter', async () => {
+      renderWithNewsletter()
+
+      await screen.findByText('Second In Newsletter')
+
+      const link = await screen.findByRole('link', { name: '前往電子報編排 →' })
+      expect(link).toHaveAttribute('href', '/admin/newsletters/2025-W48')
+    })
+
+    it('creates a draft article in the selected newsletter and opens the editor', async () => {
+      renderWithNewsletter()
+
+      await screen.findByText('Second In Newsletter')
+      fireEvent.click(screen.getByRole('button', { name: '建立草稿文章' }))
+
+      await waitFor(() => {
+        expect(adminService.createArticleForNewsletter).toHaveBeenCalledWith('newsletter-1')
+        expect(mockNavigate).toHaveBeenCalledWith('/week/2025-W48?admin=1', {
+          state: { focusArticleId: 'article-new', startInEditMode: true },
+        })
+      })
+    })
+
+    it('removes an article from the selected newsletter without deleting it', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+      renderWithNewsletter()
+
+      await screen.findByText('Second In Newsletter')
+      const firstRow = screen.getByTestId('article-row-article-n2')
+      fireEvent.click(within(firstRow).getByRole('button', { name: '從電子報移除' }))
+
+      await waitFor(() => {
+        expect(adminService.removeArticleFromNewsletterById).toHaveBeenCalledWith('article-n2', 'newsletter-1')
+        expect(adminService.deleteArticle).not.toHaveBeenCalled()
+        expect(screen.getByRole('status')).toHaveTextContent('已將「First In Newsletter」從 2025-W48 移除')
+      })
+
+      confirmSpy.mockRestore()
+    })
+
+    it('does not offer create or remove-from-newsletter actions when viewing all articles', async () => {
+      render(
+        <MemoryRouter>
+          <AdminArticlesPage />
+        </MemoryRouter>
+      )
+
+      await screen.findByText('All Article')
+      expect(screen.queryByRole('button', { name: '建立草稿文章' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: '從電子報移除' })).not.toBeInTheDocument()
+    })
+  })
+
+  it('keeps articles that belong to a regular newsletter in the regular list even when a template reuses them', async () => {
+    vi.mocked(adminService.fetchArticleNewsletterMemberships).mockResolvedValueOnce({
+      'article-1': [
+        { newsletterId: 'newsletter-1', label: '2025-W48', isTemplate: false },
+        { newsletterId: 'template-newsletter-1', label: 'Template #1', isTemplate: true },
+      ],
+      'article-template-1': [{ newsletterId: 'template-newsletter-1', label: 'Template #1', isTemplate: true }],
+    })
+
+    render(
+      <MemoryRouter>
+        <AdminArticlesPage />
+      </MemoryRouter>
+    )
+
+    const row = await screen.findByTestId('article-row-article-1')
+    expect(within(row).getByText('模板')).toBeInTheDocument()
+    expect(screen.queryByText('Template Article')).not.toBeInTheDocument()
+  })
+
+  it('opens the inline editor for an article using its newsletter', async () => {
+    render(
+      <MemoryRouter>
+        <AdminArticlesPage />
+      </MemoryRouter>
+    )
+
+    await screen.findByText('All Article')
+    fireEvent.click(screen.getByRole('button', { name: '編輯文章' }))
+
+    expect(mockNavigate).toHaveBeenCalledWith('/week/2025-W48?admin=1', {
+      state: { focusArticleId: 'article-1', startInEditMode: true },
+    })
+  })
+
+  it('disables editing for articles that are not in any newsletter', async () => {
+    vi.mocked(adminService.fetchArticleNewsletterMemberships).mockResolvedValueOnce({
+      'article-1': [],
+      'article-template-1': [{ newsletterId: 'template-newsletter-1', label: 'Template #1', isTemplate: true }],
+    })
+
+    render(
+      <MemoryRouter>
+        <AdminArticlesPage />
+      </MemoryRouter>
+    )
+
+    await screen.findByText('All Article')
+    expect(screen.getByRole('button', { name: '編輯文章' })).toBeDisabled()
+    expect(screen.getByText('未加入電子報')).toBeInTheDocument()
+  })
+
+  it('shows localized status badges instead of raw values', async () => {
+    render(
+      <MemoryRouter>
+        <AdminArticlesPage />
+      </MemoryRouter>
+    )
+
+    const row = await screen.findByTestId('article-row-article-1')
+    expect(within(row).getByText('草稿')).toBeInTheDocument()
+    expect(within(row).queryByText('draft')).not.toBeInTheDocument()
+  })
+
+  it('shows a success message after saving taxonomy assignments', async () => {
+    render(
+      <MemoryRouter>
+        <AdminArticlesPage />
+      </MemoryRouter>
+    )
+
+    await screen.findByText('All Article')
+    fireEvent.click(screen.getByRole('button', { name: '編輯分類/標籤' }))
+    fireEvent.click(screen.getByRole('button', { name: '儲存指派' }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent('文章分類與標籤已更新')
   })
 })
