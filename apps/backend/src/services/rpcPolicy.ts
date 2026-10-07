@@ -13,3 +13,7 @@ export function isAllowedRpc(service: string, method: string): boolean {
   if (service === 'admin' && /^(create|update|delete|activate|deactivate|add|remove|link|unlink).*(Class|Family|Student|Parent|Teacher|User)|^(getFamilyMembers|getAvailableParents|getAvailableStudents|fetchStudents|fetchParents|fetchTeachers|fetchTeacherAssignedClasses|fetchUserClassRestrictions|fetchUsers|getParentStudents|getParentStudentRelationships)$/.test(method)) return false
   return Object.hasOwn(rpcMethods, service) && rpcMethods[service].has(method)
 }
+
+export function isTeacherRpc(service: string, method: string): boolean {
+  return service === 'analytics' && method !== 'generateDailySnapshot' && isAllowedRpc(service, method)
+}

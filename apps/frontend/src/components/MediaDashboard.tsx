@@ -1,3 +1,5 @@
+import { useAuth } from '@/context/AuthContext'
+import { hasRole } from '@/lib/rbac'
 import { useEffect, useMemo, useState } from 'react'
 import { mediaGovernanceService } from '@/services/mediaGovernanceService'
 import type { MediaDeletePreflight, MediaFile } from '@/types/media'
@@ -10,6 +12,8 @@ const formatBytes = (bytes: number): string => {
 }
 
 export function MediaDashboard() {
+  const { user } = useAuth()
+  const isAdmin = hasRole(user, 'admin')
   const [loading, setLoading] = useState(true)
   const [deletingMediaId, setDeletingMediaId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -122,7 +126,7 @@ export function MediaDashboard() {
               <button
                 type="button"
                 onClick={() => void handleDeleteAsset(item.id)}
-                disabled={deletingMediaId === item.id}
+                disabled={!isAdmin || deletingMediaId === item.id}
                 className="px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100"
               >
                 {deletingMediaId === item.id ? '刪除中...' : '刪除'}
@@ -150,7 +154,7 @@ export function MediaDashboard() {
                 <button
                   type="button"
                   onClick={() => void handleDeleteAsset(item.id)}
-                  disabled={deletingMediaId === item.id}
+                  disabled={!isAdmin || deletingMediaId === item.id}
                   className="shrink-0 px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50"
                 >
                   {deletingMediaId === item.id ? '檢查中...' : '刪除'}

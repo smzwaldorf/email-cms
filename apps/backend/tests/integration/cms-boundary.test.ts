@@ -10,6 +10,8 @@ vi.mock('#/services/cmsArticleService', () => ({ cmsArticleService: { update: m.
 vi.mock('#/lib/query', () => ({ runSerializedQuery: m.runQuery, from: vi.fn() }))
 vi.mock('#/services/emailPlatform/backendEmailPlatformService', () => ({ backendEmailPlatformService: { handleKitWebhook: m.webhook } }))
 vi.mock('#/services/analyticsAggregator', () => ({ analyticsAggregator: { getNewsletterMetrics: m.metrics } }))
+vi.mock('#/services/teacherAnalyticsScope', () => ({ withTeacherAnalytics: (_viewer: unknown, _method: string, _args: unknown[], run: () => Promise<unknown>) => run() }))
+vi.mock('#/services/teacherContentService', () => ({ teacherContentService: { newsletters: () => [{ id: 'n1', is_template: false }], articles: () => [{ id: 'a1' }], newsletter: () => ({ newsletter: { id: 'n1' }, articles: [] }) } }))
 vi.mock('#/services/readerTrackingService', () => ({ recordReaderEvent: m.recordEvent, getReaderReadArticles: m.readArticles }))
 import { handleApiRequest } from '#/routes'
 import { HttpError } from '#/auth'
@@ -29,7 +31,7 @@ beforeEach(() => {
 describe('CMS HTTP boundary and publish handoff', () => {
  it('returns verified graph to admin without touching legacy queries',async()=>{ const r=await call('/api/admin/directory/families',undefined,'GET');expect(r.status).toBe(200);expect(r.body.families[0].id).toBe('auth-family');expect(m.runQuery).not.toHaveBeenCalled() })
   it('stops unauthenticated data access before query execution', async () => {
-    m.admin.mockRejectedValue(new HttpError(401, 'Missing bearer token'))
+    m.viewer.mockRejectedValue(new HttpError(401, 'Missing bearer token'))
     expect((await call('/api/data/query', { table: 'user_roles' })).status).toBe(401)
     expect(m.runQuery).not.toHaveBeenCalled()
   })
@@ -112,6 +114,34 @@ it('accepts only supported newsletter tracker selections', async () => {
  expect((await call('/api/admin/rpc', { service: 'analytics', method: 'getNewsletterMetrics', args: ['n1', null, 'cms'] })).status).toBe(200)
  expect(m.metrics).toHaveBeenCalledWith('n1', null, 'cms')
  expect((await call('/api/admin/rpc', { service: 'analytics', method: 'getNewsletterMetrics', args: ['n1', null, 'invalid'] })).status).toBe(400)
+})
+
+it('allows teacher content, media reads and analytics without granting admin actions', async () => {
+  m.viewer.mockResolvedValue({ ...actor, role: 'teacher', roles: ['teacher'] })
+  m.metrics.mockResolvedValue({ totalViews: 1 })
+  for (const path of ['/api/teacher/newsletters', '/api/teacher/newsletters/n1', '/api/teacher/articles']) {
+    expect((await call(path, undefined, 'GET')).status).toBe(200)
+  }
+  expect((await call('/api/admin/rpc', { service: 'analytics', method: 'getNewsletterMetrics', args: ['n1'] })).status).toBe(200)
+  for (const table of ['media_files', 'media_usage', 'media_variants']) {
+    expect((await call('/api/data/query', { table, select: '*' })).status).toBe(200)
+  }
+  for (const [service, method] of [['emailTemplate', 'listTemplates'], ['fileEmailTemplate', 'previewSource'], ['newsletterDelivery', 'previewAudience'], ['admin', 'createNewsletter'], ['analytics', 'generateDailySnapshot']]) {
+    expect((await call('/api/admin/rpc', { service, method, args: [] })).status).toBe(403)
+  }
+  for (const path of ['/api/admin/email/file-template-sources', '/api/admin/email/file-template-sources/source/preview']) {
+    expect((await call(path, undefined, 'GET')).status).toBe(403)
+  }
+  expect((await call('/api/admin/newsletters/n1/preview-email', { familyId: 'auth-family' })).status).toBe(403)
+  for (const body of [{ table: 'analytics_events' }, { table: 'articles' }, { table: 'media_files', mutation: { type: 'delete' } }, { table: 'media_files', select: '*,user_roles(*)' }]) {
+    expect((await call('/api/data/query', body)).status).toBe(403)
+  }
+})
+
+it.each(['parent', 'student'])('denies %s teacher panel APIs', async role => {
+  m.viewer.mockResolvedValue({ ...actor, role, roles: [role] })
+  expect((await call('/api/teacher/newsletters', undefined, 'GET')).status).toBe(403)
+  expect((await call('/api/data/query', { table: 'media_files' })).status).toBe(403)
 })
 
 it.each(['parent', 'admin'])('allows %s reader event ingestion without admin privileges', async role => {

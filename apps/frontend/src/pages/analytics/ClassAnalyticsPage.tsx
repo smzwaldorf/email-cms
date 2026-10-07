@@ -11,7 +11,7 @@ export const ClassAnalyticsPage: React.FC = () => {
     const navigate = useNavigate();
     
     // Fetch last 12 weeks of history
-    const { history, loading: historyLoading } = useClassHistory(decodedClassName);
+    const { history, loading: historyLoading, error } = useClassHistory(decodedClassName);
 
     if (!decodedClassName) return <div>班級名稱無效</div>;
 
@@ -31,6 +31,7 @@ export const ClassAnalyticsPage: React.FC = () => {
     return (
         <AdminLayout activeTab="analytics">
             <div className="space-y-6">
+                {error && <p role="alert" className="text-red-700">{error.message}</p>}
                 {/* Header */}
                 <div className="flex items-center gap-4">
                     <button 

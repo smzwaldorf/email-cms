@@ -9,15 +9,17 @@ import { Navigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 
 import { canAccess } from '@/lib/rbac'
+import { canAccessCmsPanel } from '@email-cms/shared'
 import type { UserRole } from '@/types/auth'
 import { buildLoginRedirectPath } from '@/utils/urlUtils'
 
 export interface ProtectedRouteProps {
   children: React.ReactNode
   requiredRole?: UserRole
+  cmsPanel?: boolean
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole }) => {
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole, cmsPanel }) => {
   const { user, isAuthenticated, isLoading } = useAuth()
 
   const [showTimeout, setShowTimeout] = useState(false)
@@ -77,7 +79,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requir
   }
 
   // Check role requirement if specified
-  if (requiredRole && !canAccess(user, requiredRole)) {
+  if ((cmsPanel && !canAccessCmsPanel({ roles: user.roles ?? [user.role] })) || (requiredRole && !canAccess(user, requiredRole))) {
     return <Navigate to="/" replace />
   }
 

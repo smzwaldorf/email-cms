@@ -16,6 +16,8 @@ import { ArticleReadersPage } from './pages/ArticleReadersPage';
 import { AnalyticsProvider } from '@/context/AnalyticsContext';
 import '@/styles/globals.css'
 
+const CmsContentPage = lazy(() => import('@/pages/TeacherContentPage').then(m => ({ default: m.CmsContentPage })))
+
 // Lazy load editor and admin pages - only loaded when route is accessed
 // Reduces initial bundle size and improves Time to Interactive (TTI)
 const LazyEditorPage = lazy(() => import('@/pages/EditorPage').then(m => ({ default: m.EditorPage })))
@@ -117,9 +119,9 @@ export default function App() {
                 path="/admin"
                 element={
                   <ErrorBoundary>
-                    <ProtectedRoute requiredRole="admin">
+                    <ProtectedRoute cmsPanel>
                       <Suspense fallback={<RouteLoader />}>
-                        <LazyAdminDashboard />
+                        <CmsContentPage view="newsletters"><LazyAdminDashboard /></CmsContentPage>
                       </Suspense>
                     </ProtectedRoute>
                   </ErrorBoundary>
@@ -213,9 +215,9 @@ export default function App() {
                 path="/admin/articles"
                 element={
                   <ErrorBoundary>
-                    <ProtectedRoute requiredRole="admin">
+                    <ProtectedRoute cmsPanel>
                       <Suspense fallback={<RouteLoader />}>
-                        <LazyAdminArticlesPage />
+                        <CmsContentPage view="articles"><LazyAdminArticlesPage /></CmsContentPage>
                       </Suspense>
                     </ProtectedRoute>
                   </ErrorBoundary>
@@ -225,9 +227,9 @@ export default function App() {
                 path="/admin/newsletters/:weekNumber"
                 element={
                   <ErrorBoundary>
-                    <ProtectedRoute requiredRole="admin">
+                    <ProtectedRoute cmsPanel>
                       <Suspense fallback={<RouteLoader />}>
-                        <LazyAdminArticleList />
+                        <CmsContentPage view="newsletter"><LazyAdminArticleList /></CmsContentPage>
                       </Suspense>
                     </ProtectedRoute>
                   </ErrorBoundary>
@@ -237,9 +239,9 @@ export default function App() {
                 path="/admin/newsletters/id/:id"
                 element={
                   <ErrorBoundary>
-                    <ProtectedRoute requiredRole="admin">
+                    <ProtectedRoute cmsPanel>
                       <Suspense fallback={<RouteLoader />}>
-                        <LazyAdminArticleList />
+                        <CmsContentPage view="newsletter"><LazyAdminArticleList /></CmsContentPage>
                       </Suspense>
                     </ProtectedRoute>
                   </ErrorBoundary>
@@ -249,9 +251,9 @@ export default function App() {
                 path="/admin/articles/:weekNumber"
                 element={
                   <ErrorBoundary>
-                    <ProtectedRoute requiredRole="admin">
+                    <ProtectedRoute cmsPanel>
                       <Suspense fallback={<RouteLoader />}>
-                        <LazyAdminArticleList />
+                        <CmsContentPage view="newsletter"><LazyAdminArticleList /></CmsContentPage>
                       </Suspense>
                     </ProtectedRoute>
                   </ErrorBoundary>
@@ -261,9 +263,9 @@ export default function App() {
                 path="/admin/articles/:weekNumber/:articleId"
                 element={
                   <ErrorBoundary>
-                    <ProtectedRoute requiredRole="admin">
+                    <ProtectedRoute cmsPanel>
                       <Suspense fallback={<RouteLoader />}>
-                        <LazyArticleEditorPage />
+                        <CmsContentPage view="article"><LazyArticleEditorPage /></CmsContentPage>
                       </Suspense>
                     </ProtectedRoute>
                   </ErrorBoundary>
@@ -273,9 +275,9 @@ export default function App() {
                 path="/admin/articles/id/:id"
                 element={
                   <ErrorBoundary>
-                    <ProtectedRoute requiredRole="admin">
+                    <ProtectedRoute cmsPanel>
                       <Suspense fallback={<RouteLoader />}>
-                        <LazyAdminArticleList />
+                        <CmsContentPage view="newsletter"><LazyAdminArticleList /></CmsContentPage>
                       </Suspense>
                     </ProtectedRoute>
                   </ErrorBoundary>
@@ -285,9 +287,9 @@ export default function App() {
                 path="/admin/articles/id/:id/:articleId"
                 element={
                   <ErrorBoundary>
-                    <ProtectedRoute requiredRole="admin">
+                    <ProtectedRoute cmsPanel>
                       <Suspense fallback={<RouteLoader />}>
-                        <LazyArticleEditorPage />
+                        <CmsContentPage view="article"><LazyArticleEditorPage /></CmsContentPage>
                       </Suspense>
                     </ProtectedRoute>
                   </ErrorBoundary>
@@ -357,7 +359,7 @@ export default function App() {
                 path="/admin/media"
                 element={
                   <ErrorBoundary>
-                    <ProtectedRoute requiredRole="admin">
+                    <ProtectedRoute cmsPanel>
                       <Suspense fallback={<RouteLoader />}>
                         <LazyAdminMediaPage />
                       </Suspense>
@@ -381,7 +383,7 @@ export default function App() {
                 path="/admin/analytics"
                 element={
                   <ErrorBoundary>
-                    <ProtectedRoute requiredRole="admin">
+                    <ProtectedRoute cmsPanel>
                       <Suspense fallback={<RouteLoader />}>
                         <LazyAnalyticsDashboardPage />
                       </Suspense>
@@ -393,7 +395,7 @@ export default function App() {
                 path="/admin/analytics/week/:weekNumber"
                 element={
                   <ErrorBoundary>
-                    <ProtectedRoute requiredRole="admin">
+                    <ProtectedRoute cmsPanel>
                       <Suspense fallback={<RouteLoader />}>
                         <LazyAnalyticsDashboardPage />
                       </Suspense>
@@ -405,7 +407,7 @@ export default function App() {
                 path="/admin/analytics/class/:className"
                 element={
                   <ErrorBoundary>
-                    <ProtectedRoute requiredRole="admin">
+                    <ProtectedRoute cmsPanel>
                       <Suspense fallback={<RouteLoader />}>
                         <LazyClassAnalyticsPage />
                       </Suspense>
@@ -417,7 +419,7 @@ export default function App() {
                 path="/admin/analytics/article/:articleId"
                 element={
                   <ErrorBoundary>
-                    <ProtectedRoute requiredRole="admin">
+                    <ProtectedRoute cmsPanel>
                       <Suspense fallback={<RouteLoader />}>
                         <LazyArticleAnalyticsPage />
                       </Suspense>
@@ -429,7 +431,7 @@ export default function App() {
                 path="/admin/analytics/article/:articleId/readers"
                 element={
                   <ErrorBoundary>
-                    <ProtectedRoute requiredRole="admin">
+                    <ProtectedRoute cmsPanel>
                       <ArticleReadersPage />
                     </ProtectedRoute>
                   </ErrorBoundary>

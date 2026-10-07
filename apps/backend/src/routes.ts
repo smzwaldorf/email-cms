@@ -5,12 +5,14 @@ import { withIdentityDirectory } from '#/services/identityDirectory'
 import { hashSessionId } from '#/session/crypto'
 import { deliveryIdentityForSessionHash, directoryForCookie, handleSessionRequest, serverSessionsEnabled, sessionId } from '#/session/http'
 import { withTransaction } from '#/lib/db'
-import { canPerformCmsAction } from '@email-cms/shared'
-import { isAllowedRpc } from '#/services/rpcPolicy'
+import { canAccessCmsPanel, canPerformCmsAction } from '@email-cms/shared'
+import { isAllowedRpc, isTeacherRpc } from '#/services/rpcPolicy'
+import { withTeacherAnalytics } from '#/services/teacherAnalyticsScope'
+import { teacherContentService } from '#/services/teacherContentService'
 import { cmsArticleService } from '#/services/cmsArticleService'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { SupabaseClient } from '#/lib/supabase'
-import { directoryForToken, HttpError, optionalViewer, requireAdmin, requireViewer } from '#/auth'
+import { directoryForToken, HttpError, optionalViewer, requireAdmin, requireViewer, type AuthenticatedViewer } from '#/auth'
 import { getSupabaseClient } from '#/lib/supabase'
 import { adminService } from '#/services/adminService'
 import {
@@ -182,7 +184,7 @@ function getRpcService(name: RpcServiceName): unknown {
   }
 }
 
-async function handleRpc(body: unknown): Promise<unknown> {
+async function handleRpc(body: unknown, viewer: AuthenticatedViewer): Promise<unknown> {
   if (!isRecord(body)) {
     throw new HttpError(400, 'Invalid RPC body')
   }
@@ -197,6 +199,8 @@ async function handleRpc(body: unknown): Promise<unknown> {
   }
 
   if (!isAllowedRpc(serviceName, methodName)) throw new HttpError(403, 'RPC action is not permitted')
+  const isAdmin = canPerformCmsAction(viewer, 'cms:manage')
+  if (!isAdmin && !(canAccessCmsPanel(viewer) && isTeacherRpc(serviceName, methodName))) throw new HttpError(403, 'RPC action requires admin permission')
   if (serviceName === 'analytics' && (args.length > (['getNewsletterMetrics', 'getTrendStats'].includes(methodName) ? 3 : 2) || args.some(arg => arg !== null && typeof arg !== 'string' && typeof arg !== 'number'))) throw new HttpError(400, 'Invalid analytics arguments')
   if (serviceName === 'analytics' && ['getNewsletterMetrics', 'getTrendStats'].includes(methodName) && args.length > 2 && !['resend', 'cms'].includes(args[2] as string)) throw new HttpError(400, 'Invalid analytics tracker')
   const service = getRpcService(serviceName) as Record<string, unknown>
@@ -205,7 +209,8 @@ async function handleRpc(body: unknown): Promise<unknown> {
     throw new HttpError(404, `RPC method not found: ${serviceName}.${methodName}`)
   }
 
-  return method.apply(service, args)
+  const run = async () => method.apply(service, args)
+  return isAdmin ? run() : withTeacherAnalytics(viewer, methodName, args, run)
 }
 
 async function publishAndEnqueueDelivery(newsletterId: string, audience?: DeliveryAudienceSelection, templateRevisionId?: string | null): Promise<unknown> {
@@ -347,7 +352,7 @@ async function handleScopedApiRequest(
     }
 
     if (method === 'POST' && url.pathname === '/api/data/query') {
-      await requireAdmin(request)
+      const viewer = await requireViewer(request)
       const body = await readJson(request)
       if (!isRecord(body) || typeof body.table !== 'string') {
         throw new HttpError(400, 'Invalid query body')
@@ -363,8 +368,13 @@ async function handleScopedApiRequest(
       // The compatibility gateway is CMS-admin-only and cannot alter identity or delivery state.
       const readTables = new Set(['articles', 'newsletters', 'newsletter_articles',
         'article_categories', 'article_tags', 'article_category_assignments', 'article_tag_assignments',
-        'media_files', 'media_usage', 'analytics_events', 'analytics_snapshots', 'email_opens', 'email_clicks', 'auth_events'])
+        'media_files', 'media_usage', 'media_variants', 'analytics_events', 'analytics_snapshots', 'email_opens', 'email_clicks', 'auth_events'])
       const writeTables = new Set(['media_files', 'media_usage', 'analytics_snapshots'])
+      if (!canPerformCmsAction(viewer, 'cms:manage')) {
+        const teacherMediaRead = canAccessCmsPanel(viewer) && ['media_files', 'media_usage', 'media_variants'].includes(body.table) && !body.mutation
+          && (body.select === undefined || (typeof body.select === 'string' && /^[\w\s,*]+$/.test(body.select)))
+        if (!teacherMediaRead) throw new HttpError(403, 'Data query requires admin permission')
+      }
       if (!readTables.has(body.table) || (body.mutation && !writeTables.has(body.table))) {
         throw new HttpError(403, 'Use an authorized CMS action for this table')
       }
@@ -424,6 +434,24 @@ async function handleScopedApiRequest(
       throw new HttpError(404, 'Route not found')
     }
 
+    if (method === 'GET' && url.pathname.startsWith('/api/teacher/')) {
+      const viewer = await requireViewer(request)
+      if (!canAccessCmsPanel(viewer)) throw new HttpError(403, 'Teacher or admin permission required')
+      const newsletterMatch = url.pathname.match(/^\/api\/teacher\/newsletters\/([^/]+)$/)
+      const result = url.pathname === '/api/teacher/newsletters' ? await teacherContentService.newsletters()
+        : url.pathname === '/api/teacher/articles' ? await teacherContentService.articles(viewer)
+        : newsletterMatch ? await teacherContentService.newsletter(decodeURIComponent(newsletterMatch[1]), viewer) : undefined
+      if (result === undefined) throw new HttpError(404, 'Route not found')
+      sendJson(response, 200, result, context.corsOrigin)
+      return
+    }
+
+    if (method === 'POST' && url.pathname === '/api/admin/rpc') {
+      const viewer = await requireViewer(request)
+      sendJson(response, 200, await handleRpc(await readJson(request), viewer), context.corsOrigin)
+      return
+    }
+
     if (!url.pathname.startsWith('/api/admin/')) {
       throw new HttpError(404, 'Route not found')
     }
@@ -460,11 +488,6 @@ async function handleScopedApiRequest(
       const body = await readJson(request)
       if (!isRecord(body)) throw new HttpError(400, 'Invalid JSON body')
       sendJson(response, 200, await backendEmailPlatformService.replay(body), context.corsOrigin)
-      return
-    }
-
-    if (method === 'POST' && url.pathname === '/api/admin/rpc') {
-      sendJson(response, 200, await handleRpc(await readJson(request)), context.corsOrigin)
       return
     }
 
