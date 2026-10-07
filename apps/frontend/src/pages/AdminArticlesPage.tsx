@@ -1,3 +1,4 @@
+import { PdfArticleImport } from '@/components/admin/PdfArticleImport'
 import { backendRequest } from '@/services/backendApi'
 import type { ArticleRow } from '@/types/database'
 import { Fragment, useEffect, useMemo, useState } from 'react'
@@ -14,13 +15,15 @@ import type {
 import { AdminLayout } from '@/components/admin/AdminLayout'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { LoadingSpinner } from '@/components/LoadingSpinner'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { generateWeeklyUrl } from '@/utils/urlUtils'
 
 type ArticleStatusFilter = 'all' | 'draft' | 'published'
 type ArticleSortOption = 'updated_desc' | 'updated_asc' | 'title_asc' | 'title_desc'
 const ARTICLE_RETENTION_LABEL = '30 天'
 
 export function AdminArticlesPage() {
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [publishingArticleId, setPublishingArticleId] = useState<string | null>(null)
   const [articles, setArticles] = useState<AdminArticle[]>([])
@@ -908,6 +911,19 @@ export function AdminArticlesPage() {
             <div className="rounded-xl border border-waldorf-rose-200 bg-waldorf-rose-50 p-4 text-sm font-medium text-waldorf-rose-700">
               {error || taxonomyError}
             </div>
+          )}
+
+          {selectedNewsletterId && (
+            <PdfArticleImport
+              key={selectedNewsletterId}
+              newsletterId={selectedNewsletterId}
+              onCreated={articleId => {
+                const newsletter = newsletters.find(item => item.id === selectedNewsletterId)
+                navigate(`${generateWeeklyUrl(newsletter?.weekNumber || selectedNewsletterId)}?admin=1`, {
+                  state: { focusArticleId: articleId, startInEditMode: true },
+                })
+              }}
+            />
           )}
 
           <div className="overflow-hidden rounded-xl border border-waldorf-cream-200 bg-white shadow-sm">

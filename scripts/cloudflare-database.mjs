@@ -11,6 +11,8 @@ export const additiveMigrationFiles = [
   '20260916_newsletter_week_updates.sql',
   '20260920_identity_coexistence.sql',
   '20260922_resend_webhooks.sql',
+  '20260928_article_narration.sql',
+  '20260928_expand_narration_audio.sql',
 ]
 
 export function migrationFilesFor(env) {

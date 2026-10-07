@@ -1,6 +1,8 @@
 import type { IdentityTransport } from '#/runtime/environment'
 
 export interface Env {
+  OPENAI_API_KEY?: string
+  OPENAI_PDF_MODEL?: string
   CMS_SESSION_ENABLED?: string
   CMS_SESSION_SECRET?: string
   CMS_OIDC_CLIENT_SECRET?: string
@@ -33,7 +35,7 @@ export function validateEnvironment(env: Env): Record<string, string | undefined
   if (env.DELIVERY_ENABLED !== undefined && !['true', 'false'].includes(env.DELIVERY_ENABLED)) throw new Error('Invalid delivery switch')
   if (env.NEWSLETTER_DEMO_MODE !== undefined && !['true', 'false'].includes(env.NEWSLETTER_DEMO_MODE)) throw new Error('Invalid demo switch')
   if (env.CMS_SESSION_ENABLED === 'true' && (!/^[a-f0-9]{64}$/i.test(env.CMS_SESSION_SECRET ?? '') || (env.CMS_OIDC_CLIENT_SECRET?.length ?? 0) < 32)) throw new Error('Missing backend session secrets')
-  return { CMS_SESSION_ENABLED: env.CMS_SESSION_ENABLED, CMS_SESSION_SECRET: env.CMS_SESSION_SECRET, CMS_OIDC_CLIENT_SECRET: env.CMS_OIDC_CLIENT_SECRET, SMZ_AUTH_ISSUER: env.SMZ_AUTH_ISSUER, APP_URL: env.APP_URL, BACKEND_CORS_ORIGIN: env.BACKEND_CORS_ORIGIN,
+  return { OPENAI_API_KEY: env.OPENAI_API_KEY, OPENAI_PDF_MODEL: env.OPENAI_PDF_MODEL, CMS_SESSION_ENABLED: env.CMS_SESSION_ENABLED, CMS_SESSION_SECRET: env.CMS_SESSION_SECRET, CMS_OIDC_CLIENT_SECRET: env.CMS_OIDC_CLIENT_SECRET, SMZ_AUTH_ISSUER: env.SMZ_AUTH_ISSUER, APP_URL: env.APP_URL, BACKEND_CORS_ORIGIN: env.BACKEND_CORS_ORIGIN,
     DELIVERY_ENABLED: env.DELIVERY_ENABLED ?? 'true', NEWSLETTER_DEMO_MODE: env.NEWSLETTER_DEMO_MODE, NEWSLETTER_TEST_RECIPIENTS: env.NEWSLETTER_TEST_RECIPIENTS,
     RESEND_WEBHOOK_SECRET: env.RESEND_WEBHOOK_SECRET, RESEND_API_KEY: env.RESEND_API_KEY, RESEND_FROM_EMAIL: env.RESEND_FROM_EMAIL,
     KIT_API_TOKEN: env.KIT_API_TOKEN, KIT_WEBHOOK_SECRET: env.KIT_WEBHOOK_SECRET, JWT_SECRET: env.JWT_SECRET, NODE_ENV: 'production' }

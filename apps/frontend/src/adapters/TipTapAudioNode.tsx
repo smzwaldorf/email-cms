@@ -1,3 +1,4 @@
+import { NarrationPlayer } from '@/components/NarrationPlayer'
 /**
  * TipTap 音訊自訂節點
  * TipTap Audio Custom Node Extension
@@ -64,7 +65,7 @@ function AudioView({
 
   // Sign storage:// URLs for playback in editor
   useEffect(() => {
-    if (!src) return
+    if (!src || src.startsWith('narration://')) return
 
     let isMounted = true
 
@@ -164,7 +165,9 @@ function AudioView({
           selected && !isReadOnly ? 'ring-2 ring-waldorf-sage-500' : ''
         }`}
       >
-        {signedUrl ? (
+        {src?.startsWith('narration://') ? (
+          <NarrationPlayer articleId={src.slice('narration://'.length)} editable={isEditable} />
+        ) : signedUrl ? (
           <AudioPlayer
             src={signedUrl}
             title={title}

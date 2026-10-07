@@ -1,3 +1,4 @@
+import { pdfArticleService, MAX_PDF_BYTES } from '#/services/pdfArticleService'
 import { recordReaderEvent, getReaderReadArticles } from '#/services/readerTrackingService'
 import { analyticsAggregator } from '#/services/analyticsAggregator'
 import { handleResendWebhook } from '#/services/resendWebhookService'
@@ -328,6 +329,18 @@ async function handleScopedApiRequest(
       return
     }
 
+    const narrationMatch = url.pathname.match(/^\/api\/narrations\/([0-9a-f-]+)(?:\/(\d+))?$/i)
+    if (method === 'GET' && narrationMatch) {
+      const viewer = await optionalViewer(request)
+      if (narrationMatch[2] === undefined) {
+        sendJson(response, 200, await pdfArticleService.manifest(narrationMatch[1], viewer), context.corsOrigin)
+      } else {
+        const audio = await pdfArticleService.audio(narrationMatch[1], Number(narrationMatch[2]), viewer)
+        sendBinary(response, 200, audio, context.corsOrigin, { 'Content-Type': 'audio/mpeg', 'Cache-Control': 'private, no-store' })
+      }
+      return
+    }
+
     const publishArticleMatch = url.pathname.match(/^\/api\/cms\/articles\/([^/]+)\/publish$/)
     if (method === 'POST' && publishArticleMatch) {
       const viewer = await requireViewer(request)
@@ -430,6 +443,22 @@ async function handleScopedApiRequest(
 
     const admin = await requireViewer(request)
     if (!canPerformCmsAction(admin, 'cms:manage')) throw new HttpError(403, 'CMS management permission required')
+
+    if (method === 'POST' && ['/api/admin/pdf-articles/extract', '/api/admin/pdf-articles'].includes(url.pathname)) {
+      let body: unknown
+      try { body = JSON.parse(await readText(request, url.pathname.endsWith('/extract') ? Math.ceil(MAX_PDF_BYTES * 4 / 3) + 4096 : 100_000)) }
+      catch (error) { if (error instanceof HttpError) throw error; throw new HttpError(400, 'Invalid JSON') }
+      const result = url.pathname.endsWith('/extract')
+        ? await pdfArticleService.extract(body, admin)
+        : await pdfArticleService.create(body, admin)
+      sendJson(response, 200, result, context.corsOrigin)
+      return
+    }
+    const generateNarrationMatch = url.pathname.match(/^\/api\/admin\/pdf-articles\/([0-9a-f-]+)\/parts\/(\d+)$/i)
+    if (method === 'POST' && generateNarrationMatch) {
+      sendJson(response, 200, await pdfArticleService.generate(generateNarrationMatch[1], Number(generateNarrationMatch[2]), admin), context.corsOrigin)
+      return
+    }
 
     if (method === 'POST' && url.pathname === '/api/admin/batch-import-users') {
       const body = await readJson(request)
