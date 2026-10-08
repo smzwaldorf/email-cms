@@ -1,3 +1,5 @@
+import { recordCmsVisit, cmsVisitMetrics } from '#/services/cmsVisitService'
+import { copyArticle } from '#/services/articleCopyService'
 import { recordReaderEvent, getReaderReadArticles } from '#/services/readerTrackingService'
 import { analyticsAggregator } from '#/services/analyticsAggregator'
 import { handleResendWebhook } from '#/services/resendWebhookService'
@@ -333,6 +335,13 @@ async function handleScopedApiRequest(
       return
     }
 
+    const copyArticleMatch = url.pathname.match(/^\/api\/cms\/articles\/([^/]+)\/(duplicate|from-template)$/)
+    if (method === 'POST' && copyArticleMatch) {
+      const viewer = await requireViewer(request)
+      sendJson(response, 201, await copyArticle(decodeURIComponent(copyArticleMatch[1]), copyArticleMatch[2] === 'from-template', viewer), context.corsOrigin)
+      return
+    }
+
     const publishArticleMatch = url.pathname.match(/^\/api\/cms\/articles\/([^/]+)\/publish$/)
     if (method === 'POST' && publishArticleMatch) {
       const viewer = await requireViewer(request)
@@ -379,6 +388,17 @@ async function handleScopedApiRequest(
         throw new HttpError(403, 'Use an authorized CMS action for this table')
       }
       sendJson(response, 200, await runSerializedQuery(body as unknown as SerializedQuery), context.corsOrigin)
+      return
+    }
+
+    if (method === 'POST' && url.pathname === '/api/cms/visits') {
+      const viewer = await requireViewer(request)
+      await recordCmsVisit(await readJson(request), viewer)
+      sendJson(response, 200, { accepted: true }, context.corsOrigin)
+      return
+    }
+    if (method === 'GET' && url.pathname === '/api/cms/visits') {
+      sendJson(response, 200, await cmsVisitMetrics(await requireViewer(request)), context.corsOrigin)
       return
     }
 

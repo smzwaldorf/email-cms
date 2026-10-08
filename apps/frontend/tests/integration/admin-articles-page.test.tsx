@@ -872,7 +872,7 @@ describe('AdminArticlesPage', () => {
     })
   })
 
-  it('disables editing for articles that are not in any newsletter', async () => {
+  it('opens the standalone editor for articles that are not in any newsletter', async () => {
     vi.mocked(adminService.fetchArticleNewsletterMemberships).mockResolvedValueOnce({
       'article-1': [],
       'article-template-1': [{ newsletterId: 'template-newsletter-1', label: 'Template #1', isTemplate: true }],
@@ -885,8 +885,28 @@ describe('AdminArticlesPage', () => {
     )
 
     await screen.findByText('All Article')
-    expect(screen.getByRole('button', { name: '編輯文章' })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: '編輯文章' }))
+    expect(mockNavigate).toHaveBeenCalledWith('/admin/article/article-1/edit')
     expect(screen.getByText('未加入電子報')).toBeInTheDocument()
+  })
+
+  it('creates a standalone draft copy and opens its editor', async () => {
+    vi.mocked(backendRequest).mockResolvedValueOnce({ id: 'copied-article', status: 'draft' })
+    render(<MemoryRouter><AdminArticlesPage /></MemoryRouter>)
+    await screen.findByText('All Article')
+    fireEvent.click(screen.getByRole('button', { name: '複製為草稿' }))
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/admin/article/copied-article/edit'))
+    expect(backendRequest).toHaveBeenCalledWith('/api/cms/articles/article-1/duplicate', { method: 'POST' })
+  })
+
+  it('creates a standalone draft from an article in a template', async () => {
+    vi.mocked(backendRequest).mockResolvedValueOnce({ id: 'template-copy', status: 'draft' })
+    render(<MemoryRouter><AdminArticlesPage /></MemoryRouter>)
+    await screen.findByText('All Article')
+    fireEvent.click(screen.getByRole('button', { name: '模板文章列表' }))
+    fireEvent.click(await screen.findByRole('button', { name: '從範本建立草稿' }))
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/admin/article/template-copy/edit'))
+    expect(backendRequest).toHaveBeenCalledWith('/api/cms/articles/article-template-1/from-template', { method: 'POST' })
   })
 
   it('shows localized status badges instead of raw values', async () => {

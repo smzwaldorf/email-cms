@@ -1,3 +1,4 @@
+import { CmsVisitTracker } from '@/components/CmsVisitTracker'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
 import { AuthProvider } from '@/context/AuthContext'
@@ -59,7 +60,9 @@ export default function App() {
         <NavigationProvider>
           <AnalyticsProvider>
             <Router>
+              <CmsVisitTracker />
               <Routes>
+              <Route path="/admin/article/:articleId/edit" element={<ProtectedRoute requiredRole="admin"><Suspense fallback={<RouteLoader />}><LazyArticleEditorPage /></Suspense></ProtectedRoute>} />
               <Route path="/" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/logout/local" element={<LocalLogoutPage />} />

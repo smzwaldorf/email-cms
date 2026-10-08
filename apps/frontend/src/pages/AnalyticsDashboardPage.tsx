@@ -1,3 +1,4 @@
+import { backendRequest } from '@/services/backendApi'
 import { useAuth } from '@/context/AuthContext'
 import { hasRole } from '@/lib/rbac'
 import React, { useMemo, useEffect, useRef } from 'react';
@@ -20,6 +21,15 @@ export const AnalyticsDashboardPage: React.FC = () => {
     const { user } = useAuth();
     const isAdmin = hasRole(user, 'admin');
     const [tracker, setTracker] = React.useState<'resend' | 'cms'>('resend');
+
+    const [visits, setVisits] = React.useState<{ visits: number; visitors: number } | null>(null);
+    const [visitsError, setVisitsError] = React.useState(false);
+    const refreshVisits = () => {
+        if (!isAdmin) return;
+        void backendRequest<{ visits: number; visitors: number }>('/api/cms/visits')
+            .then(value => { setVisits(value); setVisitsError(false); }).catch(() => setVisitsError(true));
+    };
+    useEffect(() => { refreshVisits(); }, [isAdmin]);
 
     // Global Context State
     const {
@@ -79,6 +89,7 @@ export const AnalyticsDashboardPage: React.FC = () => {
     const isRefreshing = metricsRefreshing || articlesRefreshing || trendsRefreshing || classesRefreshing || hotnessRefreshing;
 
     const handleRefresh = () => {
+        refreshVisits();
         refetchMetrics();
         refetchArticles();
         refetchTrends();
@@ -244,6 +255,11 @@ export const AnalyticsDashboardPage: React.FC = () => {
                             : 'CMS 追蹤像素載入及電子郵件連結點擊，以已寄送收件人數為分母。包含代理伺服器與自動請求；圖片載入不代表真人閱讀。'}
                     </p>
                 </div>
+                {isAdmin && <div className="rounded-lg border p-4 mb-4" aria-label="CMS visits">
+                    <h2 className="font-semibold">CMS 網站瀏覽（最近 30 天）</h2>
+                    <p>{visitsError ? '瀏覽統計暫時無法載入' : visits ? `${visits.visits.toLocaleString()} 次瀏覽 · ${visits.visitors.toLocaleString()} 位使用者` : '載入中...'}</p>
+                    <p className="text-sm text-brand-neutral-500">首頁及管理頁面；電子報閱讀另外統計。此數據不受電子報或班級篩選影響。</p>
+                </div>}
                 {/* KPI Grid */}
                 {metrics?.emailMetricsAvailable === false && <p className="text-sm text-brand-neutral-500">電子郵件比率目前無法顯示： {tracker === 'resend' ? '沒有 Resend 送達確認資料' : '沒有成功寄送的收件人'} 此篩選條件沒有可用資料，或無法載入送達資料。</p>}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

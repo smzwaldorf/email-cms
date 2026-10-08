@@ -34,6 +34,14 @@ describe('useAnalyticsTracking', () => {
     sessionStorage.clear()
   })
 
+  it('logs one view during StrictMode effect replay before the request resolves', () => {
+    vi.mocked(trackingService.logEvent).mockImplementationOnce(() => new Promise(() => {}))
+    renderHook(() => useAnalyticsTracking({ articleId: mockArticleId, newsletterId: mockNewsletterId }), {
+      wrapper: ({ children }) => <React.StrictMode><MemoryRouter>{children}</MemoryRouter></React.StrictMode>,
+    })
+    expect(trackingService.logEvent).toHaveBeenCalledTimes(1)
+  })
+
   it('should generate and store a session ID on first use', () => {
     expect(sessionStorage.getItem(ANALYTICS_CONFIG.sessionIdStorageKey)).toBeNull()
 

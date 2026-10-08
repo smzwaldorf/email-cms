@@ -150,6 +150,20 @@ export function AdminArticlesPage() {
     }
   }
 
+  const handleCopyArticle = async (article: AdminArticle, fromTemplate: boolean) => {
+    if (isCreatingArticle) return
+    setIsCreatingArticle(true)
+    setError(null)
+    try {
+      const copy = await backendRequest<ArticleRow>(`/api/cms/articles/${encodeURIComponent(article.id)}/${fromTemplate ? 'from-template' : 'duplicate'}`, { method: 'POST' })
+      navigate(`/admin/article/${copy.id}/edit`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '複製文章失敗')
+    } finally {
+      setIsCreatingArticle(false)
+    }
+  }
+
   const handlePublishArticle = async (article: AdminArticle) => {
     if (publishingArticleId) return
     setPublishingArticleId(article.id)
@@ -1106,8 +1120,8 @@ export function AdminArticlesPage() {
                                 <div className="min-w-0">
                                   <button
                                     type="button"
-                                    onClick={() => handleEditArticle(article)}
-                                    disabled={!canEdit}
+                                    onClick={() => canEdit ? handleEditArticle(article) : navigate(`/admin/article/${article.id}/edit`)}
+                                    disabled={isBusy}
                                     className="text-left font-medium text-waldorf-clay-800 hover:text-waldorf-peach-700 disabled:cursor-default disabled:hover:text-waldorf-clay-800"
                                   >
                                     {article.title}
@@ -1190,6 +1204,12 @@ export function AdminArticlesPage() {
                             </td>
                             <td className="px-6 py-4 text-right text-sm">
                               <div className="flex flex-wrap justify-end gap-x-3 gap-y-1.5">
+                                <button type="button" disabled={isBusy || isCreatingArticle}
+                                  onClick={() => void handleCopyArticle(article, false)} className={rowActionClass}>複製為草稿</button>
+                                {(membershipsByArticleId[article.id] ?? []).some(m => m.isTemplate) && (
+                                  <button type="button" disabled={isBusy || isCreatingArticle}
+                                    onClick={() => void handleCopyArticle(article, true)} className={rowActionClass}>從範本建立草稿</button>
+                                )}
                                 {article.status === 'draft' && !showTemplateOnly && (
                                   <button type="button" onClick={() => void handlePublishArticle(article)}
                                     disabled={isBusy || publishingArticleId !== null}
@@ -1199,9 +1219,8 @@ export function AdminArticlesPage() {
                                 )}
                                 <button
                                   type="button"
-                                  onClick={() => handleEditArticle(article)}
-                                  disabled={!canEdit || isBusy}
-                                  title={canEdit ? undefined : '文章尚未加入任何電子報，無法編輯'}
+                                  onClick={() => canEdit ? handleEditArticle(article) : navigate(`/admin/article/${article.id}/edit`)}
+                                  disabled={isBusy}
                                   className={`${rowActionClass} text-waldorf-peach-600 hover:text-waldorf-peach-700`}
                                 >
                                   編輯文章
