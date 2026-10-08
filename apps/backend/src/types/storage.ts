@@ -8,6 +8,7 @@
  * Storage provider type
  */
 export enum StorageProviderType {
+  R2 = 'r2',
   SUPABASE = 'supabase',
   S3 = 's3',
   MOCK = 'mock',

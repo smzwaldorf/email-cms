@@ -39,3 +39,16 @@ test('production delivery needs no demo recipient configuration',()=>{
  assert.equal(config.vars.NEWSLETTER_DEMO_MODE,'false')
  assert.equal(Object.hasOwn(config.vars,'NEWSLETTER_TEST_RECIPIENTS'),false)
 })
+
+test('R2 buckets are isolated by environment and staging cannot enable scheduled delivery', () => {
+ const prod = configuration(environment)
+ const stage = configuration({...environment, CMS_DEPLOY_ENVIRONMENT: 'staging'})
+ assert.deepEqual(prod.r2_buckets, [{binding:'MEDIA_BUCKET',bucket_name:'smz-cms-media-production'}])
+ assert.deepEqual(stage.r2_buckets, [{binding:'MEDIA_BUCKET',bucket_name:'smz-cms-media-dev-staging'}])
+ assert.equal(prod.vars.MEDIA_STORAGE_ENVIRONMENT, 'production')
+ assert.equal(stage.vars.MEDIA_STORAGE_ENVIRONMENT, 'staging')
+ assert.equal(stage.vars.DELIVERY_ENABLED, 'false')
+ assert.deepEqual(stage.triggers.crons, [])
+ assert.equal(stage.name, 'smz-cms-api-staging')
+ assert.throws(() => configuration({...environment, CMS_DEPLOY_ENVIRONMENT:'development'}), /Invalid CMS_DEPLOY_ENVIRONMENT/)
+})

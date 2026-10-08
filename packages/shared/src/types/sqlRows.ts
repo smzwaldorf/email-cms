@@ -296,6 +296,12 @@ export interface SqlTables {
     mime_type: string
     file_size: number | string
     storage_path: string
+    storage_bucket: string | null
+    storage_environment: string | null
+    content_hash: string | null
+    email_serving_enabled: boolean
+    email_approved_by: string | null
+    email_approved_at: string | null
     storage_provider: "supabase" | "s3"
     public_url: string
     width: number | null

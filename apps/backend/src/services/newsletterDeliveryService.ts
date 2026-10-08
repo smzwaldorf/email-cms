@@ -16,7 +16,7 @@ import { backendEmailPlatformService } from '#/services/emailPlatform/backendEma
 import { coerceEmailTemplateBlocks } from '#/services/emailTemplateBlocks'
 import { resolveAuthPreviewFamily } from '#/services/authDirectoryPreview'
 import { composePersonalizedEmails } from '#/services/personalizedEmailComposer'
-import { EMAIL_HTML_STORAGE_SIGN_TTL_SECONDS, replaceStorageTokens } from '#/utils/contentParser'
+import { replaceEmailStorageTokens } from '#/utils/contentParser'
 import type {
   DeliveryAudienceRecipient,
   DeliveryAudienceSelection,
@@ -633,9 +633,7 @@ class NewsletterDeliveryService {
     }
     const payload = composition.payloads[0]
     let renderedBody = payload?.renderedBody ?? ''
-    if (renderedBody.includes('storage://')) {
-      renderedBody = await replaceStorageTokens(renderedBody, EMAIL_HTML_STORAGE_SIGN_TTL_SECONDS)
-    }
+    renderedBody = await replaceEmailStorageTokens(renderedBody)
     return {
       renderedSubject: payload?.renderedSubject ?? '',
       renderedBody,

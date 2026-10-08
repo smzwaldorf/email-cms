@@ -85,6 +85,7 @@ export interface MediaFile {
   height?: number; // 圖片高度（像素）
   // 音訊專用欄位
   duration?: number; // 音訊時長（秒）Duration in seconds
+  emailServingEnabled?: boolean;
   usageCount?: number; // 啟用中的引用數 Active references
   variants?: MediaVariant[]; // 已知衍生版本 Known generated variants
 }

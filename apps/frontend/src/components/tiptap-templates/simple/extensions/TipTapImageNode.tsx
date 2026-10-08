@@ -5,72 +5,7 @@ import Image from '@tiptap/extension-image'
 import type { Editor } from '@tiptap/core'
 import { NodeSelection } from '@tiptap/pm/state'
 import { useEffect, useState, useRef } from 'react'
-import { getSupabaseClient } from '@/lib/supabase'
-import { articleMediaManager } from '@/services/articleMediaManager'
-
-async function resolveImageMediaId(attrs: { mediaId?: string; src?: string }): Promise<string | null> {
-  if (attrs.mediaId) {
-    return attrs.mediaId
-  }
-
-  const src = attrs.src
-  if (!src) {
-    return null
-  }
-
-  const supabase = getSupabaseClient()
-
-  if (src.startsWith('storage://')) {
-    const pathWithoutProtocol = src.replace('storage://', '')
-    const [bucket, ...pathParts] = pathWithoutProtocol.split('/')
-    const storagePath = pathParts.join('/')
-
-    if (bucket === 'media' && storagePath) {
-      const { data, error } = await supabase
-        .from('media_files')
-        .select('id')
-        .eq('storage_path', storagePath)
-        .maybeSingle()
-
-      if (error) {
-        throw error
-      }
-
-      return data?.id ?? null
-    }
-  }
-
-  const { data, error } = await supabase
-    .from('media_files')
-    .select('id')
-    .eq('public_url', src)
-    .maybeSingle()
-
-  if (error) {
-    throw error
-  }
-
-  return data?.id ?? null
-}
-
-async function cleanupImageReference(
-  articleId: string | undefined,
-  attrs: { mediaId?: string; src?: string }
-): Promise<void> {
-  if (!articleId) {
-    return
-  }
-
-  const mediaId = await resolveImageMediaId(attrs)
-  if (!mediaId) {
-    return
-  }
-
-  const result = await articleMediaManager.removeMediaFromArticle(articleId, mediaId)
-  if (!result.success) {
-    throw new Error(result.error || 'Failed to remove image media reference')
-  }
-}
+import { storageService } from '@/services/storageService'
 
 function SecureImageComponent({
   node,
@@ -78,7 +13,6 @@ function SecureImageComponent({
   selected,
   deleteNode,
   editor,
-  extension,
 }: ReactNodeViewProps) {
   // Initialize with src only if it's NOT a storage URL
   const [src, setSrc] = useState(
@@ -93,7 +27,6 @@ function SecureImageComponent({
   const [retryCount, setRetryCount] = useState(0)
   const [hasError, setHasError] = useState(false)
   const isEditable = editor?.isEditable !== false
-  const articleId = extension?.options?.articleId as string | undefined
 
   // Sync caption when node.attrs.caption changes
   useEffect(() => {
@@ -124,16 +57,12 @@ function SecureImageComponent({
         const path = pathParts.join('/')
 
         if (bucket && path) {
-          const supabase = getSupabaseClient()
-          const { data, error } = await supabase.storage
-            .from(bucket)
-            .createSignedUrl(path, 300)
+          const signedUrl = await storageService.getSignedUrl(bucket, path, 300)
 
           if (isMounted) {
-            if (data?.signedUrl) {
-              setSrc(data.signedUrl)
+            if (signedUrl) {
+              setSrc(signedUrl)
             } else {
-              console.error('Failed to sign URL:', error)
               setHasError(true)
             }
           }
@@ -163,18 +92,7 @@ function SecureImageComponent({
     }
   }
 
-  const handleDelete = () => {
-    void cleanupImageReference(articleId, {
-      mediaId: node.attrs.mediaId,
-      src: node.attrs.src,
-    })
-      .catch((error) => {
-        console.error('Failed to clean up image reference:', error)
-      })
-      .finally(() => {
-        deleteNode()
-      })
-  }
+  const handleDelete = () => { deleteNode() }
 
   const handleCaptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newCaption = e.target.value
@@ -362,13 +280,6 @@ export const TipTapImageNode = Image.extend({
           return false
         }
 
-        void cleanupImageReference(this.options.articleId, {
-          mediaId: selectedNode.attrs.mediaId,
-          src: selectedNode.attrs.src,
-        }).catch((error) => {
-          console.error('Failed to clean up image reference:', error)
-        })
-
         return editor.commands.deleteSelection()
       },
       Delete: ({ editor }: { editor: Editor }) => {
@@ -379,13 +290,6 @@ export const TipTapImageNode = Image.extend({
         if (selectedNode?.type.name !== this.name) {
           return false
         }
-
-        void cleanupImageReference(this.options.articleId, {
-          mediaId: selectedNode.attrs.mediaId,
-          src: selectedNode.attrs.src,
-        }).catch((error) => {
-          console.error('Failed to clean up image reference:', error)
-        })
 
         return editor.commands.deleteSelection()
       },

@@ -25,7 +25,10 @@
     "SMZ_AUTH_ISSUER": "https://smz-auth.black-tree-204e.workers.dev/api/auth",
     "APP_URL": "https://smz-cms.pages.dev",
     "BACKEND_CORS_ORIGIN": "https://smz-cms.pages.dev",
-    "DELIVERY_ENABLED": "true"
+    "DELIVERY_ENABLED": "true",
+    "MEDIA_STORAGE_ENVIRONMENT": "production",
+    "MEDIA_R2_BUCKET": "smz-cms-media-production",
+    "MEDIA_API_ORIGIN": "https://smz-cms.pages.dev"
   },
   "triggers": {
     "crons": [
@@ -37,6 +40,13 @@
     {
       "binding": "SMZ_AUTH",
       "service": "smz-auth"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA_BUCKET",
+      "bucket_name": "smz-cms-media-production",
+      "preview_bucket_name": "smz-cms-media-dev-staging"
     }
   ]
 }

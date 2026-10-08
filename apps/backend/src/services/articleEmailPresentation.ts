@@ -11,7 +11,7 @@ const MARKDOWN_IMAGE_PATTERN = /!\[[^\]]*\]\(([^()\s]+)(?:\s+"[^"]*")?\)/
 /**
  * Extract the first inline image URL from article content (TipTap HTML or
  * legacy markdown). Returns `null` when the article has no usable image.
- * `storage://` URLs are kept as-is; the preparation step signs them later.
+ * `storage://` URLs are kept as-is; email preparation resolves explicitly approved permanent URLs later.
  */
 export function extractFirstArticleImageUrl(content: string | null | undefined): string | null {
   if (!content) {

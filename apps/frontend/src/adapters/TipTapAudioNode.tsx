@@ -12,38 +12,18 @@ import type { ReactNodeViewProps } from '@tiptap/react'
 import AudioPlayer from '@/components/AudioPlayer'
 import { useState, useEffect, useRef } from 'react'
 import { storageService } from '@/services/storageService'
-import { articleMediaManager } from '@/services/articleMediaManager'
 
-async function cleanupAudioReference(
-  articleId: string | undefined,
-  mediaId?: string | null
-): Promise<void> {
-  if (!articleId || !mediaId) {
-    return
-  }
 
-  const result = await articleMediaManager.removeMediaFromArticle(articleId, mediaId)
-  if (!result.success) {
-    throw new Error(result.error || 'Failed to remove audio media reference')
-  }
-}
-
-/**
- * 音訊節點視圖組件
- * Audio node view component for rendering audio player
- */
 function AudioView({
   node,
   selected,
   editor,
   deleteNode,
   updateAttributes,
-  extension,
 }: ReactNodeViewProps) {
   const { src, title, mediaId, duration, caption } = node.attrs
   const isReadOnly = editor?.isEditable === false
   const isEditable = editor?.isEditable !== false
-  const articleId = extension?.options?.articleId as string | undefined
   const [isEditingCaption, setIsEditingCaption] = useState(false)
   const [captionText, setCaptionText] = useState(caption || '')
   const [isCaptionFocused, setIsCaptionFocused] = useState(false)
@@ -126,15 +106,7 @@ function AudioView({
     }
   }
 
-  const handleDelete = () => {
-    void cleanupAudioReference(articleId, mediaId)
-      .catch((error) => {
-        console.error('Failed to clean up audio reference:', error)
-      })
-      .finally(() => {
-        deleteNode()
-      })
-  }
+  const handleDelete = () => { deleteNode() }
 
   const handleCaptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newCaption = e.target.value
@@ -413,9 +385,6 @@ export const TipTapAudioNode = Node.create({
               : null
 
         if (targetAttrs) {
-          void cleanupAudioReference(this.options.articleId, targetAttrs.mediaId).catch((error) => {
-            console.error('Failed to clean up audio reference:', error)
-          })
           return editor.commands.deleteNode(this.name)
         }
 
@@ -433,9 +402,6 @@ export const TipTapAudioNode = Node.create({
               : null
 
         if (targetAttrs) {
-          void cleanupAudioReference(this.options.articleId, targetAttrs.mediaId).catch((error) => {
-            console.error('Failed to clean up audio reference:', error)
-          })
           return editor.commands.deleteNode(this.name)
         }
 

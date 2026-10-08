@@ -4,7 +4,7 @@ import {
   composePersonalizedEmails,
   computeRenderedHtmlFingerprint,
 } from '#/services/personalizedEmailComposer'
-import { EMAIL_HTML_STORAGE_SIGN_TTL_SECONDS, replaceStorageTokens } from '#/utils/contentParser'
+import { replaceEmailStorageTokens } from '#/utils/contentParser'
 import type {
   DeliveryHandoffContract,
   EmailContentPreparationJob,
@@ -248,10 +248,7 @@ class EmailContentPreparationService {
     const payloadsWithResolvedStorage = await Promise.all(
       composition.payloads.map(async (payload) => {
         const raw = payload.renderedBody ?? ''
-        if (!raw.includes('storage://')) {
-          return payload
-        }
-        const resolved = await replaceStorageTokens(raw, EMAIL_HTML_STORAGE_SIGN_TTL_SECONDS)
+        const resolved = await replaceEmailStorageTokens(raw)
         return {
           ...payload,
           renderedBody: resolved,

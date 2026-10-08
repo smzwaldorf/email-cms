@@ -1,3 +1,5 @@
+import { MediaLibrary } from '@/components/MediaLibrary'
+import { backendRequest } from '@/services/backendApi'
 import { useAuth } from '@/context/AuthContext'
 import { hasRole } from '@/lib/rbac'
 import { useEffect, useMemo, useState } from 'react'
@@ -141,6 +143,10 @@ export function MediaDashboard() {
 
       <div className="border rounded-lg p-4 bg-white">
         <h3 className="text-sm font-semibold mb-2">所有媒體檔案</h3>
+        <MediaLibrary mediaFiles={libraryMedia} onEmailAccessChanged={isAdmin ? async (file, enabled) => {
+          await backendRequest(`/api/media/${file.id}/email-access`, { method: 'PATCH', body: JSON.stringify({ enabled, acknowledgePublicAccess: enabled }) })
+          setLibraryMedia(current => current.map(item => item.id === file.id ? { ...item, emailServingEnabled: enabled } : item))
+        } : undefined} />
         <ul className="space-y-3">
           {libraryMedia.map((item) => (
             <li key={item.id} className="border rounded-md p-3">

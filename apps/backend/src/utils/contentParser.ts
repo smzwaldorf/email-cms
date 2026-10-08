@@ -1,15 +1,14 @@
+import { emailMediaUrl } from '#/services/r2MediaService'
 import { storageService } from '#/services/storageService'
 
 /** Default signed URL TTL for inline previews (short). */
 const DEFAULT_STORAGE_SIGN_TTL_SECONDS = 300
 
-/** Signed URL TTL for email HTML (images must load when the message is opened weeks later). */
-export const EMAIL_HTML_STORAGE_SIGN_TTL_SECONDS = 60 * 60 * 24 * 30 // 30 days
 
 /**
  * Replace storage:// tokens in HTML with signed URLs
  * @param html HTML content containing storage:// tokens
- * @param expiresInSeconds Supabase signed URL lifetime (default short TTL for page previews)
+ * @param expiresInSeconds Restricted preview signed URL lifetime (default short TTL for page previews)
  * @returns HTML with signed URLs
  */
 export async function replaceStorageTokens(
@@ -61,4 +60,17 @@ export async function replaceStorageTokens(
   }
 
   return newHtml
+}
+
+
+/** Fail closed: outbound mail never contains expiring editor URLs or unapproved R2 assets. */
+export async function replaceEmailStorageTokens(html: string): Promise<string> {
+  const tokens = [...new Set(html.match(/storage:\/\/[^"'\s<>]+/g) ?? [])]
+  for (const token of tokens) {
+    if (!token.startsWith('storage://media/')) throw new Error('Unsupported email media storage')
+    html = html.split(token).join(await emailMediaUrl(token.slice('storage://media/'.length)))
+  }
+  // Editor preview URLs sometimes survive HTML serialization. Those must not be mailed.
+  if (/\/api\/media\/[^"'\s<>]+\/content\?[^"'\s<>]*token=/.test(html)) throw new Error('Outbound email contains an expiring media preview URL')
+  return html
 }
