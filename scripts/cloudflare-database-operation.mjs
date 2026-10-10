@@ -20,3 +20,21 @@ export async function verifyDatabase(client, { initialize = false, schema = '', 
   await client.query('SELECT id FROM public.newsletter_delivery_jobs LIMIT 0')
   return { database: expectedDatabase, schema: 'verified', initialized: initialize }
 }
+
+// This is intentionally only called by the separately guarded production-reset
+// script. Keeping the database identity check beside the destructive query makes
+// it impossible for a caller to drop a schema on an arbitrary Hyperdrive target.
+export async function resetDatabase(client, { expectedDatabase } = {}) {
+  const identity = await client.query('SELECT current_database() AS name')
+  if (identity.rows[0]?.name !== expectedDatabase) throw new Error('Wrong logical database')
+  try {
+    await client.query('BEGIN')
+    await client.query("SELECT pg_advisory_xact_lock(hashtext('cms-production-reset'))")
+    await client.query('DROP SCHEMA IF EXISTS public CASCADE')
+    await client.query('CREATE SCHEMA public')
+    await client.query('COMMIT')
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {})
+    throw error
+  }
+}

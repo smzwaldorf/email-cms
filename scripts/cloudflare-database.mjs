@@ -22,9 +22,12 @@ export function migrationFilesFor(env) {
 }
 
 // Use production's Hyperdrive credential without a permanent admin endpoint.
-export async function checkHyperdriveDatabase({ initialize = false, migrateSessions = false, migrateAll = false } = {}) {
+export async function checkHyperdriveDatabase({ initialize = false, migrateSessions = false, migrateAll = false, reset = false } = {}) {
   const config = configuration(process.env)
   const expectedDatabase = databaseName(process.env)
+  if (reset && (process.env.DEPLOYMENT_ENVIRONMENT !== 'production' || process.env.PRODUCTION_DATABASE_RESET_APPROVED !== 'true' || expectedDatabase !== 'production-news')) {
+    throw new Error('Production News reset is not approved for this target')
+  }
   const root = fileURLToPath(new URL('../', import.meta.url))
   await mkdir(`${root}.wrangler/`, { recursive: true })
   const directory = await mkdtemp(`${root}.wrangler/database-check-`)
@@ -40,7 +43,7 @@ export async function checkHyperdriveDatabase({ initialize = false, migrateSessi
   const migrationOptions = {retirementApproved:process.env.CMS_IDENTITY_RETIREMENT_APPROVED === 'true',backupReference:process.env.CMS_IDENTITY_BACKUP_REFERENCE ?? '',dryRun:process.env.CMS_MIGRATION_DRY_RUN === 'true'}
   await writeFile(`${directory}/worker.mjs`, `
 import pg from 'pg';
-import { verifyDatabase } from '../../scripts/cloudflare-database-operation.mjs';
+import { resetDatabase, verifyDatabase } from '../../scripts/cloudflare-database-operation.mjs';
 import { applyMigrations } from '../../scripts/cloudflare-migrations.mjs';
 const schema = ${JSON.stringify(schema)};
 const sessionSchema = ${JSON.stringify(sessionSchema)};
@@ -51,6 +54,7 @@ export default { async fetch(request, env) {
   const client = new pg.Client({connectionString:env.HYPERDRIVE.connectionString, connectionTimeoutMillis:15000});
   try {
     await client.connect();
+    if (${reset}) await resetDatabase(client, {expectedDatabase:${JSON.stringify(expectedDatabase)}});
     const verified = await verifyDatabase(client, {initialize:${initialize}, schema, expectedDatabase:${JSON.stringify(expectedDatabase)}});
     const migration = ${migrateAll} ? await applyMigrations(client, ${JSON.stringify(migrations)}, ${JSON.stringify(migrationOptions)}) : undefined;
     if (sessionSchema) {
@@ -63,7 +67,7 @@ export default { async fetch(request, env) {
       await client.query('SELECT state_hash FROM cms_login_flows LIMIT 0');
       await client.query('COMMIT');
     }
-    return Response.json({...verified, migration});
+    return Response.json({...verified, migration, reset:${reset}});
   } catch (error) {
     return Response.json({error:'CMS database check failed',code:error.code ?? null}, {status:503});
   } finally { await client.end().catch(() => {}); }
