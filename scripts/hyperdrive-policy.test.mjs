@@ -3,11 +3,19 @@ import assert from 'node:assert/strict'
 import { verifyHyperdrivePolicy } from './hyperdrive-policy.mjs'
 
 test('staging deployment rejects an oversized or unspecified origin pool', () => {
-  const config = { origin: { database: 'smz-cms' }, caching: { disabled: true } }
+  const config = { origin: { database: 'smz-cms', port: 6432 }, caching: { disabled: true } }
   for (const origin_connection_limit of [undefined, 10, 20, 100]) {
     assert.throws(() => verifyHyperdrivePolicy({ ...config, origin_connection_limit }, 'smz-cms'), /connection limit/)
   }
   assert.doesNotThrow(() => verifyHyperdrivePolicy({ ...config, origin_connection_limit: 5 }, 'smz-cms'))
   assert.throws(() => verifyHyperdrivePolicy({ ...config, origin_connection_limit: 5 }, 'production-news'), /target/)
   assert.throws(() => verifyHyperdrivePolicy({ ...config, origin_connection_limit: 5, caching: { disabled: false } }, 'smz-cms'), /caching/)
+})
+
+test('staging must use PgBouncer while production retains its existing connection route', () => {
+  const config = { origin: { database: 'smz-cms', port: 6432 }, caching: { disabled: true }, origin_connection_limit: 5 }
+  for (const port of [undefined, 5432]) {
+    assert.throws(() => verifyHyperdrivePolicy({ ...config, origin: { ...config.origin, port } }, 'smz-cms'), /PgBouncer/)
+  }
+  assert.doesNotThrow(() => verifyHyperdrivePolicy({ ...config, origin: { database: 'production-news', port: 5432 } }, 'production-news'))
 })

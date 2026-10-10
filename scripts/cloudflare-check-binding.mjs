@@ -8,4 +8,4 @@ if (!response.ok) throw new Error(`Hyperdrive verification failed (HTTP ${respon
 const body = await response.json()
 if (!body.success) throw new Error('Hyperdrive verification failed')
 verifyHyperdrivePolicy(body.result, expectedDatabase)
-console.info(`Verified uncached Hyperdrive targeting ${expectedDatabase}, origin connection limit 5`)
+console.info(`Verified uncached Hyperdrive targeting ${expectedDatabase}:${body.result.origin.port}, origin connection limit 5`)

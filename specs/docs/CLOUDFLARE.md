@@ -6,6 +6,14 @@
 >
 > `STAGING_RESOURCE_MIGRATION=true` enables the guarded, resumable in-place rename step. Disable it after the first successful deployment. No resource is copied or deleted by that step. Prior URLs and names elsewhere in this document are historical.
 
+## Staging connection pooling — October 10, 2026
+
+Staging Auth (`smz-auth`) and CMS (`smz-cms`) retain their existing uncached Hyperdrive bindings and credentials, with the origin port set to `6432` for PlanetScale's local PgBouncer. Production connectors retain their existing routes.
+
+The shared cluster's local PgBouncer runs one process with `default_pool_size=2`, `max_db_connections=2`, `max_client_conn=400`, and `server_idle_timeout=60` seconds. This caps staging's pooled PostgreSQL sessions at two per database, including connections from additional roles, and closes idle server sessions while preserving reusable client connections. The CMS deployment binding check rejects staging connectors on direct port `5432`.
+
+Keep transactions bounded and release clients after use. Long-running schema maintenance and backups should use a separately authorized direct connection; the normal staging deployment must still pass its migration, preflight, health, and authenticated browser checks through the configured route.
+
 
 ## Current configuration — September 14, 2026
 
