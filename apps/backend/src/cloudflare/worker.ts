@@ -1,7 +1,6 @@
 import type { ExecutionContext, ScheduledController } from '@cloudflare/workers-types'
 import { createServer } from 'node:http'
 import { httpServerHandler } from 'cloudflare:node'
-import { Pool } from 'pg'
 import { createCmsApplication } from '#/application'
 import { query, withDatabasePool } from '#/lib/db'
 import { getSupabaseClient } from '#/lib/supabase'
@@ -11,10 +10,7 @@ import { serveEmailMedia, withMediaBucket } from '#/services/r2MediaService'
 import { NewsletterDeliveryWorker } from '#/worker/deliveryWorker'
 
 import { validateEnvironment, type Env } from './config'
-
-function poolFor(env: Env) {
-  return new Pool({ connectionString: env.HYPERDRIVE.connectionString, max: 3, connectionTimeoutMillis: 10_000 })
-}
+import { poolFor } from './databasePool'
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {

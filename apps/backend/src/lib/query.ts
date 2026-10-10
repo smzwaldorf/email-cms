@@ -1,4 +1,5 @@
 import { query } from '#/lib/db'
+import { isDatabaseBusy } from '#/lib/databaseAvailability'
 import { RELATIONS, type RelationSpec } from '#/lib/relations'
 
 export interface QueryError {
@@ -418,6 +419,9 @@ export class QueryBuilder<T = unknown> {
       }
       return await this.executeSelect()
     } catch (error) {
+      // Let the HTTP boundary return 503 rather than a successful response
+      // containing a raw database connection error.
+      if (isDatabaseBusy(error)) throw error
       return {
         data: this.wantsSingle ? null : [],
         error: { message: error instanceof Error ? error.message : String(error) },

@@ -21,14 +21,24 @@ async function call(path: string, body: unknown = {}, method = 'POST') {
   const req = Readable.from([JSON.stringify(body)]) as IncomingMessage
   req.url = path; req.method = method; req.headers = { authorization: 'Bearer fixture' }
   let status = 0; let result = ''
-  const res = { writeHead: (code: number) => { status = code }, end: (data: string) => { result = data } } as unknown as ServerResponse
+  const headers: Record<string, string> = {}
+  const res = { setHeader: (name: string, value: string) => { headers[name] = value }, writeHead: (code: number) => { status = code }, end: (data: string) => { result = data } } as unknown as ServerResponse
   await handleApiRequest(req, res, { supabase: getSupabaseClient(), corsOrigin: 'http://localhost:5174' })
-  return { status, body: result ? JSON.parse(result) : null }
+  return { status, body: result ? JSON.parse(result) : null, headers }
 }
 beforeEach(() => {
   vi.clearAllMocks(); m.viewer.mockResolvedValue(actor); m.admin.mockResolvedValue(actor); m.directory.mockResolvedValue({ people: [], families: [{ id: 'auth-family', code: 'F1', displayName: 'Auth family' }], classes: [], familyMemberships: [], classMemberships: [] }); m.lock.mockResolvedValue({ rows: [{ status: 'draft', is_template: false }] }); m.readiness.mockResolvedValue({ canPublish: true, audienceSummary: {} })
 })
 describe('CMS HTTP boundary and publish handoff', () => {
+  it('returns a temporary-unavailable response without exposing PostgreSQL connection details', async () => {
+    m.viewer.mockRejectedValue(Object.assign(new Error('remaining connection slots are reserved for roles with the SUPERUSER attribute'), { code: '53300' }))
+    const result = await call('/api/data/query', { table: 'articles' })
+    expect(result.status).toBe(503)
+    expect(result.headers['Retry-After']).toBe('2')
+    expect(result.body.code).toBe('database_busy')
+    expect(result.body.error).not.toMatch(/SUPERUSER|connection slots/)
+    expect(m.runQuery).not.toHaveBeenCalled()
+  })
  it('returns verified graph to admin without touching legacy queries',async()=>{ const r=await call('/api/admin/directory/families',undefined,'GET');expect(r.status).toBe(200);expect(r.body.families[0].id).toBe('auth-family');expect(m.runQuery).not.toHaveBeenCalled() })
   it('stops unauthenticated data access before query execution', async () => {
     m.viewer.mockRejectedValue(new HttpError(401, 'Missing bearer token'))

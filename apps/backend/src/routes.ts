@@ -7,6 +7,7 @@ import { withIdentityDirectory } from '#/services/identityDirectory'
 import { hashSessionId } from '#/session/crypto'
 import { checkSessionCsrf, deliveryIdentityForSessionHash, directoryForCookie, handleSessionRequest, serverSessionsEnabled, sessionId } from '#/session/http'
 import { withTransaction } from '#/lib/db'
+import { DATABASE_BUSY_MESSAGE, isDatabaseBusy } from '#/lib/databaseAvailability'
 import { canAccessCmsPanel, canPerformCmsAction } from '@email-cms/shared'
 import { isAllowedRpc, isTeacherRpc } from '#/services/rpcPolicy'
 import { withTeacherAnalytics } from '#/services/teacherAnalyticsScope'
@@ -714,7 +715,8 @@ async function handleScopedApiRequest(
 
     throw new HttpError(404, 'Route not found')
   } catch (error) {
-    const status = error instanceof HttpError ? error.status : 500
+    const busy = isDatabaseBusy(error)
+    const status = busy ? 503 : error instanceof HttpError ? error.status : 500
     const message = error instanceof Error ? error.message : String(error)
     if (status >= 500) {
       const cause = error instanceof Error ? error.cause : undefined
@@ -728,6 +730,7 @@ async function handleScopedApiRequest(
         causeMessage: cause instanceof Error ? cause.message : undefined,
       })
     }
-    sendJson(response, status, { error: message, code: error instanceof HttpError ? error.code : undefined }, context.corsOrigin)
+    if (busy) response.setHeader('Retry-After', '2')
+    sendJson(response, status, { error: busy ? DATABASE_BUSY_MESSAGE : message, code: busy ? 'database_busy' : error instanceof HttpError ? error.code : undefined }, context.corsOrigin)
   }
 }
