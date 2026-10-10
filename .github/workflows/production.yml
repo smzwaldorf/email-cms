@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DEPLOYMENT_ENVIRONMENT: production
-      DELIVERY_ENABLED: 'false'
+      DELIVERY_ENABLED: 'true'
       DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
       CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_HYPERDRIVE_ID: ${{ vars.PRODUCTION_NEWS_HYPERDRIVE_ID }}
