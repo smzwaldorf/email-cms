@@ -55,7 +55,7 @@ export default { async fetch(request, env) {
   try {
     await client.connect();
     if (${reset}) await resetDatabase(client, {expectedDatabase:${JSON.stringify(expectedDatabase)}});
-    const verified = await verifyDatabase(client, {initialize:${initialize}, schema, expectedDatabase:${JSON.stringify(expectedDatabase)}});
+    const verified = await verifyDatabase(client, {initialize:${initialize && !reset}, schema, expectedDatabase:${JSON.stringify(expectedDatabase)}});
     const migration = ${migrateAll} ? await applyMigrations(client, ${JSON.stringify(migrations)}, ${JSON.stringify(migrationOptions)}) : undefined;
     if (sessionSchema) {
       await client.query('BEGIN');
