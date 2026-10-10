@@ -42,6 +42,10 @@ jobs:
           import pg from 'pg';
           const url = new URL(process.env.DATABASE_URL);
           if (url.protocol !== 'postgresql:' || url.pathname !== '/production-news' || url.hostname !== 'aws-ap-northeast-1-2.pg.psdb.cloud') throw new Error('Unexpected production News target');
+          if (url.searchParams.get('sslrootcert') === 'system') {
+            url.searchParams.delete('sslrootcert');
+            url.searchParams.set('sslmode', 'verify-full');
+          }
           const client = new pg.Client({ connectionString: url.toString(), connectionTimeoutMillis: 15000 });
           await client.connect();
           try {
