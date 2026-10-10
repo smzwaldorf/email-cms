@@ -6,13 +6,15 @@
 >
 > `STAGING_RESOURCE_MIGRATION=true` enables the guarded, resumable in-place rename step. Disable it after the first successful deployment. No resource is copied or deleted by that step. Prior URLs and names elsewhere in this document are historical.
 
-## Staging connection pooling — October 10, 2026
+## Staging and production connection pooling — October 10, 2026
 
-Staging Auth (`smz-auth`) and CMS (`smz-cms`) retain their existing uncached Hyperdrive bindings and credentials, with the origin port set to `6432` for PlanetScale's local PgBouncer. Production connectors retain their existing routes.
+Staging Auth (`smz-auth`) and CMS (`smz-cms`), and production Auth (`production-auth`) and News (`production-news`), retain their existing uncached Hyperdrive bindings and credentials, with the origin port set to `6432` for PlanetScale's local PgBouncer. Each Hyperdrive origin connection limit remains `5`. After changing an origin port, explicitly restart that Hyperdrive pool to drain connections still using the old route; editing the origin alone does not tear down the existing pool.
 
-The shared cluster's local PgBouncer runs one process with `default_pool_size=2`, `max_db_connections=2`, `max_client_conn=400`, and `server_idle_timeout=60` seconds. This caps staging's pooled PostgreSQL sessions at two per database, including connections from additional roles, and closes idle server sessions while preserving reusable client connections. The CMS deployment binding check rejects staging connectors on direct port `5432`.
+The shared cluster's local PgBouncer runs one process with `default_pool_size=20`, `max_db_connections=2`, `max_client_conn=400`, `server_lifetime=3600`, `max_prepared_statements=200`, and `server_idle_timeout=60` seconds. The per-database cap takes precedence over the per-user/database pool size: each application database can use at most two pooled PostgreSQL sessions, including connections from additional roles. With four application databases this allows at most eight pooled sessions, leaving headroom for administration on the 25-connection cluster. Idle server sessions close after 60 seconds while client connections remain reusable. CMS deployment binding checks and the production connector verifier reject direct port `5432`.
 
-Keep transactions bounded and release clients after use. Long-running schema maintenance and backups should use a separately authorized direct connection; the normal staging deployment must still pass its migration, preflight, health, and authenticated browser checks through the configured route.
+CMS Worker invocations use one checked-out client at a time in both environments. Nested database helpers reuse that client, while Hyperdrive and PgBouncer share origin and server connections across invocations.
+
+Keep transactions bounded and release clients after use. Long-running schema maintenance and backups should use a separately authorized direct connection; normal deployments must still pass their migration, preflight, health, and authenticated browser checks through the configured route.
 
 
 ## Current configuration — September 14, 2026

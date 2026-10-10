@@ -1,4 +1,5 @@
 import { appendFileSync } from 'node:fs';
+import { verifyHyperdrivePolicy } from './hyperdrive-policy.mjs';
 const service = process.argv[2];
 if (!['auth', 'news'].includes(service) || process.env.DEPLOYMENT_ENVIRONMENT !== 'production') throw new Error('Production service required');
 const database = `production-${service}`;
@@ -22,6 +23,7 @@ let config = matches[0];
 if (config) config = await request(`/${config.id}`);
 else throw new Error('Create the dedicated production connector in the Cloudflare dashboard first');
 if (config.origin?.database !== database || config.origin?.host !== url.hostname || config.origin?.user !== decodeURIComponent(url.username) || config.caching?.disabled !== true || config.origin_connection_limit !== 5) throw new Error('Existing production connector does not match expected isolated configuration');
+verifyHyperdrivePolicy(config, database);
 if (!/^[a-f0-9]{32}$/.test(config.id)) throw new Error('Invalid Hyperdrive ID');
 appendFileSync(envFile, `CLOUDFLARE_HYPERDRIVE_ID=${config.id}\n`);
-console.log(`Verified ${name} connector ${config.id}, database ${database}, caching disabled, connection limit 5`);
+console.log(`Verified ${name} connector ${config.id}, database ${database}:6432, caching disabled, connection limit 5`);

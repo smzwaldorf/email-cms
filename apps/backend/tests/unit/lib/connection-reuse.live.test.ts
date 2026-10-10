@@ -6,9 +6,9 @@ import { query, withClient, withDatabasePool, withTransaction } from '#/lib/db'
 const url = new URL(process.env.DATABASE_URL ?? 'postgres://localhost/missing')
 const local = ['localhost', '127.0.0.1'].includes(url.hostname) && url.port === '55440' && url.pathname === '/email_cms'
 
-describe.skipIf(!local)('staging connection reuse against local PostgreSQL', () => {
+describe.skipIf(!local).each(['staging', 'production'])('%s connection reuse against local PostgreSQL', environment => {
   it('queues concurrent queries on one connection and reuses a held client without deadlocking', async () => {
-    const pool = poolFor({ HYPERDRIVE: { connectionString: url.toString() }, MEDIA_STORAGE_ENVIRONMENT: 'staging' })
+    const pool = poolFor({ HYPERDRIVE: { connectionString: url.toString() }, MEDIA_STORAGE_ENVIRONMENT: environment })
     try {
       const pids = await withDatabasePool(pool, async () => {
         const results = await Promise.all(Array.from({ length: 20 }, () => query('SELECT pg_backend_pid() AS pid, pg_sleep(0.005)')))
