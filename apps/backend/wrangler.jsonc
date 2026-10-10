@@ -1,5 +1,5 @@
 {
-  "name": "smz-cms-api",
+  "name": "staging-smz-news-api",
   "main": "src/cloudflare/worker.ts",
   "compatibility_date": "2026-09-12",
   "compatibility_flags": [
@@ -25,27 +25,25 @@
     "SMZ_AUTH_ISSUER": "https://smz-auth.black-tree-204e.workers.dev/api/auth",
     "APP_URL": "https://smz-cms.pages.dev",
     "BACKEND_CORS_ORIGIN": "https://smz-cms.pages.dev",
-    "DELIVERY_ENABLED": "true",
-    "MEDIA_STORAGE_ENVIRONMENT": "production",
-    "MEDIA_R2_BUCKET": "smz-cms-media-production",
+    "DELIVERY_ENABLED": "false",
+    "MEDIA_STORAGE_ENVIRONMENT": "staging",
+    "MEDIA_R2_BUCKET": "smz-cms-media-dev-staging",
     "MEDIA_API_ORIGIN": "https://smz-cms.pages.dev"
   },
   "triggers": {
-    "crons": [
-      "* * * * *"
-    ]
+    "crons": []
   },
   "account_id": "f1b69ad88454573ccaa3364b628fd114",
   "services": [
     {
       "binding": "SMZ_AUTH",
-      "service": "smz-auth"
+      "service": "staging-smz-auth"
     }
   ],
   "r2_buckets": [
     {
       "binding": "MEDIA_BUCKET",
-      "bucket_name": "smz-cms-media-production",
+      "bucket_name": "smz-cms-media-dev-staging",
       "preview_bucket_name": "smz-cms-media-dev-staging"
     }
   ]

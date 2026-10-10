@@ -49,9 +49,9 @@ Set a private `MEDIA_SIGNING_SECRET` of at least 32 characters, or use the exist
 
 ## Staging and production
 
-The deployment configuration generator accepts `CMS_DEPLOY_ENVIRONMENT=staging` or `production` (default). Use the intended environment's Cloudflare account, Hyperdrive ID, CMS origins and Auth issuer when generating configuration with `npm run cloudflare:configure`. The staging Worker is `smz-cms-api-staging`, its Pages project is `smz-cms-staging`, and scheduled delivery is disabled. Configure the staging database and exact OIDC registration before deploying a staging app. Bucket setup alone does not provision a staging application or database.
+The deployment configuration generator accepts `DEPLOYMENT_ENVIRONMENT=staging` (default) or `production`. Use the intended environment's Cloudflare account, Hyperdrive ID, CMS origins and Auth issuer when generating configuration with `npm run cloudflare:configure`. The staging Worker is `staging-smz-news-api`, its Pages project is `staging-smz-news`, and scheduled delivery is disabled. Configure the staging database and exact OIDC registration before deploying a staging app. Bucket setup alone does not provision a staging application or database.
 
-Production retains the existing `smz-cms-api` Worker and `smz-cms` Pages project. Both generated configurations bind `MEDIA_BUCKET` to the appropriate private R2 bucket. Browser/media URLs use the configured CMS origin so the existing Pages API proxy serves them. Production's existing `JWT_SECRET` signs media URLs; a separate `MEDIA_SIGNING_SECRET` may be provisioned as a Worker secret if needed. The normal deployment migration list includes the R2 migration. Create both buckets before deploying code that binds them.
+Production uses the separate `production-smz-news-api` Worker and `production-smz-news` Pages project. Both generated configurations bind `MEDIA_BUCKET` to the appropriate private R2 bucket. Browser/media URLs use the configured CMS origin so the existing Pages API proxy serves them. Production's existing `JWT_SECRET` signs media URLs; a separate `MEDIA_SIGNING_SECRET` may be provisioned as a Worker secret if needed. The normal deployment migration list includes the R2 migration. Create both buckets before deploying code that binds them.
 
 ## Upload and article records
 
