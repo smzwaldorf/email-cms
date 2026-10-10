@@ -1,0 +1,66 @@
+name: Reset production News (one-time)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type exactly "WIPE production-news"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-news
+  cancel-in-progress: false
+
+jobs:
+  reset:
+    if: inputs.confirmation == 'WIPE production-news'
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      DEPLOYMENT_ENVIRONMENT: production
+      DELIVERY_ENABLED: 'true'
+      DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CMS_ORIGIN: https://news.smzwaldorf.com
+      CMS_API_ORIGIN: https://news-api.smzwaldorf.com
+      SMZ_AUTH_ISSUER: https://auth.smzwaldorf.com/api/auth
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm install --no-audit --no-fund
+      - name: Wipe and recreate only the confirmed production News schema
+        run: |
+          node --input-type=module <<'JS'
+          import { readFile } from 'node:fs/promises';
+          import pg from 'pg';
+          const url = new URL(process.env.DATABASE_URL);
+          if (url.protocol !== 'postgresql:' || url.pathname !== '/production-news' || url.hostname !== 'aws-ap-northeast-1-2.pg.psdb.cloud') throw new Error('Unexpected production News target');
+          const client = new pg.Client({ connectionString: url.toString(), connectionTimeoutMillis: 15000 });
+          await client.connect();
+          try {
+            const { rows } = await client.query('SELECT current_database() AS name');
+            if (rows[0]?.name !== 'production-news') throw new Error('Unexpected connected database');
+            await client.query('BEGIN');
+            await client.query("SELECT pg_advisory_xact_lock(hashtext('reset-production-news-v1'))");
+            await client.query('DROP SCHEMA IF EXISTS public CASCADE');
+            await client.query('CREATE SCHEMA public');
+            await client.query('COMMIT');
+            await client.query(await readFile('db/schema.sql', 'utf8'));
+            console.info('Wiped and recreated production-news schema');
+          } catch (error) {
+            await client.query('ROLLBACK').catch(() => {});
+            throw error;
+          } finally { await client.end(); }
+          JS
+      - name: Verify the dedicated production connector
+        run: node scripts/provision-production-hyperdrive.mjs news
+      - run: npm run cloudflare:configure
+      - run: node scripts/cloudflare-migrate.mjs
+      - run: node scripts/cloudflare-smoke.mjs
