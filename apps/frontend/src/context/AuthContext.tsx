@@ -32,6 +32,7 @@ export interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [signInError, setSignInError] = useState(false)
   const [renewalRequired, setRenewalRequired] = useState(false)
   const [authorizationStatus, setAuthorizationStatus] = useState<AuthorizationStatus>(() => serverSessionMode ? serverAuthService.getAuthorizationStatus() : 'active')
   useEffect(() => {
@@ -120,12 +121,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signInWithGoogle = async (redirectTo?: string): Promise<void> => {
     try {
-      setIsLoading(true)
+      setSignInError(false)
+      if (!user) setIsLoading(true)
       await authService.signInWithGoogle(redirectTo)
       // OAuth redirects, so we don't need to do anything here
     } catch (err) {
+      setSignInError(true)
       console.error('Google sign in error:', err)
       setIsLoading(false)
+      throw err
     }
   }
 
@@ -195,8 +199,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     {user && serverSessionMode && authorizationStatus === 'reconnecting' && <div role="status" className="bg-amber-50 p-3 text-amber-950">正在重新連線。你的登入身分與目前工作會保留，連線恢復後即可繼續。</div>}
     {user && (serverSessionMode ? authorizationStatus === 'reauthentication_required' : renewalRequired) && <div role="alert" className="bg-amber-50 p-3 text-amber-950">
       登入需要重新驗證。目前頁面會保留，重新登入後才能繼續儲存或載入資料。
-      <button className="ml-3 underline" onClick={() => void authService.signInWithGoogle(window.location.pathname + window.location.search)}>重新登入</button>
+      <button className="ml-3 underline" onClick={() => void signInWithGoogle(window.location.pathname + window.location.search + window.location.hash).catch(() => {})}>重新登入</button>
     </div>}
+    {signInError && <div role="alert" className="bg-amber-50 p-3 text-amber-950">目前無法連線至登入服務，你的工作已保留，請稍後再試。</div>}
     {children}
   </AuthContext.Provider>
 }
