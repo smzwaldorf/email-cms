@@ -1,3 +1,4 @@
+import { PdfArticleImport } from '@/components/admin/PdfArticleImport'
 import { backendRequest } from '@/services/backendApi'
 import type { ArticleRow } from '@/types/database'
 import { Fragment, useEffect, useMemo, useState } from 'react'
@@ -1030,6 +1031,19 @@ export function AdminArticlesPage() {
             >
               {error || taxonomyError}
             </div>
+          )}
+
+          {selectedNewsletterId && (
+            <PdfArticleImport
+              key={selectedNewsletterId}
+              newsletterId={selectedNewsletterId}
+              onCreated={articleId => {
+                const newsletter = newsletters.find(item => item.id === selectedNewsletterId)
+                navigate(`${generateWeeklyUrl(newsletter?.weekNumber || selectedNewsletterId)}?admin=1`, {
+                  state: { focusArticleId: articleId, startInEditMode: true },
+                })
+              }}
+            />
           )}
 
           {/* Article list */}
