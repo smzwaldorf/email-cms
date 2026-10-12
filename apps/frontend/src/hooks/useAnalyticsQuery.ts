@@ -1,15 +1,21 @@
-import { useState, useEffect } from 'react'; // keeping useState for generateSnapshots
+import { useState } from 'react'; // keeping useState for generateSnapshots
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { analyticsAggregator, type ArticleReader } from '@/services/analyticsAggregator';
-import type { NewsletterTrendPoint, ArticleAnalyticsMetadata } from '@/types/analytics';
+import { useAuth } from '@/context/AuthContext';
+import { analyticsAggregator } from '@/services/analyticsAggregator';
+
+function useAnalyticsScopeKey() {
+  const { user } = useAuth();
+  return JSON.stringify([user?.id, user?.roles ?? [user?.role], user?.teacherClassIds, user?.parentClassIds]);
+}
 
 /**
  * Hook to fetch analytics metrics for a newsletter.
  * Uses TanStack Query for caching and state management.
  */
 export function useNewsletterMetrics(newsletterId: string, className?: string, tracker: 'resend' | 'cms' = 'resend') {
+  const scopeKey = useAnalyticsScopeKey();
   const { data, isLoading, error, refetch, isRefetching } = useQuery({
-    queryKey: ['newsletterMetrics', newsletterId, className, tracker],
+    queryKey: ['newsletterMetrics', newsletterId, className, tracker, scopeKey],
     queryFn: () => analyticsAggregator.getNewsletterMetrics(newsletterId, className, tracker),
     enabled: !!newsletterId,
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -57,8 +63,9 @@ export function useGenerateSnapshots() {
 }
 
 export function useArticleStats(newsletterId: string) {
+  const scopeKey = useAnalyticsScopeKey();
   const { data, isLoading, refetch, isRefetching } = useQuery({
-    queryKey: ['articleStats', newsletterId],
+    queryKey: ['articleStats', newsletterId, scopeKey],
     // Use fallback method for snapshot optimization
     queryFn: () => analyticsAggregator.getArticleStatsWithFallback(newsletterId),
     enabled: !!newsletterId,
@@ -74,8 +81,9 @@ export function useArticleStats(newsletterId: string) {
 }
 
 export function useTrendStats(className?: string, tracker: 'resend' | 'cms' = 'resend') {
+  const scopeKey = useAnalyticsScopeKey();
   const { data, isLoading, refetch, isRefetching } = useQuery({
-    queryKey: ['trendStats', className, tracker],
+    queryKey: ['trendStats', className, tracker, scopeKey],
     queryFn: () => analyticsAggregator.getTrendStats(12, className, tracker),
     staleTime: 1000 * 60 * 60, // 1 hour (trends don't change often)
   });
@@ -89,8 +97,9 @@ export function useTrendStats(className?: string, tracker: 'resend' | 'cms' = 'r
 }
 
 export function useClassEngagement(newsletterId: string) {
+  const scopeKey = useAnalyticsScopeKey();
   const { data, isLoading, refetch, isRefetching } = useQuery({
-    queryKey: ['classEngagement', newsletterId],
+    queryKey: ['classEngagement', newsletterId, scopeKey],
     queryFn: () => analyticsAggregator.getClassEngagement(newsletterId),
     enabled: !!newsletterId,
     staleTime: 1000 * 60 * 15, // 15 minutes
@@ -105,8 +114,9 @@ export function useClassEngagement(newsletterId: string) {
 }
 
 export function useAvailableWeeks() {
+  const scopeKey = useAnalyticsScopeKey();
   const { data, isLoading } = useQuery({
-    queryKey: ['availableWeeks'],
+    queryKey: ['availableWeeks', scopeKey],
     queryFn: () => analyticsAggregator.getAvailableWeeks(),
     staleTime: 1000 * 60 * 60, // 1 hour
   });
@@ -118,8 +128,9 @@ export function useAvailableWeeks() {
 }
 
 export function useTopicHotness(newsletterId: string) {
+  const scopeKey = useAnalyticsScopeKey();
   const { data, isLoading, refetch, isRefetching } = useQuery({
-    queryKey: ['topicHotness', newsletterId],
+    queryKey: ['topicHotness', newsletterId, scopeKey],
     queryFn: () => analyticsAggregator.getTopicHotness(newsletterId),
     enabled: !!newsletterId,
   });
@@ -147,96 +158,36 @@ export function formatReadLatency(minutes: number): string {
 }
 
 export const useClassHistory = (className: string) => {
-    const [history, setHistory] = useState<NewsletterTrendPoint[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        if (!className) return;
-        const fetchHistory = async () => {
-            setLoading(true);
-            try {
-                const data = await analyticsAggregator.getClassHistory(className);
-                setHistory(data);
-            } catch (err) {
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchHistory();
-    }, [className]);
-
-    return { history, loading };
+  const scopeKey = useAnalyticsScopeKey();
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['classHistory', className, scopeKey],
+    queryFn: () => analyticsAggregator.getClassHistory(className), enabled: !!className,
+  });
+  return { history: data || [], loading: isLoading, error: error as Error | null };
 };
 
 export const useAllClasses = () => {
-    const [classes, setClasses] = useState<string[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const fetchClasses = async () => {
-            setLoading(true);
-            try {
-                const data = await analyticsAggregator.getAllClasses();
-                setClasses(data);
-            } catch (err) {
-                console.error(err);
-                // Fallback or empty
-                setClasses([]);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchClasses();
-    }, []);
-
-    return { classes, loading };
+  const scopeKey = useAnalyticsScopeKey();
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['analyticsClasses', scopeKey], queryFn: () => analyticsAggregator.getAllClasses(),
+  });
+  return { classes: data || [], loading: isLoading, error: error as Error | null };
 };
 
 export const useArticleReaders = (articleId: string) => {
-    const [readers, setReaders] = useState<ArticleReader[]>([]); 
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        if (!articleId) return;
-        const fetchReaders = async () => {
-            setLoading(true);
-            try {
-                const data = await analyticsAggregator.getArticleReaders(articleId);
-                setReaders(data);
-            } catch (err) {
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchReaders();
-    }, [articleId]);
-
-    return { readers, loading };
+  const scopeKey = useAnalyticsScopeKey();
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['articleReaders', articleId, scopeKey],
+    queryFn: () => analyticsAggregator.getArticleReaders(articleId), enabled: !!articleId,
+  });
+  return { readers: data || [], loading: isLoading, error: error as Error | null };
 };
 
 export const useArticleMetadata = (articleId: string) => {
-    const [metadata, setMetadata] = useState<ArticleAnalyticsMetadata | null>(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        if (!articleId) return;
-        const fetchMeta = async () => {
-            setLoading(true);
-            try {
-                const data = await analyticsAggregator.getArticleMetadata(articleId);
-                setMetadata(data);
-            } catch (err) {
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchMeta();
-    }, [articleId]);
-
-    return { metadata, loading };
+  const scopeKey = useAnalyticsScopeKey();
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['articleMetadata', articleId, scopeKey],
+    queryFn: () => analyticsAggregator.getArticleMetadata(articleId), enabled: !!articleId,
+  });
+  return { metadata: data || null, loading: isLoading, error: error as Error | null };
 };
-
-

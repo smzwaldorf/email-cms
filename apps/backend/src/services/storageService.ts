@@ -13,6 +13,7 @@ import type {
   UploadProgressCallback,
 } from '#/types/storage'
 import { MockStorageAdapter } from '#/adapters/MockStorageAdapter'
+import { R2StorageAdapter } from '#/adapters/R2StorageAdapter'
 
 /**
  * 全域儲存提供者實例
@@ -32,7 +33,7 @@ export function createStorageProvider(
   if (_storageProvider) {
     const providerName = _storageProvider.getProviderName()
     const expectedName =
-      options.provider === 's3' ? 'S3Storage' : 'MockStorage'
+      options.provider === 'mock' ? 'MockStorage' : 'CloudflareR2'
 
     if (providerName === expectedName) {
       return _storageProvider
@@ -54,31 +55,8 @@ export function createStorageProvider(
 function _createStorageProvider(
   options: StorageFactoryOptions
 ): StorageProvider {
-  switch (options.provider) {
-    case 'supabase': {
-      console.warn('Supabase Storage was removed. Using the mock storage adapter.')
-      return new MockStorageAdapter()
-    }
-
-    case 'mock': {
-      const simulateDelay = runtimeEnvironment().NODE_ENV !== 'production'
-      return new MockStorageAdapter(simulateDelay, 100)
-    }
-
-    case 's3': {
-      // S3 適配器（未來實作）
-      // S3 Adapter (to be implemented)
-      console.warn('S3 適配器尚未實作 / S3 adapter not yet implemented')
-      return new MockStorageAdapter()
-    }
-
-    default: {
-      console.warn(
-        `未知的儲存提供者: ${options.provider}，使用 Mock / Unknown provider, using Mock`
-      )
-      return new MockStorageAdapter()
-    }
-  }
+  if (options.provider === 'mock') return new MockStorageAdapter(runtimeEnvironment().NODE_ENV !== 'production', 100)
+  return new R2StorageAdapter()
 }
 
 /**
@@ -90,7 +68,7 @@ export function getStorageProvider(): StorageProvider {
     return _storageProvider
   }
 
-  const provider = (runtimeEnvironment().VITE_STORAGE_PROVIDER as StorageProviderType) || 'mock'
+  const provider = (runtimeEnvironment().VITE_STORAGE_PROVIDER as StorageProviderType) || 'r2'
 
   return createStorageProvider({ provider })
 }

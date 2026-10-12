@@ -6,6 +6,7 @@
 
 import React, { useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
+import { canAccessCmsPanel } from '@email-cms/shared'
 
 export const UserMenu: React.FC = () => {
   const { user, signOut, isLoading } = useAuth()
@@ -62,7 +63,7 @@ export const UserMenu: React.FC = () => {
           {/* Menu Items */}
           <div className="py-2">
             {/* Admin Dashboard Link */}
-            {(user.role === 'admin' || user.roles?.includes('admin')) && (
+            {canAccessCmsPanel({ roles: user.roles ?? [user.role] }) && (
               <a
                 href="/admin"
                 className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"

@@ -54,8 +54,8 @@ export function ArticleEditorPage() {
   }, [article, error, articleId, weekNumber, id])
 
   const loadArticleData = async () => {
-    if ((!weekNumber && !id) || !articleId) {
-      setError('缺少必要的參數：newsletter 或 articleId')
+    if (!articleId) {
+      setError('缺少文章參數')
       setIsLoading(false)
       return
     }
@@ -67,7 +67,7 @@ export function ArticleEditorPage() {
       // Load articles for the week and find the one we need
       const articles = weekNumber
         ? await adminService.fetchArticlesByNewsletter(weekNumber)
-        : await adminService.fetchArticlesByNewsletterId(id as string)
+        : id ? await adminService.fetchArticlesByNewsletterId(id) : await adminService.fetchAllArticles()
       const fetchedArticle = articles.find((a) => a.id === articleId)
 
       if (!fetchedArticle) {
@@ -127,7 +127,7 @@ export function ArticleEditorPage() {
       }
 
       // Navigate back to newsletter view
-      navigate(getAdminNewsletterPath({
+      navigate(!weekNumber && !id ? '/admin/articles' : getAdminNewsletterPath({
         id: state?.newsletterId || id || '',
         weekNumber,
       }), {
@@ -146,7 +146,7 @@ export function ArticleEditorPage() {
    */
   const handleCancel = () => {
     // Navigate back to newsletter view
-    navigate(getAdminNewsletterPath({
+    navigate(!weekNumber && !id ? '/admin/articles' : getAdminNewsletterPath({
       id: state?.newsletterId || id || '',
       weekNumber,
     }))
@@ -199,7 +199,7 @@ export function ArticleEditorPage() {
             </button>
             <h1 className="text-3xl font-bold text-gray-900">編輯文章</h1>
             <p className="mt-1 text-gray-600">
-              週次: {weekNumber} | 文章 ID: {articleId}
+              {weekNumber ? `週次: ${weekNumber} | ` : !id ? '獨立文章 | ' : ''}文章 ID: {articleId}
               {!weekNumber && id ? ` | 電子報 ID: ${id}` : ''}
             </p>
           </div>
@@ -220,7 +220,7 @@ export function ArticleEditorPage() {
             onError={handleError}
             availableClasses={availableClasses}
             availableFamilies={availableFamilies}
-            showNewsletterTargeting
+            showNewsletterTargeting={!!(weekNumber || id)}
           />
         </div>
       </div>

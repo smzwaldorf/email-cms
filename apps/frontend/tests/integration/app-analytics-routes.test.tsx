@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 import App from '@/App'
 
 vi.mock('@/context/AuthContext', () => ({
+  useAuth: () => ({ user: null, isLoading: false }),
   AuthProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 

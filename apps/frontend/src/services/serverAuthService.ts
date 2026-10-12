@@ -7,6 +7,8 @@ export type AuthorizationStatus = 'active' | 'reconnecting' | 'reauthentication_
 const CACHE = 'email-cms-remembered-identity-v1'
 const PENDING_LOGOUT = 'email-cms-pending-server-logout'
 const MARKER = 'email-cms-global-logout'
+const RECOVERY = 'email-cms-startup-reauthentication'
+const REQUEST_TIMEOUT = 30_000
 interface Snapshot { user: (Omit<AuthUser, 'role'> & { role: AuthUser['role'] | null }) | null; authorizationStatus: AuthorizationStatus }
 class ServerAuthService implements AuthServiceInterface {
   private user: AuthUser | null = null
@@ -16,6 +18,7 @@ class ServerAuthService implements AuthServiceInterface {
   private status: AuthorizationStatus = 'reconnecting'
   private marker = localStorage.getItem(MARKER)
   private initialized = false
+  private initialization: Promise<void> | null = null
   private notify(): void {
     setStoredAuthUser(this.user ? { id: this.user.id, email: this.user.email } : null)
     this.listeners.forEach(listener => listener(this.user))
@@ -23,7 +26,7 @@ class ServerAuthService implements AuthServiceInterface {
   }
   getAuthorizationStatus(): AuthorizationStatus { return this.status }
   private async fetchSession(path: string, init: RequestInit = {}): Promise<Response> {
-    return fetch(path, { ...init, credentials: 'same-origin', cache: 'no-store', headers: { 'X-CMS-Request': '1', ...init.headers } })
+    return fetch(path, { signal: AbortSignal.timeout(REQUEST_TIMEOUT), ...init, credentials: 'same-origin', cache: 'no-store', headers: { 'X-CMS-Request': '1', ...init.headers } })
   }
   private clear(): void {
     this.epoch++; this.user = null; this.status = 'signed_out'
@@ -34,7 +37,13 @@ class ServerAuthService implements AuthServiceInterface {
     localStorage.removeItem('email-cms-access-token')
     this.notify()
   }
-  async initialize(): Promise<void> {
+  initialize(): Promise<void> {
+    if (this.initialization) return this.initialization
+    this.initialization = this.initializeSession().finally(() => { this.initialization = null })
+    return this.initialization
+  }
+  private async initializeSession(): Promise<void> {
+    const startup = !this.initialized
     if (!this.initialized) {
       this.initialized = true
       try {
@@ -44,6 +53,19 @@ class ServerAuthService implements AuthServiceInterface {
       this.notify()
     }
     await this.revalidate()
+    // Recover only on startup, before an editor can contain unsaved work. A
+    // per-tab cooldown prevents a failed exchange from causing a redirect loop.
+    if (startup && this.status === 'reauthentication_required' &&
+        !['/auth/callback', '/logout/local', '/login'].includes(location.pathname) &&
+        !localStorage.getItem(PENDING_LOGOUT)) {
+      const lastAttempt = Number(sessionStorage.getItem(RECOVERY) ?? 0)
+      if (Date.now() - lastAttempt >= 60_000) {
+        sessionStorage.setItem(RECOVERY, String(Date.now()))
+        try { await this.signInWithGoogle(location.pathname + location.search + location.hash) } catch {
+          // Keep the identity and the explicit retry action during an outage.
+        }
+      }
+    }
   }
   ensureInitialized(): Promise<void> { return this.initialize() }
   private async revalidate(): Promise<void> {
@@ -63,6 +85,7 @@ class ServerAuthService implements AuthServiceInterface {
         if (epoch !== this.epoch || this.marker !== localStorage.getItem(MARKER)) return
         const previousStatus = this.status
         this.status = snapshot.authorizationStatus
+        if (this.status === 'active') sessionStorage.removeItem(RECOVERY)
         if (this.status === 'signed_out' || this.status === 'revoked') {
           this.clear(); this.status = snapshot.authorizationStatus
         } else if (snapshot.user) {
@@ -103,12 +126,15 @@ class ServerAuthService implements AuthServiceInterface {
     }
   }
   async signInWithGoogle(redirectTo?: string): Promise<null> {
+    const epoch = this.epoch
+    const marker = localStorage.getItem(MARKER)
     const response = await this.fetchSession(`/api/session/login?next=${encodeURIComponent(redirectTo ?? '')}`, { method: 'POST' })
     if (!response.ok) throw new Error('Identity is temporarily unavailable. Your work is preserved.')
     const body = await response.json() as { url: string }
     const target = new URL(body.url)
     const expected = new URL(import.meta.env.VITE_SMZ_AUTH_ISSUER || 'http://localhost:3000/api/auth')
     if (target.origin !== expected.origin) throw new Error('Unexpected sign-in destination')
+    if (epoch !== this.epoch || marker !== localStorage.getItem(MARKER) || localStorage.getItem(PENDING_LOGOUT)) throw new Error('Sign-in was cancelled by logout')
     window.location.assign(target.toString()); return null
   }
   signIn(_email: string, _password: string): Promise<null> { return this.signInWithGoogle() }

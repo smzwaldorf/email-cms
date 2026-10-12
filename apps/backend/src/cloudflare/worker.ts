@@ -1,18 +1,16 @@
 import type { ExecutionContext, ScheduledController } from '@cloudflare/workers-types'
 import { createServer } from 'node:http'
 import { httpServerHandler } from 'cloudflare:node'
-import { Pool } from 'pg'
 import { createCmsApplication } from '#/application'
 import { query, withDatabasePool } from '#/lib/db'
 import { getSupabaseClient } from '#/lib/supabase'
 import { withRuntimeEnvironment } from '#/runtime/environment'
+import { HttpError } from '#/auth'
+import { serveEmailMedia, withMediaBucket } from '#/services/r2MediaService'
 import { NewsletterDeliveryWorker } from '#/worker/deliveryWorker'
 
 import { validateEnvironment, type Env } from './config'
-
-function poolFor(env: Env) {
-  return new Pool({ connectionString: env.HYPERDRIVE.connectionString, max: 3, connectionTimeoutMillis: 10_000 })
-}
+import { poolFor } from './databasePool'
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -21,6 +19,14 @@ export default {
       return Response.json({ error: 'Service configuration unavailable' }, { status: 503 })
     }
     const pool = poolFor(env)
+    const hostname = new URL(request.url).hostname
+    if (['media.smzwaldorf.com', 'staging-media.smzwaldorf.com'].includes(hostname)) {
+      try {
+        return await withRuntimeEnvironment(config, () => withDatabasePool(pool, () => withMediaBucket(env.MEDIA_BUCKET, () => serveEmailMedia(request))))
+      } catch (error) {
+        return new Response('Media unavailable', { status: error instanceof HttpError ? error.status : 503, headers: { 'Cache-Control': 'no-store' } })
+      } finally { await pool.end() }
+    }
     let finish!: () => void
     const completed = new Promise<void>(resolve => { finish = resolve })
     let invoked = false
@@ -33,7 +39,7 @@ export default {
           outgoing.end(JSON.stringify({ status: 'ok', database: 'connected', deliveryEnabled: config.DELIVERY_ENABLED === 'true' }))
           return
         }
-        await createCmsApplication({ supabase: getSupabaseClient(), corsOrigin: env.BACKEND_CORS_ORIGIN }).handle(incoming, outgoing)
+        await createCmsApplication({ supabase: getSupabaseClient(), corsOrigin: env.BACKEND_CORS_ORIGIN, mediaBucket: env.MEDIA_BUCKET }).handle(incoming, outgoing)
       }), env.SMZ_AUTH).catch(() => {
         if (!outgoing.headersSent) { outgoing.writeHead(500, { 'Content-Type': 'application/json' }); outgoing.end('{"error":"Internal server error"}') }
         else outgoing.destroy()

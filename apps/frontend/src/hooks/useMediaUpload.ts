@@ -8,9 +8,8 @@ import type { MediaFile, MediaFileType } from '@/types/media'
 import { MediaFileStatus } from '@/types/media'
 import { mediaService } from '@/services/mediaService'
 import { imageOptimizer } from '@/services/imageOptimizer'
-import { storageService } from '@/services/storageService'
-import { articleMediaManager } from '@/services/articleMediaManager'
-import { mediaGovernanceService } from '@/services/mediaGovernanceService'
+import { backendRequest } from '@/services/backendApi'
+import type { SqlTables } from '@email-cms/shared'
 import { getSupabaseClient } from '@/lib/supabase'
 import { checkRateLimit, recordUploadAttempt } from '@/services/rateLimiter'
 import { quotaManager } from '@/services/quotaManager'
@@ -38,7 +37,7 @@ export type UploadProgressCallback = (state: UploadState) => void
  * 支援的功能:
  * 1. 檔案驗證 (類型、大小)
  * 2. 圖片優化 (壓縮、格式轉換)
- * 3. 檔案上傳 (到 Supabase Storage)
+ * 3. 檔案上傳 (到 Cloudflare R2)
  * 4. 進度追蹤
  * 5. 錯誤處理
  */
@@ -163,108 +162,20 @@ export function useMediaUpload() {
 
           // 步驟 3: 上傳
           // Step 3: Upload
-          const mediaId = mediaService.generateMediaId()
-          const storagePath = mediaService.generateStoragePath(
-            mediaId,
-            file.name,
-            userId
-          )
-
           const metadata = await mediaService.createMediaMetadata(
-            optimizedFile,
-            mediaId,
-            userId,
-            mediaType
+            optimizedFile, '', userId, mediaType
           )
-
-          // 上傳到儲存提供者
-          // Upload to storage provider
-          const storageProvider = storageService.provider()
-          const { success: uploadSuccess, data: uploadData, error: uploadError } = await storageProvider.upload(
-            'media',
-            storagePath,
-            optimizedFile,
-            {
-              contentType: optimizedFile.type,
-              metadata: {
-                original_filename: file.name,
-                media_type: mediaType,
-              },
-            }
-          )
-
-          if (!uploadSuccess) {
-            console.error('Storage upload error:', uploadError)
-            throw new Error(`Failed to upload ${file.name}: ${uploadError?.message || 'Unknown error'}`)
+          const search = new URLSearchParams({ filename: file.name })
+          if (articleId) search.set('articleId', articleId)
+          for (const key of ['width', 'height', 'duration'] as const) {
+            const value = metadata[key]
+            if (value && Number.isFinite(value)) search.set(key, String(value))
           }
-
-          // Construct storage URL
-          const finalPath = (
-            uploadData &&
-            typeof uploadData === 'object' &&
-            'path' in uploadData &&
-            typeof uploadData.path === 'string'
-          )
-            ? uploadData.path
-            : storagePath
-          const storageUrl = `storage://media/${finalPath}`
-
-          // 將元資料保存到資料庫
-          // Save metadata to database
-          const { data: dbFile, error: dbError } = await supabaseClient
-            .from('media_files')
-            .insert({
-              id: mediaId,
-              filename: file.name,
-              file_size: optimizedFile.size,
-              mime_type: optimizedFile.type,
-              file_type: mediaType,
-              public_url: storageUrl, // Store storage:// URI in public_url column
-              storage_path: storagePath,
-              width: metadata.width,
-              height: metadata.height,
-              duration: metadata.duration,
-              uploaded_by: userId,
-              uploaded_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            })
-            .select()
-            .single()
-
-          if (dbError) throw dbError
-
-          await mediaGovernanceService.enqueueDefaultVariantsForMedia(mediaId, mediaType, {
-            width: metadata.width,
-            height: metadata.height,
-          }, optimizedFile.type)
-
-          if (mediaType === 'image' || mediaType === 'audio') {
-            void mediaGovernanceService
-              .processDefaultVariantsForMedia({
-                mediaId,
-                mediaType,
-                sourceFile: optimizedFile,
-                sourceStoragePath: finalPath,
-                dimensions: {
-                  width: metadata.width,
-                  height: metadata.height,
-                },
-              })
-              .catch((error) => {
-                console.warn('Variant generation failed', error)
-              })
-          }
-
-          // 如果指定了文章 ID，將媒體添加到文章
-          // If article ID specified, add media to article
-          if (articleId && dbFile) {
-            const association = await articleMediaManager.addMediaToArticle(articleId, mediaId)
-            if (!association.success) {
-              throw new Error(
-                association.error || `Failed to link media ${mediaId} to article ${articleId}`
-              )
-            }
-          }
+          // The backend owns the object key, current uploader and committed metadata.
+          // Article references are reconciled atomically when the editor content is saved.
+          const dbFile = await backendRequest<SqlTables['media_files']>(`/api/media/upload?${search}`, {
+            method: 'POST', headers: { 'Content-Type': optimizedFile.type }, body: optimizedFile,
+          })
 
           const mediaFile: MediaFile = {
             id: dbFile.id,

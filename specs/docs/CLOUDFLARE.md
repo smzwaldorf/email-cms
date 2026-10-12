@@ -1,5 +1,22 @@
 # Cloudflare deployment
 
+> Staging naming migration (2026-09-25): deployment resource names now use `staging-smz-*` (`news` replaces `cms` in Cloudflare resource names). `DEPLOYMENT_ENVIRONMENT=production` selects `production-smz-*` names for a future separately provisioned production deployment. The GitHub environment still named `production` is the existing staging secret store; changing that store is a separate migration.
+>
+> Canonical staging URLs: `https://staging-auth.smzwaldorf.com`, `https://staging-news.smzwaldorf.com`, `https://staging-news-api.smzwaldorf.com`, `https://staging-app-a.smzwaldorf.com`, and `https://staging-app-b.smzwaldorf.com`. App A Pages is `staging-smz-app-a`. Existing databases, credentials, and OAuth client IDs are retained. Fresh browser sign-in is required after the issuer change.
+>
+> `STAGING_RESOURCE_MIGRATION=true` enables the guarded, resumable in-place rename step. Disable it after the first successful deployment. No resource is copied or deleted by that step. Prior URLs and names elsewhere in this document are historical.
+
+## Staging and production connection pooling — October 10, 2026
+
+Staging Auth (`smz-auth`) and CMS (`smz-cms`), and production Auth (`production-auth`) and News (`production-news`), retain their existing uncached Hyperdrive bindings and credentials, with the origin port set to `6432` for PlanetScale's local PgBouncer. Each Hyperdrive origin connection limit remains `5`. After changing an origin port, explicitly restart that Hyperdrive pool to drain connections still using the old route; editing the origin alone does not tear down the existing pool.
+
+The shared cluster's local PgBouncer runs one process with `default_pool_size=20`, `max_db_connections=2`, `max_client_conn=400`, `server_lifetime=3600`, `max_prepared_statements=200`, and `server_idle_timeout=60` seconds. The per-database cap takes precedence over the per-user/database pool size: each application database can use at most two pooled PostgreSQL sessions, including connections from additional roles. With four application databases this allows at most eight pooled sessions, leaving headroom for administration on the 25-connection cluster. Idle server sessions close after 60 seconds while client connections remain reusable. CMS deployment binding checks and the production connector verifier reject direct port `5432`.
+
+CMS Worker invocations use one checked-out client at a time in both environments. Nested database helpers reuse that client, while Hyperdrive and PgBouncer share origin and server connections across invocations.
+
+Keep transactions bounded and release clients after use. Long-running schema maintenance and backups should use a separately authorized direct connection; normal deployments must still pass their migration, preflight, health, and authenticated browser checks through the configured route.
+
+
 ## Current configuration — September 14, 2026
 
 Production runs on Cloudflare Pages (`smz-cms.pages.dev`) and Worker `smz-cms-api`, with SMZ Identity on Worker `smz-auth`. Pages forwards `/api/*` through its `CMS_API` service binding; the CMS Worker uses its `SMZ_AUTH` binding for Identity requests. The existing shared PlanetScale cluster holds separate logical databases: CMS uses `smz-cms` through uncached Hyperdrive `686ed1534b77435eb5537fabba62e61c`. Do not substitute Auth's database or binding.

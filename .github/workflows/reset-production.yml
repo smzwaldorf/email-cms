@@ -1,0 +1,44 @@
+name: Reset production News (one-time)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type exactly "WIPE production-news"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-news
+  cancel-in-progress: false
+
+jobs:
+  reset:
+    if: inputs.confirmation == 'WIPE production-news'
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      DEPLOYMENT_ENVIRONMENT: production
+      DELIVERY_ENABLED: 'true'
+      DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CMS_ORIGIN: https://news.smzwaldorf.com
+      CMS_API_ORIGIN: https://news-api.smzwaldorf.com
+      SMZ_AUTH_ISSUER: https://auth.smzwaldorf.com/api/auth
+      PRODUCTION_DATABASE_RESET_APPROVED: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm install --no-audit --no-fund
+      - name: Verify the dedicated production connector
+        run: node scripts/provision-production-hyperdrive.mjs news
+      - name: Wipe, initialize, and migrate only the confirmed production News schema
+        run: node scripts/reset-production.mjs
+      - run: npm run cloudflare:configure
+      - run: node scripts/cloudflare-smoke.mjs

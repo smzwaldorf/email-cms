@@ -1,10 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AuthenticatedViewer } from '#/auth'
 const mocks = vi.hoisted(() => ({
+  put: vi.fn(),
+  get: vi.fn(),
+  delete: vi.fn(),
   query: vi.fn(),
   create: vi.fn(),
   read: vi.fn(),
   fetch: vi.fn(),
+}))
+vi.mock('#/services/r2MediaService', () => ({
+  mediaBucket: () => ({ put: mocks.put, get: mocks.get, delete: mocks.delete }),
+  mediaStorageConfiguration: () => ({ environment: 'development', bucket: 'smz-cms-media-dev-staging' }),
 }))
 vi.mock('#/lib/db', () => ({
   query: mocks.query,
@@ -31,10 +38,11 @@ const input = {
   data: Buffer.from('%PDF-1.4\ntest').toString('base64'),
 }
 beforeEach(() => {
-  vi.clearAllMocks()
+  vi.resetAllMocks()
+  mocks.put.mockResolvedValue({ key: 'stored' })
   vi.stubEnv('OPENAI_API_KEY', 'test-key')
   vi.stubGlobal('fetch', mocks.fetch)
-  mocks.query.mockResolvedValue({ rows: [] })
+  mocks.query.mockImplementation(async (sql: string) => ({ rows: sql.includes('RETURNING part_index') ? [{ part_index: 0 }] : [] }))
   mocks.create.mockResolvedValue({ id: articleId })
 })
 afterEach(() => {
@@ -174,7 +182,9 @@ it('persists generated MP3 bytes against the acquired lease', async () => {
     input: '文字',
     response_format: 'mp3',
   })
-  expect(mocks.query.mock.calls.at(-1)?.[1][3]).toEqual(Buffer.from('ID3'))
+  expect(mocks.put.mock.calls[0][1]).toEqual(Buffer.from('ID3'))
+  expect(mocks.query.mock.calls.at(-1)?.[1][3]).toMatch(/^development\/narrations\/.+\.mp3$/)
+  expect(mocks.query.mock.calls.at(-1)?.[1][4]).toBe('smz-cms-media-dev-staging')
 })
 it('reuses completed speech without calling OpenAI', async () => {
   mocks.query
@@ -232,7 +242,7 @@ it('persists a normal long narration above the former 2 MiB limit', async () => 
   await expect(
     pdfArticleService.generate(articleId, 2, admin)
   ).resolves.toEqual({ ready: true })
-  expect(mocks.query.mock.calls.at(-1)?.[1][3].length).toBe(audio.length)
+  expect(mocks.put.mock.calls[0][1].length).toBe(audio.length)
 })
 
 it('still rejects oversized streams and releases the generation lease', async () => {
@@ -257,4 +267,36 @@ it('still rejects oversized streams and releases the generation lease', async ()
   expect(
     mocks.query.mock.calls.some(([sql]) => sql.includes('SET audio ='))
   ).toBe(false)
+})
+
+it('does not mark failed R2 uploads ready and releases the lease', async () => {
+  mocks.query.mockResolvedValueOnce({ rows: [{ id: articleId }] }).mockResolvedValueOnce({ rows: [{ transcript: '文字' }] })
+  mocks.fetch.mockResolvedValue(new Response('ID3'))
+  mocks.put.mockRejectedValue(new Error('R2 unavailable'))
+  await expect(pdfArticleService.generate(articleId, 0, admin)).rejects.toThrow('R2 unavailable')
+  expect(mocks.query.mock.calls.some(([sql]) => sql.includes('SET audio_object_key'))).toBe(false)
+  expect(mocks.query.mock.calls.at(-1)?.[0]).toContain('SET generating_at = NULL')
+})
+it('cleans up an upload when its generation lease was lost', async () => {
+  mocks.query.mockResolvedValueOnce({ rows: [{ id: articleId }] }).mockResolvedValueOnce({ rows: [{ transcript: '文字' }] }).mockResolvedValueOnce({ rows: [] })
+  mocks.fetch.mockResolvedValue(new Response('ID3'))
+  await expect(pdfArticleService.generate(articleId, 0, admin)).rejects.toMatchObject({ status: 409 })
+  expect(mocks.delete).toHaveBeenCalledWith(mocks.put.mock.calls[0][0])
+})
+it('serves R2 audio through the authorized narration route', async () => {
+  const key = `development/narrations/${articleId}/0/lease.mp3`
+  mocks.query.mockResolvedValueOnce({ rows: [{ id: articleId }] }).mockResolvedValueOnce({ rows: [{ audio_object_key: key, audio_bucket: 'smz-cms-media-dev-staging' }] })
+  mocks.get.mockResolvedValue({ arrayBuffer: async () => new TextEncoder().encode('ID3').buffer })
+  expect(await pdfArticleService.audio(articleId, 0, admin)).toEqual(Buffer.from('ID3'))
+  expect(mocks.get).toHaveBeenCalledWith(key)
+})
+it('keeps legacy database audio playable', async () => {
+  mocks.query.mockResolvedValueOnce({ rows: [{ id: articleId }] }).mockResolvedValueOnce({ rows: [{ audio: Buffer.from('ID3') }] })
+  expect(await pdfArticleService.audio(articleId, 0, admin)).toEqual(Buffer.from('ID3'))
+  expect(mocks.get).not.toHaveBeenCalled()
+})
+it('refuses references from a different environment', async () => {
+  mocks.query.mockResolvedValueOnce({ rows: [{ id: articleId }] }).mockResolvedValueOnce({ rows: [{ audio_object_key: `production/narrations/${articleId}/0/x.mp3`, audio_bucket: 'smz-cms-media-production' }] })
+  await expect(pdfArticleService.audio(articleId, 0, admin)).rejects.toMatchObject({ status: 503 })
+  expect(mocks.get).not.toHaveBeenCalled()
 })

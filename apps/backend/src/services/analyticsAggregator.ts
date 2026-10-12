@@ -1,6 +1,7 @@
 import { currentDirectory, personAliases } from './identityDirectory'
 import { directoryAudience } from './directoryAudience'
 import { getSupabaseClient } from '#/lib/supabase';
+import { getAnalyticsClient, hasTeacherAnalyticsScope, teacherAnalyticsIncludesArticle } from './teacherAnalyticsScope'
 import type {
   AnalyticsSnapshot,
   AnalyticsMetrics,
@@ -48,6 +49,7 @@ interface NewsletterJunctionRow {
 }
 
 interface AnalyticsEventWithUserRow {
+  article_id: string | null;
   user_id: string;
   event_type: string;
   metadata: Record<string, unknown> | null;
@@ -110,7 +112,7 @@ export const analyticsAggregator = {
    */
   async generateDailySnapshot(date?: string): Promise<void> {
     const targetDate = date || new Date(Date.now() - 86400000).toISOString().split('T')[0];
-    const supabase = getSupabaseClient();
+    const supabase = getAnalyticsClient();
 
     console.log(`[Analytics] Generating snapshots for ${targetDate}...`);
 
@@ -247,7 +249,7 @@ export const analyticsAggregator = {
    * Computes Open Rate and Click Rate.
    */
   async getNewsletterMetrics(newsletterId: string, className?: string, tracker: 'resend' | 'cms' = 'resend'): Promise<AnalyticsMetrics> {
-    const supabase = getSupabaseClient();
+    const supabase = getAnalyticsClient();
     const QUERY_TIMEOUT_MS = 30000; // Increased to 30s for cold DB recovery
     
     // Helper to create a timeout promise
@@ -432,7 +434,7 @@ export const analyticsAggregator = {
    * @param newsletterId Newsletter UUID
    */
   async getArticleStats(newsletterId: string) {
-    const supabase = getSupabaseClient();
+    const supabase = getAnalyticsClient();
     
     if (!newsletterId) {
       console.warn(`[Analytics] Newsletter ID is required`);
@@ -537,7 +539,9 @@ export const analyticsAggregator = {
    * 2. If no snapshots, fallback to raw event aggregation (slower)
    */
   async getArticleStatsWithFallback(newsletterId: string) {
-    const supabase = getSupabaseClient();
+    // School-wide snapshots cannot be reused for a teacher audience.
+    if (hasTeacherAnalyticsScope()) return this.getArticleStats(newsletterId);
+    const supabase = getAnalyticsClient();
     
     try {
       // 1. Try Snapshots
@@ -647,7 +651,7 @@ export const analyticsAggregator = {
    * If snapshots are missing, it might return empty or sparse data.
    */
   async getTrendStats(limit: number = 12, className?: string, tracker: 'resend' | 'cms' = 'resend'): Promise<NewsletterTrendPoint[]> {
-      const supabase = getSupabaseClient();
+      const supabase = getAnalyticsClient();
       
       // Query analytics_snapshots for daily metrics
       // We want to group by newsletter? 
@@ -704,7 +708,7 @@ export const analyticsAggregator = {
    * Fetches list of available weeks for the dashboard.
    */
   async getAvailableWeeks(): Promise<AnalyticsNewsletterWeekOption[]> {
-      const supabase = getSupabaseClient();
+      const supabase = getAnalyticsClient();
       const { data, error } = await supabase
           .from('newsletters')
           .select('id, week_number, release_date')
@@ -718,7 +722,7 @@ export const analyticsAggregator = {
    * aggregated class engagement metrics for a newsletter.
    */
   async getClassEngagement(newsletterId: string, client?: AppSupabaseClient): Promise<ClassEngagement[]> {
-        const supabase = client ?? getSupabaseClient();
+        const supabase = client ?? getAnalyticsClient();
         const directory = await currentDirectory();
         const audience = directoryAudience(directory);
         const aliases = new Map((await personAliases(directory)).map(({ id, authId }) => [id, authId]));
@@ -726,7 +730,7 @@ export const analyticsAggregator = {
              // 1. Fetch all events for this newsletter (views, clicks, sessions)
              const { data: events } = await supabase
                  .from('analytics_events')
-                 .select('user_id, event_type, metadata')
+                 .select('article_id, user_id, event_type, metadata')
                  .eq('newsletter_id', newsletterId)
                  .not('user_id', 'is', null);
  
@@ -759,6 +763,7 @@ export const analyticsAggregator = {
              };
  
              typedEvents.forEach((event) => {
+                 if (!teacherAnalyticsIncludesArticle(event.article_id)) return;
                  const classes = userClasses.get(event.user_id);
                  if (!classes) return; // User has no class (e.g. admin or unassigned)
  
@@ -826,7 +831,7 @@ export const analyticsAggregator = {
    * @param newsletterId Newsletter UUID
    */
   async getTopicHotness(newsletterId: string): Promise<ArticleHotness[]> {
-      const supabase = getSupabaseClient();
+      const supabase = getAnalyticsClient();
       
       try {
           if (!newsletterId) {
@@ -923,7 +928,7 @@ export const analyticsAggregator = {
   },
 
   async getArticleMetadata(articleId: string): Promise<ArticleAnalyticsMetadata> {
-      const supabase = getSupabaseClient();
+      const supabase = getAnalyticsClient();
       
       // Get article data
       const { data: article, error: articleError } = await supabase
@@ -956,7 +961,7 @@ export const analyticsAggregator = {
   },
 
   async getArticleReaders(articleId: string): Promise<ArticleReader[]> {
-      const supabase = getSupabaseClient();
+      const supabase = getAnalyticsClient();
       
       const { data: events, error } = await supabase
         .from('analytics_events')

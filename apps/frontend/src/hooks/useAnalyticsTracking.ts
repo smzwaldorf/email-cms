@@ -30,26 +30,6 @@ export function useAnalyticsTracking({ articleId, newsletterId, classId, enabled
   const isVisibleRef = useRef<boolean>(true);
   const hasLoggedEndRef = useRef<boolean>(false); // Prevent duplicate session_end logs
   
-  // Store current values in refs for cleanup function access
-  const currentContextRef = useRef({
-    articleId: articleId,
-    newsletterId: newsletterId,
-    classId: classId,
-    userId: user?.id,
-    pathname: location.pathname
-  });
-  
-  // Update refs when values change
-  useEffect(() => {
-    currentContextRef.current = {
-      articleId,
-      newsletterId,
-      classId,
-      userId: user?.id,
-      pathname: location.pathname
-    };
-  }, [articleId, newsletterId, classId, user?.id, location.pathname]);
-
   // Initialize Session ID
   useEffect(() => {
     let sid = sessionStorage.getItem(ANALYTICS_CONFIG.sessionIdStorageKey);
@@ -65,11 +45,12 @@ export function useAnalyticsTracking({ articleId, newsletterId, classId, enabled
     if (!enabled) return;
     if (!sessionIdRef.current) return;
 
-    const currentKey = `${articleId || ''}:${newsletterId || ''}`;
+    const currentKey = `${location.key}:${location.pathname}:${articleId || ''}:${newsletterId || ''}`;
 
     // Prevent duplicate logging for the same context
     if (lastLoggedKeyRef.current === currentKey) return;
 
+    lastLoggedKeyRef.current = currentKey;
     const trackView = async () => {
       const userId = user?.id;
       console.log('Tracking page view for user:', userId);
@@ -87,12 +68,10 @@ export function useAnalyticsTracking({ articleId, newsletterId, classId, enabled
           journey_correlation_id: journeyCorrelationId,
         }
       });
-
-      lastLoggedKeyRef.current = currentKey;
     };
 
     trackView();
-  }, [enabled, articleId, newsletterId, classId, user?.id]);
+  }, [enabled, articleId, newsletterId, classId, user?.id, location.key, location.pathname]);
 
   // Time Tracking with Visibility API
   useEffect(() => {
@@ -102,6 +81,7 @@ export function useAnalyticsTracking({ articleId, newsletterId, classId, enabled
       return;
     }
     
+    const ctx = { articleId, newsletterId, classId, userId: user?.id, pathname: location.pathname };
     // Reset time tracking for new article
     startTimeRef.current = Date.now();
     accumulatedTimeRef.current = 0;
@@ -125,8 +105,7 @@ export function useAnalyticsTracking({ articleId, newsletterId, classId, enabled
     // Log session end - inline function that reads from refs
     const logSessionEnd = async () => {
       if (hasLoggedEndRef.current) return;
-      
-      const ctx = currentContextRef.current;
+
       if (!ctx.articleId) return;
       
       // Calculate final time spent

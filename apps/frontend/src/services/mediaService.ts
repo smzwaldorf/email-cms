@@ -17,7 +17,7 @@ import { MediaFileType, MediaFileStatus } from '@/types/media'
  */
 const SUPPORTED_MIME_TYPES: Record<MediaFileType, string[]> = {
   image: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
-  audio: ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp4'],
+  audio: ['audio/mpeg', 'audio/wav', 'audio/x-wav', 'audio/ogg', 'audio/mp4', 'audio/webm'],
   video: ['video/mp4', 'video/webm', 'video/ogg'],
   document: ['application/pdf', 'text/plain'],
 }

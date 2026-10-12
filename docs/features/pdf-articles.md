@@ -8,7 +8,8 @@ the text. Publication remains the normal editorial action.
 ## Configuration
 
 Apply `db/migrations/20260928_article_narration.sql`, followed by
-`db/migrations/20260928_expand_narration_audio.sql`, using the normal reviewed
+`db/migrations/20260928_expand_narration_audio.sql`, then
+`db/migrations/20261012_narration_r2.sql`, using the normal reviewed
 migration process. Set `OPENAI_API_KEY` in the backend environment (`.env.local`
 for Node). For Cloudflare, set it as a Worker secret separately for each environment:
 
@@ -30,11 +31,23 @@ refused, and oversized extraction results are rejected without creating an artic
 
 Draft creation and narration transcripts are committed together. A client request
 UUID makes retries of draft creation idempotent. Each speech request processes one
-bounded section (at most 600 Unicode characters) and persists its MP3 bytes in
-PostgreSQL. This avoids relying on the legacy mock media adapter. The first version
-uses database storage so it works on Node and Workers without a new bucket; allow
-for database/backup growth (at most 8 MiB per section, at most 40 sections per
-article). A future object-store migration can preserve the `narration://` references.
+bounded section (at most 600 Unicode characters) and uploads its MP3 to the private
+R2 `MEDIA_BUCKET` binding. PostgreSQL stores the transcript and object reference;
+new audio bytes are never saved in PostgreSQL. Keys use
+`<environment>/narrations/<article-id>/<part-index>/<lease-id>.mp3`.
+Development and staging use `smz-cms-media-dev-staging` with separate prefixes;
+production uses `smz-cms-media-production`. Node development uses the existing
+Wrangler remote binding proxy configured in `config/r2-development.jsonc`.
+Follow `docs/MEDIA-STORAGE.md` for local R2 configuration and authentication.
+Missing R2 configuration fails generation before calling OpenAI.
+
+A section becomes ready only after the R2 upload and lease-checked database update
+succeed. A lost lease removes that attempt's unique object. An ambiguous database
+failure can leave an unreferenced object; cleanup must reconcile keys with stored
+references before deleting anything. Permanent article deletion removes database
+references but currently leaves R2 objects for that same reconciliation process.
+Existing database-backed sections remain playable; this migration does not move
+or regenerate historical audio. Each generated section remains bounded to 8 MiB.
 
 Completed sections are reused on retry. A three-minute lease prevents concurrent
 requests from generating the same section; failed requests release their leases.
@@ -45,7 +58,7 @@ local blob URLs when switching/unmounting. No publicly reusable audio URLs are i
 
 Only CMS managers may extract/create/generate. Playback uses current article
 reader permissions (including publication/class restrictions); managers may preview
-drafts. Deleting an article permanently cascades to its narration. Soft-deleted
+drafts. Deleting an article permanently cascades to its narration database records. Soft-deleted
 articles cannot serve audio. Audio is excluded from generic data/query access.
 
 Narration is a snapshot of the reviewed text. Later text edits do not regenerate

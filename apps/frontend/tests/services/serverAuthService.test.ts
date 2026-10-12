@@ -9,6 +9,40 @@ beforeEach(async () => {
   service = (await import('@/services/serverAuthService')).serverAuthService
 })
 describe('persistent browser identity', () => {
+  it('automatically resumes an expired startup session at the current page', async () => {
+    history.replaceState(null, '', '/admin?tab=newsletters#current')
+    const login = vi.spyOn(service, 'signInWithGoogle').mockResolvedValue(null)
+    request.mockResolvedValue(new Response(JSON.stringify({ user, authorizationStatus: 'reauthentication_required' })))
+    await Promise.all([service.initialize(), service.ensureInitialized()])
+    expect(login).toHaveBeenCalledTimes(1)
+    expect(login).toHaveBeenCalledWith('/admin?tab=newsletters#current')
+    history.replaceState(null, '', '/')
+  })
+  it('does not automatically redirect an open editing session after expiry', async () => {
+    const login = vi.spyOn(service, 'signInWithGoogle').mockResolvedValue(null)
+    request.mockResolvedValueOnce(new Response(JSON.stringify({ user, authorizationStatus: 'active' })))
+    await service.initialize()
+    request.mockResolvedValueOnce(new Response(JSON.stringify({ user, authorizationStatus: 'reauthentication_required' })))
+    await service.ensureInitialized()
+    expect(login).not.toHaveBeenCalled()
+    expect(service.getCurrentUser()?.id).toBe(user.id)
+  })
+  it('prevents redirect loops after a failed startup recovery', async () => {
+    sessionStorage.setItem('email-cms-startup-reauthentication', String(Date.now()))
+    const login = vi.spyOn(service, 'signInWithGoogle').mockResolvedValue(null)
+    request.mockResolvedValue(new Response(JSON.stringify({ user, authorizationStatus: 'reauthentication_required' })))
+    await service.initialize()
+    expect(login).not.toHaveBeenCalled()
+  })
+  it('does not restart sign-in from the callback page', async () => {
+    history.replaceState(null, '', '/auth/callback?server=1')
+    const login = vi.spyOn(service, 'signInWithGoogle').mockResolvedValue(null)
+    request.mockResolvedValue(new Response(JSON.stringify({ user, authorizationStatus: 'reauthentication_required' })))
+    await service.initialize()
+    expect(login).not.toHaveBeenCalled()
+    history.replaceState(null, '', '/')
+  })
+
   it('restores remembered identity after reload while the server is unavailable', async () => {
     localStorage.setItem('email-cms-remembered-identity-v1', JSON.stringify(user))
     request.mockRejectedValue(new TypeError('offline'))

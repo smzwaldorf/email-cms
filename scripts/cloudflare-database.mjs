@@ -1,3 +1,4 @@
+import { databaseName } from './cloudflare-database-name.mjs'
 import { randomBytes } from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { once } from 'node:events'
@@ -13,6 +14,9 @@ export const additiveMigrationFiles = [
   '20260922_resend_webhooks.sql',
   '20260928_article_narration.sql',
   '20260928_expand_narration_audio.sql',
+  '20261007_r2_article_media.sql',
+  '20261007_email_media_serving.sql',
+  '20261012_narration_r2.sql',
 ]
 
 export function migrationFilesFor(env) {
@@ -21,8 +25,12 @@ export function migrationFilesFor(env) {
 }
 
 // Use production's Hyperdrive credential without a permanent admin endpoint.
-export async function checkHyperdriveDatabase({ initialize = false, migrateSessions = false, migrateAll = false } = {}) {
+export async function checkHyperdriveDatabase({ initialize = false, migrateSessions = false, migrateAll = false, reset = false } = {}) {
   const config = configuration(process.env)
+  const expectedDatabase = databaseName(process.env)
+  if (reset && (process.env.DEPLOYMENT_ENVIRONMENT !== 'production' || process.env.PRODUCTION_DATABASE_RESET_APPROVED !== 'true' || expectedDatabase !== 'production-news')) {
+    throw new Error('Production News reset is not approved for this target')
+  }
   const root = fileURLToPath(new URL('../', import.meta.url))
   await mkdir(`${root}.wrangler/`, { recursive: true })
   const directory = await mkdtemp(`${root}.wrangler/database-check-`)
@@ -35,10 +43,10 @@ export async function checkHyperdriveDatabase({ initialize = false, migrateSessi
   const schema = initialize ? await readFile(new URL('../db/schema.sql', import.meta.url), 'utf8') : ''
   const sessionSchema = migrateSessions ? await readFile(new URL('../db/migrations/20260913_cms_sessions.sql', import.meta.url), 'utf8') : ''
   const migrations = migrateAll ? await Promise.all(migrationFilesFor(process.env).map(async name => ({name, sql:await readFile(new URL('../db/migrations/' + name, import.meta.url),'utf8')}))) : []
-  const migrationOptions = {retirementApproved:process.env.CMS_IDENTITY_RETIREMENT_APPROVED === 'true',backupReference:process.env.CMS_IDENTITY_BACKUP_REFERENCE ?? ''}
+  const migrationOptions = {retirementApproved:process.env.CMS_IDENTITY_RETIREMENT_APPROVED === 'true',backupReference:process.env.CMS_IDENTITY_BACKUP_REFERENCE ?? '',dryRun:process.env.CMS_MIGRATION_DRY_RUN === 'true'}
   await writeFile(`${directory}/worker.mjs`, `
 import pg from 'pg';
-import { verifyDatabase } from '../../scripts/cloudflare-database-operation.mjs';
+import { resetDatabase, verifyDatabase } from '../../scripts/cloudflare-database-operation.mjs';
 import { applyMigrations } from '../../scripts/cloudflare-migrations.mjs';
 const schema = ${JSON.stringify(schema)};
 const sessionSchema = ${JSON.stringify(sessionSchema)};
@@ -49,8 +57,9 @@ export default { async fetch(request, env) {
   const client = new pg.Client({connectionString:env.HYPERDRIVE.connectionString, connectionTimeoutMillis:15000});
   try {
     await client.connect();
-    const verified = await verifyDatabase(client, {initialize:${initialize}, schema});
-    if (${migrateAll}) await applyMigrations(client, ${JSON.stringify(migrations)}, ${JSON.stringify(migrationOptions)});
+    if (${reset}) await resetDatabase(client, {expectedDatabase:${JSON.stringify(expectedDatabase)}});
+    const verified = await verifyDatabase(client, {initialize:${initialize && !reset}, schema, expectedDatabase:${JSON.stringify(expectedDatabase)}});
+    const migration = ${migrateAll} ? await applyMigrations(client, ${JSON.stringify(migrations)}, ${JSON.stringify(migrationOptions)}) : undefined;
     if (sessionSchema) {
       await client.query('BEGIN');
       await client.query("SET LOCAL lock_timeout='5s'");
@@ -61,14 +70,14 @@ export default { async fetch(request, env) {
       await client.query('SELECT state_hash FROM cms_login_flows LIMIT 0');
       await client.query('COMMIT');
     }
-    return Response.json(verified);
+    return Response.json({...verified, migration, reset:${reset}});
   } catch (error) {
     return Response.json({error:'CMS database check failed',code:error.code ?? null}, {status:503});
   } finally { await client.end().catch(() => {}); }
 }};
 `)
   await writeFile(`${directory}/wrangler.json`, JSON.stringify({
-    name: 'smz-cms-db-verification', main: './worker.mjs',
+    name: `${config.name}-db-verification`, main: './worker.mjs',
     account_id: config.account_id, compatibility_date: config.compatibility_date,
     compatibility_flags: ['nodejs_compat'], hyperdrive: config.hyperdrive,
     vars: { CHECK_TOKEN: token },
@@ -95,8 +104,9 @@ export default { async fetch(request, env) {
     // Never retry initialization: a lost response may follow a successful commit.
     const response = await fetch(endpoint, { method: 'POST', headers, signal: AbortSignal.timeout(120000) })
     const result = await response.json()
-    if (!response.ok || result.database !== 'smz-cms' || result.schema !== 'verified') throw new Error(JSON.stringify(result))
-    console.info(initialize ? 'Initialized empty smz-cms through Hyperdrive; no seed data imported' : 'Verified production CMS schema through Hyperdrive')
+    if (!response.ok || result.database !== expectedDatabase || result.schema !== 'verified') throw new Error(JSON.stringify(result))
+    console.info(`${initialize ? 'Initialized empty' : 'Verified'} ${expectedDatabase} through Hyperdrive`)
+    if (result.migration) console.info(JSON.stringify(result.migration))
   } finally {
     if (child.exitCode === null) {
       process.kill(-child.pid, 'SIGTERM')

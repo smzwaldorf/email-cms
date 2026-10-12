@@ -4,14 +4,16 @@ import { closePool } from '#/lib/db'
 import { getSupabaseClient } from '#/lib/supabase'
 import { startNodeHttp } from '#/runtime/nodeHttp'
 import { installShutdownSignals } from '#/runtime/signals'
+import { openNodeMediaStorage } from '#/runtime/nodeMediaStorage'
 
 export async function main(): Promise<void> {
   await import('#/env')
   const config = loadBackendConfig()
+  const storage = await openNodeMediaStorage()
   const runtime = await startNodeHttp({
-    application: createCmsApplication({ supabase: getSupabaseClient(), corsOrigin: config.corsOrigin }),
+    application: createCmsApplication({ supabase: getSupabaseClient(), corsOrigin: config.corsOrigin, mediaBucket: storage.bucket }),
     port: config.port,
-    closeResources: closePool,
+    closeResources: async () => { await closePool(); await storage.dispose() },
   })
   installShutdownSignals(runtime.stop)
   console.info(`Email CMS backend listening on http://localhost:${config.port}`)

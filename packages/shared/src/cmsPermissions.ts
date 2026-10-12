@@ -10,9 +10,14 @@ export interface CmsArticle {
   deleted_at?: string | null
   visibility_type?: string | null
   restricted_to_classes?: string[] | null
+  /** Editorial scope resolved by the backend from every newsletter placement. */
+  teacher_edit_class_ids?: string[]
 }
 export const CMS_ACTIONS = ['cms:manage', 'newsletter:publish', 'email:deliver', 'article:view', 'article:edit', 'article:delete'] as const
 export type CmsAction = typeof CMS_ACTIONS[number]
+export function canAccessCmsPanel(actor: Pick<CmsActor, 'roles'> | null): boolean {
+  return actor?.roles.some(role => role === 'admin' || role === 'teacher') === true
+}
 const roleOrder: CmsRole[] = ['admin', 'teacher', 'parent', 'student']
 export function cmsRoles(roles: readonly string[]): CmsRole[] {
   return roleOrder.filter(role => roles.includes(role))
@@ -33,8 +38,8 @@ export function canPerformCmsAction(actor: CmsActor | null, action: string, arti
     return (article.restricted_to_classes ?? []).some(id => scope.includes(id))
   }
   if (action === 'article:edit') {
-    if (!article || !roles.includes('teacher') || article.visibility_type !== 'class_restricted') return false
-    const classes = article.restricted_to_classes ?? []
+    if (!article || !roles.includes('teacher')) return false
+    const classes = article.teacher_edit_class_ids ?? (article.visibility_type === 'class_restricted' ? article.restricted_to_classes ?? [] : [])
     // Editing shared content affects every target class: all must be taught by this actor.
     return classes.length > 0 && classes.every(id => actor?.teacherClassIds.includes(id))
   }

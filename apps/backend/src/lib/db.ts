@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from 'node:async_hooks'
 import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from 'pg'
 
 const transactionClient = new AsyncLocalStorage<PoolClient>()
+const checkedOutClient = new AsyncLocalStorage<PoolClient>()
 const invocationPool = new AsyncLocalStorage<Pool>()
 
 /** Workers own one pool per invocation; Node keeps the existing process pool. */
@@ -35,13 +36,15 @@ export async function query<T extends QueryResultRow = QueryResultRow>(
   text: string,
   values: unknown[] = [],
 ): Promise<QueryResult<T>> {
-  return (transactionClient.getStore() ?? getPool()).query<T>(text, values)
+  return (transactionClient.getStore() ?? checkedOutClient.getStore() ?? getPool()).query<T>(text, values)
 }
 
 export async function withClient<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
+  const existing = transactionClient.getStore() ?? checkedOutClient.getStore()
+  if (existing) return fn(existing)
   const client = await getPool().connect()
   try {
-    return await fn(client)
+    return await checkedOutClient.run(client, () => fn(client))
   } finally {
     client.release()
   }

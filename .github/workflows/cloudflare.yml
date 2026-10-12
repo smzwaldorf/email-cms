@@ -17,25 +17,25 @@ jobs:
         with:
           node-version: 24
       - run: npm install --no-audit --no-fund
-      - run: node --test scripts/cloudflare-config.test.mjs scripts/cloudflare-migrations.test.mjs scripts/cloudflare-secrets-config.test.mjs
+      - run: node --test scripts/cloudflare-config.test.mjs scripts/cloudflare-media-config.test.mjs scripts/cloudflare-production.test.mjs scripts/cloudflare-migrations.test.mjs scripts/cloudflare-secrets-config.test.mjs scripts/hyperdrive-policy.test.mjs
       - run: npm run test:seed
       - run: npm run build
       - run: npm run cloudflare:check
       - name: Backend runtime, authorization and delivery regression tests
         run: >-
           npm run test -w @email-cms/backend --
-          tests/unit/server-session.test.ts tests/unit/cloudflare-context.test.ts tests/unit/cloudflare-config.test.ts tests/unit/identity-transport.test.ts
-          tests/unit/cloudflare-delivery.test.ts tests/unit/services/emailDeliveryPolicy.test.ts tests/unit/services/directoryDeliveryCutover.test.ts tests/unit/services/authCatalogues.test.ts tests/unit/services/retiredIdentityRpc.test.ts tests/unit/services/articleMediaRows.test.ts
+          tests/unit/server-session.test.ts tests/unit/cloudflare-context.test.ts tests/unit/cloudflare-config.test.ts tests/unit/mediaWorker.test.ts tests/unit/identity-transport.test.ts
+          tests/unit/cloudflare-delivery.test.ts tests/unit/services/emailDeliveryPolicy.test.ts tests/unit/services/directoryDeliveryCutover.test.ts tests/unit/services/authCatalogues.test.ts tests/unit/services/retiredIdentityRpc.test.ts tests/unit/services/articleMediaRows.test.ts tests/unit/services/r2Media.test.ts tests/unit/services/emailMediaRendering.test.ts tests/integration/r2-media-route.test.ts src/utils/contentParser.test.ts
           tests/unit/services/adminService.spec.ts tests/unit/publish-transaction.test.ts tests/unit/services/publishArticle.test.ts tests/unit/services/canvaEmailImport.test.ts
           tests/unit/services/fileEmailTemplateLoader.test.ts tests/unit/lib/upsert-conflict.test.ts
-          tests/unit/lib/relation-select.test.ts tests/unit/auth/smz-auth.test.ts
+          tests/unit/lib/relation-select.test.ts tests/unit/lib/transaction.test.ts tests/unit/lib/database-availability.test.ts tests/unit/auth/smz-auth.test.ts
           tests/integration/parent-readonly.test.ts tests/integration/cms-boundary.test.ts
           tests/integration/delivery-workflow.test.ts tests/unit/runtime-adapters.test.ts
           tests/unit/services/resendWebhook.test.ts tests/unit/services/newsletterMetrics.test.ts tests/unit/services/readerTracking.test.ts tests/unit/services/readerHistory.test.ts tests/integration/resend-webhook-route.test.ts
       - name: Frontend authentication and media regression tests
         run: >-
           npm run test -w @email-cms/frontend --
-          tests/components/ArticleEditor.test.tsx tests/components/ArticleEditor_Storage.test.tsx tests/components/admin/ArticleForm.test.tsx tests/pages/ArticleEditorPage.test.tsx tests/hooks/usePersistentDraft.test.tsx tests/services/serverAuthService.test.ts tests/services/serverBackendClient.test.ts tests/unit/authService.test.ts tests/services/tokenManager.test.ts
+          tests/components/ArticleEditor.test.tsx tests/components/ArticleEditor_Storage.test.tsx tests/components/admin/ArticleForm.test.tsx tests/pages/ArticleEditorPage.test.tsx tests/hooks/usePersistentDraft.test.tsx tests/hooks/useMediaUpload.r2.test.tsx tests/components/MediaLibrary.test.tsx tests/services/serverAuthService.test.ts tests/services/serverBackendClient.test.ts tests/unit/authService.test.ts tests/services/tokenManager.test.ts
           tests/services/TokenManager_Resilience.test.ts tests/services/backendClient.logout.test.ts
           tests/pages/LocalLogoutPage.test.tsx tests/pages/ParentReadonly.test.tsx
           tests/context/AuthContext_SmzSession.test.tsx tests/pages/AuthCallbackPage.test.tsx
@@ -44,9 +44,11 @@ jobs:
   deploy:
     needs: validate
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Historical secret store; these resources are staging.
     environment: production
     runs-on: ubuntu-latest
     env:
+      DEPLOYMENT_ENVIRONMENT: staging
       CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_HYPERDRIVE_ID: ${{ vars.CLOUDFLARE_HYPERDRIVE_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -64,6 +66,9 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: npm run build -w @email-cms/shared
       - run: npm run cloudflare:templates
+      - name: Rename existing staging resources in place
+        if: vars.STAGING_RESOURCE_MIGRATION == 'true'
+        run: node scripts/rename-staging-resources.mjs
       - run: npm run cloudflare:configure
       - name: Validate Pages configuration
         run: npx wrangler pages functions build-env .wrangler/deploy --outfile .wrangler/deploy/pages-build-env.json

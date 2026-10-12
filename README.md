@@ -37,3 +37,5 @@ Authoritative runtime code lives under `apps/frontend`, `apps/backend`, and `pac
 ## Repeatable newsletter demo
 
 See [the two-family demo guide](docs/DEMO-NEWSLETTER.md) for insert-only synthetic seeds and the Resend inbox test. `npm run seed:demo` prints a plan; `--check` rehearses with rollback and `--apply` writes only a new fixture.
+
+Images and audio use private Cloudflare R2 with separate development/staging and production buckets. See [media storage setup and database tracking](docs/MEDIA-STORAGE.md).

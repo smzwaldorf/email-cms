@@ -1,3 +1,6 @@
+import { backendRequest } from '@/services/backendApi'
+import { useAuth } from '@/context/AuthContext'
+import { hasRole } from '@/lib/rbac'
 import React, { useMemo, useEffect, useRef } from 'react';
 import { useNewsletterMetrics, useGenerateSnapshots, useTrendStats, useArticleStats, useAvailableWeeks, useClassEngagement, useTopicHotness, useAllClasses } from '@/hooks/useAnalyticsQuery';
 import { KPICard } from '@/components/analytics/KPICard';
@@ -15,7 +18,18 @@ import type { AnalyticsNewsletterWeekOption } from '@/types/analytics';
 export const AnalyticsDashboardPage: React.FC = () => {
     const { weekNumber } = useParams<{ weekNumber: string }>();
     const navigate = useNavigate();
+    const { user } = useAuth();
+    const isAdmin = hasRole(user, 'admin');
     const [tracker, setTracker] = React.useState<'resend' | 'cms'>('resend');
+
+    const [visits, setVisits] = React.useState<{ visits: number; visitors: number } | null>(null);
+    const [visitsError, setVisitsError] = React.useState(false);
+    const refreshVisits = () => {
+        if (!isAdmin) return;
+        void backendRequest<{ visits: number; visitors: number }>('/api/cms/visits')
+            .then(value => { setVisits(value); setVisitsError(false); }).catch(() => setVisitsError(true));
+    };
+    useEffect(() => { refreshVisits(); }, [isAdmin]);
 
     // Global Context State
     const {
@@ -27,7 +41,11 @@ export const AnalyticsDashboardPage: React.FC = () => {
     } = useAnalytics();
 
     const { weeks, loading: weeksLoading } = useAvailableWeeks();
-    const { classes: allClasses, loading: allClassesLoading } = useAllClasses();
+    const { classes: allClasses, error: classesError, loading: allClassesLoading } = useAllClasses();
+
+    useEffect(() => {
+        if (!isAdmin && selectedClass && !allClassesLoading && !allClasses.includes(selectedClass)) setSelectedClass('');
+    }, [isAdmin, selectedClass, allClassesLoading, allClasses, setSelectedClass]);
 
     // Sync state with URL param
     React.useEffect(() => {
@@ -61,7 +79,7 @@ export const AnalyticsDashboardPage: React.FC = () => {
         return newsletter?.id || selectedWeek; // Fallback to selectedWeek if id not found
     }, [selectedWeek, weeks]);
 
-    const { metrics, loading: metricsLoading, refreshing: metricsRefreshing, refetch: refetchMetrics } = useNewsletterMetrics(selectedNewsletterId, selectedClass, tracker);
+    const { metrics, error: metricsError, loading: metricsLoading, refreshing: metricsRefreshing, refetch: refetchMetrics } = useNewsletterMetrics(selectedNewsletterId, selectedClass, tracker);
     const { stats: articleData, loading: articlesLoading, refreshing: articlesRefreshing, refetch: refetchArticles } = useArticleStats(selectedNewsletterId);
     const { trend: trendData, loading: trendsLoading, refreshing: trendsRefreshing, refetch: refetchTrends } = useTrendStats(selectedClass, tracker);
     const { data: classEngagement, loading: classLoading, refreshing: classesRefreshing, refetch: refetchClasses } = useClassEngagement(selectedNewsletterId);
@@ -71,6 +89,7 @@ export const AnalyticsDashboardPage: React.FC = () => {
     const isRefreshing = metricsRefreshing || articlesRefreshing || trendsRefreshing || classesRefreshing || hotnessRefreshing;
 
     const handleRefresh = () => {
+        refreshVisits();
         refetchMetrics();
         refetchArticles();
         refetchTrends();
@@ -129,6 +148,8 @@ export const AnalyticsDashboardPage: React.FC = () => {
     return (
         <AdminLayout activeTab="analytics">
             <div className="space-y-6">
+                {(metricsError || classesError) && <p role="alert" className="text-red-700">{(metricsError || classesError)?.message}</p>}
+                {!isAdmin && !allClassesLoading && !allClasses.length && <p>您目前沒有任教班級，因此沒有可查看的班級分析。</p>}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
                         <h1 className="text-2xl font-bold text-brand-neutral-800">分析儀表板</h1>
@@ -144,7 +165,7 @@ export const AnalyticsDashboardPage: React.FC = () => {
                                 className="pl-9 pr-4 py-2 border border-brand-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/20 min-w-[140px]"
                                 disabled={allClassesLoading}
                             >
-                                <option value="">所有班級</option>
+                                <option value="">{isAdmin ? '所有班級' : '所有任教班級'}</option>
                                 {allClasses.map(cls => (
                                     <option key={cls} value={cls}>{cls}</option>
                                 ))}
@@ -204,14 +225,14 @@ export const AnalyticsDashboardPage: React.FC = () => {
                             <span className="hidden sm:inline">{liveUpdate ? 'Live' : 'Live'}</span>
                         </button>
 
-                        <button
+                        {isAdmin && <button
                             onClick={() => generate()}
                             disabled={generating}
                             className="px-3 py-2 text-xs font-medium text-brand-neutral-600 bg-brand-neutral-50 hover:bg-brand-neutral-100 rounded-lg border border-brand-neutral-200 transition-colors disabled:opacity-50 whitespace-nowrap"
                             title="產生每日快照（管理員）"
                         >
                             {generating ? '產生中...' : '產生快照'}
-                        </button>
+                        </button>}
 
                         <button className="flex items-center gap-2 px-4 py-2 bg-white border border-brand-neutral-200 rounded-lg text-sm font-medium text-brand-neutral-700 hover:bg-brand-neutral-50 transition-colors">
                             <Download className="w-4 h-4" /> 匯出
@@ -234,6 +255,11 @@ export const AnalyticsDashboardPage: React.FC = () => {
                             : 'CMS 追蹤像素載入及電子郵件連結點擊，以已寄送收件人數為分母。包含代理伺服器與自動請求；圖片載入不代表真人閱讀。'}
                     </p>
                 </div>
+                {isAdmin && <div className="rounded-lg border p-4 mb-4" aria-label="CMS visits">
+                    <h2 className="font-semibold">CMS 網站瀏覽（最近 30 天）</h2>
+                    <p>{visitsError ? '瀏覽統計暫時無法載入' : visits ? `${visits.visits.toLocaleString()} 次瀏覽 · ${visits.visitors.toLocaleString()} 位使用者` : '載入中...'}</p>
+                    <p className="text-sm text-brand-neutral-500">首頁及管理頁面；電子報閱讀另外統計。此數據不受電子報或班級篩選影響。</p>
+                </div>}
                 {/* KPI Grid */}
                 {metrics?.emailMetricsAvailable === false && <p className="text-sm text-brand-neutral-500">電子郵件比率目前無法顯示： {tracker === 'resend' ? '沒有 Resend 送達確認資料' : '沒有成功寄送的收件人'} 此篩選條件沒有可用資料，或無法載入送達資料。</p>}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

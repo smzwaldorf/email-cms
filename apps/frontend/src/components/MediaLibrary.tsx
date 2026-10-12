@@ -12,6 +12,7 @@ import type { MediaFile, MediaFileType } from '@/types/media'
  */
 interface MediaLibraryProps {
   mediaFiles: MediaFile[]
+  onEmailAccessChanged?: (file: MediaFile, enabled: boolean) => Promise<void>
   onMediaSelected?: (mediaFile: MediaFile) => void
   onMediasSelected?: (mediaFiles: MediaFile[]) => void
   multiSelect?: boolean
@@ -40,6 +41,7 @@ type SortOption = 'name-asc' | 'name-desc' | 'size-asc' | 'size-desc' | 'date-as
  */
 export const MediaLibrary: React.FC<MediaLibraryProps> = ({
   mediaFiles,
+  onEmailAccessChanged,
   onMediaSelected,
   onMediasSelected,
   multiSelect = false,
@@ -56,6 +58,10 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
   const [focusedFile, setFocusedFile] = useState<MediaFile | null>(null)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [uploadError, setUploadError] = useState<string>('')
+  const [emailAccessBusy, setEmailAccessBusy] = useState(false)
+  const [emailAccessError, setEmailAccessError] = useState('')
+  const [acknowledgePublicAccess, setAcknowledgePublicAccess] = useState(false)
+  const currentFocused = mediaFiles.find(file => file.id === focusedFile?.id) ?? focusedFile
   const itemsPerPage = 12
 
   /**
@@ -144,6 +150,8 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
    */
   const handleSelectFile = (file: MediaFile) => {
     setFocusedFile(file)
+    setAcknowledgePublicAccess(false)
+    setEmailAccessError('')
     if (!multiSelect) {
       setSelectedFiles(new Set([file.id]))
       onMediaSelected?.(file)
@@ -354,7 +362,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
 
         {/* 結果計數 / Result count */}
         <p className="text-sm text-gray-600">
-          找到 {filteredAndSortedFiles.length} 找到 {filteredAndSortedFiles.length} 個媒體檔案
+          找到 {filteredAndSortedFiles.length} 個媒體檔案
           {selectedFiles.size > 0 && ` (已選擇 ${selectedFiles.size} 個 / Selected ${selectedFiles.size})`}
         </p>
       </div>
@@ -376,6 +384,27 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
       {focusedFile ? (
         <div className="border rounded-lg border-gray-200 p-4 bg-gray-50">
           <h4 className="font-semibold text-sm mb-2">媒體詳細資料</h4>
+          <p className="text-xs mb-2">郵件存取：{currentFocused?.emailServingEnabled ? '已核准公開網址' : '受限'}</p>
+          {onEmailAccessChanged && (
+            <div className="mb-3 space-y-2 text-sm">
+              {currentFocused?.emailServingEnabled && <p>撤銷後，既有郵件中的此檔案也會停止載入。</p>}
+              {!currentFocused?.emailServingEnabled && <label className="flex gap-2">
+                <input type="checkbox" checked={acknowledgePublicAccess} onChange={event => setAcknowledgePublicAccess(event.target.checked)} />
+                我了解核准後，任何持有網址的人都能讀取此檔案（包括音訊）。
+              </label>}
+              <button type="button" disabled={disabled || emailAccessBusy || (!currentFocused?.emailServingEnabled && !acknowledgePublicAccess)}
+                className="px-3 py-1 border rounded disabled:opacity-50"
+                onClick={async () => {
+                  setEmailAccessBusy(true); setEmailAccessError('')
+                  try { await onEmailAccessChanged(focusedFile, !currentFocused?.emailServingEnabled); setAcknowledgePublicAccess(false) }
+                  catch (error) { setEmailAccessError(error instanceof Error ? error.message : '更新失敗') }
+                  finally { setEmailAccessBusy(false) }
+                }}>
+                {currentFocused?.emailServingEnabled ? '撤銷公開郵件存取' : '核准公開郵件存取'}
+              </button>
+              {emailAccessError && <p role="alert" className="text-red-600">{emailAccessError}</p>}
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-700">
             <div>檔名： {focusedFile.fileName}</div>
             <div>大小： {formatFileSize(focusedFile.fileSize)}</div>

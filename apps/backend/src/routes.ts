@@ -1,17 +1,22 @@
 import { pdfArticleService, MAX_PDF_BYTES } from '#/services/pdfArticleService'
+import { recordCmsVisit, cmsVisitMetrics } from '#/services/cmsVisitService'
+import { copyArticle } from '#/services/articleCopyService'
 import { recordReaderEvent, getReaderReadArticles } from '#/services/readerTrackingService'
 import { analyticsAggregator } from '#/services/analyticsAggregator'
 import { handleResendWebhook } from '#/services/resendWebhookService'
 import { withIdentityDirectory } from '#/services/identityDirectory'
 import { hashSessionId } from '#/session/crypto'
-import { deliveryIdentityForSessionHash, directoryForCookie, handleSessionRequest, serverSessionsEnabled, sessionId } from '#/session/http'
+import { checkSessionCsrf, deliveryIdentityForSessionHash, directoryForCookie, handleSessionRequest, serverSessionsEnabled, sessionId } from '#/session/http'
 import { withTransaction } from '#/lib/db'
-import { canPerformCmsAction } from '@email-cms/shared'
-import { isAllowedRpc } from '#/services/rpcPolicy'
+import { DATABASE_BUSY_MESSAGE, isDatabaseBusy } from '#/lib/databaseAvailability'
+import { canAccessCmsPanel, canPerformCmsAction } from '@email-cms/shared'
+import { isAllowedRpc, isTeacherRpc } from '#/services/rpcPolicy'
+import { withTeacherAnalytics } from '#/services/teacherAnalyticsScope'
+import { teacherContentService } from '#/services/teacherContentService'
 import { cmsArticleService } from '#/services/cmsArticleService'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { SupabaseClient } from '#/lib/supabase'
-import { directoryForToken, HttpError, optionalViewer, requireAdmin, requireViewer } from '#/auth'
+import { directoryForToken, HttpError, optionalViewer, requireAdmin, requireViewer, type AuthenticatedViewer } from '#/auth'
 import { getSupabaseClient } from '#/lib/supabase'
 import { adminService } from '#/services/adminService'
 import {
@@ -29,10 +34,15 @@ import { resolveAuthPreviewFamily } from '#/services/authDirectoryPreview'
 import { readerService } from '#/services/readerService'
 import { runSerializedQuery, type SerializedQuery } from '#/lib/query'
 import type { DeliveryAudienceSelection } from '#/types/emailDelivery'
+import { Readable } from 'node:stream'
+import type { ReadableStream as NodeReadableStream } from 'node:stream/web'
+import { authorizeMediaRead, mediaBucket, mediaByteRange, mediaForPath, requireMediaUpload, setEmailMediaAccess, signedMediaUrl, uploadFormat, uploadMedia, verifyMediaToken, withMediaBucket } from '#/services/r2MediaService'
+import type { R2Bucket } from '@cloudflare/workers-types'
 
 export interface RouteContext {
   supabase: SupabaseClient
   corsOrigin: string
+  mediaBucket?: R2Bucket
 }
 
 type RpcServiceName = 'admin' | 'emailTemplate' | 'newsletterDelivery' | 'fileEmailTemplate' | 'analytics'
@@ -56,6 +66,19 @@ async function readText(request: IncomingMessage, maxBytes = Infinity): Promise<
 async function readJson(request: IncomingMessage): Promise<unknown> {
   const raw = await readText(request)
   return raw.trim() ? JSON.parse(raw) as unknown : {}
+}
+
+async function readMediaBody(request: IncomingMessage, limit: number): Promise<Buffer> {
+  if (Number(request.headers['content-length'] ?? 0) > limit) throw new HttpError(413, 'Media file exceeds the upload limit')
+  const chunks: Buffer[] = []
+  let size = 0
+  for await (const chunk of request) {
+    const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+    size += bytes.length
+    if (size > limit) throw new HttpError(413, 'Media file exceeds the upload limit')
+    chunks.push(bytes)
+  }
+  return Buffer.concat(chunks)
 }
 
 function stringValue(value: unknown): string | undefined {
@@ -183,7 +206,7 @@ function getRpcService(name: RpcServiceName): unknown {
   }
 }
 
-async function handleRpc(body: unknown): Promise<unknown> {
+async function handleRpc(body: unknown, viewer: AuthenticatedViewer): Promise<unknown> {
   if (!isRecord(body)) {
     throw new HttpError(400, 'Invalid RPC body')
   }
@@ -198,6 +221,8 @@ async function handleRpc(body: unknown): Promise<unknown> {
   }
 
   if (!isAllowedRpc(serviceName, methodName)) throw new HttpError(403, 'RPC action is not permitted')
+  const isAdmin = canPerformCmsAction(viewer, 'cms:manage')
+  if (!isAdmin && !(canAccessCmsPanel(viewer) && isTeacherRpc(serviceName, methodName))) throw new HttpError(403, 'RPC action requires admin permission')
   if (serviceName === 'analytics' && (args.length > (['getNewsletterMetrics', 'getTrendStats'].includes(methodName) ? 3 : 2) || args.some(arg => arg !== null && typeof arg !== 'string' && typeof arg !== 'number'))) throw new HttpError(400, 'Invalid analytics arguments')
   if (serviceName === 'analytics' && ['getNewsletterMetrics', 'getTrendStats'].includes(methodName) && args.length > 2 && !['resend', 'cms'].includes(args[2] as string)) throw new HttpError(400, 'Invalid analytics tracker')
   const service = getRpcService(serviceName) as Record<string, unknown>
@@ -206,7 +231,8 @@ async function handleRpc(body: unknown): Promise<unknown> {
     throw new HttpError(404, `RPC method not found: ${serviceName}.${methodName}`)
   }
 
-  return method.apply(service, args)
+  const run = async () => method.apply(service, args)
+  return isAdmin ? run() : withTeacherAnalytics(viewer, methodName, args, run)
 }
 
 async function publishAndEnqueueDelivery(newsletterId: string, audience?: DeliveryAudienceSelection, templateRevisionId?: string | null): Promise<unknown> {
@@ -227,7 +253,7 @@ async function publishAndEnqueueDelivery(newsletterId: string, audience?: Delive
 export async function handleApiRequest(request: IncomingMessage, response: ServerResponse, context: RouteContext): Promise<void> {
  const rawSessionId=sessionId(request)
  const sessionHash=rawSessionId ? hashSessionId(rawSessionId) : undefined
- return withIdentityDirectory({ sessionId:sessionHash, directory: () => serverSessionsEnabled() && sessionId(request) ? directoryForCookie(request) : directoryForToken(String(request.headers.authorization ?? '').replace(/^Bearer\s+/i,'')), contacts:async () => { if(!sessionHash) throw new HttpError(403,'Server session required for delivery'); return (await deliveryIdentityForSessionHash(sessionHash)).contacts() } }, () => handleScopedApiRequest(request,response,context))
+ return withMediaBucket(context.mediaBucket, () => withIdentityDirectory({ sessionId:sessionHash, directory: () => serverSessionsEnabled() && sessionId(request) ? directoryForCookie(request) : directoryForToken(String(request.headers.authorization ?? '').replace(/^Bearer\s+/i,'')), contacts:async () => { if(!sessionHash) throw new HttpError(403,'Server session required for delivery'); return (await deliveryIdentityForSessionHash(sessionHash)).contacts() } }, () => handleScopedApiRequest(request,response,context)))
 }
 async function handleScopedApiRequest(
   request: IncomingMessage,
@@ -243,6 +269,77 @@ async function handleScopedApiRequest(
     if (await handleSessionRequest(request, response)) return
     const url = new URL(request.url ?? '/', 'http://localhost')
     const method = request.method ?? 'GET'
+
+    if (method === 'POST' && url.pathname === '/api/media/upload') {
+      if (serverSessionsEnabled() && sessionId(request)) checkSessionCsrf(request)
+      const viewer = await requireViewer(request)
+      const articleId = url.searchParams.get('articleId') ?? undefined
+      await requireMediaUpload(viewer, articleId)
+      const mime = String(request.headers['content-type'] ?? '').split(';')[0].trim().toLowerCase()
+      const format = uploadFormat(mime)
+      const number = (key: string) => {
+        const raw = url.searchParams.get(key)
+        if (raw === null) return undefined
+        const value = Number(raw)
+        if (!Number.isFinite(value) || value <= 0 || (key !== 'duration' && (!Number.isInteger(value) || value > 100_000))) throw new HttpError(400, 'Invalid media dimensions or duration')
+        return value
+      }
+      const row = await uploadMedia(await readMediaBody(request, format.limit), mime, url.searchParams.get('filename') ?? '', viewer,
+        { articleId, width: number('width'), height: number('height'), duration: number('duration') })
+      sendJson(response, 201, row, context.corsOrigin)
+      return
+    }
+
+    const emailAccessMatch = url.pathname.match(/^\/api\/media\/([0-9a-f-]+)\/email-access$/i)
+    if (method === 'PATCH' && emailAccessMatch) {
+      if (serverSessionsEnabled() && sessionId(request)) checkSessionCsrf(request)
+      const viewer = await requireViewer(request)
+      if (!canPerformCmsAction(viewer, 'cms:manage')) throw new HttpError(403, 'Admin role required to approve public email media')
+      const body = await readJson(request)
+      if (!isRecord(body) || typeof body.enabled !== 'boolean' || (body.enabled && body.acknowledgePublicAccess !== true)) throw new HttpError(400, 'Explicit acknowledgement of public URL access is required')
+      sendJson(response, 200, await setEmailMediaAccess(emailAccessMatch[1], body.enabled, viewer), context.corsOrigin)
+      return
+    }
+
+    if (method === 'GET' && url.pathname === '/api/media/sign') {
+      const row = await mediaForPath(url.searchParams.get('path') ?? '')
+      await authorizeMediaRead(row, await optionalViewer(request))
+      // Browser previews remain separate from permanent, explicitly approved email URLs.
+      sendJson(response, 200, { url: await signedMediaUrl(row.storage_path, 300) }, context.corsOrigin)
+      return
+    }
+
+    const mediaContentMatch = url.pathname.match(/^\/api\/media\/([0-9a-f-]+)\/content$/i)
+    if ((method === 'GET' || method === 'HEAD') && mediaContentMatch) {
+      const row = await verifyMediaToken(mediaContentMatch[1], url.searchParams.get('token') ?? '')
+      const range = mediaByteRange(firstHeaderValue(request.headers.range), Number(row.file_size))
+      const object = await mediaBucket().get(row.storage_path, range ? { range } : undefined)
+      if (!object) throw new HttpError(404, 'Media object not found')
+      const headers: Record<string, string> = {
+        'Content-Type': row.mime_type, 'Cache-Control': 'private, no-store',
+        'X-Content-Type-Options': 'nosniff', 'Accept-Ranges': 'bytes',
+        'Access-Control-Allow-Origin': context.corsOrigin, ETag: object.httpEtag,
+        'Referrer-Policy': 'no-referrer',
+      }
+      const selected = object.range
+      if (selected && 'offset' in selected && 'length' in selected && selected.offset !== undefined && selected.length !== undefined) {
+        headers['Content-Range'] = `bytes ${selected.offset}-${selected.offset + selected.length - 1}/${object.size}`
+        headers['Content-Length'] = String(selected.length)
+      } else headers['Content-Length'] = String(object.size)
+      response.writeHead(headers['Content-Range'] ? 206 : 200, headers)
+      if (method === 'HEAD') { await object.body.cancel(); response.end(); return }
+      const stream = Readable.fromWeb(object.body as unknown as NodeReadableStream<Uint8Array>)
+      await new Promise<void>((resolve, reject) => {
+        stream.once('error', reject)
+        response.once('error', reject)
+        response.once('finish', resolve)
+        // Audio seeking cancels the previous request. Release the R2 stream then
+        // instead of leaving the Worker invocation or Node shutdown waiting forever.
+        response.once('close', () => { stream.destroy(); resolve() })
+        stream.pipe(response)
+      })
+      return
+    }
 
     if (method === 'GET' && isTrackingPixelPath(url.pathname)) {
       const result = await emailTrackingEndpointService.handlePixel(
@@ -341,6 +438,13 @@ async function handleScopedApiRequest(
       return
     }
 
+    const copyArticleMatch = url.pathname.match(/^\/api\/cms\/articles\/([^/]+)\/(duplicate|from-template)$/)
+    if (method === 'POST' && copyArticleMatch) {
+      const viewer = await requireViewer(request)
+      sendJson(response, 201, await copyArticle(decodeURIComponent(copyArticleMatch[1]), copyArticleMatch[2] === 'from-template', viewer), context.corsOrigin)
+      return
+    }
+
     const publishArticleMatch = url.pathname.match(/^\/api\/cms\/articles\/([^/]+)\/publish$/)
     if (method === 'POST' && publishArticleMatch) {
       const viewer = await requireViewer(request)
@@ -360,7 +464,7 @@ async function handleScopedApiRequest(
     }
 
     if (method === 'POST' && url.pathname === '/api/data/query') {
-      await requireAdmin(request)
+      const viewer = await requireViewer(request)
       const body = await readJson(request)
       if (!isRecord(body) || typeof body.table !== 'string') {
         throw new HttpError(400, 'Invalid query body')
@@ -376,12 +480,32 @@ async function handleScopedApiRequest(
       // The compatibility gateway is CMS-admin-only and cannot alter identity or delivery state.
       const readTables = new Set(['articles', 'newsletters', 'newsletter_articles',
         'article_categories', 'article_tags', 'article_category_assignments', 'article_tag_assignments',
-        'media_files', 'media_usage', 'analytics_events', 'analytics_snapshots', 'email_opens', 'email_clicks', 'auth_events'])
+        'media_files', 'media_usage', 'media_variants', 'analytics_events', 'analytics_snapshots', 'email_opens', 'email_clicks', 'auth_events'])
+      if (body.table === 'media_files' && isRecord(body.mutation)) {
+        const payloads = Array.isArray(body.mutation.payload) ? body.mutation.payload : [body.mutation.payload]
+        if (payloads.some(payload => isRecord(payload) && ['email_serving_enabled', 'email_approved_by', 'email_approved_at'].some(key => key in payload))) throw new HttpError(403, 'Use the explicit email access approval endpoint')
+      }
       const writeTables = new Set(['media_files', 'media_usage', 'analytics_snapshots'])
+      if (!canPerformCmsAction(viewer, 'cms:manage')) {
+        const teacherMediaRead = canAccessCmsPanel(viewer) && ['media_files', 'media_usage', 'media_variants'].includes(body.table) && !body.mutation
+          && (body.select === undefined || (typeof body.select === 'string' && /^[\w\s,*]+$/.test(body.select)))
+        if (!teacherMediaRead) throw new HttpError(403, 'Data query requires admin permission')
+      }
       if (!readTables.has(body.table) || (body.mutation && !writeTables.has(body.table))) {
         throw new HttpError(403, 'Use an authorized CMS action for this table')
       }
       sendJson(response, 200, await runSerializedQuery(body as unknown as SerializedQuery), context.corsOrigin)
+      return
+    }
+
+    if (method === 'POST' && url.pathname === '/api/cms/visits') {
+      const viewer = await requireViewer(request)
+      await recordCmsVisit(await readJson(request), viewer)
+      sendJson(response, 200, { accepted: true }, context.corsOrigin)
+      return
+    }
+    if (method === 'GET' && url.pathname === '/api/cms/visits') {
+      sendJson(response, 200, await cmsVisitMetrics(await requireViewer(request)), context.corsOrigin)
       return
     }
 
@@ -437,6 +561,24 @@ async function handleScopedApiRequest(
       throw new HttpError(404, 'Route not found')
     }
 
+    if (method === 'GET' && url.pathname.startsWith('/api/teacher/')) {
+      const viewer = await requireViewer(request)
+      if (!canAccessCmsPanel(viewer)) throw new HttpError(403, 'Teacher or admin permission required')
+      const newsletterMatch = url.pathname.match(/^\/api\/teacher\/newsletters\/([^/]+)$/)
+      const result = url.pathname === '/api/teacher/newsletters' ? await teacherContentService.newsletters()
+        : url.pathname === '/api/teacher/articles' ? await teacherContentService.articles(viewer)
+        : newsletterMatch ? await teacherContentService.newsletter(decodeURIComponent(newsletterMatch[1]), viewer) : undefined
+      if (result === undefined) throw new HttpError(404, 'Route not found')
+      sendJson(response, 200, result, context.corsOrigin)
+      return
+    }
+
+    if (method === 'POST' && url.pathname === '/api/admin/rpc') {
+      const viewer = await requireViewer(request)
+      sendJson(response, 200, await handleRpc(await readJson(request), viewer), context.corsOrigin)
+      return
+    }
+
     if (!url.pathname.startsWith('/api/admin/')) {
       throw new HttpError(404, 'Route not found')
     }
@@ -489,11 +631,6 @@ async function handleScopedApiRequest(
       const body = await readJson(request)
       if (!isRecord(body)) throw new HttpError(400, 'Invalid JSON body')
       sendJson(response, 200, await backendEmailPlatformService.replay(body), context.corsOrigin)
-      return
-    }
-
-    if (method === 'POST' && url.pathname === '/api/admin/rpc') {
-      sendJson(response, 200, await handleRpc(await readJson(request)), context.corsOrigin)
       return
     }
 
@@ -607,7 +744,8 @@ async function handleScopedApiRequest(
 
     throw new HttpError(404, 'Route not found')
   } catch (error) {
-    const status = error instanceof HttpError ? error.status : 500
+    const busy = isDatabaseBusy(error)
+    const status = busy ? 503 : error instanceof HttpError ? error.status : 500
     const message = error instanceof Error ? error.message : String(error)
     if (status >= 500) {
       const cause = error instanceof Error ? error.cause : undefined
@@ -621,6 +759,7 @@ async function handleScopedApiRequest(
         causeMessage: cause instanceof Error ? cause.message : undefined,
       })
     }
-    sendJson(response, status, { error: message, code: error instanceof HttpError ? error.code : undefined }, context.corsOrigin)
+    if (busy) response.setHeader('Retry-After', '2')
+    sendJson(response, status, { error: busy ? DATABASE_BUSY_MESSAGE : message, code: busy ? 'database_busy' : error instanceof HttpError ? error.code : undefined }, context.corsOrigin)
   }
 }

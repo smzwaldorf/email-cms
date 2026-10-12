@@ -1122,7 +1122,7 @@ class AdminService {
     if (referenceInserts.length > 0) {
       const { error: referencesInsertError } = await supabase
         .from('article_media_references')
-        .insert(referenceInserts)
+        .upsert(referenceInserts, { onConflict: 'article_id,media_id' })
 
       if (referencesInsertError) {
         throw new AdminServiceError(

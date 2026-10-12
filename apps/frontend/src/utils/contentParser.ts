@@ -3,13 +3,10 @@ import { storageService } from '@/services/storageService'
 /** Default signed URL TTL for inline previews (short). */
 const DEFAULT_STORAGE_SIGN_TTL_SECONDS = 300
 
-/** Signed URL TTL for email HTML (images must load when the message is opened weeks later). */
-export const EMAIL_HTML_STORAGE_SIGN_TTL_SECONDS = 60 * 60 * 24 * 30 // 30 days
-
 /**
  * Replace storage:// tokens in HTML with signed URLs
  * @param html HTML content containing storage:// tokens
- * @param expiresInSeconds Supabase signed URL lifetime (default short TTL for page previews)
+ * @param expiresInSeconds Restricted preview signed URL lifetime (default short TTL for page previews)
  * @returns HTML with signed URLs
  */
 export async function replaceStorageTokens(

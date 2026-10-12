@@ -9,14 +9,15 @@ export const ArticleAnalyticsPage: React.FC = () => {
     const { articleId } = useParams<{ articleId: string }>();
     const navigate = useNavigate();
     
-    const { metadata, loading: metaLoading } = useArticleMetadata(articleId || '');
-    const { readers, loading: readersLoading } = useArticleReaders(articleId || '');
+    const { metadata, loading: metaLoading, error: metadataError } = useArticleMetadata(articleId || '');
+    const { readers, loading: readersLoading, error: readersError } = useArticleReaders(articleId || '');
 
     if (!articleId) return <div>文章 ID 無效</div>;
 
     return (
         <AdminLayout activeTab="analytics">
             <div className="space-y-6">
+                {(metadataError || readersError) && <p role="alert" className="text-red-700">{(metadataError || readersError)?.message}</p>}
                 {/* Header */}
                 <div className="flex items-center gap-4">
                     <button 

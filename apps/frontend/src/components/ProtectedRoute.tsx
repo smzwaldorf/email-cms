@@ -9,25 +9,41 @@ import { Navigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 
 import { canAccess } from '@/lib/rbac'
+import { canAccessCmsPanel } from '@email-cms/shared'
 import type { UserRole } from '@/types/auth'
 import { buildLoginRedirectPath } from '@/utils/urlUtils'
 
 export interface ProtectedRouteProps {
   children: React.ReactNode
   requiredRole?: UserRole
+  cmsPanel?: boolean
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole }) => {
-  const { user, isAuthenticated, isLoading } = useAuth()
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole, cmsPanel }) => {
+  const { user, isAuthenticated, isLoading, signInWithGoogle } = useAuth()
 
   const [showTimeout, setShowTimeout] = useState(false)
+  const [recovering, setRecovering] = useState(false)
+  const [recoveryError, setRecoveryError] = useState(false)
+
+  const recoverSession = async () => {
+    setRecovering(true)
+    setRecoveryError(false)
+    try {
+      await signInWithGoogle(window.location.pathname + window.location.search + window.location.hash)
+    } catch {
+      setRecoveryError(true)
+    } finally {
+      setRecovering(false)
+    }
+  }
 
   useEffect(() => {
     let timer: NodeJS.Timeout
     if (isLoading) {
       timer = setTimeout(() => {
         setShowTimeout(true)
-      }, 5000) // 5 seconds timeout
+      }, 8000)
     } else {
       setShowTimeout(false)
     }
@@ -45,16 +61,18 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requir
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">連線逾時</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">正在確認登入狀態</h3>
             <p className="text-gray-600 mb-6">
-              載入時間超出預期，您的工作階段可能已逾時。
+              登入服務回應較慢。你可以繼續等候，或重新驗證身分以返回目前頁面。
             </p>
             <button 
-              onClick={() => window.location.reload()}
+              onClick={() => void recoverSession()}
+              disabled={recovering}
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm font-medium"
             >
-              重新整理頁面
+              {recovering ? '正在重新連線…' : '重新連線並登入'}
             </button>
+            {recoveryError && <p role="alert" className="mt-4 text-red-700">目前無法連線至登入服務，請稍後再試。</p>}
           </div>
         </div>
       )
@@ -77,7 +95,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requir
   }
 
   // Check role requirement if specified
-  if (requiredRole && !canAccess(user, requiredRole)) {
+  if ((cmsPanel && !canAccessCmsPanel({ roles: user.roles ?? [user.role] })) || (requiredRole && !canAccess(user, requiredRole))) {
     return <Navigate to="/" replace />
   }
 

@@ -2,6 +2,7 @@ import { canPerformCmsAction } from '@email-cms/shared'
 import { HttpError, type AuthenticatedViewer } from '#/auth'
 import { withClient } from '#/lib/db'
 import type { ArticleRow } from '#/types/database'
+import { withArticleEditorialScope, type ArticlePlacement } from './articleEditorialScope'
 
 function permitted(viewer: AuthenticatedViewer, article: ArticleRow): boolean {
   return canPerformCmsAction(viewer, 'article:view', article) || canPerformCmsAction(viewer, 'article:edit', article)
@@ -24,8 +25,11 @@ export const cmsArticleService = {
   async read(id: string, viewer: AuthenticatedViewer): Promise<ArticleRow> {
     return withClient(async client => {
       const { rows } = await client.query<ArticleRow>('SELECT * FROM articles WHERE id = $1', [id])
-      if (!rows[0] || !permitted(viewer, rows[0])) throw new HttpError(404, 'Article not found')
-      return rows[0]
+      if (!rows[0]) throw new HttpError(404, 'Article not found')
+      const placements = await client.query<ArticlePlacement>('SELECT article_id, targeting_mode, target_class_ids FROM newsletter_articles WHERE article_id = $1', [id])
+      const article = withArticleEditorialScope(rows[0], placements.rows)
+      if (!permitted(viewer, article)) throw new HttpError(404, 'Article not found')
+      return article
     })
   },
   async update(id: string, body: unknown, viewer: AuthenticatedViewer): Promise<ArticleRow> {
@@ -41,14 +45,15 @@ export const cmsArticleService = {
       try {
         const { rows } = await client.query<ArticleRow>('SELECT * FROM articles WHERE id = $1 FOR UPDATE', [id])
         if (!rows[0]) throw new HttpError(404, 'Article not found')
-        if (!canPerformCmsAction(viewer, 'article:edit', rows[0])) throw new HttpError(403, 'Article edit permission required')
+        const placements = await client.query<ArticlePlacement>('SELECT article_id, targeting_mode, target_class_ids FROM newsletter_articles WHERE article_id = $1 FOR SHARE', [id])
+        if (!canPerformCmsAction(viewer, 'article:edit', withArticleEditorialScope(rows[0], placements.rows))) throw new HttpError(403, 'Article edit permission required')
         const assignments = fields.map(([key], index) => `"${key}" = $${index + 2}`)
         const result = await client.query<ArticleRow>(
           `UPDATE articles SET ${assignments.join(', ')}, updated_at = now(), last_edited_by = $${fields.length + 2} WHERE id = $1 RETURNING *`,
           [id, ...fields.map(([, value]) => value), viewer.id],
         )
         await client.query('COMMIT')
-        return result.rows[0]
+        return withArticleEditorialScope(result.rows[0], placements.rows)
       } catch (error) {
         await client.query('ROLLBACK')
         throw error

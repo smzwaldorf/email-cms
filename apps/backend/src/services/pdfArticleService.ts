@@ -1,3 +1,4 @@
+import { mediaBucket, mediaStorageConfiguration } from '#/services/r2MediaService'
 import { canPerformCmsAction } from '@email-cms/shared'
 import { HttpError, type AuthenticatedViewer } from '#/auth'
 import { query, withTransaction } from '#/lib/db'
@@ -218,7 +219,7 @@ export const pdfArticleService = {
   async manifest(articleId: string, viewer: AuthenticatedViewer | null) {
     await readable(articleId, viewer)
     const { rows } = await query(
-      'SELECT part_index, audio IS NOT NULL AS ready FROM article_narration_parts WHERE article_id = $1 ORDER BY part_index',
+      'SELECT part_index, (audio IS NOT NULL OR audio_object_key IS NOT NULL) AS ready FROM article_narration_parts WHERE article_id = $1 ORDER BY part_index',
       [articleId]
     )
     if (!rows.length) throw new HttpError(404, 'Narration not found')
@@ -237,13 +238,13 @@ export const pdfArticleService = {
     const lease = crypto.randomUUID()
     const { rows } = await query(
       `UPDATE article_narration_parts SET lease_id = $3, generating_at = now()
-       WHERE article_id = $1 AND part_index = $2 AND audio IS NULL
+       WHERE article_id = $1 AND part_index = $2 AND audio IS NULL AND audio_object_key IS NULL
        AND (generating_at IS NULL OR generating_at < now() - interval '3 minutes') RETURNING transcript`,
       [articleId, partIndex, lease]
     )
     if (!rows[0]) {
       const existing = await query(
-        'SELECT audio IS NOT NULL AS ready FROM article_narration_parts WHERE article_id = $1 AND part_index = $2',
+        'SELECT (audio IS NOT NULL OR audio_object_key IS NOT NULL) AS ready FROM article_narration_parts WHERE article_id = $1 AND part_index = $2',
         [articleId, partIndex]
       )
       if (existing.rows[0]?.ready) return { ready: true }
@@ -255,6 +256,9 @@ export const pdfArticleService = {
       )
     }
     try {
+      const bucket = mediaBucket()
+      const config = mediaStorageConfiguration()
+      const objectKey = `${config.environment}/narrations/${articleId}/${partIndex}/${lease}.mp3`
       const response = await openai('audio/speech', {
         model: 'gpt-4o-mini-tts',
         voice: 'coral',
@@ -285,10 +289,20 @@ export const pdfArticleService = {
         buffers.push(Buffer.from(value))
       }
       if (!size) throw new HttpError(502, 'OpenAI 未回傳語音。')
-      await query(
-        'UPDATE article_narration_parts SET audio = $4, generating_at = NULL, lease_id = NULL WHERE article_id = $1 AND part_index = $2 AND lease_id = $3',
-        [articleId, partIndex, lease, Buffer.concat(buffers)]
+      const stored = await bucket.put(objectKey, Buffer.concat(buffers), {
+        httpMetadata: { contentType: 'audio/mpeg', cacheControl: 'private, no-store' },
+      })
+      if (!stored) throw new HttpError(502, '無法儲存語音，請稍後重試。')
+      const saved = await query(
+        `UPDATE article_narration_parts SET audio_object_key = $4, audio_bucket = $5, audio = NULL,
+         generating_at = NULL, lease_id = NULL
+         WHERE article_id = $1 AND part_index = $2 AND lease_id = $3 RETURNING part_index`,
+        [articleId, partIndex, lease, objectKey, config.bucket]
       )
+      if (!saved.rows.length) {
+        await bucket.delete(objectKey)
+        throw new HttpError(409, '語音處理已過期，請重試。')
+      }
       return { ready: true }
     } catch (error) {
       await query(
@@ -306,10 +320,21 @@ export const pdfArticleService = {
   ): Promise<Buffer> {
     await readable(articleId, viewer)
     const { rows } = await query(
-      'SELECT audio FROM article_narration_parts WHERE article_id = $1 AND part_index = $2 AND audio IS NOT NULL',
+      'SELECT audio, audio_object_key, audio_bucket FROM article_narration_parts WHERE article_id = $1 AND part_index = $2',
       [articleId, partIndex]
     )
     if (!rows[0]) throw new HttpError(404, '語音尚未產生。')
-    return rows[0].audio as Buffer
+    const part = rows[0]
+    if (part.audio_object_key) {
+      const config = mediaStorageConfiguration()
+      const prefix = `${config.environment}/narrations/${articleId}/${partIndex}/`
+      if (part.audio_bucket !== config.bucket || !part.audio_object_key.startsWith(prefix))
+        throw new HttpError(503, 'Narration storage environment mismatch')
+      const object = await mediaBucket().get(part.audio_object_key)
+      if (!object) throw new HttpError(404, '語音檔案不存在。')
+      return Buffer.from(await object.arrayBuffer())
+    }
+    if (!part.audio) throw new HttpError(404, '語音尚未產生。')
+    return part.audio as Buffer
   },
 }

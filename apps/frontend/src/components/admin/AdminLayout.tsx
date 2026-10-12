@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { adminService } from '@/services/adminService'
+import { useAuth } from '@/context/AuthContext'
+import { hasRole } from '@/lib/rbac'
+import { backendRequest } from '@/services/backendApi'
+import type { NewsletterRow } from '@/types/database'
 
 export type AdminLayoutTab =
   | 'newsletters'
@@ -74,6 +78,10 @@ interface LatestNewsletter {
   weekNumber: string | number | null
 }
 
+const roleLabels: Record<string, string> = {
+  admin: '管理員', teacher: '教師', parent: '家長', editor: '編輯', student: '學生',
+}
+
 export const AdminLayout: React.FC<AdminLayoutProps> = ({
   children,
   activeTab,
@@ -84,15 +92,28 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   contentVariant = 'card',
 }) => {
   const [latestNewsletter, setLatestNewsletter] = useState<LatestNewsletter | null>(null)
+  const [isSigningOut, setIsSigningOut] = useState(false)
   const navigate = useNavigate()
+  const { user, signOut, isLoading } = useAuth()
+  const isAdmin = hasRole(user, 'admin')
+
+  const handleSignOut = async () => {
+    setIsSigningOut(true)
+    try {
+      await signOut()
+    } finally {
+      setIsSigningOut(false)
+    }
+  }
 
   useEffect(() => {
     fetchLatestNewsletter()
-  }, [])
+  }, [user?.id, isAdmin])
 
   const fetchLatestNewsletter = async () => {
     try {
-      const newsletters = await adminService.fetchNewsletters({ status: 'published' })
+      const newsletters = isAdmin ? await adminService.fetchNewsletters({ status: 'published' })
+        : (await backendRequest<NewsletterRow[]>('/api/teacher/newsletters')).filter(row => row.status === 'published').map(row => ({ id: row.id, weekNumber: row.week_number }))
       const latest = newsletters[0]
       if (latest?.id) {
         setLatestNewsletter({
@@ -122,7 +143,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       <div className="relative max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         {/* Portal toolbar + primary navigation */}
         <header className="mb-8 bg-white/70 backdrop-blur-sm shadow-sm rounded-2xl border border-waldorf-cream-200">
-          <div className="flex items-center justify-between px-6 py-3 border-b border-waldorf-cream-200/70">
+          <div className="flex flex-col gap-3 px-4 py-3 border-b border-waldorf-cream-200/70 sm:flex-row sm:items-center sm:justify-between sm:px-6">
             {latestNewsletter ? (() => {
               // Use /week for week_number format, /newsletter for UUIDs
               const routeKey = latestNewsletter.weekNumber || latestNewsletter.id
@@ -147,10 +168,23 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                 <span className="font-medium">沒有已發布的文章</span>
               </div>
             )}
-            <div className="flex items-center space-x-2">
-              <span className="w-2 h-2 rounded-full bg-waldorf-sage-400 animate-pulse" />
-              <span className="text-xs font-semibold text-waldorf-clay-400 tracking-widest uppercase">管理後台</span>
-            </div>
+            {user && (
+              <div className="flex min-w-0 items-center justify-between gap-4 sm:justify-end">
+                <div className="min-w-0 sm:text-right" aria-label="目前登入的使用者">
+                  <p className="text-xs text-waldorf-clay-500">目前登入 · {(user.roles?.length ? user.roles : [user.role]).map(role => roleLabels[role] ?? role).join('、')}</p>
+                  <p className="break-all text-sm font-semibold text-waldorf-clay-700">{user.displayName || user.email}</p>
+                  {user.displayName && <p className="break-all text-xs text-waldorf-clay-500">{user.email}</p>}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  disabled={isSigningOut || isLoading}
+                  className="shrink-0 rounded-lg border border-waldorf-cream-300 bg-white px-4 py-2 text-sm font-medium text-waldorf-clay-600 transition-colors hover:bg-waldorf-cream-100 disabled:cursor-wait disabled:opacity-50"
+                >
+                  {isSigningOut ? '登出中...' : '登出'}
+                </button>
+              </div>
+            )}
           </div>
 
           <nav className="flex flex-wrap items-stretch gap-x-6 px-6" aria-label="管理導覽">
@@ -163,6 +197,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             <TabLink to="/admin/media" isActive={activeTab === 'media'}>
               媒體
             </TabLink>
+            {isAdmin && <>
             <TabGroupDivider />
             <TabLink to="/admin/email-templates" isActive={activeTab === 'email-templates'}>
               電子郵件範本
@@ -171,6 +206,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
               電子郵件預覽
             </TabLink>
             <TabGroupDivider />
+            </>}
             <TabLink to="/admin/analytics" isActive={activeTab === 'analytics'}>
               分析
             </TabLink>

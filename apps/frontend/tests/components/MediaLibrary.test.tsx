@@ -81,6 +81,18 @@ describe('MediaLibrary Component (T057)', () => {
     vi.clearAllMocks()
   })
 
+  it('requires acknowledgement before explicitly publishing an audio URL', async () => {
+    const user = userEvent.setup()
+    const approve = vi.fn().mockResolvedValue(undefined)
+    setup({ onEmailAccessChanged: approve })
+    await user.click(screen.getByText('test-audio.mp3'))
+    const button = screen.getByRole('button', { name:'核准公開郵件存取' })
+    expect(button).toBeDisabled()
+    await user.click(screen.getByRole('checkbox'))
+    await user.click(button)
+    expect(approve).toHaveBeenCalledWith(mockMediaFiles[2], true)
+  })
+
   describe('Basic Rendering', () => {
     it('should render media library component', () => {
       setup()

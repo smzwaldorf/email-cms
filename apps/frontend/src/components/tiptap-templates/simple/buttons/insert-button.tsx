@@ -13,7 +13,8 @@ import ImageUploader from '@/components/ImageUploader'
 import type { UploadState } from '@/hooks/useMediaUpload'
 import type { MediaFile } from '@/types/media'
 import { mediaGovernanceService } from '@/services/mediaGovernanceService'
-import { articleMediaManager } from '@/services/articleMediaManager'
+import { useAuth } from '@/context/AuthContext'
+import { backendRequest } from '@/services/backendApi'
 import { MediaLibrary } from '@/components/MediaLibrary'
 
 interface InsertButtonProps {
@@ -22,6 +23,7 @@ interface InsertButtonProps {
 }
 
 export function InsertButton({ editor, articleId }: InsertButtonProps) {
+  const { user } = useAuth()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [showUploader, setShowUploader] = useState(false)
   const [uploadState, setUploadState] = useState<UploadState>({
@@ -30,6 +32,7 @@ export function InsertButton({ editor, articleId }: InsertButtonProps) {
     error: null,
     uploadedFiles: [],
   })
+  const [selectedExisting, setSelectedExisting] = useState<MediaFile | null>(null)
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
   const [isLoadingLibrary, setIsLoadingLibrary] = useState(false)
   const [activeTab, setActiveTab] = useState<'upload' | 'existing'>('upload')
@@ -128,16 +131,6 @@ export function InsertButton({ editor, articleId }: InsertButtonProps) {
       mediaId: file.id,
     }).run()
 
-    if (articleId) {
-      try {
-        const association = await articleMediaManager.addMediaToArticle(articleId, file.id)
-        if (!association.success) {
-          throw new Error(association.error || 'Failed to register article media relationship')
-        }
-      } catch (error) {
-        console.error('Failed to register existing media usage:', error)
-      }
-    }
 
     setShowUploader(false)
   }
@@ -232,14 +225,20 @@ export function InsertButton({ editor, articleId }: InsertButtonProps) {
               ) : (
                 <div className="max-h-[480px] overflow-auto">
                   <p className="text-xs text-gray-500 mb-3">
-                    選取後會立即插入，並同步更新使用次數。
+                    選取媒體後可核准郵件存取或插入草稿。儲存文章後更新使用次數。
                   </p>
                   <MediaLibrary
                     mediaFiles={mediaFiles}
+                    onEmailAccessChanged={user?.role === 'admin' || user?.roles?.includes('admin') ? async (file, enabled) => {
+                      await backendRequest(`/api/media/${file.id}/email-access`, { method: 'PATCH', body: JSON.stringify({ enabled, acknowledgePublicAccess: enabled }) })
+                      setMediaFiles(current => current.map(item => item.id === file.id ? { ...item, emailServingEnabled: enabled } : item))
+                    } : undefined}
                     onMediaSelected={(selected) => {
-                      void handleInsertExisting(selected)
+                      setSelectedExisting(selected)
                     }}
                   />
+                  <button type="button" disabled={!selectedExisting} className="mt-3 px-3 py-2 border rounded disabled:opacity-50"
+                    onClick={() => { if (selectedExisting) void handleInsertExisting(selectedExisting) }}>插入所選圖片</button>
                 </div>
               )}
 

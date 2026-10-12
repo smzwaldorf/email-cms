@@ -4,6 +4,8 @@ import { useNewsletterMetrics, useTrendStats } from '@/hooks/useAnalyticsQuery'
 import { analyticsAggregator } from '@/services/analyticsAggregator'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import React from 'react'
+const authFixture = vi.hoisted(() => ({ user: { id: 'account', role: 'admin', roles: ['admin'], teacherClassIds: [] as string[] } }))
+vi.mock('@/context/AuthContext', () => ({ useAuth: () => ({ user: authFixture.user }) }))
 
 const createWrapper = () => {
     const queryClient = new QueryClient({
@@ -166,3 +168,18 @@ describe('useAllClasses', () => {
    rerender({ tracker: 'resend' });
    await waitFor(() => expect(result.current.trend[0]?.openRate).toBeNull());
  });
+
+describe('analytics permission cache', () => {
+  it('does not reuse cached school-wide metrics after the same account loses admin access', async () => {
+    authFixture.user = { id: 'account', role: 'admin', roles: ['admin'], teacherClassIds: [] };
+    vi.mocked(analyticsAggregator.getNewsletterMetrics).mockResolvedValueOnce({ totalViews: 999 } as any).mockResolvedValueOnce({ totalViews: 1 } as any).mockResolvedValueOnce({ totalViews: 0 } as any);
+    const { result, rerender } = renderHook(() => useNewsletterMetrics('permission-n1'), { wrapper: createWrapper() });
+    await waitFor(() => expect(result.current.metrics?.totalViews).toBe(999));
+    authFixture.user = { id: 'account', role: 'teacher', roles: ['teacher'], teacherClassIds: ['A'] };
+    rerender();
+    await waitFor(() => expect(result.current.metrics?.totalViews).toBe(1));
+    authFixture.user = { ...authFixture.user, teacherClassIds: [] };
+    rerender();
+    await waitFor(() => expect(result.current.metrics?.totalViews).toBe(0));
+  });
+});

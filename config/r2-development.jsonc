@@ -1,0 +1,8 @@
+{
+  "name": "smz-cms-media-development",
+  "compatibility_date": "2026-09-12",
+  "account_id": "f1b69ad88454573ccaa3364b628fd114",
+  "r2_buckets": [
+    { "binding": "MEDIA_BUCKET", "bucket_name": "smz-cms-media-dev-staging", "remote": true }
+  ]
+}

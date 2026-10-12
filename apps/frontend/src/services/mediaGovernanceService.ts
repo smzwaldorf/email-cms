@@ -699,7 +699,7 @@ export class MediaGovernanceService {
     let query = supabase
       .from('media_files')
       .select(
-        'id, filename, file_size, mime_type, file_type, public_url, storage_path, uploaded_by, uploaded_at, updated_at, width, height, duration'
+        'id, filename, file_size, mime_type, file_type, public_url, storage_path, uploaded_by, uploaded_at, updated_at, width, height, duration, email_serving_enabled'
       )
       .order('uploaded_at', { ascending: false })
 
@@ -783,6 +783,7 @@ export class MediaGovernanceService {
           width: row.width ?? undefined,
           height: row.height ?? undefined,
           duration: row.duration == null ? undefined : Number(row.duration),
+          emailServingEnabled: row.email_serving_enabled,
           usageCount: usageMap.get(row.id) || 0,
           variants: variantsMap.get(row.id) || [],
         } as MediaFile
