@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { adminService } from '@/services/adminService'
 import { useAuth } from '@/context/AuthContext'
+import { familyProfileUrl } from '@/utils/authPortal'
 import { hasRole } from '@/lib/rbac'
 import { backendRequest } from '@/services/backendApi'
 import type { NewsletterRow } from '@/types/database'
@@ -175,6 +176,12 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
                   <p className="break-all text-sm font-semibold text-waldorf-clay-700">{user.displayName || user.email}</p>
                   {user.displayName && <p className="break-all text-xs text-waldorf-clay-500">{user.email}</p>}
                 </div>
+                <a
+                  href={familyProfileUrl()}
+                  className="shrink-0 text-sm font-medium text-waldorf-clay-600 underline hover:text-waldorf-peach-600"
+                >
+                  家庭資料
+                </a>
                 <button
                   type="button"
                   onClick={handleSignOut}

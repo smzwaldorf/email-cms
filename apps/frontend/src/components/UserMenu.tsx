@@ -7,6 +7,7 @@
 import React, { useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { canAccessCmsPanel } from '@email-cms/shared'
+import { familyProfileUrl } from '@/utils/authPortal'
 
 export const UserMenu: React.FC = () => {
   const { user, signOut, isLoading } = useAuth()
@@ -15,6 +16,7 @@ export const UserMenu: React.FC = () => {
   if (!user) {
     return null
   }
+  const displayName = user.displayName?.trim() || user.email
 
   const handleSignOut = async () => {
     console.log('👤 User clicked sign out')
@@ -31,14 +33,15 @@ export const UserMenu: React.FC = () => {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center space-x-2 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors"
         aria-label="使用者選單"
+        aria-expanded={isOpen}
       >
         {/* User Avatar */}
         <div className="w-8 h-8 rounded-full bg-waldorf-peach flex items-center justify-center text-white font-bold text-sm">
-          {user.email.charAt(0).toUpperCase()}
+          {displayName.charAt(0).toUpperCase()}
         </div>
 
         {/* User Email */}
-        <span className="text-sm font-medium text-gray-700 hidden sm:block">{user.email}</span>
+        <span className="max-w-32 truncate text-sm font-medium text-gray-700 sm:max-w-48" title={displayName}>{displayName}</span>
 
         {/* Dropdown Arrow */}
         <svg
@@ -56,12 +59,20 @@ export const UserMenu: React.FC = () => {
         <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg z-50">
           {/* User Info */}
           <div className="px-4 py-3 border-b border-gray-200">
-            <p className="text-sm font-medium text-gray-900">{user.email}</p>
+            <p className="break-words text-sm font-medium text-gray-900">{displayName}</p>
+            {displayName !== user.email && <p className="break-all text-xs text-gray-500">{user.email}</p>}
             <p className="text-xs text-gray-500 capitalize">{user.role}</p>
           </div>
 
           {/* Menu Items */}
           <div className="py-2">
+            <a
+              href={familyProfileUrl()}
+              className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+              onClick={() => setIsOpen(false)}
+            >
+              家庭資料
+            </a>
             {/* Admin Dashboard Link */}
             {canAccessCmsPanel({ roles: user.roles ?? [user.role] }) && (
               <a

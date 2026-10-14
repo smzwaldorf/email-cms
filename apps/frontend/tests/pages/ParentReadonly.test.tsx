@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 vi.mock('@/context/AuthContext', () => ({ useAuth: () => ({
-  user: { id: 'parent', email: 'synthetic-parent@example.test', role: 'parent', roles: ['parent'] },
+  user: { id: 'parent', email: 'synthetic-parent@example.test', displayName: '測試家長', role: 'parent', roles: ['parent'] },
   isAuthenticated: true, isLoading: false, signOut: vi.fn(),
 }) }))
 import { ProtectedRoute } from '@/components/ProtectedRoute'
@@ -18,7 +18,9 @@ describe('parent UI boundary', () => {
   })
   it('offers no administrator navigation in the parent menu', () => {
     render(<UserMenu />)
+    expect(screen.getByText('測試家長')).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: '使用者選單' }))
+    expect(screen.getByRole('link', { name: '家庭資料' })).toHaveAttribute('href', 'http://localhost:3000/profiles/family')
     expect(screen.getByText('parent')).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: '管理儀表板' })).not.toBeInTheDocument()
   })
