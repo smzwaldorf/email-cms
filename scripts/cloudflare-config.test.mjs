@@ -51,15 +51,15 @@ for (const stage of ['staging', 'production']) test(`${stage} resources and bind
 })
 test('rejects unknown deployment environments', () => assert.throws(() => configuration({...environment, DEPLOYMENT_ENVIRONMENT: 'typo'}), /Invalid DEPLOYMENT_ENVIRONMENT/))
 
-test('R2 buckets match deployment environments and staging keeps delivery disabled', () => {
+test('R2 buckets match deployment environments and staging honors explicit delivery activation', () => {
   const prod = configuration({...environment, DEPLOYMENT_ENVIRONMENT:'production'})
   const stage = configuration({...environment, DEPLOYMENT_ENVIRONMENT:'staging', DELIVERY_ENABLED:'true'})
   assert.deepEqual(prod.r2_buckets, [{binding:'MEDIA_BUCKET',bucket_name:'smz-cms-media-production'}])
   assert.deepEqual(stage.r2_buckets, [{binding:'MEDIA_BUCKET',bucket_name:'smz-cms-media-dev-staging'}])
   assert.equal(prod.vars.MEDIA_STORAGE_ENVIRONMENT, 'production')
   assert.equal(stage.vars.MEDIA_STORAGE_ENVIRONMENT, 'staging')
-  assert.equal(stage.vars.DELIVERY_ENABLED, 'false')
-  assert.deepEqual(stage.triggers.crons, [])
+  assert.equal(stage.vars.DELIVERY_ENABLED, 'true')
+  assert.deepEqual(stage.triggers.crons, ['* * * * *'])
  })
 test('legacy environment selection stays aligned and conflicting selections fail', () => {
   const prod = configuration({...environment, CMS_DEPLOY_ENVIRONMENT:'production'})
@@ -68,3 +68,12 @@ test('legacy environment selection stays aligned and conflicting selections fail
   assert.throws(() => configuration({...environment, CMS_DEPLOY_ENVIRONMENT:'development'}), /Invalid/)
   assert.throws(() => configuration({...environment, DEPLOYMENT_ENVIRONMENT:'staging', CMS_DEPLOY_ENVIRONMENT:'production'}), /Conflicting/)
  })
+
+test('staging delivery stays off unless explicitly enabled', () => {
+ const config = configuration({...environment, DEPLOYMENT_ENVIRONMENT:'staging'})
+ assert.equal(config.vars.DELIVERY_ENABLED, 'false')
+ assert.deepEqual(config.triggers.crons, [])
+ const disabled = configuration({...environment, DEPLOYMENT_ENVIRONMENT:'production', DELIVERY_ENABLED:'false'})
+ assert.equal(disabled.vars.DELIVERY_ENABLED, 'false')
+ assert.deepEqual(disabled.triggers.crons, [])
+})

@@ -28,9 +28,9 @@ export function configuration(env) {
     if (key !== 'SMZ_AUTH_ISSUER' && url.origin !== env[key]) throw new Error(`${key} must be an origin`)
   }
   if (!env.SMZ_AUTH_ISSUER.endsWith('/api/auth')) throw new Error('Invalid issuer path')
-  const deliveryEnabled = env.DELIVERY_ENABLED || 'true'
+  const deliveryEnabled = env.DELIVERY_ENABLED || (environment === 'production' ? 'true' : 'false')
   if (!['true', 'false'].includes(deliveryEnabled)) throw new Error('Invalid DELIVERY_ENABLED')
-  const effectiveDelivery = environment === 'production' ? deliveryEnabled : 'false'
+  const effectiveDelivery = deliveryEnabled
   const demoMode = env.NEWSLETTER_DEMO_MODE || 'false'
   if (!['true', 'false'].includes(demoMode)) throw new Error('Invalid NEWSLETTER_DEMO_MODE')
   const recipients = (env.NEWSLETTER_TEST_RECIPIENTS ?? '').split(',').map(value => value.trim().toLowerCase()).filter(Boolean)
