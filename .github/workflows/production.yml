@@ -54,7 +54,7 @@ jobs:
         env:
           JWT_SECRET: ${{ secrets.PRODUCTION_JWT_SECRET }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
+          RESEND_FROM_EMAIL: info@smzwaldorf.com
           CMS_SESSION_SECRET: ${{ secrets.PRODUCTION_CMS_SESSION_SECRET }}
           CMS_OIDC_CLIENT_SECRET: ${{ secrets.PRODUCTION_CMS_OIDC_CLIENT_SECRET }}
       - name: Initialize empty production database

@@ -79,7 +79,7 @@ jobs:
         env:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
+          RESEND_FROM_EMAIL: test@smzwaldorf.com
           CMS_SESSION_SECRET: ${{ secrets.CMS_SESSION_SECRET }}
           CMS_OIDC_CLIENT_SECRET: ${{ secrets.CMS_OIDC_CLIENT_SECRET }}
       - name: Initialize the explicitly approved empty CMS database
